@@ -1,0 +1,71 @@
+﻿<!-- Framework/Views/ClientConfigurationEditor.xaml -->
+<UserControl x:Class="Framework.Views.ClientConfigurationEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 客户端名称 -->
+        <TextBlock Grid.Row="0"
+                   Grid.Column="0"
+                   Text="名称:"
+                   Margin="5"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="0"
+                 Grid.Column="1"
+                 Text="{Binding Name}"
+                 Margin="5" />
+
+        <!-- IP地址 -->
+        <TextBlock Grid.Row="1"
+                   Grid.Column="0"
+                   Text="IP地址:"
+                   Margin="5"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="1"
+                 Grid.Column="1"
+                 Text="{Binding IP}"
+                 Margin="5" />
+
+        <!-- 端口 -->
+        <TextBlock Grid.Row="2"
+                   Grid.Column="0"
+                   Text="端口:"
+                   Margin="5"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="2"
+                 Grid.Column="1"
+                 Text="{Binding Port}"
+                 Margin="5" />
+
+        <!-- 描述 -->
+        <TextBlock Grid.Row="3"
+                   Grid.Column="0"
+                   Text="描述:"
+                   Margin="5"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="3"
+                 Grid.Column="1"
+                 Text="{Binding Description}"
+                 Margin="5" />
+
+        <!-- 启用状态 -->
+        <CheckBox Grid.Row="4"
+                  Grid.Column="1"
+                  Content="启用"
+                  IsChecked="{Binding IsEnabled}"
+                  Margin="5" />
+    </Grid>
+</UserControl>

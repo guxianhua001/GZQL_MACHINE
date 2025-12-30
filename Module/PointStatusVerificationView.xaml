@@ -1,0 +1,229 @@
+﻿<!-- PointStatusVerificationView.xaml -->
+<UserControl x:Class="Framework.Views.PointStatusVerificationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Framework.Views"
+             xmlns:converters="clr-namespace:Framework.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="500"
+             d:DesignWidth="700"
+             Background="{DynamicResource MaterialDesignPaper}">
+
+    <UserControl.Resources>
+        <converters:StatusToColorConverter2 x:Key="StatusConverter" />
+        <converters:StatusToTextConverter x:Key="StatusTextConverter" />
+        <converters:DialRecordShortTextConverter x:Key="DialRecordShortTextConverter" />
+        <converters:NullToVisibilityConverter x:Key="NullToVisibility"
+                                              NullValue="Collapsed"
+                                              NotNullValue="Visible" />
+        <!-- 紧凑的列表项样式 -->
+        <Style x:Key="CompactListViewItemStyle"
+               TargetType="ListViewItem">
+            <Setter Property="Height"
+                    Value="36" />
+            <Setter Property="Padding"
+                    Value="0" />
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Stretch" />
+            <Setter Property="VerticalContentAlignment"
+                    Value="Center" />
+        </Style>
+
+        <!-- 记录状态颜色指示器样式 -->
+        <Style x:Key="StatusIndicatorStyle"
+               TargetType="Ellipse">
+            <Setter Property="Width"
+                    Value="8" />
+            <Setter Property="Height"
+                    Value="8" />
+            <Setter Property="Margin"
+                    Value="0,0,4,0" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+        </Style>
+
+        <!-- 紧凑的文本样式 -->
+        <Style x:Key="CompactTextStyle"
+               TargetType="TextBlock">
+            <Setter Property="Margin"
+                    Value="0" />
+            <Setter Property="FontSize"
+                    Value="11" />
+            <Setter Property="TextTrimming"
+                    Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+        </Style>
+
+        <!-- 记录模板 - 非常紧凑 -->
+        <DataTemplate x:Key="CompactRecordTemplate">
+            <TextBlock Style="{StaticResource CompactTextStyle}"
+                       Text="{Binding Converter={StaticResource DialRecordShortTextConverter}}"
+                       ToolTip="{Binding}"
+                       HorizontalAlignment="Center"
+                       Foreground="{Binding IsSuccess, 
+                                  Converter={StaticResource StatusConverter}}" />
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <TextBlock Text="点位状态确认"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="10"
+                   HorizontalAlignment="Center" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="0.7*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：点位地图 -->
+            <local:PinMapView DataContext="{Binding Path=MapViewModel}" />
+
+            <!-- 右侧：状态列表和二维码 -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 物料二维码显示区域 -->
+                <Border Grid.Row="0"
+                        Margin="10,10,10,5"
+                        Padding="10"
+                        Background="{DynamicResource MaterialDesignCardBackground}"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}"
+                        CornerRadius="4">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center">
+                        <TextBlock Text="当前物料二维码: "
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding TaskMaterialQRCode}"
+                                   FontWeight="Bold"
+                                   ToolTip="{Binding TaskMaterialQRCode}"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="250"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 状态列表 -->
+                <Border Grid.Row="1"
+                        Margin="10,0,10,10"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}">
+                    <ListView ItemsSource="{Binding Path=Points}"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              x:Name="PointsListView">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem"
+                                   BasedOn="{StaticResource CompactListViewItemStyle}" />
+                        </ListView.ItemContainerStyle>
+
+                        <ListView.View>
+                            <GridView>
+                                <!-- 序号列 -->
+                                <GridViewColumn Header="序号"
+                                                Width="50"
+                                                DisplayMemberBinding="{Binding Index}" />
+
+                                <!-- 状态列 -->
+                                <GridViewColumn Header="状态"
+                                                Width="80">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center">
+                                                <Ellipse Fill="{Binding IsOk, Converter={StaticResource StatusConverter}}"
+                                                         Style="{StaticResource StatusIndicatorStyle}" />
+                                                <TextBlock Text="{Binding IsOk, Converter={StaticResource StatusTextConverter}}"
+                                                           Style="{StaticResource CompactTextStyle}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <!-- 负向记录列 -->
+                                <GridViewColumn Header="负向记录"
+                                                Width="140">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ContentControl ContentTemplate="{StaticResource CompactRecordTemplate}"
+                                                            Content="{Binding NegativeRecord}"
+                                                            VerticalAlignment="Center"
+                                                            HorizontalAlignment="Center"
+                                                            Visibility="{Binding NegativeRecord, Converter={StaticResource NullToVisibility}}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <!-- 正向记录列 -->
+                                <GridViewColumn Header="正向记录"
+                                                Width="140">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ContentControl ContentTemplate="{StaticResource CompactRecordTemplate}"
+                                                            Content="{Binding PositiveRecord}"
+                                                            VerticalAlignment="Center"
+                                                            HorizontalAlignment="Center"
+                                                            Visibility="{Binding PositiveRecord, Converter={StaticResource NullToVisibility}}" />
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Border>
+
+                <!-- 状态指示器标签 -->
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            Margin="5,0"
+                            HorizontalAlignment="Center">
+                    <Ellipse Fill="Green"
+                             Style="{StaticResource StatusIndicatorStyle}" />
+                    <TextBlock Text="OK"
+                               Style="{StaticResource CompactTextStyle}"
+                               Margin="0,0,15,0" />
+                    <Ellipse Fill="Red"
+                             Style="{StaticResource StatusIndicatorStyle}" />
+                    <TextBlock Text="NG"
+                               Style="{StaticResource CompactTextStyle}"
+                               Margin="0,0,15,0" />
+                    <Ellipse Fill="Gray"
+                             Style="{StaticResource StatusIndicatorStyle}" />
+                    <TextBlock Text="未操作"
+                               Style="{StaticResource CompactTextStyle}" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- 确认按钮 -->
+        <Button Grid.Row="2"
+                Content="确认"
+                Command="{Binding ConfirmCommand}"
+                Width="150"
+                Height="40"
+                Margin="10"
+                HorizontalAlignment="Center"
+                Style="{StaticResource MaterialDesignRaisedButton}" />
+
+    </Grid>
+</UserControl>
+

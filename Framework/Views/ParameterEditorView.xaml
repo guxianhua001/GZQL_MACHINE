@@ -1,0 +1,351 @@
+﻿<UserControl x:Class="Framework.Views.ParameterEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Framework.ViewModels"
+             xmlns:helpers="clr-namespace:Framework.Helpers"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             xmlns:converters="clr-namespace:Framework.Converters"
+             xmlns:interactivity="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d"
+             Height="650"
+             Width="800"
+             Background="{DynamicResource MaterialDesignPaper}"
+             TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <!-- 转换器和命令 -->
+            <converters:ColorToBrushConverter x:Key="ColorToBrushConv" />
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <converters:BooleanToVisibilityInverseConverter x:Key="BooleanToVisibilityInverseConverter" />
+            <converters:NumericFormatConverter x:Key="NumericFormatConverter" />
+            <converters:NumericFormatDisplayConverter x:Key="NumericFormatDisplayConverter" />
+            <!-- 参数分组样式 -->
+            <Style x:Key="ParamGroupStyle"
+                   TargetType="Expander">
+                <Setter Property="Background"
+                        Value="{DynamicResource MaterialDesignCardBackground}" />
+                <Setter Property="BorderBrush"
+                        Value="{DynamicResource MaterialDesignDivider}" />
+                <Setter Property="BorderThickness"
+                        Value="0,0,0,1" />
+                <Setter Property="Margin"
+                        Value="0,0,0,10" />
+                <Setter Property="HeaderTemplate">
+                    <Setter.Value>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesignBody}" />
+                        </DataTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="ContentTemplate">
+                    <Setter.Value>
+                        <DataTemplate>
+                            <ItemsControl ItemsSource="{Binding}"
+                                          Margin="0,10,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="auto" />
+                                                <ColumnDefinition Width="5" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- 参数名称和描述 -->
+                                            <StackPanel Grid.Column="0"
+                                                        Margin="0,0,15,0"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+                                                <TextBlock Text="{Binding Description}"
+                                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                                           Opacity="0.7"
+                                                           Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <!-- 参数值编辑器 -->
+                                            <ContentPresenter Grid.Column="2"
+                                                              Content="{Binding}"
+                                                              ContentTemplateSelector="{StaticResource ParamTemplateSelector}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DataTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 自定义 NumericUpDown 样式 -->
+
+            <!-- 参数模板选择器（根据类型选择不同编辑器） -->
+            <vm:ParameterTemplateSelector x:Key="ParamTemplateSelector">
+                <!-- 字符串参数模板 -->
+                <vm:ParameterTemplateSelector.StringTemplate>
+                    <DataTemplate>
+                        <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 IsEnabled="{Binding IsEditable}" />
+                    </DataTemplate>
+                </vm:ParameterTemplateSelector.StringTemplate>
+
+                <!-- 布尔参数模板 -->
+                <vm:ParameterTemplateSelector.BooleanTemplate>
+                    <DataTemplate>
+                        <CheckBox IsChecked="{Binding Value}"
+                                  VerticalAlignment="Center"
+                                  Style="{StaticResource MaterialDesignCheckBox}"
+                                  IsEnabled="{Binding IsEditable}" />
+                    </DataTemplate>
+                </vm:ParameterTemplateSelector.BooleanTemplate>
+
+                <!-- 数字参数模板 -->
+                <vm:ParameterTemplateSelector.NumberTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <!-- 只读模式显示 - 使用 DisplayString -->
+                            <TextBlock Text="{Binding DisplayString}"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsEditable, Converter={StaticResource BooleanToVisibilityInverseConverter}}"
+                                       ToolTip="只读模式不能编辑" />
+
+                            <!-- 编辑模式显示 -->
+                            <Grid Visibility="{Binding IsEditable, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- 滑块绑定到 ActualValue -->
+                                <Slider Value="{Binding ActualValue, Mode=TwoWay}"
+                                        Minimum="{Binding MinValue}"
+                                        Maximum="{Binding MaxValue}"
+                                        Grid.Row="0"
+                                        Margin="5,0,5,5"
+                                        ToolTip="拖动滑块调整值"
+                                        IsSnapToTickEnabled="True">
+                                    <Slider.Style>
+                                        <Style TargetType="Slider"
+                                               BasedOn="{StaticResource {x:Type Slider}}">
+                                            <Setter Property="TickFrequency"
+                                                    Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DecimalPlaces}"
+                                                             Value="0">
+                                                    <Setter Property="TickFrequency"
+                                                            Value="1" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding DecimalPlaces}"
+                                                             Value="1">
+                                                    <Setter Property="TickFrequency"
+                                                            Value="0.1" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding DecimalPlaces}"
+                                                             Value="2">
+                                                    <Setter Property="TickFrequency"
+                                                            Value="0.01" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Slider.Style>
+                                </Slider>
+
+                                <!-- 数字输入框 - 添加 FormatString 绑定 -->
+                                <materialDesign:DecimalUpDown Grid.Row="1"
+                                                              Value="{Binding ActualValue, Mode=TwoWay}"
+                                                              Minimum="{Binding MinValue}"
+                                                              Maximum="{Binding MaxValue}"
+                                                              VerticalAlignment="Center"
+                                                              HorizontalContentAlignment="Center"
+                                                              VerticalContentAlignment="Center"
+                                                              MinHeight="26"
+                                                              Margin="0,5,10,0"
+                                                              MinWidth="120">
+                                    <!--helpers:NumericFormatHelper.FormatString="{Binding FormatString}">-->
+                                    <!-- 使用行为设置步长 -->
+                                    <interactivity:Interaction.Behaviors>
+                                        <helpers:NumericIncrementBehavior Increment="{Binding SmallChange}" />
+                                    </interactivity:Interaction.Behaviors>
+                                </materialDesign:DecimalUpDown>
+
+                                <!-- 显示当前步长设置 -->
+                                <TextBlock Text="{Binding SmallChange, StringFormat='步长: ±{0:F2}'}"
+                                           Grid.Row="2"
+                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                           HorizontalAlignment="Right"
+                                           Margin="0,5,0,0"
+                                           Opacity="0.7" />
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </vm:ParameterTemplateSelector.NumberTemplate>
+
+                <!-- 枚举参数模板 -->
+                <vm:ParameterTemplateSelector.EnumTemplate>
+                    <DataTemplate>
+                        <ComboBox ItemsSource="{Binding EnumValues}"
+                                  SelectedValue="{Binding Value}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  IsEnabled="{Binding IsEditable}" />
+                    </DataTemplate>
+                </vm:ParameterTemplateSelector.EnumTemplate>
+
+                <!-- 颜色参数模板 -->
+                <vm:ParameterTemplateSelector.ColorTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal"
+                                    IsEnabled="{Binding IsEditable}">
+                            <Border Background="{Binding Value, Converter={StaticResource ColorToBrushConv}}"
+                                    Width="30"
+                                    Height="30"
+                                    CornerRadius="4"
+                                    BorderBrush="{DynamicResource MaterialDesignDivider}"
+                                    BorderThickness="1"
+                                    Margin="0,0,10,0" />
+                            <Button Content="选择颜色"
+                                    Command="{x:Static helpers:ColorPickerHelper.SelectColorCommand}"
+                                    CommandParameter="{Binding}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </vm:ParameterTemplateSelector.ColorTemplate>
+            </vm:ParameterTemplateSelector>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题区域 -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PrimaryHueMidBrush}"
+                CornerRadius="4"
+                Padding="16,10">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Stretch">
+                <materialDesign:PackIcon Kind="Cog"
+                                         Height="24"
+                                         Width="24"
+                                         VerticalAlignment="Center"
+                                         Foreground="White"
+                                         Margin="0,0,10,0" />
+                <TextBlock Text="{Binding Title}"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- 搜索控件 -->
+        <StackPanel Grid.Row="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="0,0,10,0">
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     Width="200"
+                     Margin="0,0,10,0"
+                     materialDesign:HintAssist.Hint="搜索参数..."
+                     materialDesign:HintAssist.IsFloating="True"
+                     materialDesign:TextFieldAssist.HasClearButton="True">
+                <TextBox.InputBindings>
+                    <KeyBinding Command="{Binding ClearSearchCommand}"
+                                Key="Escape" />
+                </TextBox.InputBindings>
+            </TextBox>
+            <Button ToolTip="重置搜索"
+                    Command="{Binding ClearSearchCommand}"
+                    Style="{StaticResource MaterialDesignIconButton}"
+                    Margin="0">
+                <materialDesign:PackIcon Kind="Close" />
+            </Button>
+        </StackPanel>
+
+        <!-- 参数内容区域 -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      Margin="0,8,0,0">
+            <ItemsControl ItemsSource="{Binding ParameterGroups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderThickness="0,0,0,2"
+                                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                                Margin="0,0,0,15">
+                            <Expander IsExpanded="True"
+                                      Header="{Binding Category}">
+                                <ItemsControl ItemsSource="{Binding Parameters}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center"
+                                                            Margin="0,0,15,0">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
+                                                    <TextBlock Text="{Binding Description}"
+                                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                                               Opacity="0.7" />
+                                                </StackPanel>
+                                                <ContentPresenter Grid.Column="1"
+                                                                  Content="{Binding}"
+                                                                  ContentTemplateSelector="{StaticResource ParamTemplateSelector}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        <!-- 按钮区域 -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button Content="保存"
+                    Command="{Binding ApplyCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Width="120"
+                    Height="40"
+                    Margin="5,0" />
+
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Width="120"
+                    Height="40"
+                    Margin="5,0" />
+
+            <Button Content="恢复默认"
+                    Command="{Binding ResetCommand}"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Width="120"
+                    Height="40"
+                    Margin="5,0" />
+        </StackPanel>
+    </Grid>
+</UserControl>

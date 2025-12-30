@@ -1,0 +1,284 @@
+﻿<UserControl x:Class="Framework.Views.PostDialPointVerificationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Framework.Views"
+             xmlns:converters="clr-namespace:Framework.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="480"
+             d:DesignWidth="680">
+
+    <UserControl.Resources>
+        <converters:StatusToColorConverter2 x:Key="StatusConverter" />
+        <converters:RedIfLargeConverter x:Key="RedIfLargeConverter" />
+
+        <!-- 紧凑的列表项样式 -->
+        <Style x:Key="CompactListViewItemStyle"
+               TargetType="ListViewItem">
+            <Setter Property="Height"
+                    Value="32" />
+            <Setter Property="Padding"
+                    Value="0" />
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Stretch" />
+            <Setter Property="VerticalContentAlignment"
+                    Value="Center" />
+            <Setter Property="FocusVisualStyle"
+                    Value="{x:Null}" />
+        </Style>
+
+        <!-- 紧凑的文本样式 -->
+        <Style x:Key="CompactTextStyle"
+               TargetType="TextBlock">
+            <Setter Property="Margin"
+                    Value="0" />
+            <Setter Property="FontSize"
+                    Value="12" />
+            <Setter Property="TextTrimming"
+                    Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+            <Setter Property="HorizontalAlignment"
+                    Value="Center" />
+        </Style>
+
+        <!-- 点位的状态文本样式 -->
+        <Style x:Key="StatusTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource CompactTextStyle}">
+            <Setter Property="FontWeight"
+                    Value="Bold" />
+            <Setter Property="Margin"
+                    Value="4,0" />
+        </Style>
+
+        <!-- 偏差值显示样式 -->
+        <Style x:Key="DeviationTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource CompactTextStyle}">
+            <Setter Property="Margin"
+                    Value="4,0" />
+            <Setter Property="Width"
+                    Value="60" />
+            <Setter Property="HorizontalAlignment"
+                    Value="Center" />
+        </Style>
+
+        <!-- 自定义滚动查看器样式 - 修复版本 -->
+        <Style x:Key="CustomScrollViewer"
+               TargetType="{x:Type ScrollViewer}">
+            <!-- 添加以下Setter -->
+            <Setter Property="OverridesDefaultStyle"
+                    Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                        <Grid x:Name="Grid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- 修复CanContentScroll的绑定方式 -->
+                            <ScrollContentPresenter Grid.Column="0"
+                                                    Grid.Row="0"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}" />
+
+                            <!-- 垂直滚动条 -->
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                       Grid.Column="1"
+                                       Grid.Row="0"
+                                       Value="{TemplateBinding VerticalOffset}"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+
+                            <!-- 水平滚动条 -->
+                            <ScrollBar x:Name="PART_HorizontalScrollBar"
+                                       Grid.Column="0"
+                                       Grid.Row="1"
+                                       Orientation="Horizontal"
+                                       Value="{TemplateBinding HorizontalOffset}"
+                                       Maximum="{TemplateBinding ScrollableWidth}"
+                                       ViewportSize="{TemplateBinding ViewportWidth}"
+                                       Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <TextBlock Text="拨针后点位状态确认"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="10,5"
+                   HorizontalAlignment="Center" />
+
+        <Grid Grid.Row="1"
+              Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.5*"
+                                  MinWidth="300" />
+                <ColumnDefinition Width="0.5*"
+                                  MinWidth="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：点位地图 -->
+            <local:PinMapView DataContext="{Binding Path=MapViewModel}"
+                              Margin="10" />
+
+            <!-- 右侧：二维码和偏差数据 -->
+            <Border Grid.Column="1"
+                    Margin="10"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource MaterialDesignDivider}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 当前物料二维码区域 -->
+                    <Border Grid.Row="0"
+                            Margin="10,10,10,5"
+                            Padding="10"
+                            Background="{DynamicResource MaterialDesignCardBackground}"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource MaterialDesignDivider}"
+                            CornerRadius="4">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <TextBlock Text="当前物料二维码: "
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0" />
+                            <TextBlock Text="{Binding TaskMaterialQRCode}"
+                                       FontWeight="Bold"
+                                       ToolTip="{Binding TaskMaterialQRCode}"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="250"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 结果标题 -->
+                    <StackPanel Grid.Row="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Margin="0,5,0,5">
+                        <TextBlock Text="点位偏差数据"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="(单位:mm)"
+                                   FontSize="11"
+                                   Foreground="Gray"
+                                   VerticalAlignment="Center"
+                                   Margin="5,0,0,0" />
+                    </StackPanel>
+
+                    <!-- 包裹ListView的ScrollViewer -->
+                    <Grid Grid.Row="2"
+                          Margin="5,0,5,10">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      Style="{StaticResource CustomScrollViewer}">
+                            <!-- 使用Style而不是Template -->
+                            <ListView ItemsSource="{Binding Path=Points}"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                      x:Name="PointsListView">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem"
+                                           BasedOn="{StaticResource CompactListViewItemStyle}" />
+                                </ListView.ItemContainerStyle>
+
+                                <ListView.View>
+                                    <GridView>
+                                        <!-- 序号列 -->
+                                        <GridViewColumn Header="序号"
+                                                        Width="60">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Style="{StaticResource CompactTextStyle}"
+                                                               Text="{Binding Index, StringFormat='\{0\}'}"
+                                                               HorizontalAlignment="Center" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+
+                                        <!-- 状态列 -->
+                                        <GridViewColumn Header="状态"
+                                                        Width="80">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Style="{StaticResource StatusTextStyle}"
+                                                               Text="{Binding State}"
+                                                               Foreground="{Binding IsOk, Converter={StaticResource StatusConverter}}" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+
+                                        <!-- X偏差列 -->
+                                        <GridViewColumn Header="X"
+                                                        Width="90">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Style="{StaticResource DeviationTextStyle}"
+                                                               Text="{Binding XDeviation, StringFormat='\{0:F3\}'}"
+                                                               ToolTip="X方向偏差值"
+                                                               Foreground="{Binding XDeviation, Converter={StaticResource RedIfLargeConverter}, ConverterParameter=0.2}" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+
+                                        <!-- Y偏差列 -->
+                                        <GridViewColumn Header="Y"
+                                                        Width="90">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Style="{StaticResource DeviationTextStyle}"
+                                                               Text="{Binding YDeviation, StringFormat='\{0:F3\}'}"
+                                                               ToolTip="Y方向偏差值"
+                                                               Foreground="{Binding YDeviation, Converter={StaticResource RedIfLargeConverter}, ConverterParameter=0.2}" />
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 底部按钮区域 -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="5">
+            <Button Content="确认"
+                    Command="{Binding ConfirmCommand}"
+                    Width="100"
+                    Height="34"
+                    Margin="10,0"
+                    Style="{StaticResource MaterialDesignRaisedButton}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

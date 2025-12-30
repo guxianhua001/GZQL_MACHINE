@@ -1,0 +1,249 @@
+﻿<UserControl x:Class="Modules.LogViewer.Views.LogViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Modules.LogViewer.Converters"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+    <UserControl.Resources>
+        <!-- 转换器：将文本中的换行符转换为可见的换行 -->
+        <local:NewLineToLineBreakConverter x:Key="NewLineToLineBreakConverter" />
+        <!-- 转换器：根据日志级别返回对应的悬停背景色 -->
+        <local:LevelToHoverBackgroundConverter x:Key="LevelToHoverBackgroundConverter" />
+
+        <!-- 定义颜色资源 -->
+        <SolidColorBrush x:Key="InfoBackground"
+                         Color="White" />
+        <SolidColorBrush x:Key="InfoBackgroundMouseOver"
+                         Color="LightGray" />
+        <SolidColorBrush x:Key="WarnBackground"
+                         Color="Yellow" />
+        <SolidColorBrush x:Key="WarnBackgroundMouseOver"
+                         Color="GreenYellow" />
+        <SolidColorBrush x:Key="ErrorBackground"
+                         Color="Tomato" />
+        <SolidColorBrush x:Key="ErrorBackgroundMouseOver"
+                         Color="IndianRed" />
+        <SolidColorBrush x:Key="SelectedBackground"
+                         Color="DarkOrange" />
+
+        <!-- 字体设置 -->
+        <FontFamily x:Key="LogFontFamily">Consolas, Courier New, monospace</FontFamily>
+        <sys:Double x:Key="LogFontSize">12</sys:Double>
+        <sys:Double x:Key="LogRowMinHeight">22</sys:Double>
+        <Thickness x:Key="LogCellPadding">4,2</Thickness>
+
+        <!-- 工具栏按钮样式 -->
+        <Style x:Key="ToolbarButtonStyle"
+               TargetType="Button">
+            <Setter Property="Margin"
+                    Value="2" />
+            <Setter Property="Padding"
+                    Value="5,2" />
+            <Setter Property="MinWidth"
+                    Value="60" />
+        </Style>
+
+        <!-- 数据网格行样式 - 移除固定高度，允许自动调整 -->
+        <Style x:Key="LogRowStyle"
+               TargetType="{x:Type DataGridRow}">
+            <Setter Property="MinHeight"
+                    Value="{StaticResource LogRowMinHeight}" />
+            <Setter Property="FontFamily"
+                    Value="{StaticResource LogFontFamily}" />
+            <Setter Property="FontSize"
+                    Value="{StaticResource LogFontSize}" />
+            <Style.Triggers>
+                <!-- 根据日志级别设置背景色 -->
+                <DataTrigger Binding="{Binding Level}"
+                             Value="INFO">
+                    <Setter Property="Background"
+                            Value="{StaticResource InfoBackground}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}"
+                             Value="WARN">
+                    <Setter Property="Background"
+                            Value="{StaticResource WarnBackground}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}"
+                             Value="ERROR">
+                    <Setter Property="Background"
+                            Value="{StaticResource ErrorBackground}" />
+                </DataTrigger>
+
+                <!-- 鼠标悬停效果 -->
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+                    <Setter Property="Background">
+                        <Setter.Value>
+                            <MultiBinding Converter="{StaticResource LevelToHoverBackgroundConverter}">
+                                <Binding Path="Level" />
+                                <Binding RelativeSource="{RelativeSource Self}"
+                                         Path="IsSelected" />
+                            </MultiBinding>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+
+                <!-- 选中状态 -->
+                <Trigger Property="IsSelected"
+                         Value="True">
+                    <Setter Property="Background"
+                            Value="{StaticResource SelectedBackground}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 数据网格单元格样式 -->
+        <Style x:Key="LogCellStyle"
+               TargetType="{x:Type DataGridCell}">
+            <Setter Property="Padding"
+                    Value="{StaticResource LogCellPadding}" />
+            <Setter Property="FontFamily"
+                    Value="{StaticResource LogFontFamily}" />
+            <Setter Property="FontSize"
+                    Value="{StaticResource LogFontSize}" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected"
+                         Value="True">
+                    <Setter Property="Foreground"
+                            Value="Black" />
+                    <Setter Property="Background"
+                            Value="Transparent" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 列标题样式 -->
+        <Style x:Key="LogColumnHeaderStyle"
+               TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="FontWeight"
+                    Value="Bold" />
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Center" />
+            <Setter Property="Padding"
+                    Value="{StaticResource LogCellPadding}" />
+            <Setter Property="Height"
+                    Value="{StaticResource LogRowMinHeight}" />
+        </Style>
+
+        <!-- 过滤面板样式 -->
+        <Style x:Key="FilterPanelStyle"
+               TargetType="StackPanel">
+            <Setter Property="Margin"
+                    Value="5" />
+            <Setter Property="Orientation"
+                    Value="Horizontal" />
+            <Setter Property="HorizontalAlignment"
+                    Value="Right" />
+        </Style>
+
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 工具栏 -->
+        <ToolBar Grid.Row="0"
+                 Margin="2">
+            <Button Content="Clear"
+                    Click="ClearButton_Click"
+                    ToolTip="Clear all log entries"
+                    Style="{StaticResource ToolbarButtonStyle}" />
+            <Separator />
+            <Button Content="Scroll to First"
+                    Click="ScrollToFirstButton_Click"
+                    ToolTip="Scroll to the first log entry"
+                    Style="{StaticResource ToolbarButtonStyle}" />
+            <Button Content="Scroll to Last"
+                    Click="ScrollToLastButton_Click"
+                    ToolTip="Scroll to the last log entry"
+                    Style="{StaticResource ToolbarButtonStyle}" />
+            <Separator />
+            <CheckBox x:Name="AutoScrollCheckBox"
+                      Content="Auto Scroll to Last"
+                      ToolTip="Automatically scroll to the last log entry when new entries are added"
+                      Margin="5,0,0,0"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding AutoScrollToLast, Mode=TwoWay, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+        </ToolBar>
+
+        <!-- 过滤面板 -->
+        <StackPanel Grid.Row="0"
+                    Style="{StaticResource FilterPanelStyle}">
+            <TextBlock Text="Filter by Level:"
+                       VerticalAlignment="Center"
+                       Margin="0,0,5,0" />
+            <ComboBox x:Name="LevelFilterComboBox"
+                      Width="100"
+                      SelectionChanged="LevelFilterComboBox_SelectionChanged"
+                      ToolTip="Filter by log level">
+                <ComboBoxItem Content="All"
+                              IsSelected="True" />
+                <ComboBoxItem Content="INFO" />
+                <ComboBoxItem Content="WARN" />
+                <ComboBoxItem Content="ERROR" />
+            </ComboBox>
+        </StackPanel>
+
+        <!-- 日志数据网格 - 启用自动行高 -->
+        <DataGrid x:Name="LogDataGrid"
+                  Grid.Row="1"
+                  ItemsSource="{Binding LogEntries}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  RowStyle="{StaticResource LogRowStyle}"
+                  CellStyle="{StaticResource LogCellStyle}"
+                  ColumnHeaderStyle="{StaticResource LogColumnHeaderStyle}"
+                  SelectionUnit="FullRow"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="None"
+                  RowHeaderWidth="0"
+                  EnableRowVirtualization="True"
+                  VirtualizingPanel.ScrollUnit="Pixel"
+                  CanUserResizeRows="False"
+                  RowHeight="NaN">
+            <!-- 设置RowHeight为NaN允许自动调整行高 -->
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="时间"
+                                    Binding="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss.ffff'}"
+                                    Width="170" />
+                <DataGridTextColumn Header="级别"
+                                    Binding="{Binding Level}"
+                                    Width="60" />
+                <DataGridTemplateColumn Header="消息"
+                                        Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <!-- 使用TextBlock来显示多行文本，设置TextWrapping="Wrap" -->
+                            <TextBlock Text="{Binding Message}"
+                                       TextWrapping="Wrap"
+                                       Padding="{StaticResource LogCellPadding}"
+                                       FontFamily="{StaticResource LogFontFamily}"
+                                       FontSize="{StaticResource LogFontSize}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.ToolTip>
+                                    <TextBlock Text="{Binding Message}"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="500"
+                                               FontFamily="{StaticResource LogFontFamily}"
+                                               FontSize="{StaticResource LogFontSize}" />
+                                </TextBlock.ToolTip>
+                            </TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

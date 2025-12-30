@@ -1,0 +1,123 @@
+﻿<UserControl x:Class="Framework.Views.TreeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Framework.Views"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:framework="clr-namespace:Core.Models;assembly=Core"
+             xmlns:viewmodels="clr-namespace:Framework.ViewModels"
+             mc:Ignorable="d"
+             d:Background="White"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="Deeppurple"
+                                             SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- TreeNode模板 -->
+            <HierarchicalDataTemplate 
+                                      ItemsSource="{Binding Children}"
+                                      DataType="{x:Type framework:TreeNode}">
+                <StackPanel Orientation="Horizontal"
+                            Margin="2">
+                    <materialDesign:PackIcon Kind="{Binding Icon}"
+                                             Width="16"
+                                             Height="16"
+                                             Margin="0,0,5,0"
+                                             VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </HierarchicalDataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid MinWidth="220">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 工具栏 -->
+        <StackPanel Grid.Row="0"
+                    Grid.Column="0"
+                    Orientation="Horizontal"
+                    Margin="5">
+            <Button Command="{Binding LoadTreeCommand}"
+                    ToolTip="刷新树结构"
+                    Style="{StaticResource MaterialDesignFlatButton}">
+                <materialDesign:PackIcon Kind="Refresh"
+                                         Width="16"
+                                         Height="16" />
+            </Button>
+        </StackPanel>
+
+        <!-- TreeView -->
+        <TreeView x:Name="myTreeView"
+                  Grid.Row="1"
+                  Grid.Column="0"
+                  FontSize="14"
+                  MinWidth="280"
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                  ItemsSource="{Binding TreeData}"
+                  SelectedItemChanged="TreeView_SelectedItemChanged">
+            <TreeView.Resources>
+                <Style TargetType="TreeViewItem"
+                       BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                    <Setter Property="materialDesign:TreeViewAssist.ExpanderSize"
+                            Value="28" />
+                    <Setter Property="materialDesign:TreeViewAssist.ShowSelection"
+                            Value="True" />
+                    <Setter Property="IsExpanded"
+                            Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="IsSelected"
+                            Value="{Binding IsSelected, Mode=TwoWay}" />
+                </Style>
+            </TreeView.Resources>
+        </TreeView>
+
+        <!-- 内容区域 -->
+        <ContentControl Grid.Row="1"
+                        Grid.Column="1"
+                        Grid.RowSpan="2"
+                        Margin="10"
+                        Name="TreeRegion"
+                        prism:RegionManager.RegionName="TreeRegion" />
+
+        <!-- 操作按钮 -->
+        <materialDesign:PopupBox Grid.Row="2"
+                                 Grid.Column="0"
+                                 Margin="0,0,10,10"
+                                 HorizontalAlignment="Right"
+                                 VerticalAlignment="Bottom"
+                                 PlacementMode="LeftAndAlignMiddles"
+                                 ToolTip="树节点操作">
+            <StackPanel Orientation="Vertical">
+                <Button Command="{Binding AddChildNodeCommand}"
+                        CommandParameter="{Binding SelectedItem, ElementName=myTreeView}"
+                        Content="添加子节点"
+                        Style="{StaticResource MaterialDesignFlatButton}" />
+                <Button Command="{Binding RemoveNodeCommand}"
+                        CommandParameter="{Binding SelectedItem, ElementName=myTreeView}"
+                        Content="删除节点"
+                        Style="{StaticResource MaterialDesignFlatButton}" />
+            </StackPanel>
+        </materialDesign:PopupBox>
+    </Grid>
+</UserControl>

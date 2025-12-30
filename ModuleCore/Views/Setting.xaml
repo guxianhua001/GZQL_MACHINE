@@ -1,0 +1,121 @@
+﻿<UserControl
+    x:Class="ModuleCore.Views.Setting"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:ModuleCore.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:prism="http://prismlibrary.com/"
+    xmlns:viewmodels="clr-namespace:ModuleCore.ViewModels"
+    xmlns:configuration="clr-namespace:ModuleCore.Views"
+    xmlns:config="clr-namespace:Framework.Views;assembly=Framework" 
+    d:Background="White"
+    d:DataContext="{d:DesignInstance Type=viewmodels:SettingViewModel}"
+    d:Height="920"
+    d:Width="800"
+    prism:ViewModelLocator.AutoWireViewModel="True"
+    mc:Ignorable="d">
+    <StackPanel>
+
+       
+        <!-- 配置显示区域 -->
+        <TabControl Margin="20"
+                    prism:RegionManager.RegionName="ConfigurationContentRegion">
+            <!-- 设备配置 -->
+            <TabItem Header="设备控制">
+                <configuration:DeviceConfigView x:Name="DeviceConfigTab" />
+            </TabItem>
+
+            <!-- 轴参数配置 -->
+            <TabItem Header="轴参数配置">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto">
+                    <configuration:AxisSettingView x:Name="AxisConfigTab" />
+                </ScrollViewer>
+            </TabItem>
+
+
+            <!-- 其他配置选项卡 -->
+            <TabItem Header="其他配置">
+                <StackPanel>
+                    <!-- 导航列表 -->
+                    <Grid VerticalAlignment="Top"
+                          Margin="0,10">
+                        <ListBox ItemsSource="{Binding Navigate.NavigateList}"
+                                 Style="{x:Null}"
+                                 ItemContainerStyle="{x:Null}">
+                            <ListBox.Template>
+                                <!-- 控件模板 -->
+                                <ControlTemplate TargetType="{x:Type ListBox}">
+                                    <WrapPanel IsItemsHost="True"
+                                               ScrollViewer.CanContentScroll="True" />
+                                </ControlTemplate>
+                            </ListBox.Template>
+                            <ListBox.ItemTemplate>
+                                <!-- 数据模板 -->
+                                <DataTemplate>
+                                    <Border BorderBrush="#FFDCDCDC"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Margin="2">
+                                        <Grid Width="100"
+                                              Height="60">
+                                            <!-- 导航项标题 -->
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       FontSize="12"
+                                                       Foreground="#FF333333"
+                                                       TextAlignment="Center"
+                                                       VerticalAlignment="Top"
+                                                       Margin="0,10" />
+
+                                            <!-- 显示开关 -->
+                                            <ToggleButton VerticalAlignment="Bottom"
+                                                          Margin="0,0,0,5"
+                                                          Height="30"
+                                                          IsChecked="{Binding Display}"
+                                                          Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                    <!-- 操作按钮 -->
+                    <Grid Margin="30,20">
+                        <StackPanel HorizontalAlignment="Right"
+                                    Orientation="Horizontal"
+                                    Background="#FFF0F0F0">
+                            <Button Content="载入设置"
+                                    Command="{Binding Load}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Width="100"
+                                    Margin="0,0,10,0" />
+
+                            <Button Content="保存设置"
+                                    Command="{Binding Save}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Foreground="White"
+                                    Width="100" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </TabItem>
+
+            <!-- 针头管理 -->
+            <TabItem Header="针头管理">
+                <configuration:NeedleView />
+            </TabItem>
+
+            <!-- Socket配置 -->
+            <TabItem Header="Socket 配置">
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <config:ConfigurationView />
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+
+    </StackPanel>
+</UserControl>

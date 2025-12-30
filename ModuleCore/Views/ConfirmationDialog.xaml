@@ -1,0 +1,68 @@
+﻿<UserControl x:Class="ModuleCore.Views.ConfirmationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:ModuleCore"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:prism="http://prismlibrary.com/"
+        prism:ViewModelLocator.AutoWireViewModel="True"
+        mc:Ignorable="d"
+        d:DesignHeight="200"
+        d:DesignWidth="400">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="DeepPurple"
+                                             SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Background="{StaticResource MaterialDesignPaper}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <TextBlock Text="{Binding Title}"
+                   FontSize="20"
+                   Margin="5"
+                   Background="#FFCCCCCC"
+                   HorizontalAlignment="Center" />
+
+        <!-- 消息和图标 -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Grid.Row="1">
+            <materialDesign:PackIcon Kind="QuestionMarkCircle"
+                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary.Dark}"
+                                     Width="42"
+                                     Height="42"
+                                     Margin="5" />
+            <TextBlock Text="{Binding Message}"
+                       FontSize="24"
+                       VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- 按钮 -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Grid.Row="2">
+            <Button Content="YES"
+                    Margin="5"
+                    Width="100"
+                    HorizontalAlignment="Right"
+                    Command="{Binding YesCommand}" />
+            <Button Content="NO"
+                    Margin="5"
+                    Width="100"
+                    HorizontalAlignment="Left"
+                    Command="{Binding NoCommand}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

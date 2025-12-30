@@ -1,0 +1,54 @@
+﻿
+<UserControl x:Class="Framework.Views.AddPositionDialog"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:prism="http://prismlibrary.com/"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                    Width="300"
+                    Height="200">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="Deeppurple"
+                                             SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Background="{StaticResource MaterialDesignPaper}"
+        Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 名称输入 -->
+        <TextBox Grid.Row="0"
+                 Margin="0,0,0,10"
+                 materialDesign:HintAssist.Hint="名称"
+                 Text="{Binding Name}" />
+
+        <!-- 注释输入 -->
+        <TextBox Grid.Row="1"
+                 Margin="0,0,0,10"
+                 materialDesign:HintAssist.Hint="注释"
+                 Text="{Binding Comment}" />
+
+        <!-- 按钮 -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Content="确定"
+                    Command="{Binding ConfirmCommand}"
+                    Margin="5"
+                    Width="80" />
+            <Button Content="取消"
+                    Command="{Binding CancelCommand}"
+                    Margin ="5"
+                    Width="80" />
+        </StackPanel>
+    </Grid>
+</UserControl>

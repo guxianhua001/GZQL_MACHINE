@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "MainApp": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\WorkFiles\\GZQL_MACHINE\\MainApp",
+      "nativeDebugging": false
+    }
+  }
+}

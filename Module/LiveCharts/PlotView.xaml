@@ -1,0 +1,42 @@
+﻿<UserControl x:Class="Framework.Views.PlotView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Framework.ViewModels"
+             xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+             xmlns:conv="clr-namespace:Framework.Converters;assembly=Module"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d" 
+             Height="600" Width="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <!--<conv:BoolToSmoothnessConverter x:Key="BoolToSmoothnessConverter" />-->
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Button Content="导入CSV" 
+          Command="{Binding ImportCsvCommand}"
+          Margin="10" Padding="20 5"/>
+
+        <lvc:CartesianChart Series="{Binding SeriesCollection}" Grid.Row="1">
+            <lvc:CartesianChart.AxisY>
+                <lvc:Axis Title="扭矩 (Nm)"
+                     Position="LeftBottom"
+                     LabelFormatter="{Binding YTorqueFormatter}" />
+                <lvc:Axis Title="位置 (mm)"
+                     Position="RightTop"
+                     LabelFormatter="{Binding YPositionFormatter}" />
+            </lvc:CartesianChart.AxisY>
+        </lvc:CartesianChart>
+
+    </Grid>
+   
+
+</UserControl>

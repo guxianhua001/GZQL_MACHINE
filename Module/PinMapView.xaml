@@ -1,0 +1,226 @@
+﻿<!-- PinMapView.xaml -->
+<UserControl x:Class="Framework.Views.PinMapView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Framework.Views"
+             xmlns:vm="clr-namespace:Framework.ViewModels"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:conv="clr-namespace:Framework.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="400"
+             d:DesignWidth="420">
+
+    <UserControl.Resources>
+        <!-- 状态颜色转换器 -->
+        <conv:MapStatusToColorConverter x:Key="StatusConverter" />
+        <!-- 投影效果 -->
+        <DropShadowEffect x:Key="PointShadow"
+                          Color="#40000000"
+                          BlurRadius="4"
+                          ShadowDepth="1"
+                          Direction="270" />
+        <!-- 点样式 -->
+        <Style TargetType="Ellipse"
+               x:Key="PointStyle">
+            <Setter Property="Width"
+                    Value="14" />
+            <Setter Property="Height"
+                    Value="14" />
+            <Setter Property="Stroke"
+                    Value="#40000000" />
+            <Setter Property="StrokeThickness"
+                    Value="1" />
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+                    <Setter Property="StrokeThickness"
+                            Value="2" />
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="1.0"
+                                            ScaleY="1.0" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsSelected}"
+                             Value="True">
+                    <Setter Property="Stroke"
+                            Value="{DynamicResource PrimaryHueMidBrush}" />
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect BlurRadius="8"
+                                              Color="{DynamicResource PrimaryHueMidColor}"
+                                              ShadowDepth="0" />
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsAlert}"
+                             Value="True">
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="1.2"
+                                            ScaleY="1.2" />
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 文本样式 -->
+        <Style x:Key="IndexTextStyle"
+               TargetType="TextBlock">
+            <Setter Property="FontSize"
+                    Value="10" />
+            <Setter Property="FontWeight"
+                    Value="Bold" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="TextAlignment"
+                    Value="Center" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+            <Setter Property="HorizontalAlignment"
+                    Value="Center" />
+            <Setter Property="Margin"
+                    Value="0,-25,0,0" />
+            <Setter Property="Width"
+                    Value="30" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="White"
+                                      BlurRadius="4"
+                                      ShadowDepth="0"
+                                      Opacity="0.8" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource MaterialDesignPaper}"
+            BorderBrush="{DynamicResource MaterialDesignDivider}"
+            BorderThickness="1"
+            CornerRadius="4"
+            Padding="8">
+        <Grid>
+            <!-- 标题显示 -->
+            <TextBlock Text="{Binding Title}"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,5"
+                       VerticalAlignment="Top"
+                       HorizontalAlignment="Left" />
+
+            <!-- 主地图区域 -->
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="4">
+                <ItemsControl ItemsSource="{Binding DisplayPoints}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.ScrollUnit="Pixel"
+                              VirtualizingPanel.CacheLength="200,200">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas Width="{Binding CanvasWidth}"
+                                    Height="{Binding CanvasHeight}"
+                                    ClipToBounds="False" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left"
+                                    Value="{Binding X}" />
+                            <Setter Property="Canvas.Top"
+                                    Value="{Binding Y}" />
+                            <!-- 禁用单点裁剪 -->
+                            <Setter Property="Clip"
+                                    Value="{x:Null}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!-- 添加容器包裹点和文本 -->
+                            <Grid>
+                                <!-- 点本身 -->
+                                <Ellipse Style="{StaticResource PointStyle}"
+                                         Width="14"
+                                         Height="14"
+                                         Fill="{Binding IsOk, Converter={StaticResource StatusConverter}}"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Margin="-7,-7,0,0">
+                                    <!-- 添加视觉效果 -->
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect BlurRadius="8"
+                                                          ShadowDepth="2"
+                                                          Color="Black"
+                                                          Opacity="0.5" />
+                                    </Ellipse.Effect>
+                                    <i:Interaction.Triggers>
+                                        <!-- 左键选择 -->
+                                        <i:EventTrigger EventName="MouseLeftButtonDown">
+                                            <i:InvokeCommandAction Command="{Binding DataContext.PointSelectedCommand, 
+                                             RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding}" />
+                                        </i:EventTrigger>
+
+                                        <!-- 右键菜单 -->
+                                        <i:EventTrigger EventName="MouseRightButtonDown">
+                                            <i:InvokeCommandAction Command="{Binding DataContext.ShowContextMenuCommand, 
+                                             RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding}" />
+                                        </i:EventTrigger>
+                                    </i:Interaction.Triggers>
+
+                                    <!-- 工具提示 -->
+                                    <Ellipse.ToolTip>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding IsOk, Converter={StaticResource StatusConverter}}" />
+                                            <TextBlock Text="{Binding Index, StringFormat='序号: {0}'}" />
+                                            <TextBlock Text="{Binding X, StringFormat='X: {0:F2}'}" />
+                                            <TextBlock Text="{Binding Y, StringFormat='Y: {0:F2}'}" />
+                                        </StackPanel>
+                                    </Ellipse.ToolTip>
+                                </Ellipse>
+
+                                <!-- 点的索引标签 -->
+                                <TextBlock Text="{Binding Index}"
+                                           Style="{StaticResource IndexTextStyle}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="-15,-25,0,0" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 缩放控制 -->
+            <StackPanel Orientation="Vertical"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Right"
+                        Margin="5">
+                <Button Content="+"
+                        Command="{Binding ZoomInCommand}"
+                        Width="40"
+                        Margin="0,0,0,4"
+                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}" />
+                <Button Content="-"
+                        Command="{Binding ZoomOutCommand}"
+                        Width="40"
+                        Margin="0,0,0,4"
+                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}" />
+                <Button Content="↺"
+                        Command="{Binding ResetZoomCommand}"
+                        Width="40"
+                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                        ToolTip="重置缩放" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

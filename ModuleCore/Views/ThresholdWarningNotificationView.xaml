@@ -1,0 +1,74 @@
+﻿<UserControl x:Class="ModuleCore.Views.ThresholdWarningNotificationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             DataContext="{Binding RelativeSource={RelativeSource Self}}">
+
+    <materialDesign:Card UniformCornerRadius="4"
+                         Padding="0"
+                         Background="{DynamicResource MaterialDesignErrorBackground}">
+        <StackPanel Width="450">
+            <!-- 警告头 -->
+            <Border Background="{DynamicResource MaterialDesignErrorForeground}"
+                    CornerRadius="4 4 0 0"
+                    Height="52">
+                <StackPanel Orientation="Horizontal"
+                            Margin="16 0">
+                    <materialDesign:PackIcon Kind="Alert"
+                                             Foreground="White"
+                                             VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding LevelText}"
+                               Margin="8 0 0 0"
+                               Style="{StaticResource MaterialDesignDisplayMediumTextBlock}"
+                               Foreground="White" />
+                </StackPanel>
+            </Border>
+
+            <!-- 内容主体 -->
+            <StackPanel Margin="16 12">
+                <TextBlock Text="{Binding FormattedMessage}"
+                           TextWrapping="Wrap"
+                           Style="{StaticResource MaterialDesignBody1TextBlock}"
+                           Foreground="{DynamicResource MaterialDesignErrorForeground}" />
+
+                <ProgressBar Value="{Binding UsagePercentage}"
+                             Maximum="1"
+                             Margin="0 16"
+                             Height="8">
+                    <ProgressBar.Foreground>
+                        <LinearGradientBrush StartPoint="0,0"
+                                             EndPoint="1,1">
+                            <GradientStop Color="#FFFF5722"
+                                          Offset="0" />
+                            <GradientStop Color="#FFF44336"
+                                          Offset="1" />
+                        </LinearGradientBrush>
+                    </ProgressBar.Foreground>
+                </ProgressBar>
+
+                <TextBlock Text="{Binding TriggerTime, StringFormat='触发时间: {0:yyyy-MM-dd HH:mm:ss}'}"
+                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                           Margin="0 8" />
+            </StackPanel>
+
+            <!-- 操作按钮区 -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="8">
+                <Button Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+                        CommandParameter="false"
+                        Content="稍后提醒"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Margin="0 0 8 0" />
+
+                <Button Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
+                        CommandParameter="true"
+                        Content="立即处理"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Background="{DynamicResource MaterialDesignErrorForeground}"
+                        Foreground="White" />
+            </StackPanel>
+        </StackPanel>
+    </materialDesign:Card>
+</UserControl>
+

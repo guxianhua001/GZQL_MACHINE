@@ -1,0 +1,131 @@
+﻿<Window x:Class="ModuleCore.Views.ErrorMessage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:ModuleCore.Views"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:prism="http://prismlibrary.com/"
+        xmlns:viewmodels="clr-namespace:ModuleCore.ViewModels"
+        d:DataContext="{d:DesignInstance Type=viewmodels:ErrorMessageViewModel}"
+        mc:Ignorable="d"
+        d:DesignHeight="441"
+        d:DesignWidth="755"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Topmost="False"
+        d:Background="White"
+        WindowStartupLocation="CenterScreen"
+        Title="ErrorMessage">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="Deeppurple"
+                                             SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+                <!--<LinearGradientBrush x:Key="MyGradientBrush"
+                                     StartPoint="0,0"
+                                     EndPoint="1,1">
+                    <GradientStop Color="White"
+                                  Offset="0.0" />
+                    <GradientStop Color="Gray"
+                                  Offset="1.0" />
+                </LinearGradientBrush>-->
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{DynamicResource MaterialDesignPaper}"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          Width="Auto"
+          MouseDown="Grid_MouseLeftButtonDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1.2*" />
+            <RowDefinition Height="4*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   Text="{Binding Title}"
+                   FontSize="30"
+                   MinHeight="50"
+                   Margin="30,10,30,5"
+                   Background="{Binding TitleColor}">
+        </TextBlock>
+        <TextBlock Grid.Row="1"
+                   FontSize="30"
+                   Text="{Binding Message}"
+                   MinHeight="120"
+                   Background="{Binding TitleColor}"
+                   Margin="30,10,30,10" />
+        <StackPanel Grid.Row="2"
+                    Margin="30,10,30,10"
+                    Orientation="Horizontal">
+            <Button Content="{Binding BTMessage[0]}"
+                    Click="Button_Click"
+                    Width="80"
+                    Height="40"
+                    FontSize="28"
+                    Command="{Binding BTCommands[0]}"
+                    Visibility="{Binding BTVisibility[0]}"
+                    MinWidth="100"
+                    Margin="20,0,20,0" />
+            <Button Content="{Binding BTMessage[1]}"
+                    Click="Button_Click"
+                    Width="80"
+                    Height="40"
+                    FontSize="28"
+                    Command="{Binding BTCommands[1]}"
+                    Visibility="{Binding BTVisibility[1]}"
+                    MinWidth="100"
+                    Margin="20,0,20,0" />
+            <Button Content="{Binding BTMessage[2]}"
+                    Click="Button_Click"
+                    Width="80"
+                    Height="40"
+                    FontSize="28"
+                    Command="{Binding BTCommands[2]}"
+                    Visibility="{Binding BTVisibility[2]}"
+                    MinWidth="100"
+                    Margin="20,0,20,0" />
+            <Button Content="{Binding BTMessage[3]}"
+                    Click="Button_Click"
+                    Width="80"
+                    Height="40"
+                    FontSize="28"
+                    Command="{Binding BTCommands[3]}"
+                    Visibility="{Binding BTVisibility[3]}"
+                    MinWidth="100"
+                    Margin="20,0,20,0" />
+            <!--<Button Content="关闭"
+                    Width="80"
+                    Height="40"
+                    FontSize="28"
+                    Click="Button_Click"
+                    Command="{Binding CloseCommand}"
+                    Visibility="{Binding CloseVisible}"
+                    MinWidth="100"
+                    Margin="20,0,20,0" />-->
+            <Button Width="80"
+                    Height="40"
+                    MinWidth="100"
+                    Margin="20,0,20,0"
+                    Click="Button_Click"
+                    Command="{Binding CloseCommand}"
+                    Visibility="{Binding CloseVisible}">
+                <Viewbox>
+                    <TextBlock Text="关闭"
+                               FontSize="28"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </Viewbox>
+            </Button>
+
+        </StackPanel>
+    </Grid>
+</Window>

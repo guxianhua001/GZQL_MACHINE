@@ -1,0 +1,104 @@
+﻿<prism:PrismApplication x:Class="MainApp.App"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:local="clr-namespace:MainApp"
+                        xmlns:prism="http://prismlibrary.com/"
+                        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <!--xmlns:vm="clr-namespace:Module.ViewModels;assembly=Module"
+                        xmlns:views="clr-namespace:Module.Views;assembly=Module"
+                        xmlns:conv="clr-namespace:Module.Converters;assembly=Module">-->
+    <Application.Resources>
+        <ResourceDictionary>
+            <!--<Style TargetType="Control"
+                   x:Key="PermissionLockedStyle">
+                <Setter Property="Opacity"
+                        Value="0.7" />
+                <Setter Property="ToolTip">
+                    <Setter.Value>
+                        <StackPanel>
+                            <TextBlock Text="需要更高权限"
+                                       FontWeight="Bold" />
+                            <TextBlock Text="{Binding RequiredRole, StringFormat='需要 {0} 权限'}" />
+                        </StackPanel>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsEnabled}"
+                                 Value="False">
+                        <Setter Property="Effect">
+                            <Setter.Value>
+                                <DropShadowEffect Color="Red"
+                                                  BlurRadius="10"
+                                                  Opacity="0.5" />
+                            </Setter.Value>
+                        </Setter>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>-->
+            <!-- App.xaml 中添加 -->
+            <Style x:Key="DataGridColumnStyle"
+                   TargetType="TextBlock">
+                <Setter Property="Foreground"
+                        Value="{DynamicResource PrimaryHueMidForegroundBrush}" />
+                <Setter Property="FontSize"
+                        Value="14" />
+                <Setter Property="FontFamily"
+                        Value="Microsoft YaHei" />
+            </Style>
+
+            <Style x:Key="AlarmLevelStyle"
+                   TargetType="TextBlock"
+                   BasedOn="{StaticResource DataGridColumnStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding AlarmLevel}"
+                                 Value="紧急">
+                        <Setter Property="Foreground"
+                                Value="{DynamicResource MaterialDesignValidationErrorBrush}" />
+                        <Setter Property="FontWeight"
+                                Value="Bold" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!--<DataTemplate DataType="{x:Type vm:Pin1MapViewModel}">
+                <views:GenericMapView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin2MapViewModel}">
+                <views:GenericMapView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin3MapViewModel}">
+                <views:GenericMapView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin4MapViewModel}">
+                <views:GenericMapView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin1CamMapViewModel}">
+                <views:CamHighCmpView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin2CamMapViewModel}">
+                <views:CamHighCmpView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin3CamMapViewModel}">
+                <views:CamHighCmpView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:Pin4CamMapViewModel}">
+                <views:CamHighCmpView />
+            </DataTemplate>
+            <conv:BoolToColorConverter x:Key="StatusConverter"
+                                       TrueColor="LimeGreen"
+                                       FalseColor="LightGray" />
+            <conv:ArrayColorConverter x:Key="ArrayColorConverter" />
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />-->
+
+            <ResourceDictionary.MergedDictionaries>
+                <!-- 添加 MaterialDesignThemes 的资源 -->
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.DeepPurple.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Secondary/MaterialDesignColor.Lime.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+
+        </ResourceDictionary>
+    </Application.Resources>
+</prism:PrismApplication>

@@ -1,0 +1,59 @@
+﻿<Window x:Class="ModuleCore.Views.WindowAutoClosedSuccess"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterScreen"
+        Opacity="0.6"
+        Title="提示窗体"
+        Height="200"
+        Width="400">
+    <Window.Resources>
+        <ResourceDictionary>
+            <!-- 主题样式 -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="Deeppurple"
+                                             SecondaryColor="Lime" />
+            </ResourceDictionary.MergedDictionaries>
+            <SolidColorBrush x:Key="CustomGreenBrush"
+                             Color="#FF00FF00" />
+            <!-- 自定义绿色 -->
+        </ResourceDictionary>
+    </Window.Resources>
+    <Border Background="{StaticResource MaterialDesignPaper}">
+        <Grid>
+            <materialDesign:PackIcon Kind="CheckCircle"
+                                     Foreground="{DynamicResource CustomGreenBrush}"
+                                     VerticalAlignment="Center"
+                                     HorizontalAlignment="Left"
+                                     Width="42"
+                                     Height="42"
+                                     Margin="5" />
+            <Grid Margin="60,0"
+                  VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
+                <TextBlock x:Name="TB_Info"
+                           Text="提示信息"
+                           FontSize="22"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left" />
+                <TextBlock Grid.Row="1"
+                           x:Name="TB_Time"
+                           Margin="0,10,0,0"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,90 @@
+[
+  {
+    "Name": "设备配置",
+    "Path": "Equipment",
+    "Icon": "Settings",
+    "Children": [
+      {
+        "Name": "上料模组",
+        "Path": "Equipment/LoadingStation",
+        "Icon": "VectorLine",
+        "Children": [
+          {
+            "Name": "手动调试",
+            "Path": "Equipment/LoadingStation/ManualTest",
+            "ViewType": "LoaderStationView",
+            "Icon": "Play"
+          },
+          {
+            "Name": "轴调试",
+            "Path": "Equipment/LoadingStation/Axis",
+            "ViewType": "LoaderStationAxesView",
+            "Icon": "Axis"
+          },
+          {
+            "Name": "气缸调试",
+            "Path": "Equipment/LoadingStation/Cylinder",
+            "ViewType": "LoaderStationCylinderView",
+            "Icon": "Piston"
+          },
+          {
+            "Name": "位置参数",
+            "Path": "Equipment/LoadingStation/Param",
+            "ViewType": "LoaderStationPositionView",
+            "Icon": "MapMarker"
+          }
+        ]
+      },
+      {
+        "Name": "点胶模组",
+        "Path": "Equipment/DispenserStation",
+        "Icon": "Robot",
+        "Children": [
+          {
+            "Name": "手动调试",
+            "Path": "Equipment/DispenserStation/ManualTest",
+            "ViewType": "GantryStationsView",
+            "Icon": "Play"
+          },
+          {
+            "Name": "轴调试",
+            "Path": "Equipment/DispenserStation/Axis",
+            "ViewType": "DispenserStationAxesView",
+            "Icon": "Axis"
+          },
+          {
+            "Name": "位置参数",
+            "Path": "Equipment/DispenserStation/Param",
+            "ViewType": "GantryStationPositionView",
+            "Icon": "MapMarker"
+          }
+        ]
+      },
+      {
+        "Name": "装配模组",
+        "Path": "Equipment/AssemblyStation",
+        "Icon": "Robot",
+        "Children": [
+          {
+            "Name": "手动调试",
+            "Path": "Equipment/AssemblyStation/ManualTest",
+            "ViewType": "GantryStationsView",
+            "Icon": "Play"
+          },
+          {
+            "Name": "轴调试",
+            "Path": "Equipment/AssemblyStation/Axis",
+            "ViewType": "AssemblyStationAxesView",
+            "Icon": "Axis"
+          },
+          {
+            "Name": "位置参数",
+            "Path": "Equipment/AssemblyStation/Param",
+            "ViewType": "GantryStationPositionView",
+            "Icon": "MapMarker"
+          }
+        ]
+      },
+    ]
+  }
+]
