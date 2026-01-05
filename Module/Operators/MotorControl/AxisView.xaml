@@ -62,7 +62,7 @@
 
         <!-- 标题 -->
         <TextBlock Grid.Row="0"
-                   Text="{Binding AxisName}"
+                   Text="{Binding LocalizedAxisName}"
                    FontSize="17"
                    FontWeight="Bold"
                    HorizontalAlignment="Center"
@@ -75,9 +75,10 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="相对距离："
+            <TextBlock Text="{DynamicResource RelativeDistance}"
                        VerticalAlignment="Center" />
             <ComboBox Grid.Column="1"
+                      Margin="8"
                       ItemsSource="{Binding DistanceOptions}"
                       SelectedItem="{Binding SelectedDistance}"
                       Style="{StaticResource MaterialDesignComboBox}" />
@@ -155,7 +156,7 @@
 
         <!-- 停止按钮 -->
         <Button Grid.Row="5"
-                Content="停止"
+                Content="{DynamicResource StopButton}"
                 Command="{Binding StopCommand}"
                 HorizontalAlignment="Stretch"
                 Margin="8,4" />
@@ -169,16 +170,14 @@
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="HomeCircle"
                                              VerticalAlignment="Center" />
-                    <TextBlock Text="轴归零"
+                    <TextBlock Text="{DynamicResource HomeButton}"
                                VerticalAlignment="Center"
                                Margin="4,0,0,0" />
                 </StackPanel>
             </Button>
-            <!--<Button Content="回零"
-                    Command="{Binding HomeCommand}" />-->
-            <Button Content="清零"
+            <Button Content="{DynamicResource ClearButton}"
                     Command="{Binding ClearPosition}" />
-            <Button Content="清报警"
+            <Button Content="{DynamicResource AlarmButton}"
                     Command="{Binding ClearAlarm}" />
         </UniformGrid>
 
@@ -189,10 +188,10 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Button Content="Drive On" 
+            <Button Content="{DynamicResource DriveOnButton}"
                     Command="{Binding ToggleServoOnCommand}"/>
             <Button Grid.Column="1"
-                    Content="Drive Off"
+                    Content="{DynamicResource DriveOffButton}"
                     Command="{Binding ToggleServoOffCommand}"/>
         </Grid>
 
@@ -264,17 +263,18 @@
                        HorizontalContentAlignment="Center"
                        Foreground="Black"
                        MinWidth="35"
-                       Content="{Binding AxisName}" />
+                       Content="{Binding AxisId}"
+                       ContentStringFormat="Axis-{0}" />
+                <!--<Label Margin="5,5,3,5"
+                       HorizontalContentAlignment="Center"
+                       Foreground="Black"
+                       MinWidth="35"
+                       Content="{Binding LocalizedAxisName}" />-->
                 <Label Margin="5,5,3,5"
                        HorizontalContentAlignment="Center"
                        Foreground="Black"
                        MinWidth="35"
-                       Content="{Binding HomeStatus}" />
-                <Label Margin="5,5,3,5"
-                       HorizontalContentAlignment="Center"
-                       Foreground="Black"
-                       MinWidth="35"
-                       Content="{Binding AxisId}" />
+                       Content="{Binding LocalizedHomeStatus}" />
                 <Label Margin="5,5,3,5"
                        HorizontalContentAlignment="Center"
                        Foreground="Black"

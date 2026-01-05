@@ -25,9 +25,9 @@ namespace Framework.Views
     public partial class TreeView : UserControl
     {
         TreeViewModel _viewModel;
-        public TreeView(IRegionManager regionManager, ITreeConfigService treeConfigService)
+        public TreeView(IRegionManager regionManager, ITreeConfigService treeConfigService, ILocalizationService localizationService)
         {
-            _viewModel = new TreeViewModel(regionManager, treeConfigService);
+            _viewModel = new TreeViewModel(regionManager, treeConfigService, localizationService);
             DataContext = _viewModel;
             InitializeComponent();
             RegionManager.SetRegionManager(TreeRegion, regionManager);

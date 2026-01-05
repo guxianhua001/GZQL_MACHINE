@@ -42,6 +42,9 @@ using Core.Abstractions.IConfiguration;
 using Stations.Views;
 using Stations.TaskParameters;
 using Stations.Services;
+using Core;
+using Core.Events;
+using Core.Models;
 
 namespace Framework.ViewModels
 {
@@ -278,6 +281,11 @@ namespace Framework.ViewModels
             StationOptions = new ObservableCollection<int> { 1, 2, 3, 4, 5, 6 };
         }
 
+        protected readonly ILocalizationService _LocalizationService;
+        protected readonly IEventAggregator _EventAggregator;
+
+        private readonly HashSet<string> _localizedProperties = new();
+
         public OverViewModel(
             ILoggerService loggerService,
             IDialogService dialogService, 
@@ -289,6 +297,7 @@ namespace Framework.ViewModels
             IRecipeManager recipeManager,
             IRecipeStorage recipeStorage,
             IAppConfig appConfig,
+            ILocalizationService localizationService,
             TaskInstanceManager taskManager, 
             EquipmentStatus equipmentStatus, 
             RecipePool recipePool
@@ -306,6 +315,7 @@ namespace Framework.ViewModels
             _recipeStorage = recipeStorage;
             //_stationCoordinator = stationCoordinator;
             //_alarmService = alarmService;
+            _LocalizationService = localizationService;
             SelectedStationId = 1;
             InitializeSensor();
             // 订阅刷新事件
@@ -346,9 +356,15 @@ namespace Framework.ViewModels
                 }
             });
             NeedleCalibrationCommand = new DelegateCommand(ExecuteNeedleCalibrationCommand);
-            InitializeStationOptions();
+
+            //InitializeStationOptions();
             //SubscribeToCoordinatorEvents();
+
+            // 订阅语言变更事件
+            //_eventAggregator.GetEvent<LanguageChangedEvent>()
+            //    .Subscribe(OnLanguageChanged, ThreadOption.UIThread);
         }
+
         // 更新配方名称的方法
         private void UpdateRecipeName()
         {

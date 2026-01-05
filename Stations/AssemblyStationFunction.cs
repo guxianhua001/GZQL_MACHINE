@@ -3320,7 +3320,7 @@ namespace Stations
 
             double translateVelocity = _recipeService.Parameters.StepTranslateSpeed; // 小步平移速度
 
-            CompensationData compensationData = _compensationService.GetCompensation(moduleNumber, CompensationType.Actuator);
+            CompensationData compensationData = _compensationService.GetCompensation(moduleNumber, CompensationType.ActuatorX);
             double offsetX = compensationData.CompensationXTranslate;
             double translateStep = offsetX;
             if (!MoveXAxisRelativeAsync(AsmX.ActId, translateStep, translateVelocity))

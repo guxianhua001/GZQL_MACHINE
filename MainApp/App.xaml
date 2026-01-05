@@ -4,37 +4,10 @@
                         xmlns:local="clr-namespace:MainApp"
                         xmlns:prism="http://prismlibrary.com/"
                         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
-    <!--xmlns:vm="clr-namespace:Module.ViewModels;assembly=Module"
-                        xmlns:views="clr-namespace:Module.Views;assembly=Module"
-                        xmlns:conv="clr-namespace:Module.Converters;assembly=Module">-->
+
     <Application.Resources>
         <ResourceDictionary>
-            <!--<Style TargetType="Control"
-                   x:Key="PermissionLockedStyle">
-                <Setter Property="Opacity"
-                        Value="0.7" />
-                <Setter Property="ToolTip">
-                    <Setter.Value>
-                        <StackPanel>
-                            <TextBlock Text="需要更高权限"
-                                       FontWeight="Bold" />
-                            <TextBlock Text="{Binding RequiredRole, StringFormat='需要 {0} 权限'}" />
-                        </StackPanel>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsEnabled}"
-                                 Value="False">
-                        <Setter Property="Effect">
-                            <Setter.Value>
-                                <DropShadowEffect Color="Red"
-                                                  BlurRadius="10"
-                                                  Opacity="0.5" />
-                            </Setter.Value>
-                        </Setter>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>-->
+
             <!-- App.xaml 中添加 -->
             <Style x:Key="DataGridColumnStyle"
                    TargetType="TextBlock">
@@ -84,13 +57,12 @@
             <DataTemplate DataType="{x:Type vm:Pin4CamMapViewModel}">
                 <views:CamHighCmpView />
             </DataTemplate>
-            <conv:BoolToColorConverter x:Key="StatusConverter"
-                                       TrueColor="LimeGreen"
-                                       FalseColor="LightGray" />
-            <conv:ArrayColorConverter x:Key="ArrayColorConverter" />
+
             <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />-->
 
             <ResourceDictionary.MergedDictionaries>
+                <!-- 本地化资源字典，将在代码中动态切换 -->
+                <ResourceDictionary x:Name="LocalizationResources" />
                 <!-- 添加 MaterialDesignThemes 的资源 -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />

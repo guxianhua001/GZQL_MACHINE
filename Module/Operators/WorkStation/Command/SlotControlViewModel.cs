@@ -752,7 +752,7 @@ namespace Module.ViewModels
             try
             {
                 SlotOperationStatus = "Slot角度纠正中...";
-                bool success = await _assemblyStation.AlignSlotAngleAsync();
+                bool success = await Task.Run(() => _assemblyStation.AlignSlotAngleAsync());
 
                 if (success)
                 {
@@ -865,7 +865,7 @@ namespace Module.ViewModels
                     }
 
                     // 执行拨片动作
-                    bool success = await _assemblyStation.ExecuteStripperSlotAction(strippingDistance);
+                    bool success = await Task.Run(() => _assemblyStation.ExecuteStripperSlotAction(strippingDistance));
 
                     if (!success)
                     {
@@ -907,7 +907,7 @@ namespace Module.ViewModels
             }
         }
 
-        // 新增方法：计算当前选中Tab的动态距离
+        // 计算当前选中Tab的动态距离
         private double CalculateDynamicDistanceForSelectedTab()
         {
             try
@@ -953,7 +953,7 @@ namespace Module.ViewModels
             {
                 SlotOperationStatus = "开始拨片复检...";
 
-                var result = await _assemblyStation.PerformSideCameraRecheckAsync();
+                var result = await Task.Run(()=> _assemblyStation.PerformSideCameraRecheckAsync());
 
                 if (result.success)
                 {
@@ -1284,11 +1284,6 @@ namespace Module.ViewModels
                 return Colors.Orange;
             else
                 return Colors.Red;
-        }
-
-        private double CalculateCurrentDistance()
-        {
-            return 0.0;
         }
 
         private void UpdateSlotDataRows()

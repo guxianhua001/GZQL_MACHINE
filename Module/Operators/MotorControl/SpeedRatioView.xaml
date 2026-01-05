@@ -35,7 +35,8 @@
         <!-- 标题区域 -->
         <Label Grid.Row="0"
                Grid.ColumnSpan="2"
-               Content="轴速度调整:"
+               Content="{DynamicResource Axis_Speed_Adjustment_Percentage}"
+               ContentStringFormat=" {0}:" 
                FontSize="20"
                FontWeight="SemiBold"
                Foreground="{StaticResource MaterialDesignBody}"

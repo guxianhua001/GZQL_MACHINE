@@ -381,18 +381,129 @@ namespace Stations.TaskParameters
             get => _actuatorSecondPhotoHeight;
             set => SetProperty(ref _actuatorSecondPhotoHeight, value);
         }
-        // ActuatorStandardSpacing 
-        private double _actuatorStandardSpacing = 2.43;
+
+        private double _actuatorStandardX1Spacing = 2.6;
         [Category("装配精度")]
         [DisplayName("执行器标准间距 (mm)")]
-        [Description("执行器的标准间距，用于校正")]
+        [Description("执行器1号的标准间距，用于X方向校正")]
         [Range(0.01, 20.0)]
-        public double ActuatorStandardSpacing
+        public double ActuatorStandardX1Spacing
         {
-            get => _actuatorStandardSpacing;
-            set => SetProperty(ref _actuatorStandardSpacing, value);
+            get => _actuatorStandardX1Spacing;
+            set => SetProperty(ref _actuatorStandardX1Spacing, value);
         }
 
+        private double _actuatorStandardY1Spacing = 0.45;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器1号的标准间距，用于Y方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardY1Spacing
+        {
+            get => _actuatorStandardY1Spacing;
+            set => SetProperty(ref _actuatorStandardY1Spacing, value);
+        }
+
+        private double _actuatorStandardX2Spacing = 2.6;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器2号的标准间距，用于X方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardX2Spacing
+        {
+            get => _actuatorStandardX2Spacing;
+            set => SetProperty(ref _actuatorStandardX2Spacing, value);
+        }
+        private double _actuatorStandardY2Spacing = 0.45;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器2号的标准间距，用于Y方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardY2Spacing
+        {
+            get => _actuatorStandardY2Spacing;
+            set => SetProperty(ref _actuatorStandardY2Spacing, value);
+        }
+        private double _actuatorStandardX3Spacing = 2.6;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器3号的标准间距，用于X方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardX3Spacing
+        {
+            get => _actuatorStandardX3Spacing;
+            set => SetProperty(ref _actuatorStandardX3Spacing, value);
+        }
+        private double _actuatorStandardY3Spacing = 0.45;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器3号的标准间距，用于Y方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardY3Spacing
+        {
+            get => _actuatorStandardY3Spacing;
+            set => SetProperty(ref _actuatorStandardY3Spacing, value);
+        }
+        private double _actuatorStandardX4Spacing = 2.6;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器4号的标准间距，用于X方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardX4Spacing
+        {
+            get => _actuatorStandardX4Spacing;
+            set => SetProperty(ref _actuatorStandardX4Spacing, value);
+        }
+        private double _actuatorStandardY4Spacing = 0.45;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器4号的标准间距，用于Y方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardY4Spacing
+        {
+            get => _actuatorStandardY4Spacing;
+            set => SetProperty(ref _actuatorStandardY4Spacing, value);
+        }
+        private double _actuatorStandardX5Spacing = 2.6;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器5号的标准间距，用于X方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardX5Spacing
+        {
+            get => _actuatorStandardX5Spacing;
+            set => SetProperty(ref _actuatorStandardX5Spacing, value);
+        }
+        private double _actuatorStandardY5Spacing = 0.45;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器5号的标准间距，用于Y方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardY5Spacing
+        {
+            get => _actuatorStandardY5Spacing;
+            set => SetProperty(ref _actuatorStandardY5Spacing, value);
+        }
+        private double _actuatorStandardX6Spacing = 2.6;
+        [Category("装配精度")]
+        [DisplayName("执行器标准间距 (mm)")]
+        [Description("执行器6号的标准间距，用于X方向校正")]
+        [Range(0.01, 20.0)]
+        public double ActuatorStandardX6Spacing
+        {
+            get => _actuatorStandardX6Spacing;
+            set => SetProperty(ref _actuatorStandardX6Spacing, value);
+        }
+        private double _actuatorXMaxError = 2.8;
+        [Category("装配精度")]
+        [DisplayName("执行器X轴最大误差 (mm)")]
+        [Description("执行器在X轴方向上的最大允许误差")]
+        [Range(0.01, 0.5)]
+        public double ActuatorXMaxError
+        {
+            get => _actuatorXMaxError;
+            set => SetProperty(ref _actuatorXMaxError, value);
+        }
         private int _visionInspectionTimeout = 5000;
         [Category("设备参数")]
         [DisplayName("视觉检测超时(ms)")]

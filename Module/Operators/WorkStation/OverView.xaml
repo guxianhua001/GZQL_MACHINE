@@ -7,8 +7,10 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:viewmodels="clr-namespace:Framework.ViewModels"
-             xmlns:local1="clr-namespace:ModuleCore.Views;assembly=ModuleCore"
+             xmlns:view="clr-namespace:ModuleCore.Views;assembly=ModuleCore"
+             xmlns:language="clr-namespace:Language.Views;assembly=Language"
              xmlns:converters="clr-namespace:Framework.Converters"
+             xmlns:utils="clr-namespace:Core.Extensions;assembly=Core"
              d:DataContext="{d:DesignInstance Type=viewmodels:OverViewModel}"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
@@ -111,12 +113,12 @@
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Margin="5">
-                    <Button Content="打开照明"
+                    <Button Content="{DynamicResource OpenLight}"
                             Width="120"
                             Margin="5,0"
                             Command="{Binding OpenLightCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}" />
-                    <Button Content="关闭照明"
+                    <Button Content="{DynamicResource CloseLight}"
                             Width="120"
                             Margin="5,0"
                             Command="{Binding CloseLightCommand}"
@@ -130,12 +132,12 @@
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Margin="5">
-                    <Button Content="打开安全门"
+                    <Button Content="{DynamicResource OpenSafetyDoor}"
                             Width="120"
                             Margin="5,0"
                             Command="{Binding OpenSafetyDoorCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}" />
-                    <Button Content="关闭安全门"
+                    <Button Content="{DynamicResource CloseSafetyDoor}"
                             Width="120"
                             Margin="5,0"
                             Command="{Binding CloseSafetyDoorCommand}"
@@ -150,12 +152,12 @@
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Margin="5,10">
-                    <Button Content="胶针校准"
+                    <Button Content="{DynamicResource NeedleCalibration}"
                             Width="120"
                             Margin="5,0"
                             Command="{Binding NeedleCalibrationCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}" />
-                    <Button Content="日志窗口"
+                    <Button Content="{DynamicResource ShowLog}"
                             Width="120"
                             Margin="5,0"
                             Command="{Binding ShowLogCommand}"
@@ -195,7 +197,7 @@
                                                      Width="24"
                                                      Height="24"
                                                      VerticalAlignment="Center" />
-                            <TextBlock Text="上料参数"
+                            <TextBlock Text="{DynamicResource LoadingParameters}"
                                        Margin="8 0 0 0"
                                        VerticalAlignment="Center" />
                         </StackPanel>
@@ -213,7 +215,7 @@
                                                      Width="24"
                                                      Height="24"
                                                      VerticalAlignment="Center" />
-                            <TextBlock Text="点胶参数"
+                            <TextBlock Text="{DynamicResource DispensingParameters}"
                                        Margin="8 0 0 0"
                                        VerticalAlignment="Center" />
                         </StackPanel>
@@ -230,7 +232,7 @@
                                                      Width="24"
                                                      Height="24"
                                                      VerticalAlignment="Center" />
-                            <TextBlock Text="组装参数"
+                            <TextBlock Text="{DynamicResource AssemblyParameters}"
                                        Margin="8 0 0 0"
                                        VerticalAlignment="Center" />
                         </StackPanel>
@@ -240,7 +242,6 @@
             </Border>
 
             <!-- 工位选择区域 -->
-            <!-- 工位选择区域 - 简化版 -->
             <Border Grid.Row="3"
                     Grid.Column="0"
                     Grid.RowSpan="2"
@@ -417,8 +418,22 @@
               Grid.Column="0">
             <UniformGrid HorizontalAlignment="Stretch"
                          VerticalAlignment="Stretch">
-                <local1:StatusDashboardView />
+                <view:StatusDashboardView />
             </UniformGrid>
+            <!-- 语言选择器作为浮动控件（右上角） -->
+            <Border HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Margin="10"
+                    Width="220"
+                    Background="White"
+                    CornerRadius="5"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Padding="5">
+
+                <language:LanguageSelectorView />
+
+            </Border>
         </Grid>
 
     </Grid>

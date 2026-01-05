@@ -481,7 +481,7 @@ namespace Module.ViewModels
                     CompensationXTranslate = data.CompensationXTranslate,
                     Source = $"AssemblyStation_Station{stationIndex}",
                 };
-                _compensationService.UpdateCompensation(stationIndex, CompensationType.Actuator, actuatorCompensation);
+                _compensationService.UpdateCompensation(stationIndex, CompensationType.ActuatorX, actuatorCompensation);
 
                 // 4. TabZ补偿 - 使用Z下压
                 var tabZCompensation = new Stations.Services.CompensationData
@@ -511,7 +511,7 @@ namespace Module.ViewModels
                 // 从补偿服务读取不同类型补偿
                 var tabComp = _compensationService.GetCompensation(stationIndex, CompensationType.Tab);
                 var slotComp = _compensationService.GetCompensation(stationIndex, CompensationType.Slot);
-                var actuatorComp = _compensationService.GetCompensation(stationIndex, CompensationType.Actuator);
+                var actuatorComp = _compensationService.GetCompensation(stationIndex, CompensationType.ActuatorX);
                 var tabZComp = _compensationService.GetCompensation(stationIndex, CompensationType.PressZ);
 
                 // 映射到界面属性
@@ -790,7 +790,7 @@ namespace Module.ViewModels
             try
             {
                 // 从补偿服务获取Actuator补偿（X平移方向）
-                var actuatorCompensation = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.Actuator);
+                var actuatorCompensation = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.ActuatorX);
                 if (actuatorCompensation != null)
                 {
                     CompensationXTranslate = actuatorCompensation.CompensationX;
@@ -858,7 +858,7 @@ namespace Module.ViewModels
                 // 组装前从补偿服务读取最新补偿值（确保使用最新值）
                 var tabComp = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.Tab);
                 var slotComp = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.Slot);
-                var actuatorComp = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.Actuator);
+                var actuatorComp = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.ActuatorX);
                 var tabZComp = _compensationService.GetCompensation(SelectedStationIndex, CompensationType.PressZ);
 
                 _logger.Info($"组装使用补偿值 - 工位{SelectedStationIndex}: " +

@@ -1,4 +1,5 @@
 ﻿using AxisConfiguration.Services;
+using Core;
 using Core.Abstraction;
 using Core.Abstraction.Factories;
 using Core.Abstractions.IConfiguration;
@@ -18,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ModuleCore.ViewModels;
 using ModuleCore.Views;
+using Modules.Language;
 using NLog;
 using Prism.Events;
 using Prism.Ioc;
@@ -115,6 +117,12 @@ namespace MainApp
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // 获取本地化服务并加载资源
+            var localizationService = Container.Resolve<ILocalizationService>();
+
+            // 直接使用扩展方法
+            localizationService.LoadResourcesToXaml();
 
             // 获取原始实例并保存引用
             var vm = Container.Resolve<NeedleViewModel>();
@@ -217,6 +225,8 @@ namespace MainApp
             containerRegistry.RegisterSingleton<DmcMotionService>();
             containerRegistry.RegisterSingleton<IH2HeightDataService, H2HeightDataService>();
             //containerRegistry.RegisterSingleton<StationCoordinator>();
+            containerRegistry.RegisterSingleton<ILocalizationService, Core.Services.LocalizationService>();
+            containerRegistry.RegisterSingleton<IAppSettingService, ConfigurationService>();
         }
 
         private void RegisterDatabaseServices(IContainerRegistry containerRegistry)
@@ -466,6 +476,7 @@ namespace MainApp
             _ = moduleCatalog.AddModule<Framework.FrameworkModule>();
             _ = moduleCatalog.AddModule<ModuleCore.CoreModule>();
             _ = moduleCatalog.AddModule<Module.PrimModel>();
+            _ = moduleCatalog.AddModule<LanguageModule>();
         }
 
         // =============================================

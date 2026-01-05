@@ -1,4 +1,5 @@
-﻿using Framework.Mvvm;
+﻿using Core.Abstraction;
+using Framework.Mvvm;
 using Framework.Views;
 using Prism.Ioc;
 using Prism.Mvvm;
@@ -17,10 +18,15 @@ namespace Framework.ViewModels
     {
         private readonly TaskInstanceManager _taskManager;
         private readonly LoadingStation _LoadingStation;
+        private readonly ILocalizationService _localizationService;
         public ObservableCollection<AxisViewModel> Axes { get; } = new ObservableCollection<AxisViewModel>();//自动绑定轴控件
-        public LoaderStationAxesViewModel(IRegionManager regionManager, TaskInstanceManager taskManager) : base(regionManager)
+        public LoaderStationAxesViewModel(
+            IRegionManager regionManager,
+            TaskInstanceManager taskManager,
+            ILocalizationService localizationService) : base(regionManager)
         {
             _taskManager = taskManager;
+            _localizationService = localizationService;
             _LoadingStation = _taskManager.GetTask<LoadingStation>();
             InitializeAxes();
         }
@@ -29,7 +35,7 @@ namespace Framework.ViewModels
             // XDevice.Instance.axisMap 包含所有轴的映射
             foreach (var axis in _LoadingStation.AxisMap.Values)
             {
-                Axes.Add(new AxisViewModel(axis, RegionManager));
+                Axes.Add(new AxisViewModel(axis, RegionManager, _localizationService));
             }
         }
         public override void OnNavigatedTo(NavigationContext navigationContext)

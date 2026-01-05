@@ -30,12 +30,14 @@ namespace Stations
             {
                 _logger.Info($"开始{moduleNumber}号模块IPQC检测");
 
-                double firstHeight = 31.006; //_recipeService.Parameters?.IPQCFirstPhotoZHeight ?? 35;
-                double secondHeight = 28.899; //_recipeService.Parameters?.IPQCSecondPhotoZHeight ?? 28;
+                double firstHeight = GetPosition(DispZ3.ActId, $"IPQC{moduleNumber}_1");
+                double secondHeight = GetPosition(DispZ3.ActId, $"IPQC{moduleNumber}_2");
 
                 // 步骤1: 移动相机到指定位置
                 if (!await MoveCameraToIPQCPosition(moduleNumber, firstHeight))
                     return false;
+
+                await Task.Delay(50);
 
                 // 步骤2: 第一次拍照（较低高度）
                 var result1 = await TakeIPQCPhoto(moduleNumber, IPQCPhotoType.FirstHeight);
@@ -160,10 +162,16 @@ namespace Stations
                 string photoName = photoType == IPQCPhotoType.FirstHeight ? "第一次拍照" : "第二次拍照";
                 _logger.Info($"执行{moduleNumber}号模块{photoName}");
 
-                // 发送拍照命令给相机
                 string cameraCommand = photoType == IPQCPhotoType.FirstHeight ? "IPQC_FIRST" : "IPQC_SECOND";
                 string cameraName = "DispensingCamera";
 
+                // 先启动视觉数据监听（异步等待）
+                var visionDataTask = _visionDataService.WaitForVisionDataAsync(cameraName, 10000);
+
+                // 给一点时间确保监听已经建立
+                await Task.Delay(100);
+
+                // 发送拍照命令给相机
                 var photoResult = await _cameraController.TakePhotoAsync(cameraName, cameraCommand);
                 if (!photoResult)
                 {
@@ -171,12 +179,12 @@ namespace Stations
                     return new VisionResult
                     {
                         Success = false,
-                        Message = $"视觉数据解析失败"
+                        Message = $"拍照命令执行失败"
                     };
                 }
 
                 // 等待视觉系统完成
-                var visionData = await _visionDataService.WaitForVisionDataAsync(cameraName, 10000); // 10秒超时
+                var visionData = await visionDataTask;
 
                 if (string.IsNullOrEmpty(visionData))
                 {
@@ -198,9 +206,6 @@ namespace Stations
                     };
                 }
 
-                //result.PhotoType = photoType;
-                //result.ModuleNumber = moduleNumber;
-                //_logger.Info($"{photoName}完成，特征点数量: {result.FeaturePoints?.Count ?? 0}");
                 return result;
             }
             catch (Exception ex)

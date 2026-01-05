@@ -197,23 +197,24 @@
                 </DataGridTemplateColumn>
 
                 <!-- H2高度 -->
+                <!-- H2高度 -->
                 <DataGridTemplateColumn Header="H2高度(mm)"
-                                        Width="120">
+                                        Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding H2Height, StringFormat=F3}"
+                            <TextBlock Text="{Binding H2Height, StringFormat=F3, Mode=OneWay}"
                                        Style="{StaticResource OutOfLimitStyle}"
                                        HorizontalAlignment="Center">
                                 <TextBlock.ToolTip>
                                     <ToolTip>
                                         <TextBlock>
-                                            H2高度 = 实时高度 - 0.4
-                                            <LineBreak />
-                                            计算公式: <Run Text="{Binding RealTimeHeight, StringFormat=F3}" /> - 0.4 = <Run Text="{Binding H2Height, StringFormat=F3}" />
+                            H2高度 = 实时高度 - 0.4
+                            <LineBreak />
+                                     计算公式: <Run Text="{Binding RealTimeHeight, StringFormat=F3}" /> - 0.4 = <Run Text="{Binding H2Height, StringFormat=F3, Mode=OneWay}" />
                                         </TextBlock>
                                     </ToolTip>
                                 </TextBlock.ToolTip>
-                            </TextBlock>
+                             </TextBlock>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

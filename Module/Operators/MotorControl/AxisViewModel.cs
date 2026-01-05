@@ -1,4 +1,4 @@
-﻿
+﻿using Core.Services;
 using Framework.ViewModels;
 using Prism.Commands;
 using Prism.Ioc;
@@ -14,20 +14,39 @@ using System.Windows.Threading;
 using SmarterMotion.Framework.Plc;
 using Framework.Mvvm;
 using Core.Abstraction;
+using System.ComponentModel;
 
 namespace Framework.ViewModels
 {
     public class AxisViewModel: RegionViewModelBase, INavigationAware
     {
-        public AxisViewModel(IAxis axisService, IRegionManager regionManager) : base(regionManager)
+        public AxisViewModel(IAxis axisService, IRegionManager regionManager, ILocalizationService localizationService) : base(regionManager)
         {
             _axisService = axisService;
+            _localizationService = localizationService;
             InitializeData();
             SetupStatusTimer();
+            // 监听语言变化事件
+            _localizationService.LanguageChanged += OnLocalizationServiceLanguageChanged;
         }
         private readonly IAxis _axisService;
+        private readonly ILocalizationService _localizationService;
         private DispatcherTimer _statusTimer;
+
         public string AxisName => _axisService?.Name;
+
+        // 本地化轴名称 - 使用资源键格式: Axis_{原始轴名称}
+        public string LocalizedAxisName
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(AxisName))
+                    return string.Empty;
+
+                string resourceKey = $"Axis_{AxisName}";
+                return _localizationService.GetResourceOrDefault(resourceKey, AxisName);
+            }
+        }
         public XAxisDirection AxisDirection => _axisService.AxisDirection;
         public int AxisId => _axisService.ActId;
         public ObservableCollection<IAxis> Axises { get; } = new();
@@ -224,7 +243,7 @@ namespace Framework.ViewModels
             RaisePropertyChanged(nameof(AxisName));
             RaisePropertyChanged(nameof(AxisDirection));
             RaisePropertyChanged(nameof(AxisId));
-            RaisePropertyChanged(nameof(HomeStatus));
+            //RaisePropertyChanged(nameof(HomeStatus));
         }
 
         // 状态指示属性
@@ -235,7 +254,28 @@ namespace Framework.ViewModels
         public bool IsALM => _axisService?.IsALM ?? false;
         public bool IsHomeOk => _axisService?.IsHomeOk ?? false;
         public bool IsASTP => _axisService?.IsASTP ?? false;
-        public string HomeStatus => IsHomeOk ? "已初始化" : "未初始化";
+        //public string HomeStatus => IsHomeOk ? "已初始化" : "未初始化";
+
+        // 本地化的Home状态
+        public string LocalizedHomeStatus
+        {
+            get
+            {
+                if (_axisService == null)
+                    return _localizationService?.GetResourceOrDefault("HomeStatus_NotInitialized", "未初始化");
+
+                string resourceKey = IsHomeOk ? "HomeStatus_Initialized" : "HomeStatus_NotInitialized";
+                return _localizationService?.GetResourceOrDefault(resourceKey,
+                    IsHomeOk ? "已初始化" : "未初始化");
+            }
+        }
+        // 语言变化处理
+        private void OnLocalizationServiceLanguageChanged(object sender, LanguageChangedEventArgs e)
+        {
+            // 更新本地化属性
+            RaisePropertyChanged(nameof(LocalizedAxisName));
+            RaisePropertyChanged(nameof(LocalizedHomeStatus));
+        }
 
         #region 导航生命周期管理
         public override void OnNavigatedTo(NavigationContext navigationContext)
@@ -253,6 +293,19 @@ namespace Framework.ViewModels
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
+        public void Dispose()
+        {
+            if (_statusTimer != null)
+            {
+                _statusTimer.Stop();
+                _statusTimer = null;
+            }
+
+            if (_localizationService != null)
+            {
+                _localizationService.LanguageChanged -= OnLocalizationServiceLanguageChanged;
+            }
+        }
         #endregion
     }
 }

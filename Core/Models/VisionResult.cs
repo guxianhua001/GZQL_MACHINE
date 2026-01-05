@@ -167,4 +167,15 @@
             return $"({X:F3},{Y:F3})";
         }
     }
+
+    /// <summary>
+    /// 视觉系统结果类
+    /// </summary>
+    public class VisionSystemResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public double XPosition { get; set; }
+        public double YPosition { get; set; }
+    }
 }

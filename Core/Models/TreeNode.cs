@@ -1,4 +1,5 @@
 ﻿// Core.Models/TreeNode.cs
+using Prism.Mvvm;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -6,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace Core.Models
 {
-    public class TreeNode : INotifyPropertyChanged
+    public class TreeNode : BindableBase
     {
         private string _name;
         private string _path;
@@ -14,13 +15,26 @@ namespace Core.Models
         private string _viewType;
         private bool _isExpanded;
         private bool _isSelected;
+        private string _localizationKey;
 
         public string Name
         {
             get => _name;
             set => SetProperty(ref _name, value);
         }
-
+        // 本地化键，用于从资源文件获取翻译
+        public string LocalizationKey
+        {
+            get => _localizationKey;
+            set => SetProperty(ref _localizationKey, value);
+        }
+        // 显示名称（本地化后的名称）
+        private string _displayName;
+        public string DisplayName
+        {
+            get => _displayName;
+            set => SetProperty(ref _displayName, value);
+        }
         public string Path
         {
             get => _path;
@@ -53,6 +67,23 @@ namespace Core.Models
 
         // 使用 IList 接口，既支持 ObservableCollection 也支持 List
         public IList<TreeNode> Children { get; set; }
+        // 获取本地化显示名称
+        private string GetLocalizedDisplayName()
+        {
+            // 如果设置了本地化键，优先使用
+            if (!string.IsNullOrEmpty(LocalizationKey))
+            {
+                // 返回原名称
+                return Name;
+            }
+
+            return Name;
+        }
+        // 通知 DisplayName 变化
+        public void NotifyDisplayNameChanged()
+        {
+            RaisePropertyChanged(nameof(DisplayName));
+        }
 
         public TreeNode()
         {

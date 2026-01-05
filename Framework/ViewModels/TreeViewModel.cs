@@ -1,6 +1,6 @@
-﻿// Framework/ViewModels/TreeViewViewModel.cs
-using Core.Abstraction;
+﻿using Core.Abstraction;
 using Core.Models;
+using Core.Services;
 using Framework.Mvvm;
 using Prism.Commands;
 using Prism.Regions;
@@ -16,6 +16,7 @@ namespace Framework.ViewModels
     {
         private readonly ITreeConfigService _treeConfigService;
         private readonly IRegionManager _regionManager;
+        private readonly ILocalizationService _localizationService;
 
         private string _title = "设备树";
         private TreeNode _selectedItem;
@@ -43,16 +44,22 @@ namespace Framework.ViewModels
         public DelegateCommand LoadTreeCommand { get; }
         public DelegateCommand<TreeNode> NodeDoubleClickCommand { get; }
 
-        public TreeViewModel(IRegionManager regionManager, ITreeConfigService treeConfigService)
+        public TreeViewModel(IRegionManager regionManager,
+                           ITreeConfigService treeConfigService,
+                           ILocalizationService localizationService)
             : base(regionManager)
         {
             _regionManager = regionManager;
             _treeConfigService = treeConfigService;
+            _localizationService = localizationService;
 
             TreeData = new ObservableCollection<TreeNode>();
 
             LoadTreeCommand = new DelegateCommand(async () => await LoadTreeDataAsync());
             NodeDoubleClickCommand = new DelegateCommand<TreeNode>(OnNodeDoubleClick);
+
+            // 订阅语言变化事件
+            _localizationService.LanguageChanged += OnLanguageChanged;
 
             // 初始化加载树数据
             LoadTreeCommand.Execute();
@@ -66,13 +73,84 @@ namespace Framework.ViewModels
                 TreeData.Clear();
                 foreach (var node in nodes)
                 {
+                    // 处理本地化显示名称
+                    ProcessNodeLocalization(node);
                     TreeData.Add(node);
                 }
+
+                // 通知树数据已加载，需要重新绑定显示名称
+                NotifyTreeDataLocalizationChanged();
             }
             catch (System.Exception ex)
             {
                 MessageBox.Show($"加载树配置失败: {ex.Message}", "错误",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // 处理节点本地化
+        private void ProcessNodeLocalization(TreeNode node)
+        {
+            // 如果没有设置本地化键，使用默认的生成规则
+            if (string.IsNullOrEmpty(node.LocalizationKey))
+            {
+                // 使用路径作为本地化键：将路径中的斜杠替换为下划线
+                node.LocalizationKey = $"Tree_{node.Path?.Replace("/", "_")}";
+            }
+            // 设置显示名称（调用GetLocalizedNodeName方法）
+            node.DisplayName = GetLocalizedNodeName(node);
+            // 递归处理子节点
+            foreach (var child in node.Children)
+            {
+                ProcessNodeLocalization(child);
+            }
+        }
+
+        // 获取节点的本地化显示名称
+        public string GetLocalizedNodeName(TreeNode node)
+        {
+            if (node == null) return string.Empty;
+
+            // 如果有本地化键，使用本地化服务获取翻译
+            if (!string.IsNullOrEmpty(node.LocalizationKey))
+            {
+                return _localizationService.GetResourceOrDefault(node.LocalizationKey, node.Name);
+            }
+
+            // 否则使用原名称
+            return node.Name;
+        }
+
+        // 语言变化处理
+        private void OnLanguageChanged(object sender, LanguageChangedEventArgs e)
+        {
+            // 更新所有节点的显示名称
+            NotifyTreeDataLocalizationChanged();
+        }
+
+        // 通知树数据本地化变化
+        private void NotifyTreeDataLocalizationChanged()
+        {
+            // 遍历所有节点，触发DisplayName属性变化通知
+            foreach (var node in GetAllNodes(TreeData))
+            {
+                node.NotifyDisplayNameChanged();
+            }
+        }
+
+        // 获取所有节点（递归）
+        private IEnumerable<TreeNode> GetAllNodes(IEnumerable<TreeNode> nodes)
+        {
+            if (nodes == null) yield break;
+
+            foreach (var node in nodes)
+            {
+                yield return node;
+
+                foreach (var child in GetAllNodes(node.Children))
+                {
+                    yield return child;
+                }
             }
         }
 
@@ -104,10 +182,19 @@ namespace Framework.ViewModels
 
             var newNode = new TreeNode("新节点")
             {
-                Path = $"{parentNode.Path}/NewNode"
+                Path = $"{parentNode.Path}/NewNode",
+                // 为新节点生成本地化键
+                LocalizationKey = $"Tree_{parentNode.Path?.Replace("/", "_")}_NewNode"
             };
 
+            // 设置新节点的显示名称
+            newNode.DisplayName = GetLocalizedNodeName(newNode);
+
             parentNode.Children.Add(newNode);
+
+            // 通知显示名称变化
+            newNode.NotifyDisplayNameChanged();
+
             // 保存配置
             _ = _treeConfigService.SaveTreeStructureAsync(TreeData.ToList());
         }
@@ -147,9 +234,20 @@ namespace Framework.ViewModels
         }
 
         // 方法2：或者重载方法，同时支持 ObservableCollection 和 IList
-        private bool RemoveNodeFromParent(ObservableCollection<TreeNode> nodes, TreeNode nodeToRemove)
+        //private bool RemoveNodeFromParent(ObservableCollection<TreeNode> nodes, TreeNode nodeToRemove)
+        //{
+        //    return RemoveNodeFromParent((IList<TreeNode>)nodes, nodeToRemove);
+        //}
+
+        // 清理资源
+        public override void OnNavigatedFrom(NavigationContext navigationContext)
         {
-            return RemoveNodeFromParent((IList<TreeNode>)nodes, nodeToRemove);
+            base.OnNavigatedFrom(navigationContext);
+
+            if (_localizationService != null)
+            {
+                _localizationService.LanguageChanged -= OnLanguageChanged;
+            }
         }
     }
 }

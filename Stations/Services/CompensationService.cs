@@ -13,7 +13,8 @@ namespace Stations.Services
         Tab,        // Tab补偿（X,Y方向）
         TabZ,       // TabZ补偿（Z方向）
         Slot,       // Slot补偿（X,Z方向）
-        Actuator,   // 执行器补偿（X方向）
+        ActuatorX,  // 执行器补偿（X方向）
+        ActuatorY,  // 执行器补偿（Y方向）
         PressZ,     // 夹爪下压补偿（Z方向）
     }
     /// <summary>
@@ -157,7 +158,7 @@ namespace Stations.Services
 
         public Dictionary<int, CompensationData> GetAllActuatorCompensations()
         {
-            return GetCompensationsByType(CompensationType.Actuator);
+            return GetCompensationsByType(CompensationType.ActuatorX);
         }
 
         private Dictionary<int, CompensationData> GetCompensationsByType(CompensationType type)
