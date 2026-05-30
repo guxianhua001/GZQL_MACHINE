@@ -1,0 +1,14 @@
+<UserControl x:Class="Module.Controls.HalconCanvasControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <!-- 设计时占位：设计器无法加载原生 halcon.dll，显示提示文字 -->
+        <TextBlock x:Name="_designPlaceholder"
+                   Text="Halcon 画布（设计时占位）"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="Gray" FontSize="14"
+                   Visibility="Collapsed" />
+        <!-- 运行时：嵌入 WinForms 的 VMHWindowControl -->
+        <WindowsFormsHost x:Name="_winFormHost" />
+    </Grid>
+</UserControl>

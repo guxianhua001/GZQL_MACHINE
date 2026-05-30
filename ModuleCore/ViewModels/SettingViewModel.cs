@@ -1,8 +1,7 @@
-﻿using Framework.Mvvm;
-using Interfaces.Services;
+using Framework.Mvvm;
+using Core.Services;
 using ModuleCore.Common.Authority;
 using ModuleCore.Models;
-using ModuleCore.Services;
 using Prism.Commands;
 using Prism.Ioc;
 using Prism.Regions;

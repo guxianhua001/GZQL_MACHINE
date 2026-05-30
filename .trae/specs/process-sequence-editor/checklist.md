@@ -1,0 +1,18 @@
+- [x] SubMove 模型新增 StationId、AxisId、OffsetVariableName 属性，JSON 序列化兼容旧数据
+- [x] ProcessSequenceEditorView 的 AddStep/DeleteStep/MoveUp/MoveDown 命令正常工作，Seq 自动重编号
+- [x] 选中 GOTO 类型步骤时弹出 GotoDetailView 模态对话框
+- [x] DataGrid 中 CompFeature/SiteFeature/Camera/Purpose 编辑实时同步到模型
+- [x] GotoDetailView 以 DialogHost 模态对话框形式展示
+- [x] 工站-轴选择下拉框显示所有工站的所有轴（格式："工站名.轴名"），选择后记录 StationId 和 AxisId
+- [x] 配方轴位置选择器根据选中工站加载该工站的所有位置点名
+- [x] 速度设置控件验证输入为正数，超出范围显示错误提示
+- [x] Offset 支持直接输入数值和从全局变量列表选择两种模式
+- [x] GotoStepAction 解析 SubMove 列表，按序调用 MoveToAsync，Offset 叠加到目标位置
+- [x] Offset 引用全局变量时，运行时从 IRecipePoolService 动态解析值
+- [x] ProcessStepExecutor 通过 RunStep 包装执行每个步骤，享受暂停/急停/单步/可恢复异常重试保护
+- [x] CHECK 步骤的 SkipTo 跳转逻辑正确执行
+- [x] StartTask 按钮将步骤序列传递给执行引擎运行
+- [x] 当前执行步骤在 UI 中高亮显示（IsCurrent 标记）
+- [x] SaveToJsonCommand 将步骤序列保存到 Config/ProcessSequences/ 目录
+- [x] 应用启动时自动加载最后一次使用的配置文件
+- [x] LoadSequence 手动加载功能正常工作

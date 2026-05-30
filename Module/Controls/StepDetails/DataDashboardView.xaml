@@ -1,0 +1,450 @@
+<UserControl x:Class="Module.Views.DataDashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:Module.Common.Converters"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MinHeight="320"
+             MinWidth="720">
+    
+    <UserControl.Resources>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <converters:NonEmptyToVisibilityConverter x:Key="NonEmptyToVisibilityConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
+        <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="12" Background="{DynamicResource MaterialDesignPaper}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="3*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ========== 上半部分：示意图 + 数据表格 ========== -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MaxWidth="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：示意图区域（自适应高度） -->
+            <Border Grid.Column="0" BorderBrush="#BDBDBD" BorderThickness="1" 
+                    CornerRadius="6" Margin="0,0,8,0" Background="#F5F5F5" ClipToBounds="True"
+                    MouseLeftButtonDown="OnImageAreaDoubleClick" Cursor="Hand"
+                    MaxHeight="200">
+                <Grid ClipToBounds="True">
+                    <Image Source="{Binding DiagramImage}" Stretch="Uniform" 
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding DiagramImage, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}">
+                        <materialDesign:PackIcon Kind="ImagePlus" Width="36" Height="36" 
+                                                 HorizontalAlignment="Center" Foreground="#BDBDBD"/>
+                        <TextBlock Text="{lang:Lang DataDetail_DoubleClickLoadDiagram}" HorizontalAlignment="Center"
+                                   Foreground="#757575" FontSize="12" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 右侧：数据表格 -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- ═══ 顶部标题栏 ═══ -->
+                <Border Grid.Row="0"
+                        Padding="12,6"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}"
+                        Margin="0,0,0,6">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#2D3748" Offset="0" />
+                            <GradientStop Color="#3A475A" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+                            <CheckBox Content="{lang:Lang DataDetail_ManualConfirm}"
+                                      IsChecked="{Binding RequireManualConfirm}"
+                                      Foreground="White"
+                                      FontWeight="Normal"
+                                      FontSize="11"
+                                      VerticalAlignment="Center"
+                                      Margin="8,0"
+                                      ToolTip="{lang:Lang DataDetail_ManualConfirmTip}"/>
+                            <Button Command="{Binding RefreshValuesCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    Foreground="White"
+                                    Padding="6,2" Margin="1,0" ToolTip="{lang:Lang Refresh}"
+                                    Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang Refresh}" FontSize="10" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding AddFieldCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    Foreground="White"
+                                    Padding="6,2" Margin="1,0" ToolTip="{lang:Lang DataDetail_AddRow}"
+                                    Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Plus" Width="14" Height="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang Add}" FontSize="10" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding DeleteFieldCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    Foreground="White"
+                                    Padding="6,2" Margin="1,0" ToolTip="{lang:Lang DataDetail_DeleteRow}"
+                                    Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Minus" Width="14" Height="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang Delete}" FontSize="10" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="MonitorDashboard"
+                                                     Width="18" Height="18"
+                                                     Foreground="#FFB74D"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,6,0" />
+                            <TextBlock Text="{lang:Lang DataDetail_Title}"
+                                       Foreground="White"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- 数据表格 -->
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                          ItemsSource="{Binding Fields}" 
+                          HeadersVisibility="Column" RowHeaderWidth="0"
+                          BorderBrush="#E0E0E0"
+                          Background="{DynamicResource MaterialDesignPaper}"
+                          GridLinesVisibility="Horizontal"
+                          SelectedItem="{Binding SelectedField}"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          ColumnWidth="*">
+                    <DataGrid.Resources>
+                        <Style x:Key="ColumnHeaderStyle" TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#E8EAF6"/>
+                            <Setter Property="Foreground" Value="#283593"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="FontSize" Value="11"/>
+                            <Setter Property="Padding" Value="6,3"/>
+                            <Setter Property="BorderBrush" Value="#C5CAE9"/>
+                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                        </Style>
+                        <Style x:Key="CellTextStyle" TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#212121"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="4,0"/>
+                        </Style>
+                    </DataGrid.Resources>
+
+                    <DataGrid.Columns>
+                        <!-- 名称列 -->
+                        <DataGridTemplateColumn Header="{lang:Lang DataDetail_Column_Name}" Width="Auto" MinWidth="90"
+                                                HeaderStyle="{StaticResource ColumnHeaderStyle}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                                               Style="{StaticResource CellTextStyle}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                             BorderThickness="0" Background="Transparent"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 表达式列 -->
+                        <DataGridTemplateColumn Header="{lang:Lang DataDetail_Column_Expression}" Width="*" MinWidth="230"
+                                                HeaderStyle="{StaticResource ColumnHeaderStyle}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="4,2" HorizontalAlignment="Stretch"
+                                            Command="{Binding DataContext.EditFormulaCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,3,0">
+                                                <materialDesign:PackIcon.Style>
+                                                    <Style TargetType="materialDesign:PackIcon">
+                                                        <Setter Property="Kind" Value="FunctionVariant"/>
+                                                        <Setter Property="Foreground" Value="#5C6BC0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding FieldType}" Value="Condition">
+                                                                <Setter Property="Kind" Value="CheckCircle"/>
+                                                                <Setter Property="Foreground" Value="#FF8F00"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </materialDesign:PackIcon.Style>
+                                            </materialDesign:PackIcon>
+                                            <TextBlock Text="{Binding Formula, FallbackValue='点击编辑'}" 
+                                                       FontSize="11" Foreground="#5C6BC0" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- 数值列 -->
+                        <DataGridTemplateColumn Header="{lang:Lang DataDetail_Column_Value}" MinWidth="80"
+                                                HeaderStyle="{StaticResource ColumnHeaderStyle}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayValue}" FontWeight="Bold" FontSize="12"
+                                               VerticalAlignment="Center" Margin="4,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#212121"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ConditionResult}" Value="True">
+                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ConditionResult}" Value="False">
+                                                        <Setter Property="Foreground" Value="#C62828"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="#212121"/>
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#E3F2FD" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#FFF3E0" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding" Value="4,2"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="#212121"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.CellStyle>
+                </DataGrid>
+            </Grid>
+        </Grid>
+
+        <!-- ========== 下半部分：表达式编辑器 / 确认按钮 ========== -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 表达式编辑器（展开时显示在下方） -->
+            <Border Grid.Row="0"
+                    Visibility="{Binding IsFormulaEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}"
+                    Background="{DynamicResource MaterialDesignPaper}"
+                    BorderBrush="#5C6BC0" BorderThickness="1" CornerRadius="6"
+                    Padding="12" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="200"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 标题 -->
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                        <materialDesign:PackIcon Kind="FunctionVariant" Width="18" Height="18" 
+                                                 VerticalAlignment="Center" Foreground="#5C6BC0" Margin="0,0,6,0"/>
+                        <TextBlock Text="{lang:Lang DataDetail_FormulaEditorTitle}" FontWeight="Bold" FontSize="13" 
+                                   Foreground="#283593" VerticalAlignment="Center"/>
+                        <TextBlock Margin="12,0,0,0" Foreground="#757575" FontSize="11" VerticalAlignment="Center">
+                            <Run Text="{lang:Lang DataDetail_FieldLabel}"/>
+                            <Run Text="{Binding EditingField.DisplayName, FallbackValue=''}" FontWeight="SemiBold" Foreground="#283593"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- 字段类型切换 -->
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="{lang:Lang DataDetail_TypeLabel}" Foreground="#757575" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <RadioButton Content="{lang:Lang DataDetail_TypeNumeric}" 
+                                     IsChecked="{Binding EditingFieldType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Numeric, Mode=TwoWay}"
+                                     Style="{StaticResource MaterialDesignRadioButton}"
+                                     FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
+                                     ToolTip="@GV:H2 - @GV:Slot实测"/>
+                        <RadioButton Content="{lang:Lang DataDetail_TypeCondition}" 
+                                     IsChecked="{Binding EditingFieldType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Condition, Mode=TwoWay}"
+                                     Style="{StaticResource MaterialDesignRadioButton}"
+                                     FontSize="11" VerticalAlignment="Center"
+                                     ToolTip="@GV:H2 > 10"/>
+                        <TextBlock Foreground="#9E9E9E" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0">
+                            <Run Text="{Binding EditingFieldType, FallbackValue=''}"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- 公式输入框 -->
+                    <TextBox Grid.Row="2" Grid.ColumnSpan="2"
+                             Text="{Binding EditingFormula, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="14" FontFamily="Consolas"
+                             materialDesign:HintAssist.Hint="{lang:Lang DataDetail_FormulaHint}"
+                             Margin="0,0,0,8"/>
+
+                    <!-- 全局变量标题 -->
+                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" 
+                               Text="{lang:Lang DataDetail_DoubleClickInsertVar}" Foreground="#757575" FontSize="11" Margin="0,0,0,4"/>
+
+                    <!-- 全局变量列表 -->
+                    <ListBox Grid.Row="4" Grid.Column="1"
+                             ItemsSource="{Binding GlobalVariables}" 
+                             SelectedItem="{Binding SelectedGlobalVariable}"
+                             FontSize="11"
+                             BorderBrush="#E0E0E0" Margin="8,0,0,0"
+                             MouseDoubleClick="OnGlobalVariableDoubleClick">
+                        <ListBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding InsertGlobalVariableCommand}"/>
+                        </ListBox.InputBindings>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Variable" Width="12" Height="12" 
+                                                             VerticalAlignment="Center" Margin="0,0,3,0" Foreground="#5C6BC0"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="White"/>
+                                    <TextBlock Text=" = " Foreground="#9E9E9E"/>
+                                    <TextBlock Text="{Binding Value}" Foreground="#2E7D32"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- 插入变量按钮 -->
+                    <Button Grid.Row="5" Grid.Column="1"
+                            Content="{lang:Lang DataDetail_InsertVar}" Command="{Binding InsertGlobalVariableCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            HorizontalAlignment="Left" Margin="8,6,0,6"
+                            Padding="10,3" FontSize="10"/>
+
+                    <!-- 确认/取消按钮 -->
+                    <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                        <Button Content="{lang:Lang Confirm}" Command="{Binding ConfirmFormulaCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Padding="16,5" Margin="0,0,8,0"/>
+                        <Button Content="{lang:Lang Cancel}" Command="{Binding CancelFormulaCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Padding="16,5"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 确认按钮区域（底部右对齐） -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                <!-- 编辑模式（无人工确认）按钮 -->
+                <Button Content="{lang:Lang DataDetail_ConfirmOK}" 
+                        Command="{Binding ConfirmCommand}" 
+                        Padding="32,8" FontSize="13" FontWeight="Medium" Margin="0,0,8,0" Width="auto"
+                        materialDesign:ButtonAssist.CornerRadius="2"
+                        ToolTip="{lang:Lang DataDetail_ConfirmOKTip}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsExecutionMode}" Value="False"/>
+                                        <Condition Binding="{Binding RequireManualConfirm}" Value="False"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <MultiDataTrigger.Setters>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger.Setters>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- 人工确认模式按钮（执行模式 或 启用了人工确认的编辑模式） -->
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <!-- 执行模式始终显示 -->
+                                <DataTrigger Binding="{Binding IsExecutionMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                                <!-- 编辑模式+启用了人工确认也显示 -->
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsExecutionMode}" Value="False"/>
+                                        <Condition Binding="{Binding RequireManualConfirm}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <MultiDataTrigger.Setters>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger.Setters>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <Button Content="{lang:Lang DataDetail_ConfirmNG}" 
+                            Command="{Binding ConfirmNGCommand}" 
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Background="#C62828"
+                            BorderBrush="#C62828"
+                            Foreground="White"
+                            Width="auto"
+                            Padding="24,8" FontSize="13" FontWeight="Medium"
+                            materialDesign:ButtonAssist.CornerRadius="2"
+                            ToolTip="{lang:Lang DataDetail_ConfirmNGToolTip}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="{lang:Lang DataDetail_ConfirmOK}" 
+                            Command="{Binding ConfirmCommand}" 
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Padding="32,8" FontSize="13" FontWeight="Medium" Width="auto"
+                            materialDesign:ButtonAssist.CornerRadius="2"
+                            ToolTip="{lang:Lang DataDetail_ConfirmOKTip}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

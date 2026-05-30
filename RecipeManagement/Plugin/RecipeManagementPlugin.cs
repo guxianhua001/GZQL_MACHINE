@@ -30,8 +30,7 @@ namespace Recipe.Plugin
             // 注册基础设施
             services.AddRecipeManagementInfrastructure();
 
-            // 注册后台服务
-            services.AddHostedService<RecipeBackgroundService>();
+            // 注册后台服务（已移除 RecipeBackgroundService，WPF 应用不需要 ASP.NET Core 后台服务）
 
             Console.WriteLine($"RecipeManagement plugin services configured.");
         }

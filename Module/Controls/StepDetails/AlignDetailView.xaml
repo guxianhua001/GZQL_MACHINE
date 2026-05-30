@@ -1,0 +1,138 @@
+<UserControl x:Class="Module.Views.AlignDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MaxHeight="300">
+    <UserControl.Resources>
+        <!-- 可选的Target选项 -->
+        <x:Array x:Key="targetOptions"
+                 Type="{x:Type System:String}"
+                 xmlns:System="clr-namespace:System;assembly=mscorlib">
+            <System:String>aligned</System:String>
+            <System:String>contact</System:String>
+            <System:String>clearance</System:String>
+        </x:Array>
+    </UserControl.Resources>
+    <Border Padding="16"
+            Background="{DynamicResource MaterialDesignCardBackground}"
+            CornerRadius="4">
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- 标题 + 关闭按钮 -->
+                <DockPanel Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Right"
+                            Content="✖"
+                            Width="30"
+                            Height="30"
+                            Command="{Binding CloseCommand}"
+                            ToolTip="{lang:Lang Close}"
+                            Style="{StaticResource MaterialDesignIconButton}" />
+                    <TextBlock FontWeight="Bold"
+                               FontSize="14"
+                               VerticalAlignment="Center"
+                               Text="{Binding StepDescription, StringFormat=ALIGN Sub-movement {0}}" />
+                </DockPanel>
+
+                <!-- 工站选择 -->
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,0,0,8">
+                    <TextBlock Text="{lang:Lang AlignDetail_Station}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <ComboBox ItemsSource="{Binding Stations}"
+                              DisplayMemberPath="Name"
+                              SelectedItem="{Binding SelectedStation}"
+                              Width="150" />
+                </StackPanel>
+
+                <!-- 子移动表格 -->
+                <DataGrid ItemsSource="{Binding SubMoves}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          materialDesign:DataGridAssist.CellPadding="4"
+                          MaxHeight="300">
+                    <DataGrid.Columns>
+                        <!-- Sub 序号 -->
+                        <DataGridTextColumn Header="Sub"
+                                            Binding="{Binding SubSeq}"
+                                            Width="50" />
+
+                        <!-- Axis 下拉编辑 -->
+                        <DataGridTemplateColumn Header="Axis"
+                                                Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Axis}"
+                                               VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.AvailableAxes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              SelectedItem="{Binding Axis, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEditable="False" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Position 下拉编辑（数据源来自工站参数） -->
+                        <DataGridTemplateColumn Header="Position"
+                                                Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding PositionName}"
+                                               VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.AvailablePositions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              SelectedItem="{Binding PositionName, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEditable="False" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Description -->
+                        <DataGridTextColumn Header="Description"
+                                            Binding="{Binding Description}"
+                                            Width="160" />
+
+                        <!-- Offset -->
+                        <DataGridTextColumn Header="Ofs(mm)"
+                                            Binding="{Binding Offset}"
+                                            Width="80" />
+
+                        <!-- Speed -->
+                        <DataGridTextColumn Header="Spd"
+                                            Binding="{Binding Speed}"
+                                            Width="60" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 操作按钮 -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,12,0,0">
+                    <Button Content="{lang:Lang AlignDetail_AddSubMove}"
+                            Margin="4"
+                            Command="{Binding AddSubMoveCommand}" />
+                    <Button Content="{lang:Lang AlignDetail_Delete}"
+                            Margin="4"
+                            Command="{Binding DeleteSubMoveCommand}" />
+                    <Button Content="↑"
+                            Margin="4"
+                            Command="{Binding MoveUpCommand}" />
+                    <Button Content="↓"
+                            Margin="4"
+                            Command="{Binding MoveDownCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

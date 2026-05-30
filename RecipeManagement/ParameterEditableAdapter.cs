@@ -9,15 +9,15 @@ namespace Recipe
     public class ParameterEditableAdapter<TParameters> : IParameterEditable
         where TParameters : TaskParametersBase, new()
     {
-        private readonly RecipeService<TParameters> _recipeService;
+        private readonly IRecipeService _recipeService;   // 改为接口类型
 
-        public ParameterEditableAdapter(RecipeService<TParameters> recipeService)
+        public ParameterEditableAdapter(IRecipeService recipeService)   // 构造函数接收接口
         {
             _recipeService = recipeService;
         }
 
         public string EditTitle => $"{_recipeService.StationName} - 参数编辑";
         public string Identifier => _recipeService.StationIdentifier;
-        public object Parameters => _recipeService.Parameters;
+        public object Parameters => _recipeService.Parameters;   // 通过接口访问
     }
 }

@@ -1,0 +1,21 @@
+- [x] LangExtension 类已创建，继承 MarkupExtension + INotifyPropertyChanged
+- [x] LangExtension.ProvideValue 在设计时返回默认语言文字（设计器可见）
+- [x] LangExtension.ProvideValue 在运行时返回 Binding 对象（支持语言切换刷新）— 已修复：改用 DesignerProperties.GetIsInDesignMode 判断设计时
+- [x] LangExtension 支持格式化参数（如 `{lang:Lang Key, Arg1, Arg2}`）
+- [x] LangExtension 在 Key 不存在时返回 `[Key]` 回退文字，不抛异常
+- [x] ILocalizationService 接口已精简，移除 LoadResourcesToXaml/AddResourceManager/ResourcesLoaded/SupportedLanguagesChanged/ILocalizationServiceFactory/ILocalizationResourceProvider/LocalizationServiceOptions
+- [x] LocalizationService 实现已更新 — UpdateResourceDictionaries 保留用于切换 Application.Resources 中的语言字典，确保 LangExtension.GetValue() 的 TryFindResource 能找到当前语言资源
+- [x] Strings.zh-CN.xaml 已创建，包含所有中文翻译条目
+- [x] Strings.en-US.xaml 已创建，包含所有英文翻译条目
+- [x] App.xaml 静态引用了 Strings.zh-CN.xaml 作为默认语言字典
+- [x] LocalizationBehavior 附加属性已创建，支持 ViewModel 属性自动刷新
+- [x] LoginView.xaml 中 7 处 DynamicResource 已替换为 {lang:Lang Key}
+- [x] WindowClosedQuestion.xaml 中 5 处 DynamicResource 已替换为 {lang:Lang Key}
+- [x] MainWindow.xaml 中 1 处 DynamicResource 已替换为 {lang:Lang Key}
+- [x] SpeedRatioView.xaml 中 1 处 DynamicResource 已替换为 {lang:Lang Key}
+- [x] LanguageSelectorViewModel 已简化，不依赖 LocalizedViewModelBase
+- [x] LocalizedViewModelBase 已简化，保留 L() 方法但移除自动注册逻辑
+- [x] App.xaml 中空占位 ResourceDictionary 已移除
+- [x] App.xaml.cs 中 LoadResourcesToXaml() 调用已移除
+- [x] 全项目编译零 error
+- [ ] VS 设计器中 LoginView 文字可见 — 需用户在 VS 中确认

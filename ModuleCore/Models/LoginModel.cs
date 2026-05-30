@@ -1,8 +1,7 @@
-﻿using Framework.Mvvm;
-using Interfaces;
-using Interfaces.Services;
+using Framework.Mvvm;
+using Core.Utilities;
+using Core.Services;
 using ModuleCore.Common.Authority;
-using ModuleCore.Services;
 using Prism.Mvvm;
 using Prism.Services.Dialogs;
 using System;
@@ -30,9 +29,10 @@ namespace ModuleCore.Models
         }
         public event Action OnConfigChanged;
 
-        public LoginModel(IDialogService dialogService)
+        public LoginModel(IDialogService dialogService, ILoggerService logger)
         {
             _dialogService = dialogService;
+            _logger = logger;
             //权限列表
             var authorityListString = Enum.GetNames(typeof(Authority));
             var i = 0;
@@ -46,6 +46,7 @@ namespace ModuleCore.Models
             LoadUsers();
         }
         private readonly IDialogService _dialogService;
+        private readonly ILoggerService _logger;
         #region 登录
 
         //登录的用户
@@ -120,7 +121,7 @@ namespace ModuleCore.Models
                 dt.Columns.Add("Password", Type.GetType("System.String"));
                 dt.Columns.Add("Authority", Type.GetType("System.Int64"));
 
-                var password = EncryptService.Encrypt("CYG");
+                var password = EncryptService.Encrypt("Admin");
 
                 AddUser(new("Guest", "password", Authority.Operator));
                 AddUser(new(Name, password, Authority.Administrator));
@@ -256,11 +257,11 @@ namespace ModuleCore.Models
 
                 // 移动损坏的文件
                 File.Move(configPath, backupPath);
-                IMessage.Logger.Warn($"检测到损坏的配置文件，已备份到: {backupPath}");
+                _logger.Warn($"检测到损坏的配置文件，已备份到: {backupPath}");
             }
             catch (Exception ex)
             {
-                IMessage.Logger.Error($"备份损坏配置文件失败: {ex}");
+                _logger.Error($"备份损坏配置文件失败: {ex}");
             }
             finally
             {
@@ -289,12 +290,12 @@ namespace ModuleCore.Models
                 string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AuthConfigFile);
                 JsonService.DataTableToEncryptFile(configPath, authTable);
 
-                IMessage.Logger.Info($"认证配置已保存: 自动注销时间 = {_autoLogoutMinutes}分钟");
+                _logger.Info($"认证配置已保存: 自动注销时间 = {_autoLogoutMinutes}分钟");
                 OnConfigChanged?.Invoke();
             }
             catch (Exception ex)
             {
-                IMessage.Logger.Error($"保存认证配置失败: {ex}");
+                _logger.Error($"保存认证配置失败: {ex}");
             }
         }
 

@@ -1,0 +1,21 @@
+- [x] 所有 XAML 文件中的 DynamicResource 语言 key 已替换为 lang:Lang 标记扩展（CadAlignmentPrincipleWindow 30处、DetailedDataView 22处、WaypointEditView 10处）
+- [x] 非语言 DynamicResource（主题、样式等）未被误迁移（37个MaterialDesign资源全部保留）
+- [x] Module/Controls/Assembly 模块迁移完成且编译通过（DynamicResource 62处 + 硬编码 78处）
+- [x] Module/Controls/Dispense 模块迁移完成且编译通过（硬编码 60处）
+- [x] Module/Controls/Loading 模块迁移完成且编译通过（硬编码 40处）
+- [x] Module/Controls/StepDetails 模块迁移完成且编译通过（硬编码 171处）
+- [x] Module/Controls/Configuration + Grippers + StepEditor 模块迁移完成且编译通过（硬编码 50处）
+- [x] AlarmModule 模块迁移完成且编译通过（硬编码 60处）
+- [x] RecipeManagement + TCPIPModule 模块迁移完成且编译通过（硬编码 55处）
+- [x] MotionControl 模块迁移完成且编译通过（硬编码 18处）
+- [x] Framework 模块迁移完成且编译通过（硬编码 27处）
+- [x] ModuleCore 剩余文件迁移完成且编译通过（硬编码 46处）
+- [x] Interfaces 模块迁移完成且编译通过（硬编码 5处）
+- [x] 语言资源文件已同步（zh-CN 和 en-US 均有 1675 个 key，0 个差异）
+- [x] Strings.zh-CN.xaml 和 Strings.en-US.xaml 的 key 列表保持一致
+- [x] 全项目编译零 error（0 error, 18 warning 均为预存警告）
+- [x] 修复了 Principle_CenterLabelP bug（拼写错误→Principle_CenterLabel）
+- [x] 修复了 ScriptCodeEditor x:Name 误删问题
+- [x] 修复了 en-US 中 XML 转义问题（& → &amp;）
+- [x] emoji 按钮已重构为 PackIcon + TextBlock（符合项目规范）
+- [x] 原有功能未受影响（编译通过，所有 Binding 和 x:Name 保持不变）

@@ -1,0 +1,15 @@
+- [x] ScanDetail 模型包含所有 3D 相机配置字段（运动/IO/通讯/解析），无硬编码数值
+- [x] Camera3DDataParser 能正确解析 `Camera=3DCAMERA;VISION_RESULT:SUCCESS:14.164,10.713,...` 格式
+- [x] Camera3DDataParser 对 FAIL 状态抛出 RecoverableException
+- [x] Scan3DStepAction 按7步顺序编排执行（Z抬升→X起始→Z下降→IO触发→X终点+TCP→Z安全→X待机）
+- [x] IO 触发信号异步自动复位，不阻塞后续流程步骤
+- [x] X 轴移动期间通过 TCP/IP 实时接收并解析 3D 相机回传数据
+- [x] 解析结果正确映射到全局变量并持久化
+- [x] ScanDetailViewModel 使用 DialogHost 模态弹窗模式（与 GOTO/VISION 一致）
+- [x] ScanDetailView 包含运动配置区、IO配置区、通讯配置区、数据解析区、数据解析面板、执行测试区
+- [x] 数据解析面板展示 Tab 高度值表格（编号/上限/下限/实测值/偏差/状态）
+- [x] 所有位置名从 IPositionProvider 动态加载，TCP 连接从 ITCPClientManagerService 加载
+- [x] NavigateToDetailView 包含 SCAN 步骤路由分支
+- [x] Scan3DStepAction 在 StationTasksModule 中注册为 IProcessStepAction 单例
+- [x] Camera3DDataParser 在 StationTasksModule 中注册
+- [x] 全量编译通过无错误

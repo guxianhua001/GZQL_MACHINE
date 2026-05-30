@@ -1,0 +1,163 @@
+<UserControl x:Class="Module.Controls.CadPointEditorControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:controls="clr-namespace:Module.Controls"
+             xmlns:conv="clr-namespace:Module.Converters"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="DeepPurple" SecondaryColor="Lime"/>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:StepBgConverter x:Key="StepBgConverter"/>
+            <conv:StepCompletedBorderConverter x:Key="StepCompletedBorderConverter"/>
+            <conv:BooleanToVisibilityConverter x:Key="BoolToVisConv"/>
+            <conv:IntEqualityToVisibilityConverter x:Key="EqToIntConverter"/>
+            <conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisConv"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 顶部步骤指示器 -->
+        <Border Grid.Row="0" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="12,8">
+            <ItemsControl ItemsSource="{Binding Steps}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Margin="4,0">
+                            <!-- 步骤圆圈：当前步骤蓝色，已完成绿色，其他灰色 -->
+                            <Border Width="28" Height="28" CornerRadius="14"
+                                    Background="{Binding IsCurrent, Converter={StaticResource StepBgConverter}}"
+                                    BorderBrush="{Binding IsCompleted, Converter={StaticResource StepCompletedBorderConverter}}"
+                                    BorderThickness="2">
+                                <TextBlock Text="{Binding Number}" Foreground="White"
+                                           FontSize="12" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <!-- 步骤标题（紧凑布局 + 文本截断） -->
+                            <StackPanel Margin="6,0,0,0" VerticalAlignment="Center" MaxWidth="120">
+                                <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="Medium"
+                                           TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding Title}"/>
+                                <TextBlock Text="{Binding Hint}" FontSize="9" Foreground="#757575"
+                                           TextTrimming="CharacterEllipsis" MaxHeight="13"/>
+                            </StackPanel>
+                            <!-- 连接线（缩短） -->
+                            <Border Width="24" Height="2" Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Background="{Binding ConnectorColor, FallbackValue=#BDBDBD}"
+                                    Visibility="{Binding ShowConnector, Converter={StaticResource BoolToVisConv}}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- 主内容区：左侧画布 + 右侧面板 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：画布区域 -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <controls:HalconCanvasControl x:Name="halconCanvas" Grid.Row="0"
+                                         Entities="{Binding CanvasEntities}"
+                                         SelectedEntity="{Binding SelectedEntity, Mode=TwoWay}"
+                                         SelectedSegmentPoints="{Binding SelectedSegmentPoints}"
+                                         SelectedPointIndex="{Binding SelectedPointIndex}"
+                                         ShowGrid="{Binding ShowGrid, Mode=TwoWay}"/>
+                <!-- 工具栏 -->
+                <ToolBarTray Grid.Row="1" IsLocked="True">
+                    <ToolBar Style="{x:Null}" Background="#F5F5F5">
+                        <Button Content="{lang:Lang CadPoint_Btn_FitAll}" Command="{Binding FitToAllCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Padding="8,4"/>
+                        <Button Content="{lang:Lang CadPoint_Btn_ResetView}" Command="{Binding ResetViewCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Padding="8,4"/>
+                        <ComboBox ItemsSource="{Binding LayerNames}"
+                                  SelectedItem="{Binding SelectedLayer}"
+                                  MinWidth="100" Margin="8,0"/>
+                        <CheckBox Content="{lang:Lang CadPoint_CheckBox_Grid}" IsChecked="{Binding ShowGrid}" Margin="8,0"/>
+                    </ToolBar>
+                </ToolBarTray>
+                <!-- 坐标状态栏 -->
+                <StatusBar Grid.Row="2">
+                    <StatusBarItem>
+                        <TextBlock>
+                            <Run Text="X="/><Run Text="{Binding CoordinateDisplay, FallbackValue=---}"/>
+                            <Run Text="  Y="/><Run Text="{Binding CoordinateDisplayY, FallbackValue=---}"/>
+                        </TextBlock>
+                    </StatusBarItem>
+                    <Separator/>
+                    <StatusBarItem HorizontalAlignment="Right">
+                        <TextBlock>
+                            <Run Text="{lang:Lang CadPoint_Label_Zoom}"/><Run Text="{Binding ZoomFactor, StringFormat=F2}"/>
+                        </TextBlock>
+                    </StatusBarItem>
+                </StatusBar>
+            </Grid>
+
+            <!-- 分割条 -->
+            <GridSplitter Grid.Column="1" Width="3" Background="#E0E0E0" ResizeBehavior="PreviousAndNext"/>
+
+            <!-- 右侧：动态步骤面板区域（通过 Visibility 切换） -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <Grid x:Name="StepPanelHost">
+                    <controls:Step1ImportPanel Visibility="{Binding CurrentStep, Converter={StaticResource EqToIntConverter}, ConverterParameter=1}"/>
+                    <controls:Step2ConfirmPanel Visibility="{Binding CurrentStep, Converter={StaticResource EqToIntConverter}, ConverterParameter=2}"/>
+                    <controls:Step3EditParamsPanel Visibility="{Binding CurrentStep, Converter={StaticResource EqToIntConverter}, ConverterParameter=3}"/>
+                    <controls:Step4AlignPanel Visibility="{Binding CurrentStep, Converter={StaticResource EqToIntConverter}, ConverterParameter=4}"/>
+                    <controls:Step5SimulatePanel Visibility="{Binding CurrentStep, Converter={StaticResource EqToIntConverter}, ConverterParameter=5}"/>
+                    <controls:Step6ExecutePanel Visibility="{Binding CurrentStep, Converter={StaticResource EqToIntConverter}, ConverterParameter=6}"/>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- 底部全局状态栏 -->
+        <StatusBar Grid.Row="2" Background="#37474F">
+            <StatusBarItem>
+                <TextBlock Text="{Binding GlobalStatus}" Foreground="White"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding SegmentCountDisplay}" Foreground="#B0BEC5"/>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Text="{Binding TotalLengthDisplay}" Foreground="#B0BEC5" Margin="12,0,0,0"/>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Text="{Binding AlignStatusDisplay}" Foreground="#B0BEC5" Margin="12,0,0,0"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="{lang:Lang CadPoint_Btn_PrevStep}" Command="{Binding GoPrevCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="8,2"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                        <TextBlock Text="{DynamicResource CadPoint_Label_CurrentStep}" Foreground="#B0BEC5"/>
+                        <TextBlock Text="{Binding CurrentStepTitle}" Foreground="#80CBC4" Margin="4,0,0,0"/>
+                    </StackPanel>
+                    <Button Content="{lang:Lang CadPoint_Btn_NextStep}" Command="{Binding GoNextCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="8,2"/>
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</UserControl>

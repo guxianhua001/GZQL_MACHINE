@@ -27,8 +27,8 @@ namespace Core.Services
                 return false;
             // 创建参数快照并编辑
             var snapshot = parameters.CreateSnapshot() as TaskParametersBase;
-
-            bool edited = await _dialogService.ShowEditorDialog(target.EditTitle, snapshot, onSaved);
+            string stationId = target.Identifier; // 从适配器获取工站标识
+            bool edited = await _dialogService.ShowEditorDialog(target.EditTitle, snapshot, onSaved, stationId);
 
             if (!edited) return false;
             // 保存和应用变更

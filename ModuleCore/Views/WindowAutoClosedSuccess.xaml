@@ -1,15 +1,16 @@
-﻿<Window x:Class="ModuleCore.Views.WindowAutoClosedSuccess"
+<Window x:Class="ModuleCore.Views.WindowAutoClosedSuccess"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:hc="https://handyorg.github.io/handycontrol"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
         WindowStyle="None"
         AllowsTransparency="True"
         WindowStartupLocation="CenterScreen"
         Opacity="0.6"
-        Title="提示窗体"
+        Title="{lang:Lang WindowAutoClosed_PromptWindow}"
         Height="200"
         Width="400">
     <Window.Resources>
@@ -42,7 +43,7 @@
                     <RowDefinition Height="auto" />
                 </Grid.RowDefinitions>
                 <TextBlock x:Name="TB_Info"
-                           Text="提示信息"
+                           Text="{lang:Lang WindowAutoClosed_PromptInfo}"
                            FontSize="22"
                            TextWrapping="Wrap"
                            VerticalAlignment="Center"

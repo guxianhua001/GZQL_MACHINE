@@ -1,0 +1,2319 @@
+using Core.Abstraction;
+using Core.Extensions;
+using Core.Models;
+using Core.Services;
+using Module.Services;
+using MotionControl.Interfaces;
+using Prism.Commands;
+using Prism.Ioc;
+using Prism.Mvvm;
+using Recipe.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Input;
+
+namespace Module.ViewModels
+{
+    /// <summary>
+    /// CAD对位操作步骤信息模型——描述每个步骤的显示内容和状态
+    /// </summary>
+    public class AlignmentStepInfo : BindableBase
+    {
+        private int _number;
+        public int Number { get => _number; set => SetProperty(ref _number, value); }
+
+        private string _title = string.Empty;
+        public string Title { get => _title; set => SetProperty(ref _title, value); }
+
+        private string _hint = string.Empty;
+        public string Hint { get => _hint; set => SetProperty(ref _hint, value); }
+
+        private bool _isCompleted;
+        public bool IsCompleted { get => _isCompleted; set => SetProperty(ref _isCompleted, value); }
+
+        private bool _isCurrent;
+        public bool IsCurrent { get => _isCurrent; set => SetProperty(ref _isCurrent, value); }
+
+        public bool ShowConnector => Number < 5;
+        public string ConnectorColor => IsCompleted ? "#4CAF50" : "#BDBDBD";
+    }
+
+    /// <summary>
+    /// 四点拟合点位模型——用于步骤1回转中心拟合的四个角度采样点
+    /// </summary>
+    public class FitPoint : BindableBase
+    {
+        public int Index { get; set; } // 行索引，用于示教命令参数
+        public string AngleLabel { get; set; } = "";
+
+        private double _fitX;
+        public double FitX { get => _fitX; set => SetProperty(ref _fitX, value); }
+
+        private double _fitY;
+        public double FitY { get => _fitY; set => SetProperty(ref _fitY, value); }
+    }
+
+    /// <summary>
+    /// 5步CAD对位标准流程ViewModel：
+    /// ① 回转中心（四点圆拟合）→ ② 全局偏移（ΔX/ΔY）→ ③ 旋转角度（CAD向量方向角）
+    /// → ④ 坐标变换（先平移后旋转）→ ⑤ 夹爪定位（最终组装位置）
+    /// </summary>
+    public class CadAlignmentViewModel : BindableBase
+    {
+        private readonly IRecipePoolService _recipePoolService;
+        private readonly IContainerProvider _containerProvider;
+
+        public CadAlignmentViewModel(IRecipePoolService recipePoolService, IContainerProvider containerProvider)
+        {
+            _recipePoolService = recipePoolService;
+            _containerProvider = containerProvider;
+
+            // ✅ 初始化统一导入服务
+            try
+            {
+                _dxfImportHelper = containerProvider.Resolve<IDxfImportHelper>();
+            }
+            catch
+            {
+                _dxfImportHelper = null;
+            }
+
+            CorrespondencePoints = new ObservableCollection<CorrespondencePoint>
+            {
+                new() { Name = "P1", CadX = 100.0, CadY = 200.0, CadZ = 50.0, ActualX = 70.32, ActualY = 213.26, ActualZ = 0 },
+                new() { Name = "P2", CadX = 150.0, CadY = 250.0, CadZ = 55.0, ActualX = 100.20, ActualY = 277.28, ActualZ = 0 },
+                new() { Name = "P3", CadX = 120.0, CadY = 180.0, CadZ = 52.0, ActualX = 95.95, ActualY = 201.28, ActualZ = 0 },
+                new() { Name = "P4", CadX = 130.0, CadY = 220.0, CadZ = 53.0, ActualX = 91.67, ActualY = 242.28, ActualZ = 0 },
+                new() { Name = "P5", CadX = 140.0, CadY = 210.0, CadZ = 54.0, ActualX = 104.47, ActualY = 236.30, ActualZ = 0 },
+                new() { Name = "P6", CadX = 110.0, CadY = 190.0, CadZ = 51.0, ActualX = 83.14, ActualY = 207.26, ActualZ = 0 },
+            };
+
+            FitPoints = new ObservableCollection<FitPoint>
+            {
+                new() { Index = 0, AngleLabel = "0°",   FitX = 70.32, FitY = 213.26 },
+                new() { Index = 1, AngleLabel = "90°",  FitX = 100.2, FitY = 277.28 },
+                new() { Index = 2, AngleLabel = "180°", FitX = 95.95, FitY = 201.28 },
+                new() { Index = 3, AngleLabel = "270°", FitX = 91.67, FitY = 242.28 },
+            };
+
+            if (CorrespondencePoints.Count > 0)
+            {
+                P1Cx = CorrespondencePoints[0].CadX;
+                P1Cy = CorrespondencePoints[0].CadY;
+                P1Mx = CorrespondencePoints[0].ActualX;
+                P1My = CorrespondencePoints[0].ActualY;
+            }
+
+            FitRotationCenterCommand = new DelegateCommand(OnFitRotationCenter);
+            ComputeGlobalOffsetCommand = new DelegateCommand(OnComputeGlobalOffset);
+            ComputeCadRotationAngleCommand = new DelegateCommand(OnComputeCadRotationAngle);
+            ExecuteTransformCommand = new DelegateCommand(OnExecuteTransform);
+            ExecuteBatchTransformCommand = new DelegateCommand(OnExecuteBatchTransform);
+            ComputeGripperPositionCommand = new DelegateCommand(OnComputeGripperPosition);
+            ShowPrincipleCommand = new DelegateCommand(OnShowPrinciple);
+            ExportDxfCommand = new DelegateCommand(OnExportDxf);
+            AddCadPointCommand = new DelegateCommand(AddCadPoint);
+            DeleteCadPointCommand = new DelegateCommand<CorrespondencePoint>(DeleteCadPoint);
+            TeachFitPointCommand = new DelegateCommand<object>(OnTeachFitPointWrapper);
+            TeachGripperPositionCommand = new DelegateCommand(OnTeachGripperPosition);
+            ApplyCalcOffsetCommand = new DelegateCommand(OnApplyCalcOffset, () => TransResultX != 0 && TransResultY != 0);
+            InheritTargetFromStep3Command = new DelegateCommand(
+                OnInheritTargetFromStep3,
+                () => CanInheritFromStep3);
+            PickBaselineFromCadCommand = new DelegateCommand(OnPickBaselineFromCad);
+            PickTargetFromCadCommand = new DelegateCommand(OnPickTargetFromCad);
+            ImportDxfCommand = new DelegateCommand(OnImportDxf);
+            AutoRecommendLinesCommand = new DelegateCommand(OnAutoRecommendLines, () => ImportedCadPoints.Count >= 4);
+            ShowBaselineSegmentCommand = new DelegateCommand(OnShowBaselineSegment, () => HasBaselineSelected);
+            ShowTargetlineSegmentCommand = new DelegateCommand(OnShowTargetlineSegment, () => HasTargetlineSelected);
+            WriteToGlobalVariablesCommand = new DelegateCommand(OnWriteToGlobalVariables, () => Step5Done);
+
+            Steps = InitializeSteps();
+            _currentStep = 1;
+            UpdateStepStates(_currentStep);
+            GoNextCommand = new DelegateCommand(GoNext, CanGoNext);
+            GoPrevCommand = new DelegateCommand(GoPrev, CanGoPrev);
+
+            RefreshPointPairNames();
+            _ = LoadAvailableGlobalVariablesAsync();
+        }
+
+        #region 对应点集合
+
+        private ObservableCollection<CorrespondencePoint> _correspondencePoints;
+        public ObservableCollection<CorrespondencePoint> CorrespondencePoints
+        {
+            get => _correspondencePoints;
+            set => SetProperty(ref _correspondencePoints, value);
+        }
+
+        #endregion
+
+        #region 步骤导航
+
+        private int _currentStep;
+        public int CurrentStep
+        {
+            get => _currentStep;
+            set
+            {
+                if (SetProperty(ref _currentStep, value))
+                {
+                    UpdateStepStates(value);
+                    RaisePropertyChanged(nameof(CurrentStepTitle));
+                    (GoNextCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (GoPrevCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 当前步骤标题（多语言支持）
+        /// </summary>
+        public string CurrentStepTitle
+        {
+            get
+            {
+                var lang = _containerProvider.Resolve<ILocalizationService>();
+                return _currentStep switch
+                {
+                    1 => lang.GetResource("CadAlignment_Step1_Title"),
+                    2 => lang.GetResource("CadAlignment_Step2_Title"),
+                    3 => lang.GetResource("CadAlignment_Step3_Title"),
+                    4 => lang.GetResource("CadAlignment_Step4_Title"),
+                    5 => lang.GetResource("CadAlignment_Step5_Title"),
+                    _ => $"{lang.GetResource("CadAlignment_StepLabel")} {_currentStep}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// 获取多语言文本（便捷方法）
+        /// </summary>
+        private string L(string key) => _containerProvider.Resolve<ILocalizationService>().GetResource(key);
+
+        public ObservableCollection<AlignmentStepInfo> Steps { get; private set; }
+
+        public ICommand GoNextCommand { get; }
+        public ICommand GoPrevCommand { get; }
+
+        #endregion
+
+        #region 步骤1 — 四点拟合（回转中心）
+
+        private ObservableCollection<FitPoint> _fitPoints;
+        public ObservableCollection<FitPoint> FitPoints
+        {
+            get => _fitPoints;
+            set => SetProperty(ref _fitPoints, value);
+        }
+
+        private double _mox;
+        public double Mox { get => _mox; set => SetProperty(ref _mox, value); }
+
+        private double _moy;
+        public double Moy { get => _moy; set => SetProperty(ref _moy, value); }
+
+        private double _fitRadius;
+        public double FitRadius { get => _fitRadius; set => SetProperty(ref _fitRadius, value); }
+
+        private bool _step1Done;
+        public bool Step1Done { get => _step1Done; set => SetProperty(ref _step1Done, value); }
+
+        #endregion
+
+        #region 步骤2 — 全局偏移
+
+        private double _p1Mx;
+        public double P1Mx { get => _p1Mx; set => SetProperty(ref _p1Mx, value); }
+
+        private double _p1My;
+        public double P1My { get => _p1My; set => SetProperty(ref _p1My, value); }
+
+        private double _p1Cx;
+        public double P1Cx { get => _p1Cx; set => SetProperty(ref _p1Cx, value); }
+
+        private double _p1Cy;
+        public double P1Cy { get => _p1Cy; set => SetProperty(ref _p1Cy, value); }
+
+        private double _deltaX;
+        public double DeltaX { get => _deltaX; set => SetProperty(ref _deltaX, value); }
+
+        private double _deltaY;
+        public double DeltaY { get => _deltaY; set => SetProperty(ref _deltaY, value); }
+
+        private bool _step2Done;
+        public bool Step2Done { get => _step2Done; set => SetProperty(ref _step2Done, value); }
+
+        #endregion
+
+        #region 步骤3 — 旋转角度
+
+        private int _basePairIndex;
+        public int BasePairIndex { get => _basePairIndex; set => SetProperty(ref _basePairIndex, value); }
+
+        private int _targetPairIndex;
+        public int TargetPairIndex { get => _targetPairIndex; set => SetProperty(ref _targetPairIndex, value); }
+
+        private List<string> _pairNames = new();
+        public List<string> PairNames { get => _pairNames; set => SetProperty(ref _pairNames, value); }
+
+        /// <summary>基准线段选取的坐标点显示文本（如 "#1 (10.5, 20.3) → #3 (15.2, 30.1)"）</summary>
+        private string _baselineDisplayText = "";
+        public string BaselineDisplayText { get => _baselineDisplayText; set => SetProperty(ref _baselineDisplayText, value); }
+
+        /// <summary>目标线段选取的坐标点显示文本（如 "#5 (30.1, 40.2) → #7 (35.3, 45.4)"）</summary>
+        private string _targetlineDisplayText = "";
+        public string TargetlineDisplayText { get => _targetlineDisplayText; set => SetProperty(ref _targetlineDisplayText, value); }
+
+        /// <summary>是否已选取基准线段（控制"显示基准线段"按钮启用状态）</summary>
+        public bool HasBaselineSelected => BaseStartIndex >= 0 && BaseEndIndex >= 0;
+
+        /// <summary>是否已选取目标线段（控制"显示目标线段"按钮启用状态）</summary>
+        public bool HasTargetlineSelected => TargetStartIndex >= 0 && TargetEndIndex >= 0;
+
+        /// <summary>基准起点变换后坐标显示文本</summary>
+        private string _baseStartTransformedText = "";
+        public string BaseStartTransformedText { get => _baseStartTransformedText; set => SetProperty(ref _baseStartTransformedText, value); }
+
+        /// <summary>基准终点变换后坐标显示文本</summary>
+        private string _baseEndTransformedText = "";
+        public string BaseEndTransformedText { get => _baseEndTransformedText; set => SetProperty(ref _baseEndTransformedText, value); }
+
+        /// <summary>目标起点变换后坐标显示文本</summary>
+        private string _targetStartTransformedText = "";
+        public string TargetStartTransformedText { get => _targetStartTransformedText; set => SetProperty(ref _targetStartTransformedText, value); }
+
+        /// <summary>目标终点变换后坐标显示文本</summary>
+        private string _targetEndTransformedText = "";
+        public string TargetEndTransformedText { get => _targetEndTransformedText; set => SetProperty(ref _targetEndTransformedText, value); }
+
+        /// <summary>步骤3已选点位是否有变换结果（控制变换坐标区域显示）</summary>
+        public bool HasStep3TransformResult => Step2Done;
+
+        private double _alphaBaseDeg;
+        public double AlphaBaseDeg { get => _alphaBaseDeg; set => SetProperty(ref _alphaBaseDeg, value); }
+
+        private double _alphaTargetDeg;
+        public double AlphaTargetDeg { get => _alphaTargetDeg; set => SetProperty(ref _alphaTargetDeg, value); }
+
+        private double _thetaDeg;
+        public double ThetaDeg { get => _thetaDeg; set { SetProperty(ref _thetaDeg, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
+
+        private bool _step3Done;
+        public bool Step3Done { get => _step3Done; set { SetProperty(ref _step3Done, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
+
+        public bool CanInheritFromStep3 => Step3Done && ThetaDeg != 0;
+
+        private bool _hasCadDrawingLoaded;
+        public bool HasCadDrawingLoaded
+        {
+            get => _hasCadDrawingLoaded;
+            set => SetProperty(ref _hasCadDrawingLoaded, value);
+        }
+
+        private string _cadPickStatus;
+        public string CadPickStatus
+        {
+            get => _cadPickStatus;
+            set => SetProperty(ref _cadPickStatus, value);
+        }
+
+        // 导入的 CAD 点位集合
+        private ObservableCollection<CadPoint> _importedCadPoints = new();
+        public ObservableCollection<CadPoint> ImportedCadPoints { get => _importedCadPoints; set => SetProperty(ref _importedCadPoints, value); }
+
+        // DXF 解析结果缓存（含完整 CadEntity 图元信息，供 HalconCanvas 渲染）
+        private DxfParseResult _dxfParseResult;
+        public DxfParseResult DxfParseResult { get => _dxfParseResult; set => SetProperty(ref _dxfParseResult, value); }
+
+        // ✅ 新增：DXF 统一导入服务（保证与 CadPointEditorViewModel 使用相同导入逻辑）
+        private IDxfImportHelper _dxfImportHelper;
+
+        // 所有图元的扁平列表（供 HalconCanvas ItemsSource 绑定）
+        private ObservableCollection<CadEntity> _cadEntities = new();
+        public ObservableCollection<CadEntity> CadEntities { get => _cadEntities; set => SetProperty(ref _cadEntities, value); }
+
+        // 选取标记叠加层（X标记 + 线段，与 DXF 图元合并后显示在 HalconCanvas 上）
+        private readonly List<CadEntity> _alignmentMarkers = new();
+
+        /// <summary>HalconCanvas 绑定的合并实体列表（DXF图元 + 选取标记），必须为 ObservableCollection</summary>
+        private ObservableCollection<CadEntity> _canvasDisplayEntities = new();
+        public ObservableCollection<CadEntity> CanvasDisplayEntities { get => _canvasDisplayEntities; set => SetProperty(ref _canvasDisplayEntities, value); }
+
+        // DataGrid 选中项（用于点击选取）
+        private CadPoint _selectedCadPoint;
+        public CadPoint SelectedCadPoint
+        {
+            get => _selectedCadPoint;
+            set
+            {
+                if (SetProperty(ref _selectedCadPoint, value) && value != null)
+                {
+                    var idx = ImportedCadPoints.IndexOf(value);
+                    if (idx >= 0)
+                    {
+                        CadSelectedSegmentPoints = new List<CadPoint> { value };
+                        CadSelectedPointIndex = 0;
+                    }
+                    OnCadPointSelected(value);
+                }
+            }
+        }
+
+        // 基准线段起点/终点索引（指向 ImportedCadPoints）
+        private int _baseStartIndex = -1;
+        public int BaseStartIndex { get => _baseStartIndex; set => SetProperty(ref _baseStartIndex, value); }
+        private int _baseEndIndex = -1;
+        public int BaseEndIndex { get => _baseEndIndex; set => SetProperty(ref _baseEndIndex, value); }
+
+        // 目标线段起点/终点索引（指向 ImportedCadPoints）
+        private int _targetStartIndex = -1;
+        public int TargetStartIndex { get => _targetStartIndex; set => SetProperty(ref _targetStartIndex, value); }
+        private int _targetEndIndex = -1;
+        public int TargetEndIndex { get => _targetEndIndex; set => SetProperty(ref _targetEndIndex, value); }
+
+        // 导入文件路径显示
+        private string _cadFilePath = "";
+        public string CadFilePath { get => _cadFilePath; set => SetProperty(ref _cadFilePath, value); }
+
+        // 选取模式状态
+        private bool _isPickingBaseline;
+        private bool _isPickingTarget;
+
+        /// <summary>图形窗口上显示X标记的点位集合（绑定到HalconCanvasControl.SelectedSegmentPoints）</summary>
+        private List<CadPoint> _cadSelectedSegmentPoints;
+        public List<CadPoint> CadSelectedSegmentPoints
+        {
+            get => _cadSelectedSegmentPoints;
+            set => SetProperty(ref _cadSelectedSegmentPoints, value);
+        }
+
+        /// <summary>图形窗口上高亮显示的选中点位索引（绑定到HalconCanvasControl.SelectedPointIndex）</summary>
+        private int _cadSelectedPointIndex = -1;
+        public int CadSelectedPointIndex
+        {
+            get => _cadSelectedPointIndex;
+            set => SetProperty(ref _cadSelectedPointIndex, value);
+        }
+
+        #endregion
+
+        #region 步骤4 — 坐标变换
+
+        private int _transformSelectedIndex = 2;
+        public int TransformSelectedIndex { get => _transformSelectedIndex; set => SetProperty(ref _transformSelectedIndex, value); }
+
+        private int _targetPointIndex;
+        public int TargetPointIndex { get => _targetPointIndex; set => SetProperty(ref _targetPointIndex, value); }
+
+        private List<string> _pointNames = new();
+        public List<string> PointNames { get => _pointNames; set => SetProperty(ref _pointNames, value); }
+
+        /// <summary>步骤4目标位原始CAD坐标显示文本</summary>
+        private string _step4TargetCadText = "";
+        public string Step4TargetCadText { get => _step4TargetCadText; set => SetProperty(ref _step4TargetCadText, value); }
+
+        /// <summary>步骤4目标位平移后坐标显示文本</summary>
+        private string _step4TargetOffsetText = "";
+        public string Step4TargetOffsetText { get => _step4TargetOffsetText; set => SetProperty(ref _step4TargetOffsetText, value); }
+
+        /// <summary>是否使用步骤3的CAD目标点位作为步骤4变换源（而非CorrespondencePoints）</summary>
+        private bool _useStep3TargetForTransform;
+
+        private double _transXm;
+        public double TransXm { get => _transXm; set => SetProperty(ref _transXm, value); }
+
+        private double _transYm;
+        public double TransYm { get => _transYm; set => SetProperty(ref _transYm, value); }
+
+        private double _transDx;
+        public double TransDx { get => _transDx; set => SetProperty(ref _transDx, value); }
+
+        private double _transDy;
+        public double TransDy { get => _transDy; set => SetProperty(ref _transDy, value); }
+
+        private double _transResultX;
+public double TransResultX { get => _transResultX; set { if (SetProperty(ref _transResultX, value)) { (ApplyCalcOffsetCommand as DelegateCommand)?.RaiseCanExecuteChanged(); } } }
+
+private double _transResultY;
+public double TransResultY { get => _transResultY; set { if (SetProperty(ref _transResultY, value)) { (ApplyCalcOffsetCommand as DelegateCommand)?.RaiseCanExecuteChanged(); } } }
+
+        private bool _step4Done;
+        public bool Step4Done { get => _step4Done; set => SetProperty(ref _step4Done, value); }
+
+        #endregion
+
+        #region 步骤5 — 夹爪定位
+
+private double _gripperOffX = 15.0;
+public double GripperOffX { get => _gripperOffX; set => SetProperty(ref _gripperOffX, value); }
+
+private double _gripperOffY = -10.0;
+public double GripperOffY { get => _gripperOffY; set => SetProperty(ref _gripperOffY, value); }
+
+// === 示教坐标 ===
+private double _teachX;
+public double TeachX { get => _teachX; set => SetProperty(ref _teachX, value); }
+
+private double _teachY;
+public double TeachY { get => _teachY; set => SetProperty(ref _teachY, value); }
+
+private double _teachRy;
+public double TeachRy { get => _teachRy; set => SetProperty(ref _teachRy, value); }
+
+private double _teachZ;
+public double TeachZ { get => _teachZ; set => SetProperty(ref _teachZ, value); }
+
+// === 计算偏移量（只读）===
+public double CalcOffX => TransResultX != 0 ? Math.Round(TeachX - TransResultX, 3) : 0;
+        public double CalcOffY => TransResultY != 0 ? Math.Round(TeachY - TransResultY, 3) : 0;
+
+// === 偏移模式切换 ===
+private bool _useCalculatedOffset;
+public bool UseCalculatedOffset 
+{ 
+    get => _useCalculatedOffset; 
+    set 
+    { 
+        if (SetProperty(ref _useCalculatedOffset, value))
+        {
+            RaisePropertyChanged(nameof(CalcOffX));
+            RaisePropertyChanged(nameof(CalcOffY));
+            if (value && TransResultX != 0 && TransResultY != 0)
+            {
+                GripperOffX = CalcOffX;
+                GripperOffY = CalcOffY;
+            }
+        } 
+    }
+}
+
+private double _finalGripperX;
+public double FinalGripperX { get => _finalGripperX; set => SetProperty(ref _finalGripperX, value); }
+
+private double _finalGripperY;
+public double FinalGripperY { get => _finalGripperY; set => SetProperty(ref _finalGripperY, value); }
+
+private string _finalGripperXLinkedVar = "GripperFinalX";
+public string FinalGripperXLinkedVar { get => _finalGripperXLinkedVar; set => SetProperty(ref _finalGripperXLinkedVar, value); }
+
+private string _finalGripperYLinkedVar = "GripperFinalY";
+public string FinalGripperYLinkedVar { get => _finalGripperYLinkedVar; set => SetProperty(ref _finalGripperYLinkedVar, value); }
+
+/// <summary>可选取的全局变量列表（用于ComboBox下拉选择）</summary>
+private ObservableCollection<GlobalVariable> _availableGlobalVariables = new();
+public ObservableCollection<GlobalVariable> AvailableGlobalVariables { get => _availableGlobalVariables; set => SetProperty(ref _availableGlobalVariables, value); }
+
+private bool _step5Done;
+public bool Step5Done { get => _step5Done; set => SetProperty(ref _step5Done, value); }
+
+#endregion
+
+        #region 通用属性
+
+        private string _statusMessage;
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        #endregion
+
+        #region 命令定义
+
+        public ICommand FitRotationCenterCommand { get; private set; }
+        public ICommand ComputeGlobalOffsetCommand { get; private set; }
+        public ICommand ComputeCadRotationAngleCommand { get; private set; }
+        public ICommand ExecuteTransformCommand { get; private set; }
+        public ICommand ExecuteBatchTransformCommand { get; private set; }
+        public ICommand ComputeGripperPositionCommand { get; private set; }
+        public ICommand ShowPrincipleCommand { get; private set; }
+        public ICommand ExportDxfCommand { get; private set; }
+        public ICommand AddCadPointCommand { get; private set; }
+        public ICommand DeleteCadPointCommand { get; private set; }
+        public ICommand TeachFitPointCommand { get; private set; }
+        public ICommand TeachGripperPositionCommand { get; private set; }
+        public ICommand ApplyCalcOffsetCommand { get; private set; }
+        public ICommand PickBaselineFromCadCommand { get; private set; }
+        public ICommand PickTargetFromCadCommand { get; private set; }
+        public ICommand ImportDxfCommand { get; private set; }
+        public ICommand AutoRecommendLinesCommand { get; private set; }
+        public ICommand InheritTargetFromStep3Command { get; private set; }
+        public ICommand ShowBaselineSegmentCommand { get; private set; }
+        public ICommand ShowTargetlineSegmentCommand { get; private set; }
+        public ICommand WriteToGlobalVariablesCommand { get; private set; }
+
+        /// <summary>请求画布执行 FitToAll 自适应视口（由 View 订阅）</summary>
+        public event Action FitToAllRequested;
+
+        /// <summary>请求画布聚焦到指定线段区域（由 View 订阅），参数为 (x1, y1, x2, y2)</summary>
+        public event Action<double, double, double, double> FitToSegmentRequested;
+
+        /// <summary>请求画布开始批量更新——暂停渲染，避免多次属性变更导致闪烁</summary>
+        public event Action BatchUpdateStartRequested;
+
+        /// <summary>请求画布结束批量恢复渲染——执行一次完整重绘</summary>
+        public event Action BatchUpdateEndRequested;
+
+#endregion
+
+        #region 核心1：四点拟合求回转中心（最小二乘法 Kåsa 方法）
+
+        /// <summary>
+        /// 示教命令包装器，将 CommandParameter(object) 转换为 int 后调用实际示教方法
+        /// </summary>
+        private void OnTeachFitPointWrapper(object parameter)
+        {
+            if (parameter is int rowIndex)
+                OnTeachFitPoint(rowIndex);
+            else if (parameter != null && int.TryParse(parameter.ToString(), out int parsed))
+                OnTeachFitPoint(parsed);
+        }
+
+        /// <summary>
+        /// 示教单个拟合点：根据行索引获取对应角度的实测坐标
+        /// 模拟从运动控制器读取当前机械坐标（实际项目中应替换为真实控制器接口调用）
+        /// </summary>
+        private void OnTeachFitPoint(int rowIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= FitPoints.Count) return;
+            var fp = FitPoints[rowIndex];
+
+            // 模拟：读取当前机械坐标（实际应从运动控制器读取）
+            // 这里用默认数据模拟示教结果：基于角度偏移生成合理坐标
+            double baseAngle = rowIndex * 90.0;
+            double rad = baseAngle * Math.PI / 180.0;
+            double cx = 100.0, cy = 175.0, r = 75.0;
+            double teachX = cx + r * Math.Cos(rad);
+            double teachY = cy + r * Math.Sin(rad);
+
+            fp.FitX = Math.Round(teachX, 3);
+            fp.FitY = Math.Round(teachY, 3);
+
+            StatusMessage = string.Format(L("CAD_Fit_Coord_Get"), fp.AngleLabel, fp.FitX.ToString("F3"), fp.FitY.ToString("F3"));
+        }
+
+        /// <summary>
+        /// 使用最小二乘法（Kåsa方法）对四点进行圆拟合，求解回转中心(Mox,Moy)和拟合半径R
+        /// 拟合方程：(x-a)² + (y-b)² = r²，其中(a,b)为圆心，r为半径
+        /// </summary>
+        private void FitRotationCenter()
+        {
+            if (FitPoints == null || FitPoints.Count < 3)
+            {
+                StatusMessage = L("CAD_Fit_Need3Points");
+                return;
+            }
+
+            int n = FitPoints.Count;
+            double sumX = 0, sumY = 0;
+            for (int i = 0; i < n; i++)
+            {
+                sumX += FitPoints[i].FitX;
+                sumY += FitPoints[i].FitY;
+            }
+            double xMean = sumX / n;
+            double yMean = sumY / n;
+
+            double A = 0, B = 0, C = 0, D = 0, E = 0;
+            for (int i = 0; i < n; i++)
+            {
+                double xi = FitPoints[i].FitX - xMean;
+                double yi = FitPoints[i].FitY - yMean;
+                double xi2yi2 = xi * xi + yi * yi;
+                A += xi2yi2;
+                B += xi;
+                C += yi;
+                D += xi * xi2yi2;
+                E += yi * xi2yi2;
+            }
+
+            double U = n * A - B * B - C * C;
+            if (Math.Abs(U) < 1e-8)
+            {
+                StatusMessage = L("CAD_Fit_Degenerate");
+                return;
+            }
+
+            double a = (n * D - B * A) / U + xMean;
+            double b = (n * E - C * A) / U + yMean;
+            double r = Math.Sqrt((a - xMean) * (a - xMean) + (b - yMean) * (b - yMean) + A / n);
+
+            Mox = a;
+            Moy = b;
+            FitRadius = r;
+            Step1Done = true;
+            StatusMessage = string.Format(L("CAD_Fit_Center_Done"), a.ToString("F3"), b.ToString("F3"), r.ToString("F3"));
+        }
+
+        private void OnFitRotationCenter() => FitRotationCenter();
+
+        #endregion
+
+        #region 核心2：计算全局偏移量 ΔX/ΔY
+
+        /// <summary>
+        /// 根据P1机械坐标与CAD坐标之差计算全局平移偏移量
+        /// ΔX = P1_Mx - P1_Cx,  ΔY = P1_My - P1_Cy
+        /// </summary>
+        private void ComputeGlobalOffset()
+        {
+            DeltaX = P1Mx - P1Cx;
+            DeltaY = P1My - P1Cy;
+            Step2Done = true;
+            UpdateMachineCoordinates();
+            UpdateTransformedCoordText();
+            StatusMessage = string.Format(L("CAD_Offset_Done"), DeltaX.ToString("F3"), DeltaY.ToString("F3"));
+        }
+
+        private void OnComputeGlobalOffset() => ComputeGlobalOffset();
+
+        #endregion
+
+        #region 核心3：CAD向量方向角计算
+
+        /// <summary>
+        /// 从对应点集中取两对基准线段，分别计算其方向角，
+        /// 所需旋转角度 θ = α_基准 - α_目标，归一化到 (-180, 180]
+        /// </summary>
+        private void ComputeCadRotationAngle()
+        {
+            // 优先使用从 CAD 导入点位选取的线段
+            if (HasCadDrawingLoaded && BaseEndIndex >= 0 && TargetEndIndex >= 0)
+            {
+                // 边界检查：确保所有索引都在有效范围内
+                if (BaseStartIndex < 0 || BaseStartIndex >= ImportedCadPoints.Count ||
+                    BaseEndIndex < 0 || BaseEndIndex >= ImportedCadPoints.Count ||
+                    TargetStartIndex < 0 || TargetStartIndex >= ImportedCadPoints.Count ||
+                    TargetEndIndex < 0 || TargetEndIndex >= ImportedCadPoints.Count)
+                {
+                    StatusMessage = L("CAD_Rotation_InvalidIndex");
+                    return;
+                }
+
+                var p1 = ImportedCadPoints[BaseStartIndex];
+                var p2 = ImportedCadPoints[BaseEndIndex];
+                var p3 = ImportedCadPoints[TargetStartIndex];
+                var p4 = ImportedCadPoints[TargetEndIndex];
+
+                double alphaBaseRad = Math.Atan2(p2.Y - p1.Y, p2.X - p1.X);
+                double alphaTargetRad = Math.Atan2(p4.Y - p3.Y, p4.X - p3.X);
+
+                AlphaBaseDeg = alphaBaseRad * 180.0 / Math.PI;
+                AlphaTargetDeg = alphaTargetRad * 180.0 / Math.PI;
+
+                double theta = AlphaBaseDeg - AlphaTargetDeg;
+
+                while (theta > 180.0) theta -= 360.0;
+                while (theta <= -180.0) theta += 360.0;
+
+                ThetaDeg = theta;
+                Step3Done = true;
+
+                StatusMessage = string.Format(L("CAD_Rotation_Done_CAD"), AlphaBaseDeg.ToString("F3"), AlphaTargetDeg.ToString("F3"), ThetaDeg.ToString("F3"));
+                CadPickStatus = string.Format(L("CAD_Rotation_Done_Theta"), ThetaDeg.ToString("F3"));
+                return;
+            }
+
+            // 回退：从 CorrespondencePoints 中按 PairIndex 取点
+            if (CorrespondencePoints == null || CorrespondencePoints.Count < 4)
+            {
+                StatusMessage = L("CAD_Rotation_Need4Points");
+                return;
+            }
+
+            var cp1 = CorrespondencePoints[BasePairIndex];
+            var cp2 = CorrespondencePoints[BasePairIndex + 1];
+            var cp3 = CorrespondencePoints[TargetPairIndex];
+            var cp4 = CorrespondencePoints[TargetPairIndex + 1];
+
+            double alphaBaseRadFallback = Math.Atan2(cp2.CadY - cp1.CadY, cp2.CadX - cp1.CadX);
+            double alphaTargetRadFallback = Math.Atan2(cp4.CadY - cp3.CadY, cp4.CadX - cp3.CadX);
+
+            AlphaBaseDeg = alphaBaseRadFallback * 180.0 / Math.PI;
+            AlphaTargetDeg = alphaTargetRadFallback * 180.0 / Math.PI;
+
+            double thetaFallback = AlphaBaseDeg - AlphaTargetDeg;
+
+            while (thetaFallback > 180.0) thetaFallback -= 360.0;
+            while (thetaFallback <= -180.0) thetaFallback += 360.0;
+
+            ThetaDeg = thetaFallback;
+            Step3Done = true;
+            StatusMessage = string.Format(L("CAD_Rotation_Done"), AlphaBaseDeg.ToString("F3"), AlphaTargetDeg.ToString("F3"), ThetaDeg.ToString("F3"));
+        }
+
+        private void OnComputeCadRotationAngle() => ComputeCadRotationAngle();
+
+        /// <summary>从CAD图形窗口选取基准线段(P1-P2)</summary>
+        private void OnPickBaselineFromCad()
+        {
+            if (!HasCadDrawingLoaded)
+            {
+                StatusMessage = L("CAD_ImportDXF_First");
+                CadPickStatus = L("CAD_Import_CAD_First");
+                return;
+            }
+
+            _isPickingBaseline = true;
+            _isPickingTarget = false;
+
+            BaseStartIndex = -1;
+            BaseEndIndex = -1;
+            UpdateCadPointRoles();
+
+            CadSelectedSegmentPoints = null;
+            CadSelectedPointIndex = -1;
+
+            CadPickStatus = L("CAD_PickBaseline_Start");
+            StatusMessage = L("CAD_PickBaseline_Status");
+        }
+
+        /// <summary>从CAD图形窗口选取目标线段(P3-P4)</summary>
+        private void OnPickTargetFromCad()
+        {
+            if (!HasCadDrawingLoaded)
+            {
+                StatusMessage = L("CAD_ImportDXF_First");
+                CadPickStatus = L("CAD_Import_CAD_First");
+                return;
+            }
+
+            _isPickingTarget = true;
+            _isPickingBaseline = false;
+
+            TargetStartIndex = -1;
+            TargetEndIndex = -1;
+            UpdateCadPointRoles();
+
+            CadSelectedSegmentPoints = null;
+            CadSelectedPointIndex = -1;
+
+            CadPickStatus = L("CAD_PickTarget_Start");
+            StatusMessage = L("CAD_PickTarget_Status");
+        }
+
+        /// <summary>导入 DXF 文件并提取点位——使用 IDxfImportHelper 统一导入方法</summary>
+        private void OnImportDxf()
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "DXF文件|*.dxf",
+                Title = "选择CAD图纸(DXF)",
+                InitialDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "net9.0-windows7.0", "Config", "LibreCAD")
+            };
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                // ✅ 使用统一的 DXF 导入服务（与 CadPointEditorViewModel 共享相同逻辑）
+                if (_dxfImportHelper != null)
+                {
+                    var importResult = _dxfImportHelper.Import(dialog.FileName, DxfImportOptions.ForAlignment);
+                    _dxfParseResult = importResult.ParseResult;
+
+                    // 使用统一导入服务返回的实体集合（已根据选项过滤 ARC）
+                    CadEntities.Clear();
+                    foreach (var entity in importResult.DisplayEntities)
+                        CadEntities.Add(entity);
+
+                    // 使用统一导入服务返回的点位数据
+                    ImportedCadPoints.Clear();
+                    for (int i = 0; i < importResult.ExtractedPoints.Count; i++)
+                    {
+                        var pt = importResult.ExtractedPoints[i];
+                        ImportedCadPoints.Add(new CadPoint
+                        {
+                            Id = pt.Id ?? (i + 1).ToString(),
+                            X = Math.Round(pt.X, 3),
+                            Y = Math.Round(pt.Y, 3),
+                            Z = Math.Round(pt.Z, 3),
+                            AssySite = ""
+                        });
+                    }
+                }
+                else
+                {
+                    // 回退到旧的直接解析方法（当 IDxfImportHelper 不可用时）
+                    OnImportDxfLegacy(dialog.FileName);
+                }
+
+                if (ImportedCadPoints.Count == 0 && CadEntities.Count == 0)
+                {
+                    StatusMessage = L("CAD_DXF_NoPoints");
+                    CadPickStatus = L("CAD_NoPoints_Found");
+                    return;
+                }
+
+                CadFilePath = System.IO.Path.GetFileName(dialog.FileName);
+                HasCadDrawingLoaded = true;
+
+                RebuildCanvasDisplayEntities();
+                FitToAllRequested?.Invoke();
+
+                BaseStartIndex = BaseEndIndex = -1;
+                TargetStartIndex = TargetEndIndex = -1;
+                _isPickingBaseline = _isPickingTarget = false;
+                AlphaBaseDeg = AlphaTargetDeg = ThetaDeg = 0;
+                Step3Done = false;
+                UpdateCadPointRoles();
+                UpdateMachineCoordinates();
+
+                CadSelectedSegmentPoints = null;
+                CadSelectedPointIndex = -1;
+
+                CadPickStatus = string.Format(L("CAD_Import_Success"), ImportedCadPoints.Count);
+                StatusMessage = $"DXF 导入成功：{ImportedCadPoints.Count} 个点，来源: {CadFilePath}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"DXF 导入失败: {ex.Message}";
+                CadPickStatus = L("CAD_Import_Failed");
+            }
+        }
+
+        /// <summary>
+        /// 回退的旧版 DXF 导入方法（当 IDxfImportHelper 不可用时使用）
+        /// 保持向后兼容性
+        /// </summary>
+        private void OnImportDxfLegacy(string filePath)
+        {
+            try
+            {
+                var container = ContainerLocator.Container;
+                if (container != null && container.IsRegistered<IDxfParserService>())
+                {
+                    var dxfParser = container.Resolve<IDxfParserService>();
+                    _dxfParseResult = dxfParser.Parse(filePath);
+                    CadEntities.Clear();
+                    foreach (var layerEntities in _dxfParseResult.Layers.Values)
+                        foreach (var entity in layerEntities)
+                            if (entity is not Core.Models.CadArc)
+                                CadEntities.Add(entity);
+                }
+            }
+            catch { /* IDxfParserService 不可用时忽略 */ }
+
+            var points = DxfParser.ExtractPoints(filePath, null);
+            ImportedCadPoints.Clear();
+            for (int i = 0; i < points.Count; i++)
+            {
+                var pt = points[i];
+                ImportedCadPoints.Add(new CadPoint
+                {
+                    Id = (i + 1).ToString(),
+                    X = Math.Round(pt.X, 3),
+                    Y = Math.Round(pt.Y, 3),
+                    Z = Math.Round(pt.Z, 3),
+                    AssySite = ""
+                });
+            }
+        }
+
+        /// <summary>
+        /// 尝试从POLYLINE的VERTEX点和CIRCLE标记点生成最佳拟合椭圆
+        /// 使用Direct Least Squares (DLS)算法 - Fitzgibbon 1999 - 工业级精度
+        /// 优先使用POLYLINE的VERTEX点（98个采样点），数据量更大拟合更精确
+        /// </summary>
+        private void TryGenerateFittedEllipse()
+        {
+            try
+            {
+                // 步骤1：收集POLYLINE的所有VERTEX坐标作为主要拟合数据源
+                // POLYLINE包含约98个VERTEX点，构成弧形轨迹的真实采样
+                var fitPoints = new List<Core.Models.PointF>();
+
+                // 1a: 收集ImportedCadPoints（来自DxfParser.ExtractPoints的POLYLINE VERTEX）
+                if (ImportedCadPoints != null && ImportedCadPoints.Count >= 5)
+                {
+                    foreach (var pt in ImportedCadPoints)
+                    {
+                        fitPoints.Add(new Core.Models.PointF((float)pt.X, (float)pt.Y));
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[EllipseFit] 使用{fitPoints.Count}个POLYLINE VERTEX点");
+                }
+
+                // 1b: 如果POLYLINE点不足，回退到CIRCLE标记点
+                if (fitPoints.Count < 5)
+                {
+                    foreach (var entity in CadEntities)
+                    {
+                        if (entity is Core.Models.CadCircle circle)
+                        {
+                            fitPoints.Add(new Core.Models.PointF(
+                                (float)circle.CenterX,
+                                (float)circle.CenterY));
+                        }
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[EllipseFit] 回退使用{fitPoints.Count}个CIRCLE中心点");
+                }
+
+                if (fitPoints.Count < 5)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[EllipseFit] 数据点不足({fitPoints.Count})，跳过椭圆拟合");
+                    return;
+                }
+
+                // 步骤2：使用DLS算法计算精确的椭圆参数
+                var ellipseParams = Core.Models.CadEntityHalconExtensions.FitEllipseDLS(fitPoints);
+
+                if (!ellipseParams.IsValid || double.IsNaN(ellipseParams.CenterX))
+                {
+                    System.Diagnostics.Debug.WriteLine("[EllipseFit] DLS拟合失败或结果无效");
+                    return;
+                }
+
+                // 步骤3：生成拟合椭圆的XLD轮廓
+                var fittedEllipseXld = Core.Models.CadEntityHalconExtensions.FitEllipseFromPoints(fitPoints);
+
+                if (fittedEllipseXld == null || !fittedEllipseXld.IsInitialized())
+                {
+                    System.Diagnostics.Debug.WriteLine("[EllipseFit] 拟合椭圆XLD生成失败");
+                    return;
+                }
+
+                // 步骤4：将拟合椭圆作为特殊实体添加到CadEntities
+                var fittedEllipse = new Core.Models.CadArc
+                {
+                    CenterX = ellipseParams.CenterX,
+                    CenterY = ellipseParams.CenterY,
+                    Radius = Math.Max(ellipseParams.MajorAxis, ellipseParams.MinorAxis) / 2,
+                    StartAngle = 0,
+                    EndAngle = 360,
+                    LayerName = "0",
+                    Color = "#2196F3",
+                    IsVisible = true,
+                    Id = "FITTED_ELLIPSE_DLS"
+                };
+
+                // 将预计算的拟合椭圆XLD轮廓存储到Tag属性
+                fittedEllipse.Tag = fittedEllipseXld;
+
+                // 移除原始的ARC实体（起止角=0°,0°的不精确ARC）
+                for (int i = CadEntities.Count - 1; i >= 0; i--)
+                {
+                    var e = CadEntities[i];
+                    if (e.Id != null && e is Core.Models.CadArc arc &&
+                        arc.StartAngle == 0 && arc.EndAngle == 0)
+                    {
+                        CadEntities.RemoveAt(i);
+                    }
+                }
+
+                // 添加拟合椭圆到实体列表
+                CadEntities.Add(fittedEllipse);
+
+                System.Diagnostics.Debug.WriteLine(
+                    string.Format("[EllipseFit] DLS成功: Center=({0},{1}), Axes=({2},{3}), Rot={4}°",
+                        ellipseParams.CenterX.ToString("F2"),
+                        ellipseParams.CenterY.ToString("F2"),
+                        ellipseParams.MajorAxis.ToString("F2"),
+                        ellipseParams.MinorAxis.ToString("F2"),
+                        (ellipseParams.RotationRad * 180 / Math.PI).ToString("F1")));
+
+                StatusMessage += L("CAD_EllipseFit_Done");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[EllipseFit] 异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>DataGrid 行选中时触发，根据当前选取模式分配到基准或目标线段</summary>
+        /// <remarks>
+        /// ✅ 性能优化：单次触发模式
+        /// - CadSelectedSegmentPoints只赋值一次（避免多次触发HalconCanvas重绘）
+        /// - UpdateCadPointRoles()内部已优化为批量更新
+        /// - 状态消息即时反馈（用户体验优先）
+        /// </remarks>
+        private void OnCadPointSelected(CadPoint point)
+        {
+            if (point == null) return;
+
+            var idx = ImportedCadPoints.IndexOf(point);
+            if (idx < 0 || idx >= ImportedCadPoints.Count) return;
+
+            // ✅ 优化：请求画布开始批量更新，暂停渲染，避免多次属性变更导致闪烁
+            BatchUpdateStartRequested?.Invoke();
+
+            try
+            {
+                CadSelectedPointIndex = idx;
+
+                // 按需显示X标记：只在基准/目标线段选取模式下显示选中点
+                if (_isPickingBaseline || _isPickingTarget)
+                {
+                    CadSelectedSegmentPoints = new List<CadPoint> { point };
+                }
+                else
+                {
+                    CadSelectedSegmentPoints = null;
+                }
+
+                if (_isPickingBaseline)
+                {
+                    if (BaseStartIndex < 0)
+                    {
+                        BaseStartIndex = idx;
+                        UpdateCadPointRoles();
+                        CadPickStatus = string.Format(L("CAD_Baseline_Start_Selected"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
+                        StatusMessage = string.Format(L("CAD_Baseline_Start_Status"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
+                    }
+                    else if (BaseEndIndex < 0 && idx != BaseStartIndex)
+                    {
+                        BaseEndIndex = idx;
+                        UpdateCadPointRoles();
+                        if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
+                        {
+                            var p1 = ImportedCadPoints[BaseStartIndex];
+
+                            AlphaBaseDeg = Math.Atan2(point.Y - p1.Y, point.X - p1.X) * 180 / Math.PI;
+                            RaisePropertyChanged(nameof(AlphaBaseDeg));
+
+                            _isPickingBaseline = false;
+                            CadPickStatus = string.Format(L("CAD_Baseline_Done"), p1.Id, point.Id, AlphaBaseDeg.ToString("F2"));
+                            StatusMessage = string.Format(L("CAD_Baseline_Done_Status"), p1.X.ToString("F1"), p1.Y.ToString("F1"), point.X.ToString("F1"), point.Y.ToString("F1"));
+                        }
+                    }
+                    else if (idx == BaseStartIndex)
+                    {
+                        CadPickStatus = L("CAD_SamePoint_Warning_Base");
+                    }
+                }
+                else if (_isPickingTarget)
+                {
+                    if (TargetStartIndex < 0)
+                    {
+                        TargetStartIndex = idx;
+                        UpdateCadPointRoles();
+                        CadPickStatus = string.Format(L("CAD_Target_Start_Selected"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
+                        StatusMessage = string.Format(L("CAD_Target_Start_Status"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
+                    }
+                    else if (TargetEndIndex < 0 && idx != TargetStartIndex)
+                    {
+                        TargetEndIndex = idx;
+                        UpdateCadPointRoles();
+                        if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+                        {
+                            var p3 = ImportedCadPoints[TargetStartIndex];
+
+                            AlphaTargetDeg = Math.Atan2(point.Y - p3.Y, point.X - p3.X) * 180 / Math.PI;
+                            RaisePropertyChanged(nameof(AlphaTargetDeg));
+
+                            _isPickingTarget = false;
+                            CadPickStatus = string.Format(L("CAD_Target_Done"), p3.Id, point.Id, AlphaTargetDeg.ToString("F2"));
+                            StatusMessage = string.Format(L("CAD_Target_Done_Status"), p3.X.ToString("F1"), p3.Y.ToString("F1"), point.X.ToString("F1"), point.Y.ToString("F1"));
+
+                            if (BaseEndIndex >= 0 && TargetEndIndex >= 0)
+                            {
+                                CadPickStatus += "\n" + L("CAD_TwoLines_Ready");
+                            }
+                        }
+                    }
+                }
+                else if (idx == TargetStartIndex)
+                {
+                    CadPickStatus = L("CAD_SamePoint_Warning_Target");
+                }
+            }
+            finally
+            {
+                // ✅ 优化：请求画布结束批量更新，恢复渲染，执行一次完整重绘
+                BatchUpdateEndRequested?.Invoke();
+            }
+        }
+
+        /// <summary>根据当前选取索引更新每个CAD点位的AssySite角色标记，并重建图形叠加层和X标记</summary>
+        /// <remarks>
+        /// ✅ 性能优化：批量更新模式 - 抑制中间状态的UI刷新
+        /// 所有数据修改完成后统一触发一次UI更新，避免级联刷新风暴
+        /// </remarks>
+        private void UpdateCadPointRoles()
+        {
+            // ✅ 批量更新：先完成所有数据修改
+            foreach (var pt in ImportedCadPoints)
+                pt.AssySite = "";
+
+            if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
+                ImportedCadPoints[BaseStartIndex].AssySite = L("CAD_Base_Start");
+            if (BaseEndIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count)
+                ImportedCadPoints[BaseEndIndex].AssySite = L("CAD_Base_End");
+            if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+                ImportedCadPoints[TargetStartIndex].AssySite = L("CAD_Target_Start");
+            if (TargetEndIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count)
+                ImportedCadPoints[TargetEndIndex].AssySite = L("CAD_Target_End");
+
+            // ✅ 批量更新：所有数据修改完成后统一触发UI刷新
+            UpdateLineSegmentDisplayText();
+            UpdateTransformedCoordText();
+            UpdateCanvasPointMarkers(); // 此方法内部会设置CadSelectedSegmentPoints，触发一次绑定更新
+            RebuildAlignmentMarkers();
+
+            (ShowBaselineSegmentCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (ShowTargetlineSegmentCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>更新已选点位的变换后坐标显示文本（原始CAD坐标 → 平移后 → 旋转后）</summary>
+        private void UpdateTransformedCoordText()
+        {
+            BaseStartTransformedText = FormatPointTransformText(BaseStartIndex);
+            BaseEndTransformedText = FormatPointTransformText(BaseEndIndex);
+            TargetStartTransformedText = FormatPointTransformText(TargetStartIndex);
+            TargetEndTransformedText = FormatPointTransformText(TargetEndIndex);
+            RaisePropertyChanged(nameof(HasStep3TransformResult));
+        }
+
+        /// <summary>格式化单个点位的变换坐标显示文本（原始CAD坐标 → 平移后机械坐标）</summary>
+        private string FormatPointTransformText(int pointIndex)
+        {
+            if (pointIndex < 0 || pointIndex >= ImportedCadPoints.Count) return "";
+            var pt = ImportedCadPoints[pointIndex];
+            string original = string.Format("({0}, {1})", pt.X.ToString("F2"), pt.Y.ToString("F2"));
+
+            if (!Step2Done) return string.Format("原始: {0}", original);
+
+            double xm = pt.X + DeltaX;
+            double ym = pt.Y + DeltaY;
+            string machine = string.Format("({0}, {1})", xm.ToString("F2"), ym.ToString("F2"));
+
+            return string.Format("原始: {0}\n机械: {1}", original, machine);
+        }
+
+        /// <summary>更新基准线段/目标线段的坐标点显示文本</summary>
+        private void UpdateLineSegmentDisplayText()
+        {
+            if (BaseStartIndex >= 0 && BaseEndIndex >= 0 &&
+                BaseStartIndex < ImportedCadPoints.Count && BaseEndIndex < ImportedCadPoints.Count)
+            {
+                var p1 = ImportedCadPoints[BaseStartIndex];
+                var p2 = ImportedCadPoints[BaseEndIndex];
+                BaselineDisplayText = string.Format("#{0} ({1}, {2}) → #{3} ({4}, {5})",
+                    p1.Id, p1.X.ToString("F1"), p1.Y.ToString("F1"),
+                    p2.Id, p2.X.ToString("F1"), p2.Y.ToString("F1"));
+            }
+            else if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
+            {
+                var p1 = ImportedCadPoints[BaseStartIndex];
+                BaselineDisplayText = string.Format("#{0} ({1}, {2}) → ?",
+                    p1.Id, p1.X.ToString("F1"), p1.Y.ToString("F1"));
+            }
+            else
+            {
+                BaselineDisplayText = "";
+            }
+
+            if (TargetStartIndex >= 0 && TargetEndIndex >= 0 &&
+                TargetStartIndex < ImportedCadPoints.Count && TargetEndIndex < ImportedCadPoints.Count)
+            {
+                var p3 = ImportedCadPoints[TargetStartIndex];
+                var p4 = ImportedCadPoints[TargetEndIndex];
+                TargetlineDisplayText = string.Format("#{0} ({1}, {2}) → #{3} ({4}, {5})",
+                    p3.Id, p3.X.ToString("F1"), p3.Y.ToString("F1"),
+                    p4.Id, p4.X.ToString("F1"), p4.Y.ToString("F1"));
+            }
+            else if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            {
+                var p3 = ImportedCadPoints[TargetStartIndex];
+                TargetlineDisplayText = string.Format("#{0} ({1}, {2}) → ?",
+                    p3.Id, p3.X.ToString("F1"), p3.Y.ToString("F1"));
+            }
+            else
+            {
+                TargetlineDisplayText = "";
+            }
+
+            RaisePropertyChanged(nameof(HasBaselineSelected));
+            RaisePropertyChanged(nameof(HasTargetlineSelected));
+        }
+
+        /// <summary>更新HalconCanvas原生X标记系统：将已选点位集合和当前高亮索引同步到画布</summary>
+        private void UpdateCanvasPointMarkers()
+        {
+            var markedPoints = new List<CadPoint>();
+            int highlightIndex = -1;
+
+            if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
+                markedPoints.Add(ImportedCadPoints[BaseStartIndex]);
+            if (BaseEndIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count)
+                markedPoints.Add(ImportedCadPoints[BaseEndIndex]);
+            if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+                markedPoints.Add(ImportedCadPoints[TargetStartIndex]);
+            if (TargetEndIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count)
+                markedPoints.Add(ImportedCadPoints[TargetEndIndex]);
+
+            if (markedPoints.Count > 0)
+                highlightIndex = markedPoints.Count - 1;
+
+            CadSelectedSegmentPoints = markedPoints.Count > 0 ? markedPoints : null;
+            CadSelectedPointIndex = highlightIndex;
+        }
+
+        /// <summary>重建选取标记叠加层：X标记(选中点位) + 蓝色基准线段 + 红色目标线段</summary>
+        private void RebuildAlignmentMarkers()
+        {
+            _alignmentMarkers.Clear();
+            if (ImportedCadPoints == null || ImportedCadPoints.Count == 0) return;
+
+            // 根据图形包围盒动态计算标记大小（占包围盒对角线的2%）
+            double markSize = CalcDynamicMarkSize();
+            double tolerance = markSize * 3; // 容差为标记大小的3倍
+
+            // 辅助方法：在点(x,y)处创建X标记（两条交叉短线）
+            void AddCrossMark(double x, double y, string color)
+            {
+                _alignmentMarkers.Add(new CadLine(x - markSize, y - markSize, x + markSize, y + markSize) { Color = color, LayerName = "_MARK_" });
+                _alignmentMarkers.Add(new CadLine(x - markSize, y + markSize, x + markSize, y - markSize) { Color = color, LayerName = "_MARK_" });
+            }
+
+            // 基准起点 X (蓝色)
+            if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
+            {
+                var p = ImportedCadPoints[BaseStartIndex];
+                AddCrossMark(p.X, p.Y, "#1565C0");
+            }
+            // 基准终点 X (绿色)
+            if (BaseEndIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count)
+            {
+                var p = ImportedCadPoints[BaseEndIndex];
+                AddCrossMark(p.X, p.Y, "#2E7D32");
+            }
+            // 目标起点 X (紫色)
+            if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            {
+                var p = ImportedCadPoints[TargetStartIndex];
+                AddCrossMark(p.X, p.Y, "#7B1FA2");
+            }
+            // 目标终点 X (红色)
+            if (TargetEndIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count)
+            {
+                var p = ImportedCadPoints[TargetEndIndex];
+                AddCrossMark(p.X, p.Y, "#C62828");
+            }
+
+            // 基准线段 (蓝色粗线)
+            if (BaseStartIndex >= 0 && BaseEndIndex >= 0 &&
+                BaseStartIndex < ImportedCadPoints.Count && BaseEndIndex < ImportedCadPoints.Count)
+            {
+                var p1 = ImportedCadPoints[BaseStartIndex];
+                var p2 = ImportedCadPoints[BaseEndIndex];
+                _alignmentMarkers.Add(new CadLine(p1.X, p1.Y, p2.X, p2.Y) { Color = "#1565C0", LayerName = "_BASELINE_" });
+            }
+
+            // 目标线段 (红色粗线)
+            if (TargetStartIndex >= 0 && TargetEndIndex >= 0 &&
+                TargetStartIndex < ImportedCadPoints.Count && TargetEndIndex < ImportedCadPoints.Count)
+            {
+                var p3 = ImportedCadPoints[TargetStartIndex];
+                var p4 = ImportedCadPoints[TargetEndIndex];
+                _alignmentMarkers.Add(new CadLine(p3.X, p3.Y, p4.X, p4.Y) { Color = "#C62828", LayerName = "_TARGETLINE_" });
+            }
+
+            // 重建 ObservableCollection 以触发 HalcanCanvasControl.Entities DP 回调 → RenderEntities()
+            RebuildCanvasDisplayEntities();
+        }
+
+        /// <summary>重建 CanvasDisplayEntities 集合（DXF图元 + 叠加标记），触发 HalcanCanvasControl.Entities DP 回调</summary>
+        private void RebuildCanvasDisplayEntities()
+        {
+            var newList = new ObservableCollection<CadEntity>();
+            if (CadEntities != null)
+                foreach (var e in CadEntities)
+                    // ❌ 过滤掉DLS拟合椭圆实体（已禁用，避免显示偏移的蓝色圆弧）
+                    if (e.Id != "FITTED_ELLIPSE_DLS")
+                        newList.Add(e);
+            foreach (var m in _alignmentMarkers)
+                newList.Add(m);
+            CanvasDisplayEntities = newList; // 必须赋值给属性而非字段，触发 SetProperty → PropertyChanged → 绑定刷新
+        }
+
+        /// <summary>HalconCanvas 点击回调：根据点击坐标找到最近点位并分配角色</summary>
+        public void OnCanvasPointClicked(double cadX, double cadY)
+        {
+            if (!_isPickingBaseline && !_isPickingTarget) return;
+            if (ImportedCadPoints.Count == 0) return;
+
+            int nearestIdx = FindNearestPointIndex(cadX, cadY);
+            if (nearestIdx < 0)
+            {
+                StatusMessage = L("CAD_Click_Miss");
+                CadPickStatus = L("CAD_Click_Miss_Status");
+                return;
+            }
+
+            var point = ImportedCadPoints[nearestIdx];
+
+            CadSelectedSegmentPoints = new List<CadPoint> { point };
+            CadSelectedPointIndex = 0;
+
+            OnCadPointSelected(point);
+        }
+
+        /// <summary>找到距离指定坐标最近的点位索引（容差根据图形尺寸动态调整）</summary>
+        private int FindNearestPointIndex(double x, double y)
+        {
+            int nearestIdx = -1;
+            double minDistSq = double.MaxValue;
+            for (int i = 0; i < ImportedCadPoints.Count; i++)
+            {
+                var pt = ImportedCadPoints[i];
+                double dx = pt.X - x;
+                double dy = pt.Y - y;
+                double distSq = dx * dx + dy * dy;
+                if (distSq < minDistSq)
+                {
+                    minDistSq = distSq;
+                    nearestIdx = i;
+                }
+            }
+            double tolerance = CalcDynamicMarkSize() * 5;
+            return Math.Sqrt(minDistSq) < tolerance ? nearestIdx : -1;
+        }
+
+        /// <summary>根据点位分布范围动态计算标记大小（包围盒对角线的2%）</summary>
+        private double CalcDynamicMarkSize()
+        {
+            if (ImportedCadPoints == null || ImportedCadPoints.Count == 0) return 3.0;
+
+            double minX = double.MaxValue, maxX = double.MinValue;
+            double minY = double.MaxValue, maxY = double.MinValue;
+            foreach (var pt in ImportedCadPoints)
+            {
+                if (pt.X < minX) minX = pt.X;
+                if (pt.X > maxX) maxX = pt.X;
+                if (pt.Y < minY) minY = pt.Y;
+                if (pt.Y > maxY) maxY = pt.Y;
+            }
+            double diagonal = Math.Sqrt((maxX - minX) * (maxX - minX) + (maxY - minY) * (maxY - minY));
+            return Math.Max(diagonal * 0.02, 1.0); // 至少1单位
+        }
+
+        /// <summary>更新所有导入点位的机械坐标（CAD坐标 + 全局偏移量）</summary>
+        private void UpdateMachineCoordinates()
+        {
+            foreach (var pt in ImportedCadPoints)
+            {
+                pt.OffsetX = Step2Done ? Math.Round(pt.X + DeltaX, 3) : null;
+                pt.OffsetY = Step2Done ? Math.Round(pt.Y + DeltaY, 3) : null;
+                pt.MachineX = Step2Done ? Math.Round(pt.X + DeltaX, 3) : null;
+                pt.MachineY = Step2Done ? Math.Round(pt.Y + DeltaY, 3) : null;
+            }
+        }
+
+        /// <summary>CAD→图像坐标转换偏移量（由View在FitToAll后回调设置）</summary>
+        private double _cadToImageOffsetX;
+        private double _cadToImageOffsetY;
+
+        /// <summary>View回调：设置CAD→图像坐标转换偏移量，并更新所有点位的图像坐标</summary>
+        public void SetCadToImageOffset(double offsetX, double offsetY)
+        {
+            _cadToImageOffsetX = offsetX;
+            _cadToImageOffsetY = offsetY;
+            UpdateImageCoordinates();
+        }
+
+        /// <summary>更新所有导入点位的Halcon图像像素坐标</summary>
+        private void UpdateImageCoordinates()
+        {
+            foreach (var pt in ImportedCadPoints)
+            {
+                pt.ImageCol = Math.Round(pt.X - _cadToImageOffsetX, 1);
+                pt.ImageRow = Math.Round(-pt.Y + _cadToImageOffsetY, 1);
+            }
+        }
+
+        /// <summary>显示基准线段：高亮X标记并聚焦视口到基准线段区域</summary>
+        private void OnShowBaselineSegment()
+        {
+            if (BaseStartIndex < 0 || BaseEndIndex < 0 ||
+                BaseStartIndex >= ImportedCadPoints.Count || BaseEndIndex >= ImportedCadPoints.Count) return;
+
+            var p1 = ImportedCadPoints[BaseStartIndex];
+            var p2 = ImportedCadPoints[BaseEndIndex];
+
+            CadSelectedSegmentPoints = new List<CadPoint> { p1, p2 };
+            CadSelectedPointIndex = 1;
+
+            FitToSegmentRequested?.Invoke(p1.X, p1.Y, p2.X, p2.Y);
+            StatusMessage = string.Format(L("CAD_ShowBaseline_Status"), p1.Id, p1.X.ToString("F1"), p1.Y.ToString("F1"), p2.Id, p2.X.ToString("F1"), p2.Y.ToString("F1"), AlphaBaseDeg.ToString("F2"));
+        }
+
+        /// <summary>显示目标线段：高亮X标记并聚焦视口到目标线段区域</summary>
+        private void OnShowTargetlineSegment()
+        {
+            if (TargetStartIndex < 0 || TargetEndIndex < 0 ||
+                TargetStartIndex >= ImportedCadPoints.Count || TargetEndIndex >= ImportedCadPoints.Count) return;
+
+            var p3 = ImportedCadPoints[TargetStartIndex];
+            var p4 = ImportedCadPoints[TargetEndIndex];
+
+            CadSelectedSegmentPoints = new List<CadPoint> { p3, p4 };
+            CadSelectedPointIndex = 1;
+
+            FitToSegmentRequested?.Invoke(p3.X, p3.Y, p4.X, p4.Y);
+            StatusMessage = string.Format(L("CAD_ShowTarget_Status"), p3.Id, p3.X.ToString("F1"), p3.Y.ToString("F1"), p4.Id, p4.X.ToString("F1"), p4.Y.ToString("F1"), AlphaTargetDeg.ToString("F2"));
+        }
+
+        /// <summary>基于点位分布智能推荐基准/目标线段（最长线段策略+最大夹角策略）</summary>
+        private void OnAutoRecommendLines()
+        {
+            if (ImportedCadPoints.Count < 4)
+            {
+                StatusMessage = L("CAD_SmartRecommend_Fail");
+                CadPickStatus = L("CAD_SmartRecommend_NotEnough");
+                return;
+            }
+
+            // 策略1: 找最长线段作为基准（通常代表主要特征边）
+            var (i1, i2) = FindLongestSegment();
+            // 策略2: 找与基准线段夹角最大的线段作为目标
+            var (i3, i4) = FindBestTargetSegment(i1, i2);
+
+            BaseStartIndex = i1;
+            BaseEndIndex = i2;
+            TargetStartIndex = i3;
+            TargetEndIndex = i4;
+            UpdateCadPointRoles();
+
+            // 自动计算方向角
+            CadPoint bp1 = null, bp2 = null, tp3 = null, tp4 = null;
+            if (BaseEndIndex >= 0 && BaseStartIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count && BaseStartIndex < ImportedCadPoints.Count)
+            {
+                bp1 = ImportedCadPoints[BaseStartIndex];
+                bp2 = ImportedCadPoints[BaseEndIndex];
+                AlphaBaseDeg = Math.Atan2(bp2.Y - bp1.Y, bp2.X - bp1.X) * 180 / Math.PI;
+                RaisePropertyChanged(nameof(AlphaBaseDeg));
+            }
+            if (TargetEndIndex >= 0 && TargetStartIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count && TargetStartIndex < ImportedCadPoints.Count)
+            {
+                tp3 = ImportedCadPoints[TargetStartIndex];
+                tp4 = ImportedCadPoints[TargetEndIndex];
+                AlphaTargetDeg = Math.Atan2(tp4.Y - tp3.Y, tp4.X - tp3.X) * 180 / Math.PI;
+                RaisePropertyChanged(nameof(AlphaTargetDeg));
+            }
+
+            CadPickStatus = string.Format(L("CAD_AutoRecommend_Done"), bp1?.Id ?? "?", bp2?.Id ?? "?", tp3?.Id ?? "?", tp4?.Id ?? "?");
+            StatusMessage = L("CAD_AutoRecommend_Confirm");
+        }
+
+        /// <summary>找出距离最远的点对（最长线段）</summary>
+        private (int, int) FindLongestSegment()
+        {
+            int maxI = -1, maxJ = -1;
+            double maxDistSq = 0;
+            for (int i = 0; i < ImportedCadPoints.Count; i++)
+                for (int j = i + 1; j < ImportedCadPoints.Count; j++)
+                {
+                    var dx = ImportedCadPoints[j].X - ImportedCadPoints[i].X;
+                    var dy = ImportedCadPoints[j].Y - ImportedCadPoints[i].Y;
+                    double distSq = dx * dx + dy * dy;
+                    if (distSq > maxDistSq) { maxDistSq = distSq; maxI = i; maxJ = j; }
+                }
+            return (maxI, maxJ);
+        }
+
+        /// <summary>找出与给定基准线段夹角最接近90°的线段作为目标</summary>
+        private (int, int) FindBestTargetSegment(int baseI, int baseJ)
+        {
+            if (baseI < 0 || baseJ < 0) return FindLongestSegment();
+
+            var bp1 = ImportedCadPoints[baseI];
+            var bp2 = ImportedCadPoints[baseJ];
+            double baseAngle = Math.Atan2(bp2.Y - bp1.Y, bp2.X - bp1.X);
+
+            int bestI = -1, bestJ = -1;
+            double bestScore = double.MinValue;
+
+            for (int i = 0; i < ImportedCadPoints.Count; i++)
+                for (int j = i + 1; j < ImportedCadPoints.Count; j++)
+                {
+                    if (i == baseI || i == baseJ || j == baseI || j == baseJ) continue;
+
+                    var tp1 = ImportedCadPoints[i];
+                    var tp2 = ImportedCadPoints[j];
+                    double targetAngle = Math.Atan2(tp2.Y - tp1.Y, tp2.X - tp1.X);
+                    double angleDiff = Math.Abs(targetAngle - baseAngle);
+                    // 归一化到 [0, π]
+                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    angleDiff = Math.Abs(angleDiff);
+
+                    // 偏好夹角接近 60°~120° 的线段（典型垂直/倾斜特征）
+                    double score = Math.Abs(angleDiff - Math.PI / 2);
+                    if (score < bestScore) { bestScore = score; bestI = i; bestJ = j; }
+                }
+
+            // 如果没找到合适的，回退到第二长线段
+            if (bestI < 0) return FindLongestSegment();
+            return (bestI, bestJ);
+        }
+
+        #endregion
+
+        /// <summary>一键继承步骤3中选中的目标点对到步骤4的变换目标</summary>
+        private void OnInheritTargetFromStep3()
+        {
+            if (!CanInheritFromStep3)
+            {
+                StatusMessage = L("CAD_NeedStep3_First");
+                return;
+            }
+
+            if (HasCadDrawingLoaded && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            {
+                var pt = ImportedCadPoints[TargetStartIndex];
+                double xm = pt.X + DeltaX;
+                double ym = pt.Y + DeltaY;
+
+                Step4TargetCadText = string.Format("#{0} ({1}, {2})", pt.Id, pt.X.ToString("F2"), pt.Y.ToString("F2"));
+                Step4TargetOffsetText = string.Format("({0}, {1})", xm.ToString("F2"), ym.ToString("F2"));
+
+                TransXm = xm;
+                TransYm = ym;
+                _useStep3TargetForTransform = true;
+
+                StatusMessage = string.Format(L("CAD_Inherit_Step3_Success"), pt.Id, pt.X.ToString("F2"), pt.Y.ToString("F2"));
+            }
+            else if (TargetPairIndex * 2 < CorrespondencePoints.Count)
+            {
+                int targetPointStartIdx = TargetPairIndex * 2;
+                TransformSelectedIndex = targetPointStartIdx;
+
+                var pt = CorrespondencePoints[targetPointStartIdx];
+                TransXm = pt.CadX + DeltaX;
+                TransYm = pt.CadY + DeltaY;
+
+                Step4TargetCadText = string.Format("{0} ({1}, {2})", pt.Name, pt.CadX.ToString("F2"), pt.CadY.ToString("F2"));
+                Step4TargetOffsetText = string.Format("({0}, {1})", TransXm.ToString("F2"), TransYm.ToString("F2"));
+                _useStep3TargetForTransform = false;
+
+                StatusMessage = $"已继承步骤3目标点 {pt.Name}（索引={targetPointStartIdx}）";
+            }
+        }
+
+        #region 核心4：单点坐标变换（先平移后旋转）
+
+        /// <summary>
+        /// 对选中索引对应的CAD点执行先平移后旋转的坐标变换：
+        /// 1. 平移：Xm = CadX + ΔX, Ym = CadY + ΔY
+        /// 2. 相对中心偏移：dx = Xm - Mox, dy = Ym - Moy
+        /// 3. 绕回转中心旋转θ角：
+        ///    X_new = dx·cosθ - dy·sinθ + Mox
+        ///    Y_new = dx·sinθ + dy·cosθ + Moy
+        /// 同时将结果写入选中点的 RotatedX/Y 属性
+        /// </summary>
+        private void ExecuteTransform()
+        {
+            if (!Step2Done)
+            {
+                StatusMessage = L("CAD_NeedStep2_First");
+                return;
+            }
+
+            double xm, ym, cadX, cadY;
+            string pointName;
+
+            if (_useStep3TargetForTransform && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            {
+                var pt = ImportedCadPoints[TargetStartIndex];
+                pointName = $"#{pt.Id}";
+                cadX = pt.X;
+                cadY = pt.Y;
+                xm = cadX + DeltaX;
+                ym = cadY + DeltaY;
+            }
+            else
+            {
+                if (TransformSelectedIndex < 0 || TransformSelectedIndex >= CorrespondencePoints.Count)
+                {
+                    StatusMessage = L("CAD_Transform_IndexOutOfRange");
+                    return;
+                }
+
+                var cp = CorrespondencePoints[TransformSelectedIndex];
+                pointName = cp.Name;
+                cadX = cp.CadX;
+                cadY = cp.CadY;
+                xm = cadX + DeltaX;
+                ym = cadY + DeltaY;
+            }
+            double dx = xm - Mox;
+            double dy = ym - Moy;
+            double thetaRad = ThetaDeg * Math.PI / 180.0;
+            double cosT = Math.Cos(thetaRad);
+            double sinT = Math.Sin(thetaRad);
+
+            TransXm = xm;
+            TransYm = ym;
+            TransDx = dx;
+            TransDy = dy;
+            TransResultX = dx * cosT - dy * sinT + Mox;
+            TransResultY = dx * sinT + dy * cosT + Moy;
+
+            if (_useStep3TargetForTransform && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            {
+                ImportedCadPoints[TargetStartIndex].MachineX = Math.Round(TransResultX, 3);
+                ImportedCadPoints[TargetStartIndex].MachineY = Math.Round(TransResultY, 3);
+            }
+            else
+            {
+                var cp = CorrespondencePoints[TransformSelectedIndex];
+                cp.RotatedX = TransResultX;
+                cp.RotatedY = TransResultY;
+                cp.RotatedZ = cp.CadZ;
+            }
+            Step4Done = true;
+            StatusMessage = string.Format(L("CAD_Single_Transform_Done"), pointName, TransResultX.ToString("F3"), TransResultY.ToString("F3"));
+        }
+
+        private void OnExecuteTransform() => ExecuteTransform();
+
+        #endregion
+
+        #region 核心4-扩展：批量坐标变换
+
+        /// <summary>
+        /// 遍历CorrespondencePoints中索引>=2的所有点(P3~P6)，逐个执行与ExecuteTransform相同的变换逻辑，
+        /// 将结果写入每个点的RotatedX/Y/Z属性
+        /// </summary>
+        private void ExecuteBatchTransform()
+        {
+            if (CorrespondencePoints == null || CorrespondencePoints.Count < 3)
+            {
+                StatusMessage = L("CAD_BatchTransform_NotEnough");
+                return;
+            }
+
+            double thetaRad = ThetaDeg * Math.PI / 180.0;
+            double cosT = Math.Cos(thetaRad);
+            double sinT = Math.Sin(thetaRad);
+            int transformedCount = 0;
+
+            for (int i = 2; i < CorrespondencePoints.Count; i++)
+            {
+                var cp = CorrespondencePoints[i];
+                double xm = cp.CadX + DeltaX;
+                double ym = cp.CadY + DeltaY;
+                double dx = xm - Mox;
+                double dy = ym - Moy;
+
+                cp.RotatedX = dx * cosT - dy * sinT + Mox;
+                cp.RotatedY = dx * sinT + dy * cosT + Moy;
+                cp.RotatedZ = cp.CadZ;
+                transformedCount++;
+            }
+
+            Step4Done = true;
+            StatusMessage = $"批量坐标变换完成：共变换 {transformedCount} 个点（P3~P{2 + transformedCount - 1}）";
+        }
+
+        private void OnExecuteBatchTransform() => ExecuteBatchTransform();
+
+        /// <summary>
+        /// 根据 CorrespondencePoints 动态生成点对名称和点位名称
+        /// 点对: P1→P2, P3→P4, P5→P6 (连续两个点为一对)
+        /// 点位: P1(P3), P2(P4)... (用于坐标变换选择目标点位)
+        /// </summary>
+        private void RefreshPointPairNames()
+        {
+            var pairList = new List<string>();
+            var pointList = new List<string>();
+
+            for (int i = 0; i < CorrespondencePoints.Count; i += 2)
+            {
+                int p1 = i + 1;
+                int p2 = i + 2;
+                if (p2 <= CorrespondencePoints.Count)
+                {
+                    pairList.Add($"P{p1}→P{p2}");
+                }
+                pointList.Add($"P{p1}(P{p1 + 2})");
+            }
+
+            PairNames = pairList;
+            PointNames = pointList;
+        }
+
+        #endregion
+
+        #region 核心5：夹爪定位计算
+
+        /// <summary>读取夹爪当前机械坐标作为示教基准</summary>
+        private void OnTeachGripperPosition()
+        {
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                TeachX = Math.Round(motionService.GetAxisPosition(0), 3);
+                TeachY = Math.Round(motionService.GetAxisPosition(1), 3);
+                TeachRy = Math.Round(motionService.GetAxisPosition(2), 4);
+                TeachZ = Math.Round(motionService.GetAxisPosition(3), 3);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("CAD_Teach_Failed"), ex.Message);
+                return;
+            }
+
+            RaisePropertyChanged(nameof(CalcOffX));
+            RaisePropertyChanged(nameof(CalcOffY));
+
+            StatusMessage = string.Format(L("CAD_Teach_Success"),
+                TeachX.ToString("F3"), TeachY.ToString("F3"),
+                TeachRy.ToString("F4"), TeachZ.ToString("F3"));
+        }
+
+        /// <summary>应用计算偏移量到固定偏移</summary>
+        private void OnApplyCalcOffset()
+        {
+            if (TransResultX == 0 || TransResultY == 0)
+            {
+                StatusMessage = L("CAD_NeedStep4_First");
+                return;
+            }
+
+            GripperOffX = CalcOffX;
+            GripperOffY = CalcOffY;
+            UseCalculatedOffset = true;
+
+            StatusMessage = string.Format(L("CAD_Apply_Calc_Offset"),
+                CalcOffX.ToString("F3"), CalcOffY.ToString("F3"));
+        }
+
+        /// <summary>
+        /// 在变换结果基础上叠加夹爪偏移量，得到最终夹爪目标位置
+        /// FinalGripperX = TransResultX + GripperOffX
+        /// FinalGripperY = TransResultY + GripperOffY
+        /// </summary>
+        private void ComputeGripperPosition()
+        {
+            if (UseCalculatedOffset)
+            {
+                StatusMessage = L("CAD_OffsetMode_Calc");
+            }
+            else
+            {
+                StatusMessage = L("CAD_OffsetMode_Fixed");
+            }
+
+            FinalGripperX = TransResultX + GripperOffX;
+            FinalGripperY = TransResultY + GripperOffY;
+            Step5Done = true;
+            (WriteToGlobalVariablesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            StatusMessage = string.Format(L("CAD_Gripper_Position_Done"),
+                FinalGripperX.ToString("F3"), FinalGripperY.ToString("F3"),
+                GripperOffX.ToString("F1"), GripperOffY.ToString("F1"));
+        }
+
+        private void OnComputeGripperPosition() => ComputeGripperPosition();
+
+        /// <summary>异步加载全局变量列表供ComboBox选取</summary>
+        private async Task LoadAvailableGlobalVariablesAsync()
+        {
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+                AvailableGlobalVariables.Clear();
+                foreach (var v in variables)
+                    AvailableGlobalVariables.Add(v);
+            }
+            catch { /* 加载失败不影响主流程 */ }
+        }
+
+        /// <summary>将夹爪最终位置写入用户指定的全局变量（点击按钮后执行）</summary>
+        private async void OnWriteToGlobalVariables()
+        {
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
+
+                var vx = string.IsNullOrWhiteSpace(FinalGripperXLinkedVar) ? "GripperFinalX" : FinalGripperXLinkedVar.Trim();
+                var vy = string.IsNullOrWhiteSpace(FinalGripperYLinkedVar) ? "GripperFinalY" : FinalGripperYLinkedVar.Trim();
+
+                UpdateOrAddGlobalVariable(variables, vx, FinalGripperX.ToString("F3"), "夹爪最终位置X");
+                UpdateOrAddGlobalVariable(variables, vy, FinalGripperY.ToString("F3"), "夹爪最终位置Y");
+
+                for (int i = 0; i < variables.Count; i++)
+                    variables[i].Index = i + 1;
+
+                await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+                StatusMessage = string.Format(L("CAD_Write_Global_Var_Success"),
+                    vx, FinalGripperX.ToString("F3"), vy, FinalGripperY.ToString("F3"));
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"写入全局变量失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>更新或添加全局变量（存在则更新值，不存在则新增）</summary>
+        private void UpdateOrAddGlobalVariable(List<GlobalVariable> variables, string name, string value, string comment)
+        {
+            var existing = variables.FirstOrDefault(v => v.Name == name);
+            if (existing != null)
+            {
+                existing.Value = value;
+            }
+            else
+            {
+                variables.Add(new GlobalVariable
+                {
+                    Name = name,
+                    Type = GlobalVariableType.Double,
+                    Value = value,
+                    Comment = comment
+                });
+            }
+        }
+
+        private void OnShowPrinciple()
+        {
+            var win = new Views.CadAlignmentPrincipleWindow
+            {
+                Owner = System.Windows.Application.Current.MainWindow
+            };
+            win.ShowDialog();
+        }
+
+        private void OnExportDxf()
+        {
+            try
+            {
+                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                var filePath = System.IO.Path.Combine(desktop, $"CAD_Alignment_{DateTime.Now:yyyyMMdd_HHmmss}.dxf");
+                GenerateDxfFile(filePath);
+                StatusMessage = $"DXF 已导出: {filePath}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"DXF 导出失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 根据当前6组点位数据拟合圆弧并生成DXF文件（纯ASCII格式，零依赖）
+        /// 每组2个点：切点(在圆弧上) + 辅助点(在切线上)
+        /// </summary>
+        private void GenerateDxfFile(string filePath)
+        {
+            using (var sw = new System.IO.StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+            {
+                // ═════ DXF 文件头 ════
+                sw.WriteLine("  0");
+                sw.WriteLine("SECTION");
+                sw.WriteLine("  2");
+                sw.WriteLine("HEADER");
+                sw.WriteLine("  9");
+                sw.WriteLine("$ACADVER");
+                sw.WriteLine("  1");
+                sw.WriteLine("AC1015"); // AutoCAD 2000
+                sw.WriteLine("  9");
+                sw.WriteLine("$INSBASE");
+                sw.WriteLine(" 10");
+                sw.WriteLine("0.0");
+                sw.WriteLine(" 20");
+                sw.WriteLine("0.0");
+                sw.WriteLine(" 30");
+                sw.WriteLine("0.0");
+                sw.WriteLine("  0");
+                sw.WriteLine("ENDSEC");
+
+                // ═════ 实体区 ════
+                sw.WriteLine("  0");
+                sw.WriteLine("SECTION");
+                sw.WriteLine("  2");
+                sw.WriteLine("ENTITIES");
+
+                // --- 拟合圆弧 ---
+                var (arcCx, arcCy, arcR) = FitArcFromTangentPairs();
+                WriteArc(sw, arcCx, arcCy, arcR, 0, 360, "7", "4"); // 白色/青色
+
+                // --- 6条切线段 ---
+                var lineColors = new[] { "1", "3", "5", "30", "50", "160" }; // 红/绿/青/橙/紫/蓝
+                for (int i = 0; i < CorrespondencePoints.Count && i < 6; i += 2)
+                {
+                    if (i + 1 >= CorrespondencePoints.Count) break;
+                    var pTangent = CorrespondencePoints[i];     // 切点(圆弧上)
+                    var pAux = CorrespondencePoints[i + 1];     // 辅助点(切线上)
+                    WriteLine(sw, pTangent.CadX, pTangent.CadY, pAux.CadX, pAux.CadY, lineColors[i / 2]);
+                }
+
+                // --- 12个点标记(CIRCLE) ---
+                for (int i = 0; i < CorrespondencePoints.Count && i < 12; i++)
+                {
+                    var pt = CorrespondencePoints[i];
+                    WriteCircle(sw, pt.CadX, pt.CadY, 1.8, lineColors[i / 2]);
+                }
+
+                // --- 点位标签(TEXT) ---
+                for (int i = 0; i < CorrespondencePoints.Count && i < 12; i++)
+                {
+                    var pt = CorrespondencePoints[i];
+                    double offsetX = (i % 2 == 0) ? -6 : 6;
+                    double offsetY = 5;
+                    WriteText(sw, pt.CadX + offsetX, pt.CadY + offsetY, pt.Name, 2.5, lineColors[i / 2]);
+                }
+
+                // --- Rz回转中心标记 ---
+                if (Step1Done)
+                {
+                    WriteCircle(sw, Mox, Moy, 3.0, "0"); // 黑色中心
+                    WriteText(sw, Mox + 5, Moy + 3, "O(Rz)", 2.2, "0");
+                }
+
+                // --- 图框标题 ---
+                WriteText(sw, arcCx - 40, arcCy + arcR + 15, "CAD Alignment - Tangent Arc Fitting", 3.0, "7");
+
+                sw.WriteLine("  0");
+                sw.WriteLine("ENDSEC");
+
+                // ═════ 文件尾 ════
+                sw.WriteLine("  0");
+                sw.WriteLine("EOF");
+            }
+        }
+
+        /// <summary>
+        /// 从6组切线对中提取6个切点，最小二乘法拟合圆心和半径
+        /// </summary>
+        private (double cx, double cy, double r) FitArcFromTangentPairs()
+        {
+            int n = Math.Min(CorrespondencePoints.Count / 2, 6);
+            if (n < 3) return (100.0, 280.0, 140.0); // 默认值
+
+            // 提取每组的第一个点作为切点（偶数索引: 0,2,4,6,8,10）
+            var points = new List<(double x, double y)>();
+            for (int i = 0; i < n * 2; i += 2)
+            {
+                points.Add((CorrespondencePoints[i].CadX, CorrespondencePoints[i].CadY));
+            }
+
+            // Kåsa 最小二乘圆拟合
+            double sx = 0, sy = 0;
+            foreach (var p in points) { sx += p.x; sy += p.y; }
+            double mx = sx / n, my = sy / n;
+
+            double suu = 0, svv = 0, suv = 0, uuu = 0, vvv = 0;
+            foreach (var p in points)
+            {
+                double u = p.x - mx, v = p.y - my;
+                suu += u * u;
+                svv += v * v;
+                suv += u * v;
+                uuu += u * (u * u + v * v);
+                vvv += v * (u * u + v * v);
+            }
+
+            double det = suu * svv - suv * suv;
+            if (Math.Abs(det) < 1e-10) return (mx, my, 100);
+
+            double uc = (svv * uuu - suv * vvv) / (2 * det);
+            double vc = (suu * vvv - suv * uuu) / (2 * det);
+
+            double cx = mx + uc;
+            double cy = my + vc;
+            double r = Math.Sqrt(uc * uc + vc * vc + (suu + svv) / n);
+
+            return (cx, cy, r);
+        }
+
+        #region DXF 辅助写入方法
+
+        private static void WriteLine(System.IO.StreamWriter sw, double x1, double y1, double x2, double y2, string color)
+        {
+            sw.WriteLine("  0");
+            sw.WriteLine("LINE");
+            sw.WriteLine("  8");
+            sw.WriteLine("0");
+            sw.WriteLine(" 62");
+            sw.WriteLine(color);
+            sw.WriteLine(" 10");
+            sw.WriteLine(x1.ToString("F4"));
+            sw.WriteLine(" 20");
+            sw.WriteLine(y1.ToString("F4"));
+            sw.WriteLine(" 30");
+            sw.WriteLine("0.0");
+            sw.WriteLine(" 11");
+            sw.WriteLine(x2.ToString("F4"));
+            sw.WriteLine(" 21");
+            sw.WriteLine(y2.ToString("F4"));
+            sw.WriteLine(" 31");
+            sw.WriteLine("0.0");
+        }
+
+        private static void WriteArc(System.IO.StreamWriter sw, double cx, double cy, double r, double startAngle, double endAngle, string layer, string color)
+        {
+            sw.WriteLine("  0");
+            sw.WriteLine("ARC");
+            sw.WriteLine("  8");
+            sw.WriteLine(layer);
+            sw.WriteLine(" 62");
+            sw.WriteLine(color);
+            sw.WriteLine(" 10");
+            sw.WriteLine(cx.ToString("F4"));
+            sw.WriteLine(" 20");
+            sw.WriteLine(cy.ToString("F4"));
+            sw.WriteLine(" 30");
+            sw.WriteLine("0.0");
+            sw.WriteLine(" 40");
+            sw.WriteLine(r.ToString("F4"));
+            sw.WriteLine(" 50");
+            sw.WriteLine(startAngle.ToString("F4"));
+            sw.WriteLine(" 51");
+            sw.WriteLine(endAngle.ToString("F4"));
+        }
+
+        private static void WriteCircle(System.IO.StreamWriter sw, double cx, double cy, double r, string color)
+        {
+            sw.WriteLine("  0");
+            sw.WriteLine("CIRCLE");
+            sw.WriteLine("  8");
+            sw.WriteLine("0");
+            sw.WriteLine(" 62");
+            sw.WriteLine(color);
+            sw.WriteLine(" 10");
+            sw.WriteLine(cx.ToString("F4"));
+            sw.WriteLine(" 20");
+            sw.WriteLine(cy.ToString("F4"));
+            sw.WriteLine(" 30");
+            sw.WriteLine("0.0");
+            sw.WriteLine(" 40");
+            sw.WriteLine(r.ToString("F4"));
+        }
+
+        private static void WriteText(System.IO.StreamWriter sw, double x, double y, string text, double height, string color)
+        {
+            sw.WriteLine("  0");
+            sw.WriteLine("TEXT");
+            sw.WriteLine("  8");
+            sw.WriteLine("0");
+            sw.WriteLine(" 62");
+            sw.WriteLine(color);
+            sw.WriteLine(" 10");
+            sw.WriteLine(x.ToString("F4"));
+            sw.WriteLine(" 20");
+            sw.WriteLine(y.ToString("F4"));
+            sw.WriteLine(" 30");
+            sw.WriteLine("0.0");
+            sw.WriteLine(" 40");
+            sw.WriteLine(height.ToString("F2"));
+            sw.WriteLine("  1");
+            sw.WriteLine(text);
+        }
+
+        #endregion
+
+        #endregion
+
+        #region 点位增删操作
+
+        private void AddCadPoint()
+        {
+            CorrespondencePoints.Add(new CorrespondencePoint
+            {
+                Name = $"P{CorrespondencePoints.Count + 1}"
+            });
+            RefreshPointPairNames();
+        }
+
+        private void DeleteCadPoint(CorrespondencePoint point)
+        {
+            if (point != null)
+            {
+                CorrespondencePoints.Remove(point);
+                RefreshPointPairNames();
+            }
+        }
+
+        #endregion
+
+        #region 步骤导航方法
+
+        private ObservableCollection<AlignmentStepInfo> InitializeSteps()
+        {
+            var lang = _containerProvider.Resolve<ILocalizationService>();
+            return new ObservableCollection<AlignmentStepInfo>
+            {
+                new AlignmentStepInfo { Number = 1, Title = lang.GetResource("CadAlignment_Step1_Title").Replace("① ", ""), Hint = lang.GetResource("CadAlignment_Step1_Hint") },
+                new AlignmentStepInfo { Number = 2, Title = lang.GetResource("CadAlignment_Step2_Title").Replace("② ", ""), Hint = lang.GetResource("CadAlignment_Step2_Hint") },
+                new AlignmentStepInfo { Number = 3, Title = lang.GetResource("CadAlignment_Step3_Title").Replace("③ ", ""), Hint = lang.GetResource("CadAlignment_Step3_Hint") },
+                new AlignmentStepInfo { Number = 4, Title = lang.GetResource("CadAlignment_Step4_Title").Replace("④ ", ""), Hint = lang.GetResource("CadAlignment_Step4_Hint") },
+                new AlignmentStepInfo { Number = 5, Title = lang.GetResource("CadAlignment_Step5_Title").Replace("⑤ ", ""), Hint = lang.GetResource("CadAlignment_Step5_Hint") }
+            };
+        }
+
+        private void UpdateStepStates(int currentStep)
+        {
+            foreach (var step in Steps)
+            {
+                step.IsCurrent = (step.Number == currentStep);
+                step.IsCompleted = (step.Number < currentStep);
+            }
+        }
+
+        private bool CanGoNext() => _currentStep < 5;
+        private void GoNext() { if (_currentStep < 5) CurrentStep++; }
+
+        private bool CanGoPrev() => _currentStep > 1;
+        private void GoPrev() { if (_currentStep > 1) CurrentStep--; }
+
+        #endregion
+
+        /// <summary>
+        /// 相机到夹爪坐标系变换计算（SVD方法，供CoordinateCalibrationDialog调用）
+        /// </summary>
+        public static (Matrix3x3 R, Vector3 t) ComputeCameraToGripperTransform(List<Core.Extensions.Point3D> cameraPoints, List<Core.Extensions.Point3D> gripperPoints)
+        {
+            int n = cameraPoints.Count;
+            if (n < 3 || n != gripperPoints.Count)
+                throw new ArgumentException("至少需要3组对应点，且两组点数必须相同");
+
+            // 计算质心
+            double pcx = 0, pcy = 0, pcz = 0;
+            double gcx = 0, gcy = 0, gcz = 0;
+            for (int i = 0; i < n; i++)
+            {
+                pcx += cameraPoints[i].X; pcy += cameraPoints[i].Y; pcz += cameraPoints[i].Z;
+                gcx += gripperPoints[i].X; gcy += gripperPoints[i].Y; gcz += gripperPoints[i].Z;
+            }
+            pcx /= n; pcy /= n; pcz /= n;
+            gcx /= n; gcy /= n; gcz /= n;
+
+            // 计算协方差矩阵 H = Σ(pi-pc)(gi-gc)^T
+            double h11 = 0, h12 = 0, h13 = 0;
+            double h21 = 0, h22 = 0, h23 = 0;
+            double h31 = 0, h32 = 0, h33 = 0;
+
+            for (int i = 0; i < n; i++)
+            {
+                double cix = cameraPoints[i].X - pcx, ciy = cameraPoints[i].Y - pcy, ciz = cameraPoints[i].Z - pcz;
+                double gix = gripperPoints[i].X - gcx, giy = gripperPoints[i].Y - gcy, gib = gripperPoints[i].Z - gcz;
+                h11 += cix * gix; h12 += cix * giy; h13 += cix * gib;
+                h21 += ciy * gix; h22 += ciy * giy; h23 += ciy * gib;
+                h31 += ciz * gix; h32 += ciz * giy; h33 += ciz * gib;
+            }
+
+            var H = new[,]
+            {
+                { h11, h12, h13 },
+                { h21, h22, h23 },
+                { h31, h32, h33 }
+            };
+
+            var HHT = new double[3, 3];
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
+                    for (int k = 0; k < 3; k++)
+                        HHT[i, j] += H[i, k] * H[j, k];
+
+            var (_, U) = SymmetricEigenDecomposition(HHT);
+
+            var HTH = new double[3, 3];
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
+                    for (int k = 0; k < 3; k++)
+                        HTH[i, j] += H[k, i] * H[k, j];
+
+            var (_, V) = SymmetricEigenDecomposition(HTH);
+
+            // R = V * U^T → Core.Models.Matrix3x3
+            var R = new Matrix3x3(
+                V[0, 0] * U[0, 0] + V[0, 1] * U[1, 0] + V[0, 2] * U[2, 0],
+                V[0, 0] * U[0, 1] + V[0, 1] * U[1, 1] + V[0, 2] * U[2, 1],
+                V[0, 0] * U[0, 2] + V[0, 1] * U[1, 2] + V[0, 2] * U[2, 2],
+                V[1, 0] * U[0, 0] + V[1, 1] * U[1, 0] + V[1, 2] * U[2, 0],
+                V[1, 0] * U[0, 1] + V[1, 1] * U[1, 1] + V[1, 2] * U[2, 1],
+                V[1, 0] * U[0, 2] + V[1, 1] * U[1, 2] + V[1, 2] * U[2, 2],
+                V[2, 0] * U[0, 0] + V[2, 1] * U[1, 0] + V[2, 2] * U[2, 0],
+                V[2, 0] * U[0, 1] + V[2, 1] * U[1, 1] + V[2, 2] * U[2, 1],
+                V[2, 0] * U[0, 2] + V[2, 1] * U[1, 2] + V[2, 2] * U[2, 2]
+            );
+
+            // 修正反射: det(R) 应为 +1
+            double detR = R.M11 * (R.M22 * R.M33 - R.M23 * R.M32)
+                       - R.M12 * (R.M21 * R.M33 - R.M23 * R.M31)
+                       + R.M13 * (R.M21 * R.M32 - R.M22 * R.M31);
+            if (detR < 0)
+            {
+                for (int i = 0; i < 3; i++) V[i, 2] *= -1;
+                R = new Matrix3x3(
+                    V[0, 0] * U[0, 0] + V[0, 1] * U[1, 0] + V[0, 2] * U[2, 0],
+                    V[0, 0] * U[0, 1] + V[0, 1] * U[1, 1] + V[0, 2] * U[2, 1],
+                    V[0, 0] * U[0, 2] + V[0, 1] * U[1, 2] + V[0, 2] * U[2, 2],
+                    V[1, 0] * U[0, 0] + V[1, 1] * U[1, 0] + V[1, 2] * U[2, 0],
+                    V[1, 0] * U[0, 1] + V[1, 1] * U[1, 1] + V[1, 2] * U[2, 1],
+                    V[1, 0] * U[0, 2] + V[1, 1] * U[1, 2] + V[1, 2] * U[2, 2],
+                    V[2, 0] * U[0, 0] + V[2, 1] * U[1, 0] + V[2, 2] * U[2, 0],
+                    V[2, 0] * U[0, 1] + V[2, 1] * U[1, 1] + V[2, 2] * U[2, 1],
+                    V[2, 0] * U[0, 2] + V[2, 1] * U[1, 2] + V[2, 2] * U[2, 2]
+                );
+            }
+
+            // t = gc - R * pc
+            var Rpc = R * new Vector3(pcx, pcy, pcz);
+            var t = new Vector3(gcx, gcy, gcz) - Rpc;
+
+            return (R, t);
+        }
+
+        /// <summary>
+        /// 3x3 对称矩阵特征值分解（Jacobi 迭代法）
+        /// </summary>
+        private static (double[] eigenvalues, double[,] eigenvectors) SymmetricEigenDecomposition(double[,] A)
+        {
+            int n = 3;
+            var V = new double[n, n];
+            for (int i = 0; i < n; i++) V[i, i] = 1.0;
+            var D = new double[n];
+            for (int i = 0; i < n; i++) D[i] = A[i, i];
+            var B = new double[n];
+            var Z = new double[n];
+            for (int i = 0; i < n; i++) B[i] = D[i];
+
+            for (int iter = 0; iter < 100; iter++)
+            {
+                // 找最大非对角元
+                int p = 0, q = 1;
+                double maxOffDiag = Math.Abs(A[0, 1]);
+                for (int i = 0; i < n; i++)
+                    for (int j = i + 1; j < n; j++)
+                        if (Math.Abs(A[i, j]) > maxOffDiag)
+                        { maxOffDiag = Math.Abs(A[i, j]); p = i; q = j; }
+
+                if (maxOffDiag < 1e-12) break;
+
+                double diff = D[q] - D[p];
+                double theta = 0.5 * Math.Atan2(2 * A[p, q], diff);
+                double c = Math.Cos(theta), s = Math.Sin(theta);
+                double tau = (1 - c) / s;
+
+                D[p] -= s * A[p, q]; D[q] += s * A[p, q];
+                B[p] = D[p]; B[q] = D[q]; Z[p] += s; Z[q] -= s;
+
+                for (int r = 0; r < n; r++)
+                {
+                    if (r != p && r != q)
+                    {
+                        double Apr = A[r, p], Arq = A[r, q];
+                        A[p, r] = A[r, p] = c * Apr - s * Arq;
+                        A[q, r] = A[r, q] = s * Apr + c * Arq;
+                    }
+                    double Vrp = V[r, p], Vrq = V[r, q];
+                    V[r, p] = c * Vrp - s * Vrq;
+                    V[r, q] = s * Vrp + c * Vrq;
+                }
+                A[p, p] = D[p]; A[q, q] = D[q];
+                A[p, q] = A[q, p] = 0;
+            }
+
+            return (D, V);
+        }
+    }
+}

@@ -1,0 +1,15 @@
+- [x] PhotoPositionRow ViewModel 模型包含所有必需字段（SiteFeatureName、位置名、速度、触发命令、点胶类型、Arc参数）
+- [x] VisionCaptureService 实现完整拍照流程：安全检查→Z轴抬起→XY移动→Z下降→触发拍照→等待数据→Z抬起→返回待机
+- [x] VisionCaptureService 超时处理抛出 RecoverableException，支持重试/暂停/停止
+- [x] VisionCaptureService 支持 CancellationToken，急停时Z轴优先抬起
+- [x] BezierArcDispenseService 实现二次贝塞尔曲线离散化算法
+- [x] BezierArcDispenseService 实现视觉坐标→机械坐标转换（平移+旋转）
+- [x] BezierArcDispenseService 实现 Dot 点胶执行逻辑
+- [x] BezierArcDispenseService 实现 Arc 弧形点胶多段插补走胶
+- [x] VisionCaptureViewModel 从 WorkOrderData 正确加载 Group/SiteFeature 列表
+- [x] VisionCaptureViewModel 通过 IPositionProvider 动态加载位置名选项
+- [x] VisionCaptureView 拍照位配置 DataGrid 正确绑定位置名下拉
+- [x] VisionCaptureView 显示视觉返回的原始数据和解析结果
+- [x] 所有参数从配方池读取，源代码中无硬编码数值
+- [x] DispensingView 区域7正确激活 VisionCaptureView
+- [x] PrimModel.cs 正确注册 VisionCaptureView/ViewModel 映射

@@ -1,0 +1,51 @@
+项目结构
+MotionControl/
+├── MotionControl.csproj
+├── Interfaces/
+│   ├── IAxis.cs
+│   ├── IIoPoint.cs
+│   ├── IMotionCard.cs
+│   ├── IMotionService.cs
+│   ├── IHardwareConfigLoader.cs
+│   ├── ITaskInterrogator.cs
+│   └── ITask.cs
+├── Models/
+│   ├── AxisConfig.cs
+│   ├── IoConfig.cs
+│   ├── CardConfig.cs
+│   ├── TaskConfig.cs
+│   ├── MotionStatus.cs
+│   └── StationPositionSet.cs
+├── Services/
+│   ├── MotionService.cs
+│   ├── MotionCardBase.cs
+│   ├── LeisaiMotionCard.cs    (封装 XCommandCardLeisai3000)
+│   ├── HardwareConfigParser.cs
+│   ├── TaskBase.cs
+│   ├── LoadingTask.cs
+│   ├── DispensingTask.cs
+│   └── AssemblyTask.cs
+├── Events/
+│   ├── AxisAlarmEvent.cs
+│   ├── MotionCompletedEvent.cs
+│   └── IoChangedEvent.cs
+└── MotionControlModule.cs  (Prism IModule 注册)
+
+StationTasks/
+├── StationTasks.csproj
+├── Interfaces/
+│   ├── IStationTask.cs
+│   └── IStationSignalProvider.cs
+├── Models/
+│   └── StationSignal.cs
+├── Tasks/
+│   ├── StationTaskBase.cs           (继承 TaskBase，增加位置加载、信号交互、单步逻辑)
+│   ├── LoadingTask.cs
+│   ├── DispensingTask.cs
+│   └── AssemblyTask.cs
+├── Services/
+│   ├── StationInteractionService.cs (管理工站间信号)
+│   └── StationTaskFactory.cs
+├── ViewModels/
+│   └── StationControlViewModel.cs   (演示用)
+└── StationTasksModule.cs            (Prism 模块注册)

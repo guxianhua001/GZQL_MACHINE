@@ -1,0 +1,26 @@
+- [x] DispenseStepMode 枚举已创建（Dot=0, Arc=1）
+- [x] DispenseSegmentRef 模型已创建，包含 SourceSegmentId、覆盖参数、只读显示属性
+- [x] DispenseDetail 模型已创建，包含 DispenseMode、EnableZCalibration、SegmentRefs、全局默认工艺参数、执行控制参数
+- [x] ProcessStep.cs 中已添加 DispenseDetail 属性及序列化支持
+- [x] DispenseDetailViewModel 已创建，实现导入线段/圆弧、参数配置、确定/取消逻辑
+- [x] DispenseDetailView.xaml 已创建，布局包含点胶模式选择、线段导入DataGrid、全局默认参数、选中段覆盖参数、执行控制区
+- [x] 导入线段逻辑正确：从 DispenserStationParams.Segments 筛选 Line 类型，排除已导入段
+- [x] 导入圆弧逻辑正确：从 DispenserStationParams.Segments 筛选 Arc/Circle 类型，排除已导入段
+- [x] 逐段参数覆盖编辑功能正常：UseDefaultParams 切换时覆盖参数展开/折叠
+- [x] DispenseStepAction 已创建并实现 IProcessStepAction，SupportedStepType = StepType.DISPENSE
+- [x] Dot 模式执行逻辑正确：遍历 SegmentRefs → 查找源段 → 执行逐点点胶
+- [x] Arc 模式执行逻辑正确：遍历 Arc 类型 SegmentRefs → 查找源段 → 执行连续插补走胶
+- [x] Z向校准逻辑已实现：EnableZCalibration 时先校准再点胶
+- [x] 安全逻辑已实现：源段缺失跳过+日志警告、急停安全关胶、执行前空跑
+- [x] DispenseStepAction 已在 StationTasksModule.cs 中注册
+- [x] ProcessSequenceEditorViewModel.NavigateToDetailView 中已添加 StepType.DISPENSE 路由分支
+- [x] ShowDispenseDetailDialog 方法已实现，双击 DISPENSE 步骤可弹出编辑弹窗
+- [x] ProcessStepExecutor.ExecuteSingleStepAsync 中已添加 StepType.DISPENSE 执行分支
+- [x] AddEditStepDialogViewModel 中 DISPENSE 步骤类型已启用（通过 Enum.GetValues 自动包含）
+- [x] 线段和圆弧只导入不创建，数据源唯一性得到保证
+- [x] 重复导入防护：已导入的段在导入时自动排除
+- [x] 源段删除时引用标记为无效（SourceLayerName 显示 "⚠ 来源已删除"）
+- [x] Strings.zh-CN.xaml 中已添加所有 DispenseDetail_ 前缀的 Lang Key（48条）
+- [x] Strings.en-US.xaml 中已添加对应的英文翻译（48条）
+- [x] 代码遵循项目规范：WPF+PRISM+MaterialDesign、PascalCase命名、方法注释、无倒置依赖
+- [x] 全部项目编译通过（Core、StationTasks、Module 0错误）

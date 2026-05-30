@@ -1,24 +1,17 @@
-﻿
-using ModuleCore.Views;
-using Framework.Models;
-using Framework.ViewModels;
+
+using Core.Abstraction;
+using Core.Services;
+using Framework.Mvvm;
 using Framework.Views;
+using MaterialDesignThemes.Wpf;
+using Module.Services;
+using Module.UserControls.Grippers;
+using Module.ViewModels;
+using Module.Views;
 using Prism.Ioc;
 using Prism.Modularity;
-using Stations;
-using System.ComponentModel;
-using Interfaces;
-using ModuleCore.ViewModels;
 using Prism.Mvvm;
-using Framework.Services;
-using ModuleCore.Services;
-using Interfaces.SharedInterfaces;
-using Interfaces.Services;
-using Core.Abstraction;
-using Framework.Mvvm;
 using TreeView = Framework.Views.TreeView;
-using Module.Views;
-using Module.ViewModels;
 
 namespace Module
 {
@@ -26,74 +19,111 @@ namespace Module
     {
         public void OnInitialized(IContainerProvider containerProvider)
         {
+            var localizationService = containerProvider.Resolve<ILocalizationService>();
             var Navigate = containerProvider.Resolve<NavigateModel>();
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "Github", DisplayName = "首页", UserLevel = 0, Display = true });
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TreeView", IconKind = "OrderBoolAscending", DisplayName = "操作页面", UserLevel = 0, Display = true });
-            //Navigate.NavigateList.Add(new NavigateItem() { ViewName = "ShellView", IconKind = "RobotIndustrialOutline", DisplayName = "龙门同步", UserLevel = 0, Display = true });
-            //Navigate.NavigateList.Add(new NavigateItem() { ViewName = "RaySourceDebugView", IconKind = "CameraSwitchOutline", DisplayName = "X-Ray", UserLevel = 0, Display = true });
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "AlarmReportingView", IconKind = "AlarmLightOutline", DisplayName = "报警查询", UserLevel = 0, Display = true });
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "IODisplayView", IconKind = "TuneVariant", DisplayName = "IO视图", UserLevel = 0, Display = true });
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "RecipeManagerView", IconKind = "Fingerprint", DisplayName = "配方管理", UserLevel = 0, Display = true });
-            Navigate.DefaultView = "OverView";//OverView
+
+            Core.Models.CadEntityHalconExtensions.DxfParserService =
+                containerProvider.Resolve<Core.Services.IDxfParserService>();
+            // 1. 首页/总览
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "Home", DisplayName = localizationService.GetResourceOrDefault("Nav_Home", "首页"), DisplayNameKey = "Nav_Home", UserLevel = 0, Display = true });
+            // 2. 操作页面
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TreeView", IconKind = "FileTreeOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Operation", "操作页面"), DisplayNameKey = "Nav_Operation", UserLevel = 0, Display = true });
+            // 3. 实时报警（当前活跃报警、未确认计数、批量确认/复位）
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "AlarmListView", IconKind = "AlarmLightOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_AlarmRealtime", "实时报警"), DisplayNameKey = "Nav_AlarmRealtime", UserLevel = 0, Display = true });
+            // 4. 报警历史查询（多条件过滤、分页、Excel导出）
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "AlarmHistoryView", IconKind = "DatabaseOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_AlarmQuery", "报警查询"), DisplayNameKey = "Nav_AlarmQuery", UserLevel = 0, Display = true });
+            // 5. 报警统计（等级分布、频率排名、趋势分析）
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "AlarmStatsView", IconKind = "ChartBar", DisplayName = localizationService.GetResourceOrDefault("Nav_AlarmStats", "报警统计"), DisplayNameKey = "Nav_AlarmStats", UserLevel = 0, Display = true });
+            // 6. 报警阈值配置
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "AlarmThresholdView", IconKind = "CogOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_AlarmThreshold", "报警阈值"), DisplayNameKey = "Nav_AlarmThreshold", UserLevel = 1, Display = true });
+            // 7. IO视图 
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "IODisplayView", IconKind = "SwapHorizontal", DisplayName = localizationService.GetResourceOrDefault("Nav_IOView", "IO视图"), DisplayNameKey = "Nav_IOView", UserLevel = 0, Display = true });
+            // 8. 配方管理
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "RecipeManagerView", IconKind = "NoteEditOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_RecipeManager", "配方管理"), DisplayNameKey = "Nav_RecipeManager", UserLevel = 0, Display = true });
+            // 9. TCPIP设置
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TcpConfigView", IconKind = "NetworkOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_TcpConfig", "TCPIP设置"), DisplayNameKey = "Nav_TcpConfig", UserLevel = 0, Display = true });
+            // 10. 设备维护
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "MaintenanceView", IconKind = "WrenchOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Maintenance", "设备维护"), DisplayNameKey = "Nav_Maintenance", UserLevel = 1, Display = true });
+            Navigate.DefaultView = "OverView";
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
             // ============ 非导航视图（直接控件） ============
-            containerRegistry.Register<AxisView>();
-            containerRegistry.Register<PositionView>();
-            containerRegistry.Register<SensorView>();
-            containerRegistry.Register<CylinderView>();
 
             // ============ 主内容区域导航视图 ============
-            containerRegistry.RegisterDialog<LogViewer>();
             containerRegistry.RegisterDialog<AddPositionDialog>();
             containerRegistry.RegisterForNavigation<TreeView>();
-            containerRegistry.RegisterForNavigation<ShellView>();
-            containerRegistry.RegisterForNavigation<IODisplayView>();
-            containerRegistry.RegisterForNavigation<StationStateView, StationStateViewModel>();
-            containerRegistry.RegisterForNavigation<SpeedRatioView>();
-            //containerRegistry.RegisterForNavigation<RecipeManagerView>();
-            containerRegistry.RegisterForNavigation<OverView, Framework.ViewModels.OverViewModel>();
-            containerRegistry.RegisterForNavigation<OperationView, Framework.ViewModels.OperationViewModel>();
-            containerRegistry.RegisterForNavigation<DataEditorView, Framework.ViewModels.DataEditorViewModel>();
+            containerRegistry.RegisterForNavigation<OverView, OverViewModel>();
 
             // ============ 树形菜单区域导航视图 ============
-            containerRegistry.RegisterForNavigation<LoaderStationAxesView,Framework.ViewModels.LoaderStationAxesViewModel>();
-            containerRegistry.RegisterForNavigation<DispenserStationAxesView, Framework.ViewModels.DispenserStationAxesViewModel>();
-            containerRegistry.RegisterForNavigation<AssemblyStationAxesView, Framework.ViewModels.AssemblyStationAxesViewModel>();
-            //工站气缸视图
-            containerRegistry.RegisterForNavigation<LoaderStationCylinderView, Framework.ViewModels.LoaderStationCylinderViewModel>();
-            containerRegistry.RegisterForNavigation<GantryStationCylinderView, Framework.ViewModels.GantryStationCylinderViewModel>();
-            //工站位置视图
-            containerRegistry.RegisterForNavigation<LoaderStationPositionView, Framework.ViewModels.LoaderStationPositionViewModel>();
-            containerRegistry.RegisterForNavigation<DispenserStationPositionView, Framework.ViewModels.DispenserStationPositionViewModel>();
-            containerRegistry.RegisterForNavigation<AssemblyStationPositionView, Framework.ViewModels.AssemblyStationPositionViewModel>();
-            //工站视图
-            containerRegistry.RegisterForNavigation<LoaderStationView, LoaderStationViewModel>();
-            containerRegistry.RegisterForNavigation<DispenserStationView, DispenserStationViewModel>();
-            containerRegistry.RegisterForNavigation<AssemblyStationView, AssemblyStationViewModel>();
-            //外部设备
-            containerRegistry.RegisterSingleton<IDeviceService, LctDeviceService>();
-            containerRegistry.RegisterSingleton<IDataAcquisitionService, DataAcquisitionService>();
-            //Chat 
-            containerRegistry.Register<ICsvParserService, CsvService>();
-            containerRegistry.RegisterForNavigation<HistoricalTrendView>();
-            containerRegistry.RegisterForNavigation<ForceChartView, ForceChartViewModel>();
+            containerRegistry.RegisterForNavigation<DispensingView, DispensingViewModel>();
+            containerRegistry.RegisterForNavigation<LoadUnloadView, LoadUnloadViewModel>();
+            containerRegistry.RegisterForNavigation<AssemblyStepView, AssemblyStepViewModel>();
+            containerRegistry.RegisterForNavigation<ProcessSequenceEditorView, ProcessSequenceEditorViewModel>();
+            containerRegistry.Register<GotoDetailViewModel>();
+            containerRegistry.RegisterForNavigation<AddEditStepDialogView, AddEditStepDialogViewModel>();
+            containerRegistry.RegisterForNavigation<CadPointEditorView, CadPointEditorViewModel>();
+            containerRegistry.RegisterForNavigation<CadPointEditor3DView, CadPointEditor3DViewModel>();
+            containerRegistry.RegisterForNavigation<DotPointEditorView, DotPointEditorViewModel>();
+            containerRegistry.RegisterForNavigation<InspectionView, InspectionViewModel>();
+            containerRegistry.RegisterForNavigation<VisionCaptureView, VisionCaptureViewModel>();
+            containerRegistry.RegisterForNavigation<ZScanDetailView, ZScanDetailViewModel>();
 
-            containerRegistry.RegisterForNavigation<DialRecordsTrendView, DialRecordsTrendViewModel>();
-            containerRegistry.RegisterForNavigation<NGMonitorView, NGMonitorViewModel>();
-            containerRegistry.RegisterForNavigation<DebugThresholdView, DebugThresholdViewModel>();
-            containerRegistry.RegisterForNavigation<AlarmReportingView, AlarmReportingViewModel>();
-            //注册接口服务
-            containerRegistry.Register<IPinMapService, PinMapService>();
-            containerRegistry.Register<IPostDialPointMapService, PostDialPointMapService>();
-            containerRegistry.RegisterForNavigation<PointTeachingView, PointTeachingViewModel>();
-            containerRegistry.RegisterForNavigation<NeedleCalibrationView, NeedleCalibrationViewModel>();
-            containerRegistry.RegisterForNavigation<AssemblyStepControlView, AssemblyStepControlViewModel>();
-            containerRegistry.RegisterForNavigation<ExtensionParametersView, ExtensionParametersViewModel>();
-            containerRegistry.RegisterForNavigation<SlotControlView, SlotControlViewModel>();
+            containerRegistry.Register<Core.Abstraction.IZScanGlobalVariableLinkService, Module.Services.ZScanGlobalVariableLinkService>();
+            containerRegistry.Register<Core.Abstraction.INeedleTeachService, Module.Services.NeedleTeachService>();
+            containerRegistry.RegisterSingleton<Core.Abstraction.IStageCalibrationService, Module.Services.StageCalibrationService>();
+            containerRegistry.RegisterSingleton<Core.Abstraction.INeedleService, Module.Services.NeedleService>();
+            containerRegistry.RegisterSingleton<Core.Services.NeedleCompensationManager>();
+
+            containerRegistry.RegisterSingleton<IAxisConfigurationService, MotionControl.Services.AxisConfigurationService>();
+            containerRegistry.RegisterSingleton<Services.ILoadUnloadController, Services.LoadUnloadControllerImpl>();
+            containerRegistry.RegisterForNavigation<WorkOrderConfigView, WorkOrderConfigViewModel>();
+            containerRegistry.RegisterDialog<FeatureEditorDialog, FeatureEditorDialogViewModel>();
+            containerRegistry.RegisterDialog<AxisEditorDialog, AxisEditorDialogViewModel>();
+            containerRegistry.RegisterForNavigation<ProductCalibrationView, ProductCalibrationViewModel>();
+            containerRegistry.RegisterDialog<GroupEditorDialog, GroupEditorDialogViewModel>();
+            containerRegistry.RegisterForNavigation<CheckDetailView, CheckDetailViewModel>();
+            containerRegistry.RegisterForNavigation<CadAlignmentView, CadAlignmentViewModel>();
+            containerRegistry.RegisterForNavigation<PickDetailView, PickDetailViewModel>();
+            containerRegistry.RegisterForNavigation<ReleaseDetailView, ReleaseDetailViewModel>();
+            containerRegistry.RegisterForNavigation<CureDetailView, CureDetailViewModel>();
+            containerRegistry.RegisterDialog<GripperControlView, GripperControlViewModel>("GripperControlView");
+            containerRegistry.RegisterDialog<CoordinateCalibrationDialog, CoordinateCalibrationDialogViewModel>();
+            containerRegistry.RegisterDialog<SimpleInputDialog, SimpleInputDialogViewModel>();
+            containerRegistry.RegisterForNavigation<IPQCView, IPQCViewModel>();
+            containerRegistry.RegisterForNavigation<ScanDetailView, ScanDetailViewModel>();
+            containerRegistry.RegisterForNavigation<Camera2DView, Camera2DViewModel>();
+            containerRegistry.Register<VisionDetailViewModel>();
+            containerRegistry.Register<DataDashboardViewModel>();
+            containerRegistry.Register<ConditionBranchViewModel>();
+            containerRegistry.Register<SeekDetailViewModel>();
+            containerRegistry.Register<WaitDetailViewModel>();
+            containerRegistry.Register<ScriptDetailViewModel>();
+
+            // === Core 服务（跨项目复用，Singleton）===
+            containerRegistry.RegisterSingleton<Core.Abstraction.IFormulaEvaluator, Core.Services.FormulaEvaluator>();
+            containerRegistry.RegisterSingleton<Core.Services.IDxfParserService, Core.Services.DxfParserService>();
+            containerRegistry.RegisterSingleton<Core.Services.IRoiToolService, Core.Services.RoiToolService>();
+            containerRegistry.RegisterSingleton<Core.Services.ICoordinateAlignService, Core.Services.CoordinateAlignService>();
+
+            // DXF 统一导入服务（保证 CadPointEditorViewModel 和 CadAlignmentViewModel 使用相同导入逻辑）
+            containerRegistry.RegisterSingleton<Core.Services.IDxfImportHelper, Core.Services.DxfImportHelper>();
+
+            // === Module 服务（项目特有）===
+            containerRegistry.Register<Module.Services.IDispenseExecuteService, Module.Services.DispenseExecuteService>();
+            containerRegistry.Register<Module.Services.IDotDispenseService, Module.Services.DotDispenseService>();
+
+            // 看板弹窗服务：订阅 ShowDashboardEvent 并显示 DialogHost
+            containerRegistry.RegisterSingleton<Module.Services.DashboardDialogService>();
+
+            containerRegistry.RegisterForNavigation<AlignDetailView, AlignDetailViewModel>();
+            containerRegistry.RegisterSingleton<IProcessSequenceService, ProcessSequenceService>();
+
+            containerRegistry.RegisterForNavigation<MaintenanceView, MaintenanceViewModel>();
+            containerRegistry.RegisterForNavigation<NeedleCameraAlignmentView, NeedleCameraAlignmentViewModel>();
+            containerRegistry.RegisterForNavigation<NeedleAlignerView, NeedleAlignerViewModel>();
+            containerRegistry.RegisterForNavigation<NeedleCalibrationVerifyView, NeedleCalibrationVerifyViewModel>();
         }
-
     }
 }

@@ -1,0 +1,55 @@
+﻿<UserControl x:Class="MotionControl.Views.StationStateView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:local="clr-namespace:MotionControl.Views"
+             xmlns:viewmodels="clr-namespace:MotionControl.ViewModels"
+             xmlns:prism="http://prismlibrary.com/"
+             d:DataContext="{d:DesignInstance Type=viewmodels:StationStateViewModel}"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d" 
+             d:DesignHeight="100" d:DesignWidth="350">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource MaterialDesignPaper}">
+        <!-- 主状态按钮 -->
+        <Button x:Name="button"
+                Content="{Binding StateText}"
+                Background="{Binding StatusColor}"
+                Foreground="Black"
+                materialDesign:ButtonAssist.CornerRadius="0"
+                Style="{DynamicResource MaterialDesignFlatButton}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                FontSize="20"
+                Padding="0"
+                Margin="0"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center">
+            <Button.Effect>
+                <DropShadowEffect BlurRadius="12"
+                                  Opacity="0.2"
+                                  ShadowDepth="3" />
+            </Button.Effect>
+        </Button>
+
+        <!-- 蜂鸣器图标（右上角） -->
+        <materialDesign:PackIcon Kind="Bell"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Right"
+                                 Margin="0,0,12,0"
+                                 Foreground="{Binding BuzzerColor}"
+                                 Width="22"
+                                 Height="22" 
+                                  Visibility="{Binding BuzzerActive, Converter={StaticResource BoolToVis}}"/>
+    </Grid>
+</UserControl>

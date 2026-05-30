@@ -10,9 +10,9 @@
         <ResourceDictionary Source="ResizeRotateChrome.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <ControlTemplate x:Key="MoveThumbTemplate" TargetType="{x:Type s:MoveThumb}">
+    <!--<ControlTemplate x:Key="MoveThumbTemplate" TargetType="{x:Type s:MoveThumb}">
         <Rectangle Fill="Transparent" />
-    </ControlTemplate>
+    </ControlTemplate>-->
 
     <Style x:Key="DesignerItemStyle" TargetType="ContentControl">
         <Setter Property="MinHeight" Value="50" />
@@ -24,9 +24,9 @@
                 <ControlTemplate TargetType="ContentControl">
                     <Grid DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
                         <!--  移动  -->
-                        <s:MoveThumb Cursor="SizeAll" Template="{StaticResource MoveThumbTemplate}" />
+                        <!--<s:MoveThumb Cursor="SizeAll" Template="{StaticResource MoveThumbTemplate}" />-->
                         <ContentPresenter Margin="{TemplateBinding Padding}" Content="{TemplateBinding ContentControl.Content}" />
-                        <s:DesignerItemDecorator x:Name="ItemDecorator" ShowDecorator="True" />
+                        <!--<s:DesignerItemDecorator x:Name="ItemDecorator" ShowDecorator="True" />-->
                     </Grid>
 
                 </ControlTemplate>
@@ -43,9 +43,9 @@
                 <ControlTemplate TargetType="ContentControl">
                     <Grid DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}">
                         <!--  移动  -->
-                        <s:MoveThumb Cursor="SizeAll" Template="{StaticResource MoveThumbTemplate}" />
+                        <!--<s:MoveThumb Cursor="SizeAll" Template="{StaticResource MoveThumbTemplate}" />-->
                         <ContentPresenter Margin="{TemplateBinding Padding}" Content="{TemplateBinding ContentControl.Content}" />
-                        <s:DesignerItemDecorator x:Name="ItemDecorator" ShowDecorator="True" />
+                        <!--<s:DesignerItemDecorator x:Name="ItemDecorator" ShowDecorator="True" />-->
                     </Grid>
 
                 </ControlTemplate>

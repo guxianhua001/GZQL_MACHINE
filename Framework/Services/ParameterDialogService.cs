@@ -1,10 +1,9 @@
-﻿// Framework/Services/ParameterDialogService.cs
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Core.Abstraction;
 using Prism.Services.Dialogs;
 using Prism.Ioc;
-using Framework.Views;
+using System.Windows;
 
 namespace Framework.Services
 {
@@ -18,14 +17,15 @@ namespace Framework.Services
         }
 
         public async Task<bool> ShowEditorDialog(string title, TaskParametersBase parameters,
-            Action<TaskParametersBase> onSaved = null)
+            Action<TaskParametersBase> onSaved = null, string stationIdentifier = null)
         {
             var dialogService = _container.Resolve<IDialogService>();
             var dialogParameters = new DialogParameters
             {
                 { "title", title },
                 { "parameters", parameters },
-                { "onSaved", onSaved }  //传递回调函数
+                { "onSaved", onSaved },  //传递回调函数  
+                 { "stationIdentifier", stationIdentifier }
             };
 
             // 使用TaskCompletionSource将回调转换为Task

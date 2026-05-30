@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -9,7 +9,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows;
 
-namespace Modules.LogViewer.Converters
+namespace LogViewer.Converters
 {
     /// <summary>
     /// 将文本中的换行符转换为LineBreak元素的转换器

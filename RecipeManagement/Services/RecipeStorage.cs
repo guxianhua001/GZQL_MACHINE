@@ -1,21 +1,24 @@
-﻿// RecipeManagement.Infrastructure/Storages/RecipeStorage.cs
-using System;
-using Core.Abstractions.Storages;
+﻿using Core.Abstractions.Storages;
 using Core.Services;
+using Core.Utilities;
 using Recipe.Interfaces;
 using Recipe.Models;
+using System;
+using System.IO;
 
 namespace Recipe.Services
 {
     public class RecipeStorage : IRecipeStorage
     {
         private readonly IGenericStorage _genericStorage;
+        private readonly ILoggerService _logger;
         private const string RecipePoolPrefix = "recipe_pool_";
         private const string RecipePrefix = "recipe_";
 
-        public RecipeStorage(IGenericStorage genericStorage)
+        public RecipeStorage(IGenericStorage genericStorage, ILoggerService logger)
         {
             _genericStorage = genericStorage;
+            _logger = logger;
         }
 
         public async Task<RecipePool> LoadRecipePoolAsync(string poolName)
@@ -27,6 +30,8 @@ namespace Recipe.Services
         public async Task SaveRecipePoolAsync(RecipePool pool)
         {
             var key = $"{RecipePoolPrefix}{pool.Name}";
+            // 备份现有文件（如果存在）
+            BackupRecipePoolFile(pool.CurrentRecipePoolName);
             await _genericStorage.SaveAsync(key, pool);
         }
 
@@ -71,11 +76,10 @@ namespace Recipe.Services
             return pool?.Recipes.FirstOrDefault(r => r.Name == recipeId);
         }
 
-        public async Task SaveRecipeAsync(string poolId, Recipe.Models.RecipeInfo recipe)
+        public async Task SaveRecipeAsync(string poolId, RecipeInfo recipe)
         {
             var pool = await LoadRecipePoolAsync(poolId) ?? new RecipePool { Id = poolId, Name = "Default" };
-            //pool.Id = recipe.Id;
-            //pool.Name = recipe.Name;
+
             var existingRecipe = pool.GetRecipe(recipe.Id);
             if (existingRecipe != null)
                 pool.Recipes.Remove(existingRecipe);
@@ -84,12 +88,12 @@ namespace Recipe.Services
             await SaveRecipePoolAsync(pool);
         }
 
-        public async Task<bool> DeleteRecipeAsync(string poolName, string poolId, string recipeId)
+        public async Task<bool> DeleteRecipeAsync(string poolName, string recipeId)
         {
             var pool = await LoadRecipePoolAsync(poolName);
             if (pool == null) return false;
 
-            var recipe = pool.GetRecipe(poolId);
+            var recipe = pool.GetRecipe(recipeId);
             if (recipe == null) return false;
 
             pool.Recipes.Remove(recipe);
@@ -110,19 +114,77 @@ namespace Recipe.Services
             await SaveRecipePoolAsync(pool);
         }
 
-        public Task DeleteRecipePoolAsync(string poolId)
+        public async Task DeleteRecipePoolAsync(string poolId)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(poolId))
+                throw new ArgumentNullException(nameof(poolId));
+
+            string key = $"{RecipePoolPrefix}{poolId}";
+            await _genericStorage.DeleteAsync<RecipePool>(key);
+            _logger?.Info($"配方池 '{poolId}' 已删除。");
         }
 
-        public Task<IEnumerable<Models.RecipeInfo>> SearchRecipesAsync(string poolId, string searchTerm)
+        // 辅助方法：清理文件名中的非法字符
+        private string SanitizeFileName(string name)
         {
-            throw new NotImplementedException();
+            foreach (char c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name;
         }
 
-        public Task<IEnumerable<string>> GetRecipeCategoriesAsync(string poolId)
+        public async Task<IEnumerable<RecipeInfo>> SearchRecipesAsync(string poolId, string searchTerm)
         {
-            throw new NotImplementedException();
+            var allRecipes = await LoadAllRecipesAsync(poolId);
+            if (string.IsNullOrWhiteSpace(searchTerm))
+                return allRecipes;
+
+            searchTerm = searchTerm.Trim();
+            return allRecipes.Where(r =>
+                r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (r.Description?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+            ).ToList();
+        }
+
+        public async Task<IEnumerable<string>> GetRecipeCategoriesAsync(string poolId)
+        {
+            var recipes = await LoadAllRecipesAsync(poolId);
+            var categories = recipes
+                .Select(r => r.Name?.Split('_', '-', ' ').FirstOrDefault() ?? "未分类")
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(c => c)
+                .ToList();
+
+            if (!categories.Any())
+                categories.Add("未分类");
+
+            return categories;
+        }
+        private void BackupRecipePoolFile(string poolId)
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string recipePoolDir = Path.Combine(baseDir, "Recipes", "recipepool");
+                string fileName = $"recipe_pool_{poolId}.json";
+                string filePath = Path.Combine(recipePoolDir, fileName);
+                if (!File.Exists(filePath))
+                    return;
+
+                string backupDir = Path.Combine(baseDir, "Recipes", "BackUp", poolId, DateTime.Now.ToString("yyyy-MM-dd"));
+                Directory.CreateDirectory(backupDir);
+                string timestamp = DateTime.Now.ToString("HHmmss");
+                string backupFileName = $"{fileName}_{timestamp}.bak";
+                string backupPath = Path.Combine(backupDir, backupFileName);
+                File.Copy(filePath, backupPath, overwrite: true);
+                // 可选：记录日志（如果注入了 ILoggerService）
+                // _logger?.Info($"已备份配方池文件: {backupPath}");
+            }
+            catch
+            {
+                // 备份失败不影响正常保存，静默处理
+                // 可选：记录警告日志
+            }
         }
     }
 }

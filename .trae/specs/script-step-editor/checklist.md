@@ -1,0 +1,21 @@
+- [x] StepType 枚举包含 SCRIPT 类型
+- [x] ScriptDetail 数据模型包含 ScriptCode、ReferencedAssemblies、ReferencedNamespaces、Description 属性
+- [x] ProcessStep 包含 ScriptDetail 属性，标注 JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)
+- [x] ScriptStepAction 实现 IProcessStepAction，SupportedStepType = StepType.SCRIPT
+- [x] ScriptStepAction 使用 Natasha 动态编译脚本，遵循 ScriptAction.Execute 约定
+- [x] ScriptStepAction 脚本缓存机制：代码不变时复用编译结果
+- [x] ScriptStepAction 编译/运行时异常包装为 RecoverableException
+- [x] ScriptStepAction 注入 IRecipePoolService 加载全局变量并写入执行结果
+- [x] StationTasksModule.cs RegisterMany 包含 typeof(ScriptStepAction)
+- [x] ProcessStepExecutor switch 包含 case StepType.SCRIPT
+- [x] ProcessStepExecutor 维护步骤输出参数字典，传递给 ScriptStepAction
+- [x] ScriptDetailViewModel 包含脚本编辑、编译检查、变量引用插入功能
+- [x] ScriptDetailViewModel 编译命令使用 Natasha，成功/失败均有反馈
+- [x] ScriptDetailViewModel 执行预览命令编译并执行脚本，显示结果
+- [x] ScriptDetailView 三段式布局，标题栏深色渐变 + PackIcon CodeTags
+- [x] ScriptDetailView 左侧代码编辑区 Consolas 字体，支持多行编辑
+- [x] ScriptDetailView 右侧变量引用面板，点击可插入 globalVariables/stepOutputs 引用
+- [x] ScriptDetailView 底部操作栏包含编译、执行、取消、确认继续按钮
+- [x] PrimModel.cs 注册 ScriptDetailViewModel
+- [x] ProcessSequenceEditorViewModel 包含 SCRIPT 导航分支和 ShowScriptDetailDialog 方法
+- [x] dotnet build 无编译错误

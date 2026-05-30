@@ -1,4 +1,4 @@
-﻿using Core.Abstraction;
+using Core.Abstraction;
 using Core.Models;
 using Core.Services;
 using Framework.Mvvm;
@@ -63,6 +63,9 @@ namespace Framework.ViewModels
 
             // 初始化加载树数据
             LoadTreeCommand.Execute();
+
+
+            int abc = _localizationService.GetHashCode();
         }
 
         private async Task LoadTreeDataAsync()
@@ -106,27 +109,36 @@ namespace Framework.ViewModels
             }
         }
 
-        // 获取节点的本地化显示名称
         public string GetLocalizedNodeName(TreeNode node)
         {
             if (node == null) return string.Empty;
 
-            // 如果有本地化键，使用本地化服务获取翻译
+            // 如果有本地化键，使用本地化服务获取翻译 
             if (!string.IsNullOrEmpty(node.LocalizationKey))
             {
                 return _localizationService.GetResourceOrDefault(node.LocalizationKey, node.Name);
             }
 
-            // 否则使用原名称
+            // 否则使用原名称 
             return node.Name;
         }
 
         // 语言变化处理
         private void OnLanguageChanged(object sender, LanguageChangedEventArgs e)
         {
-            // 更新所有节点的显示名称
-            NotifyTreeDataLocalizationChanged();
+            // 1. 更新所有节点的 DisplayName 值
+            UpdateAllNodesDisplayName();
         }
+
+        private void UpdateAllNodesDisplayName()
+        {
+            foreach (var node in GetAllNodes(TreeData))
+            {
+                // 重新计算 DisplayName（这会触发 SetProperty，自动通知 UI）
+                node.DisplayName = GetLocalizedNodeName(node);
+            }
+        }
+
 
         // 通知树数据本地化变化
         private void NotifyTreeDataLocalizationChanged()
@@ -160,7 +172,15 @@ namespace Framework.ViewModels
                 return;
 
             // 使用ViewType进行导航
-            _regionManager.RequestNavigate("TreeRegion", selectedNode.ViewType);
+            _regionManager.RequestNavigate("TreeRegion", selectedNode.ViewType, result =>
+            {
+                if ((bool)!result.Result)
+                {
+                    // 记录或弹出错误信息
+                    System.Diagnostics.Debug.WriteLine($"导航失败: {result.Error?.Message}");
+                    MessageBox.Show($"导航失败: {result.Error?.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
         }
 
         private void OnNodeDoubleClick(TreeNode node)
@@ -246,7 +266,7 @@ namespace Framework.ViewModels
 
             if (_localizationService != null)
             {
-                _localizationService.LanguageChanged -= OnLanguageChanged;
+                //_localizationService.LanguageChanged -= OnLanguageChanged; // 移除事件订阅 否则会导致语言不切换
             }
         }
     }

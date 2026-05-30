@@ -1,4 +1,4 @@
-﻿using Core.Utilities;
+using Core.Utilities;
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Regions;
@@ -22,9 +22,9 @@ namespace LogViewer
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            // 注册日志查看器视图
-            //containerRegistry.RegisterSingleton<ILoggerService, LoggerService>();
-            containerRegistry.RegisterForNavigation<Modules.LogViewer.Views.LogViewer, Modules.LogViewer.ViewModels.LogViewerViewModel>();
+            // 注册LogViewerViewModel为Singleton，避免重复订阅LoggerService.LogEvent事件
+            containerRegistry.RegisterSingleton<ViewModels.LogViewerViewModel>();
+            containerRegistry.RegisterForNavigation<Views.LogViewer>();
         }
     }
 }

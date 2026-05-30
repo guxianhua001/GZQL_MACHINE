@@ -1,4 +1,15 @@
 ﻿// ParameterEditorViewModel.cs
+using Core.Abstraction;
+using Core.Events;
+using Core.Models;
+using MaterialDesignThemes.Wpf;
+using Microsoft.Xaml.Behaviors.Core;
+using Prism.Commands;
+using Prism.Events;
+using Prism.Mvvm;
+using Prism.Regions;
+using Prism.Services.Dialogs;
+using PropertyChanged;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,15 +21,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using Core.Abstraction;
-using Core.Models;
-using MaterialDesignThemes.Wpf;
-using Microsoft.Xaml.Behaviors.Core;
-using Prism.Commands;
-using Prism.Mvvm;
-using Prism.Regions;
-using Prism.Services.Dialogs;
-using PropertyChanged;
 
 namespace Framework.ViewModels
 {
@@ -26,6 +28,7 @@ namespace Framework.ViewModels
     public class ParameterEditorViewModel : BindableBase, IDialogAware
     {
         private readonly IParameterService _parameterService;
+        private readonly IEventAggregator _eventAggregator;
         private bool _isLoading;
 
         public string Title { get; set; } = "参数设置";
@@ -57,10 +60,10 @@ namespace Framework.ViewModels
         public DelegateCommand ResetCommand { get; private set; }
         public DelegateCommand ClearSearchCommand { get; private set; }
 
-        public ParameterEditorViewModel(IParameterService parameterService)
+        public ParameterEditorViewModel(IParameterService parameterService, IEventAggregator eventAggregator)
         {
             _parameterService = parameterService;
-
+            _eventAggregator = eventAggregator;
             // 初始化命令
             ApplyCommand = new DelegateCommand(ApplyChanges, CanApply)
                 .ObservesProperty(() => IsModified);
@@ -138,6 +141,11 @@ namespace Framework.ViewModels
                 SaveToParametersObject();
                 // 触发保存回调
                 OnParametersSaved?.Invoke(_editingParameters);
+                // 发布事件，通知参数已更新（传递工站标识）
+                if (_editingParameters != null)
+                {
+                    _eventAggregator.GetEvent<StationParameterSavedEvent>().Publish(_stationIdentifier);
+                }
                 // 通知对话框成功关闭
                 RequestClose?.Invoke(new DialogResult(ButtonResult.OK));
             }
@@ -214,14 +222,13 @@ namespace Framework.ViewModels
                     var property = _editingParameters.GetType().GetProperty(param.Name);
                     if (property != null && property.CanWrite)
                     {
-                        // 特殊处理 List<PointF> 类型
-                        if (property.PropertyType == typeof(List<PointF>))
-                        {
-                            // 对于 DispensingPath，我们不需要从 UI 设置值
-                            // 因为它有自己的序列化属性 DispensingPathSerialized
+                        // 检查 [ParameterIgnore] 特性，直接跳过
+                        if (property.GetCustomAttribute<ParameterIgnoreAttribute>() != null)
                             continue;
-                        }
 
+                        // 跳过 List<PointF>
+                        if (property.PropertyType == typeof(List<PointF>))
+                            continue;
                         var convertedValue = ConvertValueToTargetType(param.Value, property.PropertyType);
                         property.SetValue(_editingParameters, convertedValue);
                     }
@@ -297,10 +304,15 @@ namespace Framework.ViewModels
         {
             try
             {
+                // 检查 [ParameterIgnore] 特性，如果有则跳过
+                if (property.GetCustomAttribute<ParameterIgnoreAttribute>() != null)
+                {
+                    return null;
+                }
                 var value = property.GetValue(source);
                 Console.WriteLine($"处理属性: {property.Name}, 类型: {property.PropertyType}, 值: {value}");
 
-                // 特殊处理：跳过 List<PointF> 类型的属性
+                // 跳过 List<PointF> 类型的属性
                 if (property.PropertyType == typeof(List<PointF>))
                 {
                     Console.WriteLine($"跳过 List<PointF> 属性: {property.Name}");
@@ -470,6 +482,9 @@ namespace Framework.ViewModels
         public bool CanCloseDialog() => true;
         public void OnDialogClosed() { }
 
+        // 保存当前编辑的工站标识
+        private string _stationIdentifier;
+
         private TaskParametersBase _editingParameters;
         public void OnDialogOpened(IDialogParameters parameters)
         {
@@ -480,9 +495,10 @@ namespace Framework.ViewModels
                 _editingParameters = parametersObj;
                 LoadParametersFromObject(_editingParameters);
             }
-            else
+            // 从参数中获取工站标识
+            if (parameters.TryGetValue("stationIdentifier", out string stationId))
             {
-                //LoadParametersFromService();
+                _stationIdentifier = stationId;
             }
             // 获取保存回调
             if (parameters.TryGetValue("onSaved", out Action<TaskParametersBase> onSaved))

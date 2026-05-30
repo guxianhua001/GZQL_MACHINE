@@ -1,0 +1,28 @@
+- [x] TCPIPModule项目创建并实现IModule接口
+- [x] TCPIPModule在MainApp的ConfigureModuleCatalog中注册
+- [x] TCP服务注册逻辑从App.xaml.cs迁移到TCPIPModule.RegisterTypes
+- [x] TCP初始化逻辑从App.xaml.cs迁移到TCPIPModule.OnInitialized
+- [x] ModuleCore/Services/下旧SocketServerService.cs和SocketClientService.cs已清理
+- [x] MainApp/MainApp.csproj添加TCPIPModule项目引用
+- [x] VisionDetail模型包含CommunicationType、ConnectionName、TriggerCommand、ResponseTimeout、ParseScript、VariableMappings字段
+- [x] VariableMapping类实现SourceKey→GlobalVariableName的映射关系
+- [x] TcpConfigItem模型包含Name、Mode(Server/Client)、IP、Port、Timeout、Encoding字段
+- [x] TcpConfigView实现连接配置的添加、删除、编辑功能
+- [x] TcpConfigView实现连接测试功能（连接状态、数据发送/接收、实时结果显示）
+- [x] TCPIP配置持久化到配方池ExtensionData
+- [x] TcpConfigView在TCPIPModule中注册，导航栏有TCPIP设置入口
+- [x] VisionDetailView包含通讯方式选择、TCPIP连接下拉、触发命令、超时设置四个区域
+- [x] VisionDetailView包含数据解析脚本编辑区域，提供默认模板
+- [x] VisionDetailView包含变量映射配置区域，全局变量名从IRecipePoolService加载
+- [x] IVisionDataParser接口定义string→Dictionary<string,double>的解析契约
+- [x] DefaultVisionDataParser支持逗号分隔和键值对格式的默认解析
+- [x] ScriptVisionDataParser基于Natasha编译执行自定义C#脚本
+- [x] 脚本编译错误时给出明确提示信息
+- [x] VisionStepAction实现IProcessStepAction，SupportedStepType = VISION
+- [x] VisionStepAction执行流程：发送触发命令→接收数据→解析数据→映射全局变量
+- [x] VisionStepAction超时时弹出重试/暂停/停止对话框
+- [x] VisionStepAction将解析结果写入全局变量并持久化
+- [x] VisionStepAction在StationTasksModule和ProcessSequenceService中正确注册
+- [x] ProcessSequenceEditorViewModel.NavigateToDetailView处理VISION步骤分支
+- [x] ProcessStepExecutor.ExecuteSingleStepAsync处理VISION case
+- [x] 全量编译通过无错误

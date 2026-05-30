@@ -1,0 +1,68 @@
+﻿<UserControl x:Class="MotionControl.Views.SpeedControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border Background="White" CornerRadius="6" Padding="16,12"
+            BorderBrush="#E0E0E0" BorderThickness="1">
+        <StackPanel>
+            <DockPanel Margin="0,0,0,8">
+                <materialDesign:PackIcon Kind="Speedometer" Width="20" Height="20"
+                                         Foreground="#546E7A" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="{lang:Lang SpeedControl_GlobalTitle}" FontSize="14" FontWeight="SemiBold"
+                           Foreground="#37474F" VerticalAlignment="Center"/>
+                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
+                           FontSize="12" Margin="8,0,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#4CAF50"/>
+                            <Setter Property="Text" Value="{lang:Lang SpeedControl_Applied}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                    <Setter Property="Foreground" Value="#FF9800"/>
+                                    <Setter Property="Text" Value="{lang:Lang SpeedControl_Pending}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="1%" FontSize="11" Foreground="#90A4AE"
+                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <Slider Grid.Column="1" Minimum="1" Maximum="100"
+                        Value="{Binding PendingPercent, Mode=TwoWay}"
+                        TickFrequency="1" IsSnapToTickEnabled="True"
+                        VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" FontSize="20" FontWeight="Bold"
+                           Foreground="#37474F" VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           Margin="6,0,6,0">
+                    <TextBlock.Text>
+                        <Binding Path="PendingPercent" StringFormat="{}{0:N0}%"/>
+                    </TextBlock.Text>
+                </TextBlock>
+                <Button Grid.Column="3" Content="{lang:Lang SpeedControl_Confirm}"
+                        Command="{Binding ConfirmCommand}"
+                        Style="{DynamicResource MaterialDesignRaisedButton}"
+                        Height="30" FontSize="12" Padding="12,0"
+                        Background="#00897B" Foreground="White"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

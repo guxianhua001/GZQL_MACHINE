@@ -1,4 +1,4 @@
-﻿using ModuleCore.Models;
+using ModuleCore.Models;
 using Prism.Commands;
 using Prism.Ioc;
 using Prism.Mvvm;
@@ -61,7 +61,7 @@ namespace ModuleCore.ViewModels
             RequestClose?.Invoke(dialogResult);
         }
 
-        private string _title = "用户管理";
+        private string _title = "User Management";
 
         public string Title
         {

@@ -1,0 +1,199 @@
+<UserControl x:Class="Module.Views.AutoPathsGenerationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:converters="clr-namespace:Module.Converters"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MinHeight="700">
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:StringToBoolConverter x:Key="StringToBoolConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+    </UserControl.Resources>
+
+    <materialDesign:Card UniformCornerRadius="12"
+                         Margin="0,0,0,16">
+        <StackPanel>
+            <!-- 标题 -->
+            <TextBlock Text="{lang:Lang Dispensing_AutoPathGeneration_Title}"
+                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                       Foreground="{DynamicResource PrimaryHueMidBrush}"
+                       Padding="16,12,16,0" />
+
+            <!-- 内容 -->
+            <StackPanel Margin="16,0,16,16">
+
+                <!-- 1. Jog & Capture -->
+                <TextBlock Text="Jog &amp; Capture"
+                           Style="{StaticResource MaterialDesignBodyMediumTextBlock}"
+                           Foreground="{DynamicResource SecondaryHueMidBrush}"
+                           Margin="0,8,0,8" />
+
+                <!-- Group 选择 -->
+                <WrapPanel Margin="0,0,0,8">
+                    <TextBlock Text="Group:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox Width="120"
+                              ItemsSource="{Binding Groups}"
+                              SelectedItem="{Binding SelectedGroup}"
+                              Margin="0,0,8,0" />
+                </WrapPanel>
+
+                <!-- sub_assy -->
+                <WrapPanel Margin="0,0,0,8">
+                    <TextBlock Text="sub_assy:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox Width="100"
+                              ItemsSource="{Binding SubAssyOptions}"
+                              SelectedItem="{Binding SelectedSubAssy}"
+                              Margin="0,0,12,0" />
+                </WrapPanel>
+
+                <!-- Type -->
+                <WrapPanel Margin="0,0,0,12">
+                    <TextBlock Text="Type:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <RadioButton Content="Dot"
+                                 GroupName="Type"
+                                 IsChecked="{Binding SelectedType, Converter={StaticResource StringToBoolConverter}, ConverterParameter=Dot}"
+                                 Margin="0,0,12,0" />
+                    <RadioButton Content="2D Path"
+                                 GroupName="Type"
+                                 IsChecked="{Binding SelectedType, Converter={StaticResource StringToBoolConverter}, ConverterParameter=2D Path}"
+                                 Margin="0,0,12,0" />
+                    <RadioButton Content="3D Path"
+                                 GroupName="Type"
+                                 IsChecked="{Binding SelectedType, Converter={StaticResource StringToBoolConverter}, ConverterParameter=3D Path}"
+                                 Margin="0,0,12,0" />
+                </WrapPanel>
+
+                <!-- 2. Camera Scan -->
+                <TextBlock Text="Camera Scan"
+                           Style="{StaticResource MaterialDesignBodyMediumTextBlock}"
+                           Foreground="{DynamicResource SecondaryHueMidBrush}"
+                           Margin="0,16,0,8" />
+                <TextBlock Text="Jog camera using Jog &amp; Homing controls"
+                           Margin="0,0,0,8"
+                           Foreground="Gray" />
+                <WrapPanel Margin="0,0,0,12">
+                    <Button Content="Move"
+                            Command="{Binding MoveCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Padding="12,4"
+                            Margin="0,0,8,0" />
+                    <Button Content="Camera Capture"
+                            Command="{Binding CameraCaptureCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Padding="12,4"
+                            Margin="0,0,8,0" />
+                    <Button Command="{Binding EditPositionCommand}" Padding="12,4" Margin="16,0,4,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,4,0" />
+                            <TextBlock Text="Edit Position" />
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+
+                <!-- 3. Capture Point -->
+                <TextBlock Text="Capture Point"
+                           Style="{StaticResource MaterialDesignBodyMediumTextBlock}"
+                           Foreground="{DynamicResource SecondaryHueMidBrush}"
+                           Margin="0,16,0,8" />
+                <DataGrid ItemsSource="{Binding Points}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          materialDesign:DataGridAssist.CellPadding="4"
+                          Margin="0,0,0,8"
+                          MaxHeight="200">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected}" Width="50" />
+                        <DataGridTextColumn Header="{lang:Lang Dispensing_DataGrid_Column_Point}" Binding="{Binding PointId}" Width="60" />
+                        <DataGridTextColumn Header="{lang:Lang Dispensing_PointX}" Binding="{Binding X}" Width="*" />
+                        <DataGridTextColumn Header="{lang:Lang Dispensing_PointY}" Binding="{Binding Y}" Width="*" />
+                        <DataGridTextColumn Header="{lang:Lang Dispensing_PointZ}" Binding="{Binding Z}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <WrapPanel Margin="0,0,0,12">
+                    <Button Content="{lang:Lang Dispensing_Button_DeleteSelected}"
+                            Command="{Binding DeleteSelectedPointCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Padding="12,4"
+                            Margin="0,0,8,0" />
+                    <Button Content="Export as DXF Layer"
+                            Command="{Binding ExportAsDxfCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Padding="12,4" />
+                </WrapPanel>
+
+                <!-- 4. Auto-PATH (visible only when Type is 2D Path or 3D Path) -->
+                <StackPanel Visibility="{Binding SelectedType, Converter={StaticResource StringToVisibilityConverter}, ConverterParameter=2D Path, FallbackValue=Collapsed}"
+            Margin="0,8,0,0">
+                    <TextBlock Text="{lang:Lang Dispensing_AutoPath_Title}"
+               Style="{StaticResource MaterialDesignBodyMediumTextBlock}"
+               Foreground="{DynamicResource SecondaryHueMidBrush}"
+               Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding AutoPathPoints}"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserDeleteRows="False"
+              materialDesign:DataGridAssist.CellPadding="4"
+              Margin="0,0,0,8"
+              MaxHeight="200">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{lang:Lang Dispensing_DataGrid_Column_Point}" Binding="{Binding PointId}" Width="60" />
+                            <DataGridTextColumn Header="{lang:Lang Dispensing_PointX}" Binding="{Binding X}" Width="*" />
+                            <DataGridTextColumn Header="{lang:Lang Dispensing_PointY}" Binding="{Binding Y}" Width="*" />
+                            <DataGridTextColumn Header="{lang:Lang Dispensing_PointZ}" Binding="{Binding Z}" Width="*" />
+                            <DataGridTextColumn Header="Offset" Binding="{Binding Offset, StringFormat=F3}" Width="70" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Z correction 行 -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <CheckBox IsChecked="{Binding IsZCorrectionEnabled}"
+                  Margin="0,0,8,0"
+                  VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Kind="CheckCircle"
+                                 Width="16"
+                                 Height="16"
+                                 Foreground="{Binding IsZCorrectionEnabled, Converter={StaticResource BoolToColorConverter}, ConverterParameter=Green}"
+                                 Margin="0,0,4,0" />
+                        <TextBlock Text="Z correction: Applied (from Z-Scan)"
+                                   Foreground="{Binding IsZCorrectionEnabled, Converter={StaticResource BoolToColorConverter}, ConverterParameter=Gray}"
+                                   VerticalAlignment="Center" />
+                    </WrapPanel>
+
+                    <WrapPanel>
+                        <Button Content="{lang:Lang Dispensing_Button_ExtractPath}"
+                Command="{Binding ExtractPathCommand}"
+                Style="{StaticResource MaterialDesignOutlinedButton}"
+                Padding="12,4" />
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- 5. Execute Dispensing -->
+                <TextBlock Text="{lang:Lang Dispensing_ExecuteDispensing_Title}"
+                           Style="{StaticResource MaterialDesignBodyMediumTextBlock}"
+                           Foreground="{DynamicResource SecondaryHueMidBrush}"
+                           Margin="0,16,0,8" />
+                <WrapPanel Margin="0,0,0,8">
+                    <Button Content="{lang:Lang Dispensing_Button_SelectStart}"
+                            Command="{Binding SelectStartCommand}"
+                            Padding="12,4"
+                            Margin="0,0,8,0" />
+                    <Button Content="{lang:Lang Dispensing_Button_SelectEnd}"
+                            Command="{Binding SelectEndCommand}"
+                            Padding="12,4" />
+                </WrapPanel>
+                <TextBlock Text="{lang:Lang Dispensing_StatusLabel}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,0,0" />
+                <TextBlock Text="{Binding ExecuteStatus}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,0,0"
+                           Foreground="Gray" />
+            </StackPanel>
+        </StackPanel>
+    </materialDesign:Card>
+</UserControl>

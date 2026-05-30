@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="ModuleCore.Views.UserManage"
+<UserControl x:Class="ModuleCore.Views.UserManage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,6 +6,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              xmlns:viewmodels="clr-namespace:ModuleCore.ViewModels"
              Width="640"
              Height="720"
@@ -42,14 +43,14 @@
                 <DataGridTextColumn Width="2*"
                                     MinWidth="150"
                                     Binding="{Binding Name}"
-                                    Header="用户"
+                                    Header="{lang:Lang User}"
                                     IsReadOnly="True" />
 
                 <!-- 权限列 -->
                 <DataGridTextColumn Width="2*"
                                     MinWidth="150"
                                     Binding="{Binding Authority}"
-                                    Header="权限"
+                                    Header="{lang:Lang Authority}"
                                     IsReadOnly="True" />
 
                 <!-- 操作按钮列 -->
@@ -59,11 +60,11 @@
                         <DataTemplate>
                             <UniformGrid Columns="2">
                                 <Button Command="{Binding Delete}"
-                                        Content="删除"
+                                        Content="{lang:Lang Delete}"
                                         Margin="3"
                                         Padding="8,2" />
                                 <Button Command="{Binding ChangePassword}"
-                                        Content="改密"
+                                        Content="{lang:Lang ChangePassword}"
                                         Margin="3"
                                         Padding="8,2" />
                             </UniformGrid>
@@ -98,14 +99,14 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="用户："
+                    <TextBlock Text="{lang:Lang User}"
                                VerticalAlignment="Center"
                                Margin="0,0,5,0" />
                     <TextBox x:Name="UserName"
                              Grid.Column="1"
                              MinWidth="100" />
 
-                    <TextBlock Text="权限："
+                    <TextBlock Text="{lang:Lang Authority}"
                                Grid.Column="2"
                                VerticalAlignment="Center"
                                Margin="10,0,5,0" />
@@ -124,7 +125,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="密码："
+                    <TextBlock Text="{lang:Lang Password}"
                                VerticalAlignment="Center"
                                Margin="0,0,5,0" />
                     <PasswordBox x:Name="passwordBoxFirst"
@@ -140,7 +141,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="确认："
+                    <TextBlock Text="{lang:Lang ConfirmPassword}"
                                VerticalAlignment="Center"
                                Margin="0,0,5,0" />
                     <PasswordBox x:Name="passwordBoxSecond"
@@ -158,7 +159,7 @@
 
                 <!-- 添加按钮 -->
                 <Button Grid.Row="4"
-                        Content="添加用户"
+                        Content="{lang:Lang AddUser}"
                         HorizontalAlignment="Center"
                         MinWidth="100"
                         Click="AddUser"
@@ -166,7 +167,7 @@
 
                 <!-- 系统设置区域 -->
                 <StackPanel Grid.Row="5">
-                    <TextBlock Text="系统全局设置"
+                    <TextBlock Text="{lang:Lang SystemGlobalSettings}"
                                FontWeight="Bold"
                                Margin="0,0,0,10" />
 
@@ -177,17 +178,17 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="自动注销时间(分钟):"
+                        <TextBlock Text="{lang:Lang AutoLogoutMinutes}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,5,0" />
 
                         <TextBox Grid.Column="1"
                                  Text="{Binding Model.AutoLogoutMinutes}"
-                                 materialDesign:HintAssist.Hint="1-1440分钟"
+                                 materialDesign:HintAssist.Hint="{lang:Lang AutoLogoutHint}"
                                  Margin="0,0,10,0" />
 
                         <Button Grid.Column="2"
-                                Content="应用"
+                                Content="{lang:Lang Apply}"
                                 Command="{Binding UpdateConfigCommand}"
                                 MinWidth="80" />
                     </Grid>

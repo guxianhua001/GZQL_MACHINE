@@ -1,0 +1,221 @@
+<UserControl x:Class="MotionControl.Views.SingleAxisControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:behaviors="clr-namespace:MotionControl.Behaviors"
+             xmlns:converters="clr-namespace:MotionControl.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="280" 
+             d:DesignWidth="900"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:BoolToJogLedBrushConverter x:Key="JogLedConverter"/>
+            <converters:AxisDirectionToIconConverter x:Key="DirectionIconConverter"/>
+            <converters:BooleanToBrushConverter x:Key="BoolToBrushConverter"/>
+            <converters:BoolToRunningStatusTextConverter x:Key="BoolToRunningStatusTextConverter"/>
+
+            <Style x:Key="StatusLedStyle" TargetType="Ellipse">
+                <Setter Property="Width" Value="12"/>
+                <Setter Property="Height" Value="12"/>
+                <Setter Property="Stroke" Value="DarkGray"/>
+                <Setter Property="StrokeThickness" Value="1"/>
+            </Style>
+
+            <Style x:Key="CompactButtonStyle" TargetType="Button" BasedOn="{DynamicResource MaterialDesignFlatButton}">
+                <Setter Property="Padding" Value="6,2"/>
+                <Setter Property="Margin" Value="2"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="MinWidth" Value="40"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <materialDesign:Card UniformCornerRadius="6" Margin="4" Padding="10">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <!-- 轴信息列 -->
+                <ColumnDefinition Width="80"/>
+                <!-- 位置信息列 -->
+                <ColumnDefinition Width="90"/>
+                <!-- 相对移动列 -->
+                <ColumnDefinition Width="100"/>
+                <!-- 速度控制列 -->
+                <ColumnDefinition Width="130"/>
+                <!-- Jog 控制列 -->
+                <ColumnDefinition Width="120"/>
+                <!-- 运动操作列 -->
+                <ColumnDefinition Width="110"/>
+                <!-- 伺服/复位列 -->
+                <ColumnDefinition Width="100"/>
+                <!-- 状态指示灯列 -->
+                <ColumnDefinition Width="140"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ========== 第1列：轴基本信息 ========== -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding AxisId, StringFormat='#{0}'}" 
+                           FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding LocalizedAxisName}" 
+                           FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <!-- ========== 第2列：位置与初始化状态 ========== -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang PositionLabel}" FontSize="10" Foreground="Gray"/>
+                <TextBlock Text="{Binding Position, StringFormat=F3, FallbackValue=0.000}" 
+                           FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding LocalizedHomeStatus}" 
+                           FontSize="9" Foreground="{DynamicResource MaterialDesignBodyLight}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- ========== 第3列：相对移动 ========== -->
+            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang StepSizeMm}" FontSize="9" Foreground="Gray"/>
+                <ComboBox ItemsSource="{Binding DistanceOptions}" 
+                          SelectedItem="{Binding StepSize}" 
+                          Width="70" Height="24" Margin="0,2"
+                          Style="{DynamicResource MaterialDesignComboBox}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                    <Button Content="−" Command="{Binding MoveNegativeCommand}" 
+                            Style="{StaticResource CompactButtonStyle}" Background="#FFE0E0E0"
+                            FontWeight="Bold" FontSize="14" Width="30"/>
+                    <Button Content="+" Command="{Binding MovePositiveCommand}" 
+                            Style="{StaticResource CompactButtonStyle}" Background="#FFE0F0E0"
+                            FontWeight="Bold" FontSize="14" Width="30"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ========== 第4列：速度滑块 ========== -->
+            <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang SpeedMmS}" FontSize="9" Foreground="Gray"/>
+                <Slider Minimum="{Binding MinimumSpeed}" Maximum="{Binding MaximumSpeed}" 
+                        Value="{Binding Speed}" TickFrequency="1" IsSnapToTickEnabled="True"
+                        Margin="0,4,0,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Speed, StringFormat=F1}" 
+                           FontSize="11" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- ========== 第5列：Jog 控制（安全关键）========== -->
+            <StackPanel Grid.Column="4" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang JogLabel}" FontSize="9" Foreground="Gray"/>
+                
+                <!-- Jog 状态 LED 指示灯 -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Ellipse Width="10" Height="10" Stroke="Gray" StrokeThickness="1"
+                             Fill="{Binding IsJogging, Converter={StaticResource JogLedConverter}}"/>
+                    <TextBlock Text="{Binding IsJogging, Converter={StaticResource BoolToRunningStatusTextConverter}}" 
+                               FontSize="9" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Jog 按钮：附着 SafeJogBehavior -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                    <!-- Jog 负向按钮 -->
+                    <Button behaviors:SafeJogBehavior.AxisId="{Binding AxisId}"
+                            behaviors:SafeJogBehavior.Direction="Negative"
+                            behaviors:SafeJogBehavior.MotionService="{Binding MotionService}"
+                            behaviors:SafeJogBehavior.IsJogging="{Binding IsJogging, Mode=OneWayToSource}"
+                            Style="{StaticResource CompactButtonStyle}" 
+                            Background="#FFFFE0B2" Width="50" Height="28"
+                            ToolTip="{lang:Lang JogHoldToMove}">
+                        <materialDesign:PackIcon Kind="{Binding Direction, Converter={StaticResource DirectionIconConverter}, ConverterParameter=Negative}"
+                                                 Width="16" Height="16"/>
+                    </Button>
+                    
+                    <!-- Jog 正向按钮 -->
+                    <Button behaviors:SafeJogBehavior.AxisId="{Binding AxisId}"
+                            behaviors:SafeJogBehavior.Direction="Positive"
+                            behaviors:SafeJogBehavior.MotionService="{Binding MotionService}"
+                            behaviors:SafeJogBehavior.IsJogging="{Binding IsJogging, Mode=OneWayToSource}"
+                            Style="{StaticResource CompactButtonStyle}" 
+                            Background="#FFC8E6C9" Width="50" Height="28" Margin="4,0,0,0"
+                            ToolTip="{lang:Lang JogHoldToMove}">
+                        <materialDesign:PackIcon Kind="{Binding Direction, Converter={StaticResource DirectionIconConverter}, ConverterParameter=Positive}"
+                                                 Width="16" Height="16"/>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ========== 第6列：运动操作 ========== -->
+            <StackPanel Grid.Column="5" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang Operation}" FontSize="9" Foreground="Gray"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Button Content="{lang:Lang HomeAxis}" Command="{Binding HomeCommand}" 
+                            Style="{StaticResource CompactButtonStyle}" Background="#FF81D4FA"/>
+                    <Button Content="{lang:Lang Stop}" Command="{Binding StopCommand}" 
+                            Style="{StaticResource CompactButtonStyle}" Background="#FFFFCDD2"
+                            FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Button Content="{lang:Lang ClearButton}" Command="{Binding ClearPositionCommand}" 
+                            Style="{StaticResource CompactButtonStyle}"/>
+                    <Button Content="{lang:Lang AlarmButton}" Command="{Binding ClearAlarmCommand}" 
+                            Style="{StaticResource CompactButtonStyle}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ========== 第7列：伺服控制 ========== -->
+            <StackPanel Grid.Column="6" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang ServoDrive}" FontSize="9" Foreground="Gray"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Button Content="{lang:Lang ServoOn}" Command="{Binding ServoOnCommand}"
+                            Style="{StaticResource CompactButtonStyle}" Background="#FFC8E6C9"
+                            FontWeight="Bold"/>
+                    <Button Content="{lang:Lang ServoOff}" Command="{Binding ServoOffCommand}" 
+                            Style="{StaticResource CompactButtonStyle}" Background="#FFFFCDD2"
+                            FontWeight="Bold"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ========== 第8列：状态指示灯 ========== -->
+            <StackPanel Grid.Column="7" VerticalAlignment="Center">
+                <TextBlock Text="{lang:Lang StatusIndicator}" FontSize="9" Foreground="Gray" HorizontalAlignment="Center"/>
+                <WrapPanel HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <!-- ON (伺服) -->
+                    <Ellipse Style="{StaticResource StatusLedStyle}" Margin="1"
+                             Fill="{Binding IsServoOn, Converter={StaticResource BoolToBrushConverter}}"
+                             ToolTip="{lang:Lang ServoOnTip}"/>
+                    <TextBlock Text="{lang:Lang StatusLed_ON}" FontSize="8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                    <!-- MEL (负极限) -->
+                    <Ellipse Style="{StaticResource StatusLedStyle}" Margin="1"
+                             Fill="{Binding IsMEL, Converter={StaticResource BoolToBrushConverter}}"
+                             ToolTip="{lang:Lang NegativeLimitMEL}"/>
+                    <TextBlock Text="{lang:Lang StatusLed_MEL}" FontSize="8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                    <!-- ORG (原点) -->
+                    <Ellipse Style="{StaticResource StatusLedStyle}" Margin="1"
+                             Fill="{Binding IsORG, Converter={StaticResource BoolToBrushConverter}}"
+                             ToolTip="{lang:Lang OriginORG}"/>
+                    <TextBlock Text="{lang:Lang StatusLed_ORG}" FontSize="8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                    <!-- PEL (正极限) -->
+                    <Ellipse Style="{StaticResource StatusLedStyle}" Margin="1"
+                             Fill="{Binding IsPEL, Converter={StaticResource BoolToBrushConverter}}"
+                             ToolTip="{lang:Lang PositiveLimitPEL}"/>
+                    <TextBlock Text="{lang:Lang StatusLed_PEL}" FontSize="8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                    <!-- ALM (报警) -->
+                    <Ellipse Style="{StaticResource StatusLedStyle}" Margin="1"
+                             Fill="{Binding IsALM, Converter={StaticResource BoolToBrushConverter}}"
+                             ToolTip="{lang:Lang AlarmALM}"/>
+                    <TextBlock Text="{lang:Lang StatusLed_ALM}" FontSize="8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                    <!-- ASTP (急停) -->
+                    <Ellipse Style="{StaticResource StatusLedStyle}" Margin="1"
+                             Fill="{Binding IsASTP, Converter={StaticResource BoolToBrushConverter}}"
+                             ToolTip="{lang:Lang EstopASTP}"/>
+                    <TextBlock Text="{lang:Lang StatusLed_ASTP}" FontSize="8" VerticalAlignment="Center"/>
+                </WrapPanel>
+            </StackPanel>
+        </Grid>
+    </materialDesign:Card>
+</UserControl>

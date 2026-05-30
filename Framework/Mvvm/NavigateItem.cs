@@ -1,4 +1,4 @@
-﻿using Prism.Mvvm;
+using Prism.Mvvm;
 
 namespace Framework.Mvvm
 {
@@ -26,6 +26,17 @@ namespace Framework.Mvvm
         {
             get { return _DisplayName; }
             set { SetProperty(ref _DisplayName, value); }
+        }
+
+        /// <summary>
+        /// 多语言资源键，语言切换时通过此键刷新 DisplayName
+        /// </summary>
+        private string _DisplayNameKey;
+
+        public string DisplayNameKey
+        {
+            get { return _DisplayNameKey; }
+            set { SetProperty(ref _DisplayNameKey, value); }
         }
 
         private int _UserLevel;

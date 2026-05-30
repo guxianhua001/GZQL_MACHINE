@@ -1,0 +1,180 @@
+<UserControl x:Class="AlarmModule.Views.AlarmListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:AlarmModule.Converters"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             Background="#EEF2F5"
+             MinHeight="300"
+             MinWidth="800"
+             d:DesignHeight="600"
+             d:DesignWidth="900">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <local:AlarmLevelToBrushConverter x:Key="AlarmLevelToBrushConverter" />
+        <local:AlarmLevelToTextConverter x:Key="AlarmLevelToTextConverter" />
+        <local:AlarmStatusToTextConverter x:Key="AlarmStatusToTextConverter" />
+        <local:AlarmTypeToTextConverter x:Key="AlarmTypeToTextConverter" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <DockPanel Grid.Row="0" Margin="16,16,16,8">
+            <TextBlock Text="{lang:Lang RealTimeAlarmList}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MaterialDesignBody}" />
+            <Border Background="#FF1744"
+                    CornerRadius="10"
+                    Padding="8,2"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding UnconfirmedCount, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                <TextBlock Text="{Binding UnconfirmedCountText}"
+                           FontSize="12"
+                           Foreground="White"
+                           FontWeight="Bold" />
+            </Border>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="{lang:Lang Refresh}"
+                        Command="{Binding RefreshCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0" />
+                <Button Content="{lang:Lang ConfirmAll}"
+                        Command="{Binding ConfirmAllCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Margin="0,0,8,0" />
+                <Button Content="{lang:Lang ResetAll}"
+                        Command="{Binding ResetAllCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}" />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- 分隔线 -->
+        <Separator Grid.Row="1" Margin="16,0" />
+
+        <!-- 报警数据区域（含空状态提示） -->
+        <Grid Grid.Row="2" Margin="16,8,16,16">
+            <!-- 数据表格：有数据时显示 -->
+            <DataGrid ItemsSource="{Binding ActiveAlarms}"
+                      SelectedItem="{Binding SelectedAlarm}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      SelectionUnit="FullRow"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      materialDesign:DataGridAssist.CellPadding="8,4">
+                <DataGrid.Style>
+                    <Style TargetType="DataGrid" BasedOn="{StaticResource MaterialDesignDataGrid}">
+                        <Style.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.Style>
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                        <Setter Property="Background" Value="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToBrushConverter}, ConverterParameter=0.15}" />
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{lang:Lang AlarmTime}" Binding="{Binding AlarmTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="150" />
+                    <DataGridTemplateColumn Header="{lang:Lang AlarmLevel}" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToTextConverter}}"
+                                           Foreground="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToBrushConverter}}"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="{lang:Lang AlarmCode}" Binding="{Binding AlarmCode}" Width="100" />
+                    <DataGridTextColumn Header="{lang:Lang AlarmSource}" Binding="{Binding AlarmSource}" Width="120" />
+                    <DataGridTemplateColumn Header="{lang:Lang AlarmType}" Width="90">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding AlarmType, Converter={StaticResource AlarmTypeToTextConverter}}"
+                                           VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="{lang:Lang Desc}" Binding="{Binding Description}" Width="*" />
+                    <DataGridTextColumn Header="{lang:Lang TriggerValue}" Binding="{Binding TriggerValue}" Width="80" />
+                    <DataGridTextColumn Header="{lang:Lang Threshold}" Binding="{Binding ThresholdValue}" Width="80" />
+                    <DataGridTemplateColumn Header="{lang:Lang StatusShort}" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Status, Converter={StaticResource AlarmStatusToTextConverter}}"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="{lang:Lang Operation}" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="{lang:Lang ConfirmShort}"
+                                            Command="{Binding DataContext.ConfirmCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            FontSize="12"
+                                            Padding="8,2"
+                                            Margin="0,0,4,0" />
+                                    <Button Content="{lang:Lang ResetShort}"
+                                            Command="{Binding DataContext.ResetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            FontSize="12"
+                                            Padding="8,2"
+                                            Margin="0,0,4,0" />
+                                    <Button Content="{lang:Lang Eliminate}"
+                                            Command="{Binding DataContext.EliminateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            FontSize="12"
+                                            Padding="8,2" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- 空数据提示：无报警时显示 -->
+            <TextBlock Text="{lang:Lang NoActiveAlarms}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="18"
+                       Foreground="#9E9E9E">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ActiveAlarms.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,151 @@
+<UserControl x:Class="AlarmModule.Views.AlarmStatsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="700"
+             d:DesignWidth="900">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <DockPanel Grid.Row="0" Margin="16,16,16,8">
+            <TextBlock Text="{lang:Lang AlarmStatsAnalysis}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MaterialDesignBody}" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Text="{lang:Lang StartDate}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="13" />
+                <DatePicker SelectedDate="{Binding StartDate}"
+                            Width="140"
+                            Margin="0,0,16,0" />
+                <TextBlock Text="{lang:Lang EndDate}" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="13" />
+                <DatePicker SelectedDate="{Binding EndDate}"
+                            Width="140"
+                            Margin="0,0,16,0" />
+                <Button Content="{lang:Lang Refresh}"
+                        Command="{Binding RefreshCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}" />
+            </StackPanel>
+        </DockPanel>
+
+        <Separator Grid.Row="1" Margin="16,0" />
+
+        <!-- 统计内容区域 -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="16,8,16,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 报警等级分布 -->
+                <materialDesign:Card Grid.Column="0" Margin="0,0,8,0" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="{lang:Lang AlarmLevelDistribution}"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12"
+                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                        <ItemsControl ItemsSource="{Binding LevelDistribution}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,4">
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding Value}"
+                                                   FontWeight="Bold"
+                                                   FontSize="16"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Key}" FontSize="13" />
+                                            <ProgressBar Value="{Binding Value}"
+                                                         Maximum="{Binding DataContext.MaxLevelCount, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                         Height="8"
+                                                         Margin="0,4,0,0"
+                                                         Foreground="{Binding KeyBrush}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Top 10 报警来源 -->
+                <materialDesign:Card Grid.Column="1" Margin="8,0" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="{lang:Lang Top10AlarmSources}"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12"
+                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                        <ListBox ItemsSource="{Binding TopSources}"
+                                 BorderThickness="0"
+                                 materialDesign:ListBoxItemAssist.ShowSelection="False">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,2">
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding Count}"
+                                                   FontWeight="Bold"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0" />
+                                        <TextBlock Text="{Binding Source}"
+                                                   FontSize="13"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 每日趋势（近7天） -->
+                <materialDesign:Card Grid.Column="2" Margin="8,0,0,0" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="{lang:Lang AlarmTrend7Days}"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12"
+                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                        <ItemsControl ItemsSource="{Binding DailyTrend}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,4">
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding Count}"
+                                                   FontWeight="Bold"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,0,0" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Date, StringFormat='yyyy-MM-dd'}" FontSize="13" />
+                                            <ProgressBar Value="{Binding Count}"
+                                                         Maximum="{Binding DataContext.MaxDailyCount, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                         Height="8"
+                                                         Margin="0,4,0,0"
+                                                         Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </materialDesign:Card>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

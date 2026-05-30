@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace Modules.LogViewer.Converters
+namespace LogViewer.Converters
 {
     public class LevelToHoverBackgroundConverter : IMultiValueConverter
     {

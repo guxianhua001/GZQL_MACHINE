@@ -1,0 +1,1412 @@
+<UserControl x:Class="Module.Views.VisionCaptureView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Module.Views"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:vm="clr-namespace:Module.ViewModels"
+             xmlns:converters="clr-namespace:Module.Converters"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:helpers="clr-namespace:Framework.Helpers;assembly=Framework"
+             xmlns:interactivity="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
+             mc:Ignorable="d"
+             d:DesignHeight="800" d:DesignWidth="1100"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
+                                            TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
+        <ObjectDataProvider x:Key="DispenseTypeValues"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type vm:DispenseType}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="vm:DispenseType" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        <ObjectDataProvider x:Key="RunModeValues"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type vm:RunMode}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="vm:RunMode" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+
+        <converters:StepStateToBrushConverter x:Key="StepStateToBrush" />
+        <converters:StepStateToIconConverter x:Key="StepStateToIcon" />
+        <converters:StepStateToForegroundConverter x:Key="StepStateToForeground" />
+        <converters:StepStateToTextBrushConverter x:Key="StepStateToTextBrush" />
+        <converters:StepStateToConnectorBrushConverter x:Key="StepStateToConnectorBrush" />
+        <converters:StringNotEmptyToVisibilityConverter x:Key="StringToVis" />
+
+        <SolidColorBrush x:Key="SectionHeaderBg" Color="#FFF5F7FA" />
+        <SolidColorBrush x:Key="StepCardBg" Color="#FFFAFBFC" />
+        <SolidColorBrush x:Key="ResultHighlightBg" Color="#FFE3F2FD" />
+        <SolidColorBrush x:Key="ResultHighlightBorder" Color="#FF1565C0" />
+        <SolidColorBrush x:Key="ExecutingBg" Color="#FFFFF8E1" />
+        <SolidColorBrush x:Key="ExecutingBorder" Color="#FFFFA000" />
+        <SolidColorBrush x:Key="PrimaryBlue" Color="#FF1565C0" />
+        <SolidColorBrush x:Key="SuccessGreen" Color="#FF2E7D32" />
+        <SolidColorBrush x:Key="DangerRed" Color="#FFD32F2F" />
+        <SolidColorBrush x:Key="WarningAmber" Color="#FFF57C00" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#FF263238" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#FF607D8B" />
+        <SolidColorBrush x:Key="DividerColor" Color="#FFE0E4E8" />
+        <SolidColorBrush x:Key="StatusBarBg" Color="#FF37474F" />
+        <SolidColorBrush x:Key="StepActiveBg" Color="#FF1565C0" />
+        <SolidColorBrush x:Key="StepDoneBg" Color="#FF2E7D32" />
+        <SolidColorBrush x:Key="StepPendingBg" Color="#FFBDBDBD" />
+        <SolidColorBrush x:Key="ConnectorDoneBg" Color="#FF2E7D32" />
+        <SolidColorBrush x:Key="ConnectorPendingBg" Color="#FFE0E0E0" />
+
+        <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="4" />
+            <Setter Property="Height" Value="30" />
+        </Style>
+
+        <Style x:Key="CompactOutlinedButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="4" />
+            <Setter Property="Height" Value="30" />
+        </Style>
+
+        <Style x:Key="SectionHeader" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SectionHeaderBg}" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style x:Key="CoordCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource StepCardBg}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DividerColor}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,4,4" />
+        </Style>
+
+        <Style x:Key="ParamLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="PanelCard" TargetType="materialDesign:Card"
+               BasedOn="{StaticResource {x:Type materialDesign:Card}}">
+            <Setter Property="UniformCornerRadius" Value="6" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ========== 顶部步骤指示器（仿CadPointEditorView） ========== -->
+        <Border Grid.Row="0" Background="#FFFAFAFA" BorderBrush="#FFE0E0E0" BorderThickness="0,0,0,1" Padding="16,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <!-- Step 1 -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0">
+                        <Border Width="32" Height="32" CornerRadius="16"
+                                Background="{Binding Step1State, Converter={StaticResource StepStateToBrush}}"
+                                BorderThickness="2">
+                            <TextBlock Text="1" Foreground="White" FontSize="13" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{lang:Lang VisionCapture_Step1Title}" FontSize="12" FontWeight="Medium"
+                                       Foreground="{Binding Step1State, Converter={StaticResource StepStateToTextBrush}}" />
+                            <TextBlock Text="{lang:Lang VisionCapture_Step1Desc}" FontSize="10" Foreground="#FF757575" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 连接线 -->
+                    <Border Width="60" Height="3" Margin="12,0" VerticalAlignment="Center"
+                            Background="{Binding Step1State, Converter={StaticResource StepStateToConnectorBrush}}" />
+
+                    <!-- Step 2 -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0">
+                        <Border Width="32" Height="32" CornerRadius="16"
+                                Background="{Binding Step2State, Converter={StaticResource StepStateToBrush}}"
+                                BorderThickness="2">
+                            <TextBlock Text="2" Foreground="White" FontSize="13" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{lang:Lang VisionCapture_Step2Title}" FontSize="12" FontWeight="Medium"
+                                       Foreground="{Binding Step2State, Converter={StaticResource StepStateToTextBrush}}" />
+                            <TextBlock Text="{lang:Lang VisionCapture_Step2Desc}" FontSize="10" Foreground="#FF757575" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 右侧状态消息 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#FFF3E0" CornerRadius="4" Padding="8,4"
+                            Visibility="{Binding StatusMessage, Converter={StaticResource StringToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="InformationOutline" Width="14" Height="14"
+                                                     VerticalAlignment="Center" Margin="0,0,4,0"
+                                                     Foreground="#FFE65100" />
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#FFE65100"
+                                       VerticalAlignment="Center" FontWeight="Medium" />
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{StaticResource ExecutingBg}" BorderBrush="{StaticResource ExecutingBorder}"
+                            BorderThickness="1" CornerRadius="4" Padding="8,4" Margin="6,0,0,0"
+                            Visibility="{Binding IsExecuting, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Loading" Width="14" Height="14"
+                                                     VerticalAlignment="Center" Margin="0,0,4,0"
+                                                     Foreground="#FFF57C00">
+                                <materialDesign:PackIcon.RenderTransform>
+                                    <RotateTransform x:Name="LoadingRotate" CenterX="7" CenterY="7" />
+                                </materialDesign:PackIcon.RenderTransform>
+                                <materialDesign:PackIcon.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="LoadingRotate"
+                                                                 Storyboard.TargetProperty="Angle"
+                                                                 From="0" To="360" Duration="0:0:1" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </materialDesign:PackIcon.Triggers>
+                            </materialDesign:PackIcon>
+                            <TextBlock Text="{lang:Lang VisionCapture_Executing}" FontSize="11" Foreground="#FFF57C00"
+                                       VerticalAlignment="Center" FontWeight="Medium" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ========== 主内容区：Visibility切换 ========== -->
+        <Grid Grid.Row="1">
+            <!-- Step1: 配置 & 拍照 -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Visibility="{Binding IsStep1Active, Converter={StaticResource BoolToVis}}">
+                <StackPanel Margin="12,10">
+                    <!-- 文件管理 -->
+                    <materialDesign:Card Style="{StaticResource PanelCard}" Margin="0,0,0,0">
+                        <StackPanel Margin="12,10">
+                            <Border Style="{StaticResource SectionHeader}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileDocumentOutline" Width="16" Height="16"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"
+                                                             Foreground="{StaticResource PrimaryBlue}" />
+                                    <TextBlock Text="{lang:Lang VisionCapture_FileManagement}" FontWeight="SemiBold" FontSize="13"
+                                               VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{lang:Lang VisionCapture_CurrentFile}" Style="{StaticResource ParamLabel}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBox Text="{Binding CurrentFileName, Mode=OneWay}" FontSize="11" IsReadOnly="True"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" Padding="4,2" Width="260" Margin="0,0,8,0" />
+                                <Button Command="{Binding LoadConfigCommand}"
+                                        Style="{StaticResource CompactOutlinedButton}"
+                                        Padding="6,2" FontSize="10" Margin="0,0,4,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FolderOpen" Width="12" Height="12"
+                                                                 VerticalAlignment="Center" Margin="0,0,3,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_LoadFile}" FontSize="10" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SaveConfigCommand}"
+                                        Style="{StaticResource CompactOutlinedButton}"
+                                        Padding="6,2" FontSize="10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ContentSave" Width="12" Height="12"
+                                                                 VerticalAlignment="Center" Margin="0,0,3,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_SaveFile}" FontSize="10" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </materialDesign:Card>
+                    
+                    <!-- 运动参数配置 -->
+                    <materialDesign:Card Style="{StaticResource PanelCard}" Margin="0,0,0,0">
+                        <StackPanel Margin="12,10">
+                            <Border Style="{StaticResource SectionHeader}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Robot" Width="16" Height="16"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"
+                                                             Foreground="{StaticResource PrimaryBlue}" />
+                                    <TextBlock Text="{lang:Lang VisionCapture_MotionParams}" FontWeight="SemiBold" FontSize="13"
+                                               VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" VerticalAlignment="Center">
+                                <TextBlock Text="{lang:Lang VisionCapture_SafePosition}" Style="{StaticResource ParamLabel}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <ComboBox ItemsSource="{Binding AvailableSafePositions}"
+                                          SelectedItem="{Binding SafePositionName, UpdateSourceTrigger=PropertyChanged}"
+                                          Width="180" FontSize="11" Margin="0,0,8,0" />
+                                <TextBlock Text="Dx=" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SafePositionDx, StringFormat=F3}" FontSize="10" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Text="Dy=" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SafePositionDy, StringFormat=F3}" FontSize="10" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Text="Dz₁=" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SafePositionDz1, StringFormat=F3}" FontSize="10" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 配置工站 -->
+                    <materialDesign:Card Style="{StaticResource PanelCard}">
+                        <StackPanel Margin="12,10">
+                            <Border Style="{StaticResource SectionHeader}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FormatListGroup" Width="16" Height="16"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"
+                                                             Foreground="{StaticResource PrimaryBlue}" />
+                                    <TextBlock Text="{lang:Lang VisionCapture_ConfigStation}" FontWeight="SemiBold" FontSize="13"
+                                               VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <ComboBox Width="200"
+                                          ItemsSource="{Binding Groups}"
+                                          SelectedItem="{Binding SelectedGroup}"
+                                          materialDesign:HintAssist.Hint="{lang:Lang VisionCapture_SelectGroup}"
+                                          FontSize="12" Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang VisionCapture_AutoLoadPhotoPos}" FontSize="10" Foreground="#FF757575"
+                                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <Button Command="{Binding SyncCaptureCommand}"
+                                        Style="{StaticResource CompactButton}"
+                                        Background="{StaticResource PrimaryBlue}" Foreground="White"
+                                        Padding="6,2" FontSize="10" Margin="0,0,8,0"
+                                        ToolTip="{lang:Lang VisionCapture_SyncCaptureTooltip}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CameraBurst" Width="12" Height="12"
+                                                                 VerticalAlignment="Center" Margin="0,0,3,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_SyncCapture}" FontSize="10" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <DataGrid ItemsSource="{Binding PhotoPositionRows}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      SelectionMode="Single"
+                                      SelectedItem="{Binding SelectedRow}"
+                                      materialDesign:DataGridAssist.CellPadding="2,1"
+                                      FontSize="11"
+                                      BorderThickness="1" BorderBrush="{StaticResource DividerColor}"
+                                      HeadersVisibility="Column"
+                                      MaxHeight="220">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_Header_Site}" Width="80" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding SiteFeatureName}" VerticalAlignment="Center" Margin="2,0"
+                                                           FontWeight="Medium" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_Header_Dx}" Width="75">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DxPositionName}" VerticalAlignment="Center" Margin="2,0" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                          SelectedItem="{Binding DxPositionName, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_Header_Dy}" Width="75">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DyPositionName}" VerticalAlignment="Center" Margin="2,0" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                          SelectedItem="{Binding DyPositionName, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_Header_Dz1}" Width="75">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Dz1PositionName}" VerticalAlignment="Center" Margin="2,0" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                          SelectedItem="{Binding Dz1PositionName, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_Header_Y}" Width="75">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding YPositionName}" VerticalAlignment="Center" Margin="2,0" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                          SelectedItem="{Binding YPositionName, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="{lang:Lang VisionCapture_Header_Spd}" Binding="{Binding Speed}" Width="75" FontSize="11" />
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_ColumnMove}" Width="65">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.MoveToTeachPositionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource CompactButton}"
+                                                        Background="{StaticResource WarningAmber}" Foreground="White"
+                                                        Padding="4,2" FontSize="10"
+                                                        ToolTip="{lang:Lang VisionCapture_MoveTooltip}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="Navigation" Width="12" Height="12"
+                                                                                 VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="{lang:Lang VisionCapture_ColumnTrigger}" Binding="{Binding TriggerCommand}" Width="72" FontSize="11" />
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_ColumnConnection}" Width="102">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ConnectionName}" VerticalAlignment="Center" Margin="2,0" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.AvailableConnections, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                          SelectedItem="{Binding ConnectionName, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang Key=VisionCapture_ColumnType}" Width="82">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DispenseType}" VerticalAlignment="Center" Margin="2,0" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding Source={StaticResource DispenseTypeValues}}"
+                                                          SelectedItem="{Binding DispenseType, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_ColumnCapture}" Width="78">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.ExecuteCaptureCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource CompactButton}"
+                                                        Background="{StaticResource PrimaryBlue}" Foreground="White"
+                                                        Padding="4,2" FontSize="10" >
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="Camera" Width="12" Height="12"
+                                                                                 VerticalAlignment="Center" Margin="0,0,2,0" />
+                                                        <TextBlock Text="{lang:Lang AssemblyStep_Button_Capture}" FontSize="10" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang VisionCapture_ReturnToSafe}" Width="95">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding ReturnToSafeAfterCapture, UpdateSourceTrigger=PropertyChanged}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 视觉数据 -->
+                    <materialDesign:Card Style="{StaticResource PanelCard}">
+                        <StackPanel Margin="12,10">
+                            <Border Style="{StaticResource SectionHeader}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Eye" Width="16" Height="16"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"
+                                                             Foreground="{StaticResource PrimaryBlue}" />
+                                    <TextBlock Text="{lang:Lang VisionCapture_VisionData}" FontWeight="SemiBold" FontSize="13"
+                                               VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                </StackPanel>
+                            </Border>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Text="{lang:Lang VisionCapture_RawResponse}" FontWeight="SemiBold" FontSize="11"
+                                               Foreground="{StaticResource TextSecondary}" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding RawResponse, Mode=OneWay}"
+                                             IsReadOnly="True" TextWrapping="Wrap"
+                                             MaxHeight="80" FontSize="11"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="{lang:Lang VisionCapture_ParsedData}" FontWeight="SemiBold" FontSize="11"
+                                               Foreground="{StaticResource TextSecondary}" Margin="0,0,0,4" />
+                                    <ItemsControl ItemsSource="{Binding ParsedData}" MaxHeight="80">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="0,1">
+                                                    <TextBlock Text="{Binding Key, Mode=OneWay}" FontWeight="Medium"
+                                                               Foreground="{StaticResource TextPrimary}" FontSize="11" />
+                                                    <TextBlock Text=" = " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                    <TextBlock Text="{Binding Value, Mode=OneWay}"
+                                                               Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" FontSize="11" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 偏移/补偿参数（绑定到选中行） -->
+                    <materialDesign:Card Style="{StaticResource PanelCard}" Margin="0,0,0,0">
+                        <StackPanel Margin="12,10">
+                            <Border Style="{StaticResource SectionHeader}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="TuneVertical" Width="16" Height="16"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"
+                                                             Foreground="{StaticResource PrimaryBlue}" />
+                                    <TextBlock Text="{lang:Lang VisionCapture_OffsetCompensation}" FontWeight="SemiBold" FontSize="13"
+                                               VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                    <TextBlock Text="{Binding SelectedRow.SiteFeatureName, StringFormat='[{0}]'}" FontSize="11"
+                                               Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <!-- 新格式弧线解析数据展示（CenterX/P1X/P2X/P3X格式，初始数据预填充，收到实际数据后自动更新） -->
+                            <Border Margin="0,0,0,6"
+                                    Visibility="{Binding HasParsedArcData, Converter={StaticResource BoolToVis}}"
+                                    Background="#F3F8FF" BorderBrush="#90CAF9"
+                                    BorderThickness="1" CornerRadius="4" Padding="8,6">
+                                <StackPanel>
+                                    <!-- 标题行 -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <materialDesign:PackIcon Kind="VectorCurve" Width="13" Height="13"
+                                                                 Foreground="{StaticResource PrimaryBlue}"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_ParsedArcData}"
+                                                   FontWeight="SemiBold" FontSize="11"
+                                                   Foreground="{StaticResource PrimaryBlue}" />
+                                    </StackPanel>
+
+                                    <!-- 解析坐标：Center / P1 / P2 / P3 -->
+                                    <UniformGrid Columns="4" Margin="0,0,0,4">
+                                        <!-- Center -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="Center" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="X=" /><Run Text="{Binding ParsedCenterX, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="Y=" /><Run Text="{Binding ParsedCenterY, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- P1 -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="P1" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="X=" /><Run Text="{Binding ParsedP1X, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="Y=" /><Run Text="{Binding ParsedP1Y, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- P2 -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="P2" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="X=" /><Run Text="{Binding ParsedP2X, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="Y=" /><Run Text="{Binding ParsedP2Y, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- P3 -->
+                                        <StackPanel>
+                                            <TextBlock Text="P3" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="X=" /><Run Text="{Binding ParsedP3X, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" Foreground="{StaticResource TextPrimary}">
+                                                <Run Text="Y=" /><Run Text="{Binding ParsedP3Y, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </UniformGrid>
+
+                                    <!-- 分割线 -->
+                                    <Separator Margin="0,2,0,4" Background="#C0D8F0" />
+
+                                    <!-- Vision Coord：收到数据后同步（Center/P1/P2/P3 → VisionCenterX/Y & Point1-3 X/Y） -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                        <materialDesign:PackIcon Kind="Eye" Width="12" Height="12"
+                                                                 Foreground="#5C6BC0" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_VisionCoord}" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="#5C6BC0" />
+                                    </StackPanel>
+                                    <UniformGrid Columns="4" Margin="0,0,0,4">
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="C" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding VisionCenterX, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding VisionCenterY, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="P1" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding Point1X, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding Point1Y, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="P2" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding Point2X, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding Point2Y, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="P3" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding Point3X, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="{Binding Point3Y, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </UniformGrid>
+
+                                    <!-- 分割线 -->
+                                    <Separator Margin="0,2,0,4" Background="#C0D8F0" />
+
+                                    <!-- Center Offset：▲Pn = 相机中心点(Center) - Pn -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                        <materialDesign:PackIcon Kind="Calculator" Width="12" Height="12"
+                                                                 Foreground="#0288D1" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_CenterOffset}" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="#0288D1" />
+                                        <TextBlock Text=" (▲Pn = Center − Pn)" FontSize="9"
+                                                   Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <UniformGrid Columns="3" Margin="0,0,0,2">
+                                        <!-- ΔP1 -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="▲P1" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="ΔX=" /><Run Text="{Binding P1DeltaX, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="ΔY=" /><Run Text="{Binding P1DeltaY, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- ΔP2 -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="▲P2" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="ΔX=" /><Run Text="{Binding P2DeltaX, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="ΔY=" /><Run Text="{Binding P2DeltaY, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- ΔP3 -->
+                                        <StackPanel>
+                                            <TextBlock Text="▲P3" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10">
+                                                <Run Text="ΔX=" /><Run Text="{Binding P3DeltaX, StringFormat=F3}" Foreground="#E53935" FontWeight="Medium" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10">
+                                                <Run Text="ΔY=" /><Run Text="{Binding P3DeltaY, StringFormat=F3}" Foreground="#43A047" FontWeight="Medium" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </UniformGrid>
+
+                                    <!-- 分割线 -->
+                                    <Separator Margin="0,2,0,4" Background="#C0D8F0" />
+
+                                    <!-- Machine Coord：P1-P3转换后的点胶机械坐标 -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                        <materialDesign:PackIcon Kind="MapMarker" Width="12" Height="12"
+                                                                 Foreground="{StaticResource ResultHighlightBorder}"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_MachineCoord}" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource ResultHighlightBorder}" />
+                                        <TextBlock Text=" (拍照位+▲Pn+CamDist+NeedleOff+Comp)" FontSize="9"
+                                                   Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <UniformGrid Columns="3" Margin="0,0,0,0">
+                                        <!-- P1 Mech -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="P1" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBlue}">
+                                                <Run Text="{Binding P1MechX, StringFormat=F3}" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBlue}">
+                                                <Run Text="{Binding P1MechY, StringFormat=F3}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- P2 Mech -->
+                                        <StackPanel Margin="0,0,6,0">
+                                            <TextBlock Text="P2" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBlue}">
+                                                <Run Text="{Binding P2MechX, StringFormat=F3}" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBlue}">
+                                                <Run Text="{Binding P2MechY, StringFormat=F3}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <!-- P3 Mech -->
+                                        <StackPanel>
+                                            <TextBlock Text="P3" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBlue}">
+                                                <Run Text="{Binding P3MechX, StringFormat=F3}" />
+                                            </TextBlock>
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBlue}">
+                                                <Run Text="{Binding P3MechY, StringFormat=F3}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </UniformGrid>
+                                </StackPanel>
+                            </Border>
+
+                            <Grid Margin="0,0,0,4">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="50" />
+                                    <ColumnDefinition Width="65" />
+                                    <ColumnDefinition Width="19" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang VisionCapture_Label_OffsetX}" Style="{StaticResource ParamLabel}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <common:GlobalVariableLinkControl Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3"
+                                    DisplayValue="{Binding SelectedRow.CalculatedOffsetX}"
+                                    DisplayForeground="#E53935"
+                                    IsLinked="{Binding IsOffsetXExpressionLinked}"
+                                    UnlinkCommand="{Binding UnlinkOffsetXExpressionCommand}"
+                                    LinkedVariableName="{Binding OffsetXExpressionLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                    ComboBoxWidth="100" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang VisionCapture_Label_OffsetY}" Style="{StaticResource ParamLabel}"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <common:GlobalVariableLinkControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                    DisplayValue="{Binding SelectedRow.CalculatedOffsetY}"
+                                    DisplayForeground="#43A047"
+                                    IsLinked="{Binding IsOffsetYExpressionLinked}"
+                                    UnlinkCommand="{Binding UnlinkOffsetYExpressionCommand}"
+                                    LinkedVariableName="{Binding OffsetYExpressionLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                    ComboBoxWidth="100" />
+                            </Grid>
+
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Step2: 预览 & 点胶 -->
+            <Grid Visibility="{Binding IsStep2Active, Converter={StaticResource BoolToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" MinWidth="500" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="2*" MinWidth="320" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧：坐标转换详情 + 机械坐标表 -->
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="12,10,6,10">
+                        <!-- 坐标转换详情 -->
+                        <materialDesign:Card Style="{StaticResource PanelCard}">
+                            <StackPanel Margin="12,10">
+                                <Border Style="{StaticResource SectionHeader}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Calculator" Width="16" Height="16"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                 Foreground="{StaticResource PrimaryBlue}" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_CoordTransformDetail}" FontWeight="SemiBold" FontSize="13"
+                                                   VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="{lang:Lang VisionCapture_FinalCoordinateFormula}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           TextWrapping="Wrap"
+                                           Margin="6,6,6,0" />
+
+                                <!-- Dot模式详情 -->
+                                <StackPanel Margin="4,8" Visibility="{Binding IsDotMode, Converter={StaticResource BoolToVis}}">
+                                    <UniformGrid Columns="2" Margin="0,0,0,4">
+                                        <Border Style="{StaticResource CoordCard}" Margin="0,0,4,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="①" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_PhotoPosition}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <TextBlock Margin="22,0,0,0" FontSize="11" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="Dx=" /><Run Text="{Binding PhotoDx, StringFormat=F3}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                    <Run Text=" Dy=" /><Run Text="{Binding PhotoDy, StringFormat=F3}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                    <Run Text=" Dz₁=" /><Run Text="{Binding PhotoDz1, StringFormat=F3}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource CoordCard}" Margin="4,0,0,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="②" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_TargetOffset}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <TextBlock Margin="22,0,0,0" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           Text="{Binding SelectedRow.CalculatedOffsetX, StringFormat='ΔX={0:F3}'}" />
+                                                <TextBlock Margin="22,0,0,0" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                           Text="{Binding SelectedRow.CalculatedOffsetY, StringFormat='ΔY={0:F3}'}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+
+                                    <UniformGrid Columns="3" Margin="0,0,0,4">
+                                        <Border Style="{StaticResource CoordCard}" Margin="0,0,4,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="③" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_NeedleOffset}" FontWeight="SemiBold" FontSize="10" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <Grid Margin="6,0,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="65" />
+                                                        <ColumnDefinition Width="18" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="AxisXArrow" Width="12" Height="12"
+                                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,1" />
+                                                    <common:GlobalVariableLinkControl Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3"
+                                                        DisplayValue="{Binding NeedleOffsetX}"
+                                                        DisplayForeground="#E53935"
+                                                        IsLinked="{Binding IsNeedleOffsetXLinked}"
+                                                        UnlinkCommand="{Binding UnlinkNeedleOffsetXCommand}"
+                                                        LinkedVariableName="{Binding NeedleOffsetXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                        ComboBoxWidth="80" />
+
+                                                    <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="12" Height="12"
+                                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                    <common:GlobalVariableLinkControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                                        DisplayValue="{Binding NeedleOffsetY}"
+                                                        DisplayForeground="#43A047"
+                                                        IsLinked="{Binding IsNeedleOffsetYLinked}"
+                                                        UnlinkCommand="{Binding UnlinkNeedleOffsetYCommand}"
+                                                        LinkedVariableName="{Binding NeedleOffsetYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                        ComboBoxWidth="80" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Style="{StaticResource CoordCard}" Margin="2,0,2,0">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="④" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_CameraNeedleDistance}" FontWeight="SemiBold" FontSize="10" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <Grid Margin="6,0,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="65" />
+                                                        <ColumnDefinition Width="18" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="AxisXArrow" Width="12" Height="12"
+                                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,1" />
+                                                    <common:GlobalVariableLinkControl Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3"
+                                                        DisplayValue="{Binding CameraNeedleDistanceX}"
+                                                        DisplayForeground="#E53935"
+                                                        IsLinked="{Binding IsCameraNeedleDistanceXLinked}"
+                                                        UnlinkCommand="{Binding UnlinkNeedleDistanceXCommand}"
+                                                        LinkedVariableName="{Binding CameraNeedleDistanceXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                        ComboBoxWidth="80" />
+
+                                                    <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="12" Height="12"
+                                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                    <common:GlobalVariableLinkControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                                        DisplayValue="{Binding CameraNeedleDistanceY}"
+                                                        DisplayForeground="#43A047"
+                                                        IsLinked="{Binding IsCameraNeedleDistanceYLinked}"
+                                                        UnlinkCommand="{Binding UnlinkNeedleDistanceYCommand}"
+                                                        LinkedVariableName="{Binding CameraNeedleDistanceYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                        ComboBoxWidth="80" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Style="{StaticResource CoordCard}" Margin="4,0,0,0" DataContext="{Binding SelectedRow}">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="⑤" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_NeedleCompensation}" FontWeight="SemiBold" FontSize="10" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <Grid Margin="6,0,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="AxisXArrow" Width="12" Height="12"
+                                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,1" />
+                                                    <materialDesign:DecimalUpDown Grid.Row="0" Grid.Column="1" Value="{Binding NeedleCompensationX}"
+                                                                                  Minimum="-999999" Maximum="999999"
+                                                                                  helpers:NumericFormatHelper.FormatString="F3"
+                                                                                  FontSize="10" Width="85" HorizontalAlignment="Left" Margin="0,0,0,2">
+                                                        <interactivity:Interaction.Behaviors>
+                                                            <helpers:NumericIncrementBehavior Increment="0.001" />
+                                                        </interactivity:Interaction.Behaviors>
+                                                    </materialDesign:DecimalUpDown>
+
+                                                    <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="12" Height="12"
+                                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                    <materialDesign:DecimalUpDown Grid.Row="1" Grid.Column="1" Value="{Binding NeedleCompensationY}"
+                                                                                  Minimum="-999999" Maximum="999999"
+                                                                                  helpers:NumericFormatHelper.FormatString="F3"
+                                                                                  FontSize="10" Width="85" HorizontalAlignment="Left">
+                                                        <interactivity:Interaction.Behaviors>
+                                                            <helpers:NumericIncrementBehavior Increment="0.001" />
+                                                        </interactivity:Interaction.Behaviors>
+                                                    </materialDesign:DecimalUpDown>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+
+                                    <Border Background="{StaticResource ResultHighlightBg}"
+                                            BorderBrush="{StaticResource ResultHighlightBorder}"
+                                            BorderThickness="2" CornerRadius="6" Padding="10,8" Margin="0,2,0,0">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <materialDesign:PackIcon Kind="MapMarker" Width="16" Height="16"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                         Foreground="{StaticResource ResultHighlightBorder}" />
+                                                <TextBlock Text="{lang:Lang VisionCapture_FinalDispensePos}" FontWeight="Bold" Foreground="{StaticResource PrimaryBlue}" FontSize="13" />
+                                            </StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="22,0,0,0">
+                                                    <TextBlock Text="X = " FontSize="12" Foreground="{StaticResource TextPrimary}" />
+                                                    <TextBlock FontSize="14" FontWeight="Bold" Foreground="{StaticResource PrimaryBlue}">
+                                                        <Run Text="{Binding FinalX, StringFormat=F3}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <TextBlock Text="Y = " FontSize="12" Foreground="{StaticResource TextPrimary}" />
+                                                    <TextBlock FontSize="14" FontWeight="Bold" Foreground="{StaticResource PrimaryBlue}">
+                                                        <Run Text="{Binding FinalY, StringFormat=F3}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- Arc模式详情 -->
+                                <StackPanel Margin="4,8" Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVis}}">
+                                    <UniformGrid Columns="2" Margin="0,0,0,4">
+                                        <Border Style="{StaticResource CoordCard}" Margin="0,0,4,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="①" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_PhotoPosition}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="Dx=" /><Run Text="{Binding PhotoDx, StringFormat=F3}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                    <Run Text=" Dy=" /><Run Text="{Binding PhotoDy, StringFormat=F3}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                    <Run Text=" Dz₁=" /><Run Text="{Binding PhotoDz1, StringFormat=F3}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource CoordCard}" Margin="4,0,0,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="②" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_VisionCoord}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="C(" /><Run Text="{Binding VisionCenterX, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding VisionCenterY, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="P1(" /><Run Text="{Binding Point1X, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding Point1Y, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="P2(" /><Run Text="{Binding Point2X, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding Point2Y, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="P3(" /><Run Text="{Binding Point3X, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding Point3Y, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+                                    <UniformGrid Columns="2" Margin="0,0,0,4">
+                                        <Border Style="{StaticResource CoordCard}" Margin="0,0,4,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="③" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_CenterOffset}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="P1 Δ(" /><Run Text="{Binding P1DeltaX, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding P1DeltaY, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="P2 Δ(" /><Run Text="{Binding P2DeltaX, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding P2DeltaY, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                                <TextBlock Margin="22,0,0,0" FontSize="10" Foreground="{StaticResource TextSecondary}">
+                                                    <Run Text="P3 Δ(" /><Run Text="{Binding P3DeltaX, StringFormat=F2}" /><Run Text="," /><Run Text="{Binding P3DeltaY, StringFormat=F2}" /><Run Text=")" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource CoordCard}" Margin="4,0,0,4">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                        <TextBlock Text="④" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_ArcNeedleOffset}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                                </StackPanel>
+                                                <Grid Margin="22,0,0,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="AxisXArrow" Width="14" Height="14"
+                                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,2" />
+                                                    <common:GlobalVariableLinkControl Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3"
+                                                        DisplayValue="{Binding ArcNeedleOffsetX}"
+                                                        DisplayForeground="#E53935"
+                                                        IsLinked="{Binding IsArcNeedleOffsetXLinked}"
+                                                        UnlinkCommand="{Binding UnlinkArcNeedleOffsetXCommand}"
+                                                        LinkedVariableName="{Binding ArcNeedleOffsetXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                        ComboBoxWidth="100" />
+
+                                                    <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="14" Height="14"
+                                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                    <common:GlobalVariableLinkControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                                        DisplayValue="{Binding ArcNeedleOffsetY}"
+                                                        DisplayForeground="#43A047"
+                                                        IsLinked="{Binding IsArcNeedleOffsetYLinked}"
+                                                        UnlinkCommand="{Binding UnlinkArcNeedleOffsetYCommand}"
+                                                        LinkedVariableName="{Binding ArcNeedleOffsetYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                        ComboBoxWidth="100" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+
+                                    <!-- ⑤ Arc专用补偿 -->
+                                    <Border Style="{StaticResource CoordCard}" Margin="0,0,0,4">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                    <TextBlock Text="⑤" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Text="{lang:Lang VisionCapture_ArcNeedleComp}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                            </StackPanel>
+                                            <Grid Margin="22,2,0,0">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="AxisXArrow" Width="12" Height="12"
+                                                                         Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,2" />
+                                                <materialDesign:DecimalUpDown Grid.Row="0" Grid.Column="1" Value="{Binding ArcNeedleCompX}"
+                                                                              Minimum="-999999" Maximum="999999"
+                                                                              helpers:NumericFormatHelper.FormatString="F3"
+                                                                              FontSize="10" Width="90" HorizontalAlignment="Left" Margin="0,0,0,2">
+                                                    <interactivity:Interaction.Behaviors>
+                                                        <helpers:NumericIncrementBehavior Increment="0.001" />
+                                                    </interactivity:Interaction.Behaviors>
+                                                </materialDesign:DecimalUpDown>
+                                                <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="12" Height="12"
+                                                                         Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                <materialDesign:DecimalUpDown Grid.Row="1" Grid.Column="1" Value="{Binding ArcNeedleCompY}"
+                                                                              Minimum="-999999" Maximum="999999"
+                                                                              helpers:NumericFormatHelper.FormatString="F3"
+                                                                              FontSize="10" Width="90" HorizontalAlignment="Left">
+                                                    <interactivity:Interaction.Behaviors>
+                                                        <helpers:NumericIncrementBehavior Increment="0.001" />
+                                                    </interactivity:Interaction.Behaviors>
+                                                </materialDesign:DecimalUpDown>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Background="{StaticResource ResultHighlightBg}"
+                                            BorderBrush="{StaticResource ResultHighlightBorder}"
+                                            BorderThickness="2" CornerRadius="6" Padding="10,8" Margin="0,2,0,4">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <materialDesign:PackIcon Kind="MapMarker" Width="16" Height="16"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                         Foreground="{StaticResource ResultHighlightBorder}" />
+                                                <TextBlock Text="{lang:Lang VisionCapture_MachineCoord}" FontWeight="Bold" Foreground="{StaticResource PrimaryBlue}" FontSize="13" />
+                                            </StackPanel>
+                                            <Grid Margin="22,0,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="P1" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource PrimaryBlue}" FontWeight="Bold">
+                                                        <Run Text="{Binding P1MechX, StringFormat=F2}" />
+                                                    </TextBlock>
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource PrimaryBlue}" FontWeight="Bold">
+                                                        <Run Text="{Binding P1MechY, StringFormat=F2}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="P2" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource PrimaryBlue}" FontWeight="Bold">
+                                                        <Run Text="{Binding P2MechX, StringFormat=F2}" />
+                                                    </TextBlock>
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource PrimaryBlue}" FontWeight="Bold">
+                                                        <Run Text="{Binding P2MechY, StringFormat=F2}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="P3" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource PrimaryBlue}" FontWeight="Bold">
+                                                        <Run Text="{Binding P3MechX, StringFormat=F2}" />
+                                                    </TextBlock>
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource PrimaryBlue}" FontWeight="Bold">
+                                                        <Run Text="{Binding P3MechY, StringFormat=F2}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Style="{StaticResource CoordCard}" Margin="0,0,0,0">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource PrimaryBlue}" Margin="0,0,4,0">
+                                                    <TextBlock Text="⑥" Foreground="White" FontSize="9" FontWeight="Bold"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Text="{lang:Lang VisionCapture_BezierDiscrete}" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource TextPrimary}" />
+                                            </StackPanel>
+                                            <TextBlock Margin="22,0,0,0" FontSize="11" Foreground="{StaticResource TextSecondary}">
+                                                <Run Text="→ " /><Run Text="{Binding BezierPointCount}" Foreground="{StaticResource PrimaryBlue}" FontWeight="Medium" />
+                                                <Run Text="{lang:Lang VisionCapture_InterpolationPoints}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </materialDesign:Card>
+
+                        <!-- 机械坐标表 -->
+                        <materialDesign:Card Style="{StaticResource PanelCard}" Margin="0,0,0,0"
+                                             Visibility="{Binding HasMachinePoints, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Margin="12,10">
+                                <Border Style="{StaticResource SectionHeader}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="MapMarkerPath" Width="16" Height="16"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                 Foreground="{StaticResource PrimaryBlue}" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_MachineCoordList}" FontWeight="SemiBold" FontSize="13"
+                                                   VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                        <TextBlock Text="{Binding MachinePoints.Count}"
+                                                   FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_Hint_Points}"
+                                                    FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                                    VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <DataGrid ItemsSource="{Binding MachinePoints}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          MaxHeight="160"
+                                          FontSize="11"
+                                          materialDesign:DataGridAssist.CellPadding="2,1"
+                                          BorderThickness="1" BorderBrush="{StaticResource DividerColor}"
+                                          HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="36" />
+                                        <DataGridTextColumn Header="X" Binding="{Binding X, StringFormat=F3}" Width="*" />
+                                        <DataGridTextColumn Header="Y" Binding="{Binding Y, StringFormat=F3}" Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </materialDesign:Card>
+
+                        <!-- 弧线可视化 -->
+                        <materialDesign:Card Style="{StaticResource PanelCard}" Margin="0,0,0,0"
+                                             Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Margin="12,10">
+                                <Border Style="{StaticResource SectionHeader}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="VectorCurve" Width="16" Height="16"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                 Foreground="{StaticResource PrimaryBlue}" />
+                                        <TextBlock Text="{lang:Lang VisionCapture_ArcPreview}" FontWeight="SemiBold" FontSize="13"
+                                                   VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                    </StackPanel>
+                                </Border>
+                                <Canvas x:Name="ArcPreviewCanvas"
+                                        Height="220"
+                                        Background="#FFF8F9FA"
+                                        ClipToBounds="True">
+                                    <Canvas.Resources>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="StrokeThickness" Value="1" />
+                                        </Style>
+                                    </Canvas.Resources>
+
+                                    <ItemsControl ItemsSource="{Binding ArcPathGeometry}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas IsItemsHost="True" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <ContentControl Content="{Binding}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Canvas>
+                            </StackPanel>
+                        </materialDesign:Card>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 分割条 -->
+                <GridSplitter Grid.Column="1" Width="3" Background="{StaticResource DividerColor}"
+                              ResizeBehavior="PreviousAndNext" />
+
+                <!-- 右侧：点胶操作面板 -->
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="6,10,12,10">
+                        <!-- 点胶操作 -->
+                        <materialDesign:Card Style="{StaticResource PanelCard}">
+                            <StackPanel Margin="12,10">
+                                <Border Style="{StaticResource SectionHeader}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="VectorCurve" Width="16" Height="16"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                 Foreground="{StaticResource PrimaryBlue}" />
+                                        <TextBlock Text="{lang:Lang DispensingOperation}" FontWeight="SemiBold" FontSize="13"
+                                                   VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding SiteFeatureNames}"
+                                              SelectedItem="{Binding SelectedSiteFeatureName}"
+                                              materialDesign:HintAssist.Hint="{lang:Lang VisionCapture_Hint_SiteFeature}" FontSize="12" Margin="0,0,6,0" />
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Source={StaticResource RunModeValues}}"
+                                              SelectedItem="{Binding CurrentRunMode}"
+                                              materialDesign:HintAssist.Hint="{lang:Lang VisionCapture_Hint_RunMode}" FontSize="12" />
+                                </Grid>
+
+                                <CheckBox Content="{lang:Lang VisionCapture_NeedleDescend}"
+                                          IsChecked="{Binding NeedleDescend}"
+                                          Margin="0,0,0,8" FontSize="12"
+                                          ToolTip="{lang:Lang VisionCapture_NeedleDescendTooltip}" />
+
+                                <WrapPanel Margin="0,0,0,4">
+                                    <Button Command="{Binding PreviewMachinePointsCommand}"
+                                            Style="{StaticResource CompactOutlinedButton}" Margin="0,0,6,4"
+                                            ToolTip="{lang:Lang VisionCapture_PreviewTooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="MapMarkerPath" Width="14" Height="14"
+                                                                     VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <TextBlock Text="{lang:Lang VisionCapture_Preview}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding ExecuteDispenseCommand}"
+                                            Style="{StaticResource CompactButton}" Margin="0,0,6,4"
+                                            Background="{StaticResource PrimaryBlue}" Foreground="White"
+                                            ToolTip="{lang:Lang VisionCapture_ExecuteTooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Play" Width="14" Height="14"
+                                                                     VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <TextBlock Text="{lang:Lang Execute}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding PauseCommand}"
+                                            Style="{StaticResource CompactButton}" Margin="0,0,6,4"
+                                            Background="{StaticResource WarningAmber}" Foreground="White"
+                                            Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVis}}"
+                                            ToolTip="{lang:Lang VisionCapture_PauseTooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Pause" Width="14" Height="14"
+                                                                     VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <TextBlock Text="{lang:Lang Flow_Pause}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding ResumeCommand}"
+                                            Style="{StaticResource CompactButton}" Margin="0,0,6,4"
+                                            Background="{StaticResource SuccessGreen}" Foreground="White"
+                                            Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVis}}"
+                                            ToolTip="{lang:Lang VisionCapture_ResumeTooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Play" Width="14" Height="14"
+                                                                     VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <TextBlock Text="{lang:Lang Continue}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding StopCommand}"
+                                            Style="{StaticResource CompactButton}" Margin="0,0,0,4"
+                                            Background="{StaticResource DangerRed}" Foreground="White"
+                                            ToolTip="{lang:Lang VisionCapture_StopTooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"
+                                                                     VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <TextBlock Text="{lang:Lang Stop}" />
+                                        </StackPanel>
+                                    </Button>
+                                </WrapPanel>
+                            </StackPanel>
+                        </materialDesign:Card>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <!-- ========== 底部状态栏 ========== -->
+        <StatusBar Grid.Row="2" Background="{StaticResource StatusBarBg}">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="11" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <TextBlock Foreground="#FFB0BEC5" FontSize="11" Text="{Binding GroupDisplay}" />
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Foreground="#FFB0BEC5" FontSize="11" Text="{Binding ModeDisplay}" />
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Foreground="#FFB0BEC5" FontSize="11" Text="{Binding PointsDisplay}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="{lang:Lang VisionCapture_PrevStep}" Command="{Binding GoPrevCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="8,2" FontSize="11" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                        <TextBlock Text="{lang:Lang VisionCapture_Label_CurrentStep}" Foreground="#FFB0BEC5" FontSize="11"/>
+                        <TextBlock Text="{Binding CurrentStepTitle}" Foreground="#FF80CBC4"
+                                   Margin="4,0,0,0" FontSize="11" FontWeight="Medium"/>
+                    </StackPanel>
+                    <Button Content="{lang:Lang NextStep}" Command="{Binding GoNextCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="8,2" FontSize="11" />
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</UserControl>

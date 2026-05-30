@@ -1,4 +1,4 @@
-﻿using Core.Abstraction;
+using Core.Abstraction;
 
 namespace Core.Services
 {
@@ -26,13 +26,13 @@ namespace Core.Services
         }
 
         /// <summary>
-        /// 转换单个AD值到物理量
+        /// 转换单个AD值到物理量，通道未配置时返回原始AD值
         /// </summary>
         public double Convert(int channel, double adValue)
         {
             if (!_channelConfigs.TryGetValue(channel, out var config))
             {
-                throw new ArgumentException($"通道 {channel} 未配置");
+                return adValue;
             }
 
             if (!config.IsEnabled)

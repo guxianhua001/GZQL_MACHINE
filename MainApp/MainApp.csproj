@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows7.0</TargetFramework>
@@ -16,51 +16,34 @@
     <None Remove="YIJIMINI.png" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="EFCore.BulkExtensions" Version="8.0.2" />
-    <PackageReference Include="MaterialDesignColors" Version="5.2.1" />
-    <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.10" />
+    <PackageReference Include="MaterialDesignColors" Version="5.3.2" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Prism.DryIoc" Version="8.1.97" />
 
     <PackageReference Include="Prism.Unity" Version="8.1.97" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\AlarmModule\AlarmModule.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Framework\Framework.csproj" />
     <ProjectReference Include="..\LanguageModule\Language.csproj" />
     <ProjectReference Include="..\LogViewer\LogViewer.csproj" />
     <ProjectReference Include="..\ModuleCore\ModuleCore.csproj" />
     <ProjectReference Include="..\Module\Module.csproj" />
-    <ProjectReference Include="..\Stations\Stations.csproj" />
+    <ProjectReference Include="..\MotionControl\MotionControl.csproj" />
+    <ProjectReference Include="..\RecipeManagement\Recipe.csproj" />
+    <ProjectReference Include="..\StationTasks\StationTasks.csproj" />
+    <ProjectReference Include="..\TCPIPModule\TCPIPModule.csproj" />
+    <ProjectReference Include="..\HalconWrapper\HalconWrapper.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Core">
-      <HintPath>bin\Debug\net9.0-windows7.0\Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Framework">
-      <HintPath>bin\Debug\net9.0-windows7.0\Framework.dll</HintPath>
-    </Reference>
     <Reference Include="halcondotnet">
       <HintPath>bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
     </Reference>
-    <Reference Include="HSMS">
-      <HintPath>bin\Debug\net9.0-windows7.0\HSMS.dll</HintPath>
-    </Reference>
-    <Reference Include="Interfaces">
-      <HintPath>bin\Debug\net9.0-windows7.0\Interfaces.dll</HintPath>
-    </Reference>
-    <Reference Include="NLog">
-      <HintPath>bin\Debug\net5.0-windows\NLog.dll</HintPath>
-    </Reference>
-    <Reference Include="SkiaSharp">
-      <HintPath>bin\Debug\net9.0-windows7.0\SkiaSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="SmarterMotion">
-      <HintPath>bin\Debug\net9.0-windows7.0\SmarterMotion.dll</HintPath>
+    <Reference Include="MvvmTextEditor">
+      <HintPath>bin\Debug\net9.0-windows7.0\MvvmTextEditor.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -69,6 +52,25 @@
     </Resource>
     <Resource Include="yiji.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Target Name="GenerateVersionInfo" AfterTargets="Build">
+    <ItemGroup>
+      <VersionInfoLines Include="=========================================" />
+      <VersionInfoLines Include="  GZQL_MACHINE 版本变更记录" />
+      <VersionInfoLines Include="=========================================" />
+      <VersionInfoLines Include=" " />
+      <VersionInfoLines Include="构建版本: $(Version)" />
+      <VersionInfoLines Include="构建时间: $([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss'))" />
+      <VersionInfoLines Include="构建配置: $(Configuration)" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutputPath)" Condition="!Exists('$(OutputPath)')" />
+    <WriteLinesToFile File="$(OutputPath)VersionInfo.txt" Lines="@(VersionInfoLines)" Overwrite="true" />
+    <Message Importance="high" Text="已生成版本记录: $(OutputPath)VersionInfo.txt" />
+  </Target>
   <ItemGroup>
     <EmbeddedResource Update="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

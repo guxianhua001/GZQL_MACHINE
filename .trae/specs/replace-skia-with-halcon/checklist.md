@@ -1,0 +1,18 @@
+- [x] VM.Halcon 项目成功迁移到 .NET 9，命名空间重命名为 Halcon，编译通过
+- [x] CadEntity.ToHObject() 扩展方法实现所有 5 种图元类型（Line/Arc/Circle/LwPolyline/Ellipse）
+- [x] HalconCanvasControl 使用 WindowsFormsHost 嵌入 VMHWindowControl，支持 Entities 渲染
+- [x] HalconCanvasControl 暴露 CoordinateChanged 和 EntitySelected 事件
+- [x] HalconCanvasControl 支持 FitToAll() 和 ResetView() 方法
+- [x] HalconCanvasViewModel 实现 AttachControl/DetachControl 和所有命令
+- [x] ROIRectangle2 旋转矩形交互绘制可用（拖拽手柄调整中心/角度/长短轴）
+- [x] ROICircle 圆形交互绘制可用（拖拽手柄调整圆心/半径）
+- [x] ROILine 线段交互绘制可用（拖拽端点调整起终点）
+- [x] ROIPolyline 折线交互绘制可用（点击添加顶点，拖拽手柄调整，右键/双击结束）
+- [x] ROICircularArc 圆弧交互绘制可用（拖拽手柄调整圆心/半径/起止角度）
+- [x] 涂抹模式 ROI 可用（按住左键拖动合并区域）
+- [x] 擦除模式 ROI 可用（按住左键拖动差集区域）
+- [x] ROICompleted 事件在绘制完成后正确返回 HRegion
+- [x] CadPointEditorControl 使用 HalconCanvasControl 替换 SkiaCanvasControl
+- [x] SkiaSharp 包引用已从 Module.csproj 移除
+- [x] SkiaCanvasControl.xaml(.cs) 和 SkiaCanvasViewModel.cs 已删除
+- [x] 整个解决方案 dotnet build 0 错误

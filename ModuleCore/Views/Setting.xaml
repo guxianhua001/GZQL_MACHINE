@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="ModuleCore.Views.Setting"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -8,7 +8,9 @@
     xmlns:prism="http://prismlibrary.com/"
     xmlns:viewmodels="clr-namespace:ModuleCore.ViewModels"
     xmlns:configuration="clr-namespace:ModuleCore.Views"
+    xmlns:motionViews="clr-namespace:MotionControl.Views;assembly=MotionControl"
     xmlns:config="clr-namespace:Framework.Views;assembly=Framework" 
+    xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
     d:Background="White"
     d:DataContext="{d:DesignInstance Type=viewmodels:SettingViewModel}"
     d:Height="920"
@@ -22,21 +24,21 @@
         <TabControl Margin="20"
                     prism:RegionManager.RegionName="ConfigurationContentRegion">
             <!-- 设备配置 -->
-            <TabItem Header="设备控制">
+            <TabItem Header="{lang:Lang Setting_DeviceConfig}">
                 <configuration:DeviceConfigView x:Name="DeviceConfigTab" />
             </TabItem>
 
             <!-- 轴参数配置 -->
-            <TabItem Header="轴参数配置">
+            <TabItem Header="{lang:Lang Setting_AxisParamConfig}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Auto">
-                    <configuration:AxisSettingView x:Name="AxisConfigTab" />
+                    <motionViews:AxisSettingView x:Name="AxisConfigTab" />
                 </ScrollViewer>
             </TabItem>
 
 
             <!-- 其他配置选项卡 -->
-            <TabItem Header="其他配置">
+            <TabItem Header="{lang:Lang Setting_OtherConfig}">
                 <StackPanel>
                     <!-- 导航列表 -->
                     <Grid VerticalAlignment="Top"
@@ -85,13 +87,13 @@
                         <StackPanel HorizontalAlignment="Right"
                                     Orientation="Horizontal"
                                     Background="#FFF0F0F0">
-                            <Button Content="载入设置"
+                            <Button Content="{lang:Lang Setting_LoadConfig}"
                                     Command="{Binding Load}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     Width="100"
                                     Margin="0,0,10,0" />
 
-                            <Button Content="保存设置"
+                            <Button Content="{lang:Lang Setting_SaveConfig}"
                                     Command="{Binding Save}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     Foreground="White"
@@ -102,18 +104,9 @@
             </TabItem>
 
             <!-- 针头管理 -->
-            <TabItem Header="针头管理">
+            <!--<TabItem Header="针头管理">
                 <configuration:NeedleView />
-            </TabItem>
-
-            <!-- Socket配置 -->
-            <TabItem Header="Socket 配置">
-
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <config:ConfigurationView />
-                </ScrollViewer>
-            </TabItem>
+            </TabItem>-->
 
         </TabControl>
 

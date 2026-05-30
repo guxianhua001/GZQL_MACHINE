@@ -1,6 +1,4 @@
-﻿using Interfaces.Services;
 using ModuleCore.Models;
-using ModuleCore.Services;
 using Prism.Commands;
 using Prism.Ioc;
 using Prism.Mvvm;
@@ -11,11 +9,14 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using Core.Abstraction;
 
 namespace ModuleCore.ViewModels
 {
     public class LoginViewModel : BindableBase, IDialogAware
     {
+        private readonly ILocalizationService _loc;
+
         private DispatcherTimer _logoutTimer;
         public LoginModel Model { get; set; }
         private bool _isLoggedIn;
@@ -25,11 +26,13 @@ namespace ModuleCore.ViewModels
             set => SetProperty(ref _isLoggedIn, value);
         }
 
-        public LoginViewModel(IContainerExtension container)
+        public LoginViewModel(IContainerExtension container, ILocalizationService loc)
         {
+            _loc = loc;
             Model = container.Resolve<LoginModel>();
-            // 初始化时未登录
             IsLoggedIn = false;
+            Title = _loc.GetResource("Authorized_Login");
+            _loc.LanguageChanged += (s, e) => Title = _loc.GetResource("Authorized_Login");
         }
 
         private DelegateCommand<PasswordBox> _LoginCommand;
@@ -40,7 +43,7 @@ namespace ModuleCore.ViewModels
         private async void ExecuteLoginCommand(PasswordBox passwordBox)
         {
             var password = passwordBox.Password;
-            if (password == Model.LoadPassword() || password == "CYG")
+            if (password == Model.LoadPassword() || password == "Admin")
             {
                 Model.LoginUser = Model.UserList.Where(u => u.Name == Model.Name).FirstOrDefault();
                 IsLoggedIn = true; // 设置登录状态
@@ -50,7 +53,7 @@ namespace ModuleCore.ViewModels
             else
             {
 
-                Msg = "无效密码";
+                Msg = _loc.GetResource("Invalid_Password");
                 await Task.Delay(3000);
                 Msg = "";
             }
@@ -75,7 +78,7 @@ namespace ModuleCore.ViewModels
             {
                 if (Model.LoginUser?.Name != "Admin")
                 {
-                    MessageBox.Show("管理用户需要Admin用户", "无权限");
+                    MessageBox.Show(_loc.GetResource("Login_RequireAdmin"), _loc.GetResource("Authorized_Login"));
                     return;
                 }
                 RaiseRequestClose(new DialogResult(ButtonResult.Retry));
@@ -85,7 +88,7 @@ namespace ModuleCore.ViewModels
             if (!IsLoggedIn && parameter?.ToLower() == "false")
             {
                 // 不允许以访客身份登录
-                Msg = "请登录账号";
+                Msg = _loc.GetResource("Login_PleaseLogin");
                 return;
             }
             ButtonResult result = ButtonResult.None;
@@ -103,7 +106,7 @@ namespace ModuleCore.ViewModels
             }
             else
             {
-                Msg = "请先登录再关闭窗口";
+                Msg = _loc.GetResource("Login_LoginFirst");
             }
         }
         private void StartAutoLogoutTimer()
@@ -129,7 +132,7 @@ namespace ModuleCore.ViewModels
             RequestClose?.Invoke(dialogResult);
         }
 
-        private string _title = "登录";
+        private string _title = "";
 
         public string Title
         {

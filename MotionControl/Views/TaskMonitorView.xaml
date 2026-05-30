@@ -1,0 +1,154 @@
+<UserControl x:Class="MotionControl.Views.TaskMonitorView"
+		             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		             xmlns:prism="http://prismlibrary.com/"
+		             xmlns:models="clr-namespace:MotionControl.Models"
+	                 xmlns:conv="clr-namespace:MotionControl.Converters"
+	                 xmlns:common="clr-namespace:MotionControl.Common"
+		             prism:ViewModelLocator.AutoWireViewModel="True"
+		             Background="Transparent">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBooleanConverter x:Key="InverseBoolToVis" />
+        <!-- 状态指示灯样式：与StationStateView状态面板保持一致 -->
+        <Style x:Key="StatusLight" TargetType="Ellipse">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Fill" Value="#9E9E9E"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding State}" Value="Running">
+                    <Setter Property="Fill" Value="#4CAF50"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Paused">
+                    <Setter Property="Fill" Value="#FF9800"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Error">
+                    <Setter Property="Fill" Value="#F44336"/>
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard Name="ErrorBlinkStoryboard">
+                            <Storyboard RepeatBehavior="Forever">
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                 To="0.15" Duration="0:0:0.5"
+                                                 AutoReverse="True"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <StopStoryboard BeginStoryboardName="ErrorBlinkStoryboard"/>
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Homing">
+                    <Setter Property="Fill" Value="#2196F3"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Idle">
+                    <Setter Property="Fill" Value="#9E9E9E"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Stopped">
+                    <Setter Property="Fill" Value="#9E9E9E"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- 步骤行样式：重试高亮 -->
+        <Style x:Key="StepItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Style.Triggers>
+                <!-- 当前执行步骤高亮 -->
+                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+                <!-- 重试时背景变为淡橙色预警 -->
+                <DataTrigger Binding="{Binding RetryCount}" Value="1">
+                    <Setter Property="Background" Value="#FFF3E0"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RetryCount}" Value="2">
+                    <Setter Property="Background" Value="#FFE0B2"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <!-- 添加 ScrollViewer, StackPanel -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Tasks}" Margin="0,0,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <!-- 替换为 StackPanel，确保单列垂直排列，不会因为空间不足而换列消失 -->
+                    <StackPanel Orientation="Vertical"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type models:TaskDisplayModel}">
+                    <Border Width="360"  Margin="0,0,0,8" Background="White" CornerRadius="8" Padding="12">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.15" Direction="270"/>
+                        </Border.Effect>
+                        <DockPanel>
+                            <!-- 顶部：工站名与实时时钟 -->
+                            <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <Ellipse Style="{StaticResource StatusLight}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding TaskName}" FontSize="15" FontWeight="Bold" Foreground="#333"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding CurrentTime}" HorizontalAlignment="Right" FontSize="13" Foreground="#757575"/>
+                            </Grid>
+                            <!-- 中部：当前步骤大字显示与耗时 -->
+                            <Border DockPanel.Dock="Top" Margin="0,0,0,10" Background="#F5F5F5" CornerRadius="4" Padding="8,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding StepHistory/StepName}" FontSize="14" Foreground="#1976D2" TextTrimming="CharacterEllipsis" FontWeight="Medium"/>
+                                    <!-- 耗时采用等宽字体，防止数字跳动 -->
+                                    <TextBlock Grid.Column="1" Text="{Binding CurrentStepElapsed}" FontSize="14" Foreground="#E65100" FontFamily="Consolas" Margin="10,0,0,0"/>
+                                </Grid>
+                            </Border>
+                            <!-- 底部：历史步骤列表 -->
+                            <ListBox ItemsSource="{Binding StepHistory}" 
+		                                     ItemContainerStyle="{StaticResource StepItemStyle}"
+		                                     BorderThickness="0" Background="Transparent"
+		                                     MaxHeight="180" ScrollViewer.CanContentScroll="False"
+		                                     x:Name="StepList"
+	                                         common:ListBoxAutoScroll.IsEnabled="True">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:StepRecord}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="20"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="40"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- 状态图标 -->
+                                            <TextBlock Text="✔" FontSize="10" Foreground="#4CAF50" Visibility="{Binding IsCurrent, Converter={StaticResource InverseBoolToVis}}"/>
+                                            <TextBlock Text="▶" FontSize="10" Foreground="#1976D2" Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVis}}"/>
+                                            <!-- 步骤名 -->
+                                            <TextBlock Grid.Column="1" Text="{Binding StepName}" FontSize="12" Foreground="#333" TextTrimming="CharacterEllipsis"/>
+                                            <!-- 重试标记 -->
+                                            <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="10" Foreground="#FF9800" Margin="5,0,0,0" FontWeight="Bold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding RetryCount}" Value="1">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <!-- 耗时 -->
+                                            <TextBlock Grid.Column="3" Text="{Binding DurationText}" FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Right" FontFamily="Consolas"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+</UserControl>

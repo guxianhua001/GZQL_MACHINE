@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工业控制按钮组预览 - Industrial Control Buttons Preview</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1d20 0%, #2d3136 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .preview-container {
+            display: flex;
+            gap: 60px;
+            align-items: flex-start;
+        }
+
+        .main-window {
+            width: 900px;
+            height: 600px;
+            background: #25282b;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            display: flex;
+            overflow: hidden;
+            border: 1px solid #3a3e42;
+        }
+
+        .content-area {
+            flex: 1;
+            background: #2c2f33;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #8892a0;
+            font-size: 18px;
+            position: relative;
+        }
+
+        .content-placeholder {
+            text-align: center;
+            opacity: 0.5;
+        }
+
+        .sidebar {
+            width: 80px;
+            background: #3B3E41;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 16px 14px 24px;
+            gap: 12px;
+            border-left: 1px solid #4a4e52;
+        }
+
+        .ctrl-btn {
+            width: 52px;
+            height: 52px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            opacity: 0.75;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .ctrl-btn:hover {
+            opacity: 1.0;
+            transform: scale(1.08);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.96);
+        }
+
+        .ctrl-btn .material-icons {
+            font-size: 42px;
+            color: #ffffff;
+        }
+
+        .btn-init { background: #5D4E37; }
+        .btn-start { background: #2E7D32; }
+        .btn-pause { background: #37474F; }
+        .btn-stop { background: #424242; }
+
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 68px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.15s ease;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        }
+
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .lang-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        .lang-btn {
+            padding: 8px 18px;
+            background: rgba(59, 62, 65, 0.9);
+            border: 1px solid #5a5e62;
+            color: #c8ccd0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.15s ease;
+        }
+
+        .lang-btn:hover {
+            background: #4a4e52;
+            color: #fff;
+        }
+
+        .lang-btn.active {
+            background: #2E7D32;
+            border-color: #2E7D32;
+            color: #fff;
+        }
+
+        .info-panel {
+            max-width: 320px;
+            color: #a8adb5;
+            line-height: 1.8;
+        }
+
+        .info-panel h2 {
+            color: #e8eaed;
+            margin-bottom: 16px;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .info-panel h3 {
+            color: #c8ccd0;
+            margin-top: 24px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.15);
+            flex-shrink: 0;
+        }
+
+        .spec-table {
+            font-size: 13px;
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .spec-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .spec-table td:first-child {
+            color: #8892a0;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="lang-switcher">
+    <button class="lang-btn active" onclick="setLang('zh')">中文</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+</div>
+
+<div class="preview-container">
+    <div class="main-window">
+        <div class="content-area">
+            <div class="content-placeholder" id="contentText">主工作区域<br>Main Workspace</div>
+        </div>
+        <div class="sidebar">
+            <button class="ctrl-btn btn-init" data-tooltip-zh="初始化系统" data-tooltip-en="Initialize System" id="btnInit">
+                <span class="material-icons">restart_alt</span>
+            </button>
+            <button class="ctrl-btn btn-start" data-tooltip-zh="启动设备" data-tooltip-en="Start Equipment" id="btnStart">
+                <span class="material-icons">play_arrow</span>
+            </button>
+            <button class="ctrl-btn btn-pause" data-tooltip-zh="暂停 / 恢复" data-tooltip-en="Pause / Resume" id="btnPause">
+                <span class="material-icons">pause</span>
+            </button>
+            <button class="ctrl-btn btn-stop" data-tooltip-zh="停止运行" data-tooltip-en="Stop Operation" id="btnStop">
+                <span class="material-icons">stop</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h2 id="panelTitle">工业控制按钮组规格</h2>
+        
+        <h3 id="colorTitle">配色方案</h3>
+        <div class="color-item">
+            <div class="color-swatch" style="background:#5D4E37"></div>
+            <span>初始化 Initialize — #5D4E37</span>
+        </div>
+        <div class="color-item">
+            <div class="color-swatch" style="background:#2E7D32"></div>
+            <span>启动 Start — #2E7D32</span>
+        </div>
+        <div class="color-item">
+            <div class="color-swatch" style="background:#37474F"></div>
+            <span>暂停 Pause — #37474F</span>
+        </div>
+        <div class="color-item">
+            <div class="color-swatch" style="background:#424242"></div>
+            <span>停止 Stop — #424242</span>
+        </div>
+
+        <h3 id="specTitle">技术参数</h3>
+        <table class="spec-table">
+            <tr><td id="labelSidebar">侧边栏宽度</td><td>80px</td></tr>
+            <tr><td id="labelStandard">控制按钮 (×4)</td><td>52×52px, 圆角10px</td></tr>
+            <tr><td id="labelBg">背景色</td><td>#3B3E41</td></tr>
+            <tr><td id="labelHover">Hover过渡</td><td>0.15s ease</td></tr>
+            <tr><td id="labelScale">Hover缩放</td><td>scale(1.08)</td></tr>
+            <tr><td id="labelOpacity">Opacity范围</td><td>0.75 → 1.0</td></tr>
+            <tr><td id="labelIcon">图标尺寸</td><td>42px Material Icons</td></tr>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentLang = 'zh';
+
+    const i18n = {
+        zh: {
+            panelTitle: '工业控制按钮组规格',
+            colorTitle: '配色方案',
+            specTitle: '技术参数',
+            labelSidebar: '侧边栏宽度',
+            labelStandard: '控制按钮 (×4)',
+            labelBg: '背景色',
+            labelHover: 'Hover过渡',
+            labelScale: 'Hover缩放',
+            labelOpacity: 'Opacity范围',
+            labelIcon: '图标尺寸',
+            contentText: '主工作区域'
+        },
+        en: {
+            panelTitle: 'Industrial Control Button Specs',
+            colorTitle: 'Color Scheme',
+            specTitle: 'Technical Parameters',
+            labelSidebar: 'Sidebar Width',
+            labelStandard: 'Control Buttons (×4)',
+            labelBg: 'Background Color',
+            labelHover: 'Hover Transition',
+            labelScale: 'Hover Scale',
+            labelOpacity: 'Opacity Range',
+            labelIcon: 'Icon Size',
+            contentText: 'Main Workspace'
+        }
+    };
+
+    function setLang(lang) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+
+        const t = i18n[lang];
+        document.getElementById('panelTitle').textContent = t.panelTitle;
+        document.getElementById('colorTitle').textContent = t.colorTitle;
+        document.getElementById('specTitle').textContent = t.specTitle;
+        document.getElementById('labelSidebar').textContent = t.labelSidebar;
+        document.getElementById('labelStandard').textContent = t.labelStandard;
+        document.getElementById('labelEmergency').textContent = t.labelEmergency;
+        document.getElementById('labelBg').textContent = t.labelBg;
+        document.getElementById('labelHover').textContent = t.labelHover;
+        document.getElementById('labelScale').textContent = t.labelScale;
+        document.getElementById('labelOpacity').textContent = t.labelOpacity;
+        document.getElementById('labelIcon').textContent = t.labelIcon;
+
+        const contentEl = document.getElementById('contentText');
+        contentEl.innerHTML = lang === 'zh' ? '主工作区域<br>Main Workspace' : 'Main Workspace<br>主工作区域';
+
+        document.querySelectorAll('[data-tooltip]').forEach(el => {
+            el.setAttribute('data-tooltip', el.getAttribute(`data-tooltip-${lang}`));
+        });
+    }
+
+    document.querySelectorAll('.ctrl-btn[data-tooltip]').forEach(btn => {
+        btn.setAttribute('data-tooltip', btn.getAttribute('data-tooltip-zh'));
+    });
+</script>
+
+</body>
+</html>

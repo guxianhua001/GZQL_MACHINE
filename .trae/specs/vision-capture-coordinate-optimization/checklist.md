@@ -1,0 +1,12 @@
+- [x] Machine Coordinates 区域仅在 MachinePoints 有数据时可见
+- [x] Coordinate Transform 独立卡片已删除，参数编辑功能迁移到 Transform Details 步骤③④
+- [x] Transform Details 预览坐标时使用最新视觉返回数据同步更新所有步骤数值
+- [x] NeedleOffsetX/Y 参数支持链接全局变量（下拉选择+自动读取值）
+- [x] NeedleCompX/Y 参数支持链接全局变量（下拉选择+自动读取值）
+- [x] 链接关系持久化到配方池，加载时自动恢复
+- [x] Dot 模式显示【执行点胶】【停止】【预览坐标】三个按钮，可用性正确
+- [x] Arc 模式显示【执行点胶】【暂停】【继续】【停止】【预览坐标】五个按钮，可用性正确
+- [x] Arc 模式暂停：当前段完成后暂停（ManualResetEventSlim），Z轴保持位置
+- [x] Arc 模式继续：从暂停点继续执行
+- [x] Dot/Arc 模式停止：CancellationToken 取消，Z轴优先抬起
+- [x] 全解决方案编译无 CS 错误

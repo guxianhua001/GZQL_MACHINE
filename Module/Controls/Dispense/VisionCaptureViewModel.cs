@@ -1,0 +1,2700 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using Newtonsoft.Json;
+using Prism.Mvvm;
+using Prism.Commands;
+using Prism.Events;
+using Prism.Services.Dialogs;
+using Recipe.Interfaces;
+using Recipe.Events;
+using MotionControl.Interfaces;
+using MotionControl.Models;
+using MotionControl.Exceptions;
+using TCPIPModule.Interfaces;
+using Core.Abstraction;
+using Core.Models;
+using Core.Utilities;
+using Core.Events;
+using StationTasks.Services;
+using MotionControl.Services;
+using Module.Models;
+using Module.ViewModels;
+
+namespace Module.ViewModels
+{
+    public class VisionCaptureViewModel : BindableBase
+    {
+        private readonly IRecipePoolService _recipePoolService;
+        private readonly IPositionProvider _positionProvider;
+        private readonly ITCPEventService _tcpEventService;
+        private readonly ITCPClientManagerService _tcpClientManager;
+        private readonly IMotionService _motionService;
+        private readonly IStationRegistry _stationRegistry;
+        private readonly VisionCaptureService _visionCaptureService;
+        private readonly BezierArcDispenseService _bezierArcDispenseService;
+        private readonly IAxisParameterService _axisParameterService;
+        private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localizationService;
+        private readonly IEventAggregator _eventAggregator;
+        private readonly IDialogService _dialogService;
+
+        private Dictionary<string, double> _allPositions = new Dictionary<string, double>();
+        private CancellationTokenSource _dispenseCts;
+        private readonly ManualResetEventSlim _pauseEvent = new ManualResetEventSlim(true);
+
+        private ObservableCollection<string> _groups = new ObservableCollection<string>();
+        public ObservableCollection<string> Groups
+        {
+            get => _groups;
+            set => SetProperty(ref _groups, value);
+        }
+
+        private string _selectedGroup;
+        private Task _reloadRowsTask = Task.CompletedTask;
+        public string SelectedGroup
+        {
+            get => _selectedGroup;
+            set
+            {
+                if (SetProperty(ref _selectedGroup, value))
+                {
+                    _reloadRowsTask = OnSelectedGroupChanged();
+                    if (!string.IsNullOrEmpty(value))
+                        CurrentStep = WorkflowStep.Step1_ConfigCapture;
+                    RaisePropertyChanged(nameof(GroupDisplay));
+                }
+            }
+        }
+
+        private ObservableCollection<PhotoPositionRow> _photoPositionRows = new ObservableCollection<PhotoPositionRow>();
+        public ObservableCollection<PhotoPositionRow> PhotoPositionRows
+        {
+            get => _photoPositionRows;
+            set => SetProperty(ref _photoPositionRows, value);
+        }
+
+        private PhotoPositionRow _selectedRow;
+        public PhotoPositionRow SelectedRow
+        {
+            get => _selectedRow;
+            set
+            {
+                if (_selectedRow != null)
+                    _selectedRow.PropertyChanged -= OnSelectedRowPropertyChanged;
+
+                if (!SetProperty(ref _selectedRow, value))
+                {
+                    NotifyTargetOffsetChanged();
+                    return;
+                }
+
+                if (value != null)
+                {
+                    value.PropertyChanged += OnSelectedRowPropertyChanged;
+                    IsDotMode = value.DispenseType == DispenseType.Dot;
+                    IsArcMode = value.DispenseType == DispenseType.Arc;
+                    OffsetXExpressionLinkedVar = value.OffsetXExpression;
+                    OffsetYExpressionLinkedVar = value.OffsetYExpression;
+                    // ViewModel 级 NeedleOffset 仅反映全局变量链接，不与 Row 的 CalculatedOffset 混用
+                    if (IsNeedleOffsetXLinked)
+                        NeedleOffsetX = ReadLinkedVariableValue(NeedleOffsetXLinkedVar);
+                    else
+                        NeedleOffsetX = 0;
+                    if (IsNeedleOffsetYLinked)
+                        NeedleOffsetY = ReadLinkedVariableValue(NeedleOffsetYLinkedVar);
+                    else
+                        NeedleOffsetY = 0;
+                    RaisePropertyChanged(nameof(IsOffsetXExpressionLinked));
+                    RaisePropertyChanged(nameof(IsOffsetYExpressionLinked));
+                    RefreshPhotoPosition(value);
+                }
+
+                NotifyTargetOffsetChanged();
+            }
+        }
+
+        /// <summary>
+        /// 目标偏移 ΔX，与 Offset Compensation 区域的 CalculatedOffsetX 保持同步
+        /// </summary>
+        public double TargetOffsetX => SelectedRow?.CalculatedOffsetX ?? 0;
+
+        /// <summary>
+        /// 目标偏移 ΔY，与 Offset Compensation 区域的 CalculatedOffsetY 保持同步
+        /// </summary>
+        public double TargetOffsetY => SelectedRow?.CalculatedOffsetY ?? 0;
+
+        /// <summary>
+        /// 选中行偏移属性变化时，刷新目标偏移显示
+        /// </summary>
+        private void OnSelectedRowPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(PhotoPositionRow.CalculatedOffsetX):
+                case nameof(PhotoPositionRow.CalculatedOffsetY):
+                case nameof(PhotoPositionRow.NeedleOffsetX):
+                case nameof(PhotoPositionRow.NeedleOffsetY):
+                case nameof(PhotoPositionRow.OffsetXExpression):
+                case nameof(PhotoPositionRow.OffsetYExpression):
+                    NotifyTargetOffsetChanged();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 通知目标偏移显示属性已更新
+        /// </summary>
+        private void NotifyTargetOffsetChanged()
+        {
+            RaisePropertyChanged(nameof(TargetOffsetX));
+            RaisePropertyChanged(nameof(TargetOffsetY));
+        }
+
+        /// <summary>
+        /// 加载坐标转换参数期间抑制 ComboBox 回写，避免误触发链接状态
+        /// </summary>
+        private bool _isLoadingTransformParams;
+
+        /// <summary>
+        /// 判断全局变量是否可作为链接目标（仅 Double 类型可链接）
+        /// </summary>
+        private static bool IsLinkableGlobalVariable(GlobalVariable v)
+        {
+            return v.Type == GlobalVariableType.Double;
+        }
+
+        /// <summary>
+        /// 规范化全局变量链接名：空白视为未链接，非数值类型视为无效链接
+        /// </summary>
+        private static string NormalizeLinkedVarName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            return value.Trim();
+        }
+
+        /// <summary>
+        /// 刷新可链接的全局变量列表（仅保留 Double 类型变量）
+        /// </summary>
+        private void RefreshLinkableGlobalVariables()
+        {
+            var linkable = AvailableGlobalVariables
+                .Where(IsLinkableGlobalVariable)
+                .ToList();
+            LinkableGlobalVariables = new ObservableCollection<GlobalVariable>(linkable);
+            RaisePropertyChanged(nameof(IsNeedleOffsetXLinked));
+            RaisePropertyChanged(nameof(IsNeedleOffsetYLinked));
+            RaisePropertyChanged(nameof(IsArcNeedleOffsetXLinked));
+            RaisePropertyChanged(nameof(IsArcNeedleOffsetYLinked));
+            RaisePropertyChanged(nameof(IsOffsetXExpressionLinked));
+            RaisePropertyChanged(nameof(IsOffsetYExpressionLinked));
+            RaisePropertyChanged(nameof(IsCameraNeedleDistanceXLinked));
+            RaisePropertyChanged(nameof(IsCameraNeedleDistanceYLinked));
+        }
+
+        private ObservableCollection<string> _availableConnections = new ObservableCollection<string>();
+        public ObservableCollection<string> AvailableConnections
+        {
+            get => _availableConnections;
+            set => SetProperty(ref _availableConnections, value);
+        }
+
+        private string _statusMessage;
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        private WorkflowStep _currentStep = WorkflowStep.Step1_ConfigCapture;
+        /// <summary>
+        /// 当前工作流步骤，驱动界面步骤指示器的状态变化和内容区切换
+        /// </summary>
+        public WorkflowStep CurrentStep
+        {
+            get => _currentStep;
+            set
+            {
+                if (SetProperty(ref _currentStep, value))
+                {
+                    RaisePropertyChanged(nameof(Step1State));
+                    RaisePropertyChanged(nameof(Step2State));
+                    RaisePropertyChanged(nameof(CurrentStepTitle));
+                    RaisePropertyChanged(nameof(IsStep1Active));
+                    RaisePropertyChanged(nameof(IsStep2Active));
+                    GoPrevCommand?.RaiseCanExecuteChanged();
+                    GoNextCommand?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 步骤1状态：配置&拍照
+        /// </summary>
+        public StepState Step1State => GetStepState(WorkflowStep.Step1_ConfigCapture);
+        /// <summary>
+        /// 步骤2状态：预览&点胶
+        /// </summary>
+        public StepState Step2State => GetStepState(WorkflowStep.Step2_PreviewDispense);
+
+        /// <summary>
+        /// 是否处于步骤1（配置&拍照），用于内容区Visibility切换
+        /// </summary>
+        public bool IsStep1Active => CurrentStep == WorkflowStep.Step1_ConfigCapture;
+        /// <summary>
+        /// 是否处于步骤2（预览&点胶），用于内容区Visibility切换
+        /// </summary>
+        public bool IsStep2Active => CurrentStep == WorkflowStep.Step2_PreviewDispense;
+
+        private StepState GetStepState(WorkflowStep step)
+        {
+            if (step < CurrentStep) return StepState.Done;
+            if (step == CurrentStep) return StepState.Active;
+            return StepState.Pending;
+        }
+
+        private bool _isExecuting;
+        public bool IsExecuting
+        {
+            get => _isExecuting;
+            set
+            {
+                if (SetProperty(ref _isExecuting, value))
+                {
+                    RaisePropertyChanged(nameof(CanStartDispense));
+                    RaisePropertyChanged(nameof(CanStop));
+                    RaisePropertyChanged(nameof(CanPause));
+                    RaisePropertyChanged(nameof(CanResume));
+                }
+            }
+        }
+
+        private bool _isPaused;
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set
+            {
+                if (SetProperty(ref _isPaused, value))
+                {
+                    RaisePropertyChanged(nameof(CanStartDispense));
+                    RaisePropertyChanged(nameof(CanStop));
+                    RaisePropertyChanged(nameof(CanPause));
+                    RaisePropertyChanged(nameof(CanResume));
+                }
+            }
+        }
+
+        public bool CanStartDispense => !IsExecuting && !IsPaused && SelectedRow != null && ParsedData.Count > 0;
+        public bool CanStop => IsExecuting || IsPaused;
+        public bool CanPause => IsExecuting && !IsPaused;
+        public bool CanResume => IsPaused;
+
+        private string _rawResponse;
+        public string RawResponse
+        {
+            get => _rawResponse;
+            set => SetProperty(ref _rawResponse, value);
+        }
+
+        private ObservableCollection<KeyValuePair<string, double>> _parsedData = new ObservableCollection<KeyValuePair<string, double>>();
+        public ObservableCollection<KeyValuePair<string, double>> ParsedData
+        {
+            get => _parsedData;
+            set => SetProperty(ref _parsedData, value);
+        }
+
+        private ObservableCollection<MachinePointItem> _machinePoints = new ObservableCollection<MachinePointItem>();
+        public ObservableCollection<MachinePointItem> MachinePoints
+        {
+            get => _machinePoints;
+            set
+            {
+                if (SetProperty(ref _machinePoints, value))
+                {
+                    RaisePropertyChanged(nameof(HasMachinePoints));
+                    RaisePropertyChanged(nameof(PointsDisplay));
+                }
+            }
+        }
+
+        public bool HasMachinePoints => MachinePoints.Count > 0;
+
+        private ObservableCollection<UIElement> _arcPathGeometry = new ObservableCollection<UIElement>();
+        public ObservableCollection<UIElement> ArcPathGeometry
+        {
+            get => _arcPathGeometry;
+            set
+            {
+                if (SetProperty(ref _arcPathGeometry, value))
+                    RaisePropertyChanged(nameof(HasArcPathGeometry));
+            }
+        }
+
+        public bool HasArcPathGeometry => ArcPathGeometry.Count > 0;
+
+        /// <summary>底部状态栏 - 分组显示文本（本地化格式）</summary>
+        public string GroupDisplay => string.IsNullOrEmpty(SelectedGroup)
+            ? L("VisionCapture_Status_GroupNone")
+            : string.Format(L("VisionCapture_Status_GroupFormat"), SelectedGroup);
+
+        /// <summary>底部状态栏 - 运行模式显示文本（本地化格式）</summary>
+        public string ModeDisplay => CurrentRunMode == null
+            ? L("VisionCapture_Status_ModeNone")
+            : string.Format(L("VisionCapture_Status_ModeFormat"), CurrentRunMode);
+
+        /// <summary>底部状态栏 - 点数显示文本（本地化格式）</summary>
+        public string PointsDisplay => string.Format(L("VisionCapture_Status_PointsFormat"), MachinePoints.Count);
+
+        private ObservableCollection<string> _siteFeatureNames = new ObservableCollection<string>();
+        public ObservableCollection<string> SiteFeatureNames
+        {
+            get => _siteFeatureNames;
+            set => SetProperty(ref _siteFeatureNames, value);
+        }
+
+        private string _selectedSiteFeatureName;
+        public string SelectedSiteFeatureName
+        {
+            get => _selectedSiteFeatureName;
+            set
+            {
+                if (SetProperty(ref _selectedSiteFeatureName, value))
+                {
+                    SelectedRow = PhotoPositionRows.FirstOrDefault(r => r.SiteFeatureName == value);
+                }
+            }
+        }
+
+        private bool _isDotMode = true;
+        public bool IsDotMode
+        {
+            get => _isDotMode;
+            set
+            {
+                if (SetProperty(ref _isDotMode, value))
+                    RaisePropertyChanged(nameof(DispenseTypeTabIndex));
+            }
+        }
+
+        private bool _isArcMode;
+        public bool IsArcMode
+        {
+            get => _isArcMode;
+            set
+            {
+                if (SetProperty(ref _isArcMode, value))
+                    RaisePropertyChanged(nameof(DispenseTypeTabIndex));
+            }
+        }
+
+        /// <summary>
+        /// 点胶类型Tab索引，0=Dot模式，1=Arc模式，用于TabControl双向绑定
+        /// </summary>
+        public int DispenseTypeTabIndex
+        {
+            get => IsArcMode ? 1 : 0;
+            set
+            {
+                IsDotMode = value == 0;
+                IsArcMode = value == 1;
+            }
+        }
+
+        private double _photoDx;
+        public double PhotoDx { get => _photoDx; set => SetProperty(ref _photoDx, value); }
+
+        private double _photoDy;
+        public double PhotoDy { get => _photoDy; set => SetProperty(ref _photoDy, value); }
+
+        private double _photoDz1;
+        public double PhotoDz1 { get => _photoDz1; set => SetProperty(ref _photoDz1, value); }
+
+        private double _targetDeltaX;
+        public double TargetDeltaX { get => _targetDeltaX; set => SetProperty(ref _targetDeltaX, value); }
+
+        private double _targetDeltaY;
+        public double TargetDeltaY { get => _targetDeltaY; set => SetProperty(ref _targetDeltaY, value); }
+
+        private double _finalX;
+        public double FinalX { get => _finalX; set => SetProperty(ref _finalX, value); }
+
+        private double _finalY;
+        public double FinalY { get => _finalY; set => SetProperty(ref _finalY, value); }
+
+        private double _visionCenterX;
+        public double VisionCenterX { get => _visionCenterX; set => SetProperty(ref _visionCenterX, value); }
+
+        private double _visionCenterY;
+        public double VisionCenterY { get => _visionCenterY; set => SetProperty(ref _visionCenterY, value); }
+
+        private double _point1X;
+        public double Point1X { get => _point1X; set => SetProperty(ref _point1X, value); }
+
+        private double _point1Y;
+        public double Point1Y { get => _point1Y; set => SetProperty(ref _point1Y, value); }
+
+        private double _point2X;
+        public double Point2X { get => _point2X; set => SetProperty(ref _point2X, value); }
+
+        private double _point2Y;
+        public double Point2Y { get => _point2Y; set => SetProperty(ref _point2Y, value); }
+
+        private double _point3X;
+        public double Point3X { get => _point3X; set => SetProperty(ref _point3X, value); }
+
+        private double _point3Y;
+        public double Point3Y { get => _point3Y; set => SetProperty(ref _point3Y, value); }
+
+        private double _p1DeltaX;
+        public double P1DeltaX { get => _p1DeltaX; set => SetProperty(ref _p1DeltaX, value); }
+
+        private double _p1DeltaY;
+        public double P1DeltaY { get => _p1DeltaY; set => SetProperty(ref _p1DeltaY, value); }
+
+        private double _p2DeltaX;
+        public double P2DeltaX { get => _p2DeltaX; set => SetProperty(ref _p2DeltaX, value); }
+
+        private double _p2DeltaY;
+        public double P2DeltaY { get => _p2DeltaY; set => SetProperty(ref _p2DeltaY, value); }
+
+        private double _p3DeltaX;
+        public double P3DeltaX { get => _p3DeltaX; set => SetProperty(ref _p3DeltaX, value); }
+
+        private double _p3DeltaY;
+        public double P3DeltaY { get => _p3DeltaY; set => SetProperty(ref _p3DeltaY, value); }
+
+        private double _p1MechX;
+        public double P1MechX { get => _p1MechX; set => SetProperty(ref _p1MechX, value); }
+
+        private double _p1MechY;
+        public double P1MechY { get => _p1MechY; set => SetProperty(ref _p1MechY, value); }
+
+        private double _p2MechX;
+        public double P2MechX { get => _p2MechX; set => SetProperty(ref _p2MechX, value); }
+
+        private double _p2MechY;
+        public double P2MechY { get => _p2MechY; set => SetProperty(ref _p2MechY, value); }
+
+        private double _p3MechX;
+        public double P3MechX { get => _p3MechX; set => SetProperty(ref _p3MechX, value); }
+
+        private double _p3MechY;
+        public double P3MechY { get => _p3MechY; set => SetProperty(ref _p3MechY, value); }
+
+        private int _bezierPointCount;
+        public int BezierPointCount { get => _bezierPointCount; set => SetProperty(ref _bezierPointCount, value); }
+
+        /// <summary>
+        /// 是否已从视觉数据中解析到新格式弧线坐标（CenterX/P1X/P2X/P3X格式）
+        /// </summary>
+        private bool _hasParsedArcData;
+        public bool HasParsedArcData
+        {
+            get => _hasParsedArcData;
+            set => SetProperty(ref _hasParsedArcData, value);
+        }
+
+        /// <summary>已解析的弧线中心点X（来自原始数据CenterX）</summary>
+        private double _parsedCenterX;
+        public double ParsedCenterX { get => _parsedCenterX; set => SetProperty(ref _parsedCenterX, value); }
+
+        /// <summary>已解析的弧线中心点Y（来自原始数据CenterY）</summary>
+        private double _parsedCenterY;
+        public double ParsedCenterY { get => _parsedCenterY; set => SetProperty(ref _parsedCenterY, value); }
+
+        private double _parsedP1X;
+        public double ParsedP1X { get => _parsedP1X; set => SetProperty(ref _parsedP1X, value); }
+
+        private double _parsedP1Y;
+        public double ParsedP1Y { get => _parsedP1Y; set => SetProperty(ref _parsedP1Y, value); }
+
+        private double _parsedP2X;
+        public double ParsedP2X { get => _parsedP2X; set => SetProperty(ref _parsedP2X, value); }
+
+        private double _parsedP2Y;
+        public double ParsedP2Y { get => _parsedP2Y; set => SetProperty(ref _parsedP2Y, value); }
+
+        private double _parsedP3X;
+        public double ParsedP3X { get => _parsedP3X; set => SetProperty(ref _parsedP3X, value); }
+
+        private double _parsedP3Y;
+        public double ParsedP3Y { get => _parsedP3Y; set => SetProperty(ref _parsedP3Y, value); }
+
+        private RunMode _currentRunMode = RunMode.DryRun;
+        public RunMode CurrentRunMode
+        {
+            get => _currentRunMode;
+            set
+            {
+                if (SetProperty(ref _currentRunMode, value))
+                    RaisePropertyChanged(nameof(ModeDisplay));
+            }
+        }
+
+        private double _cameraCenterX;
+        public double CameraCenterX
+        {
+            get => _cameraCenterX;
+            set => SetProperty(ref _cameraCenterX, value);
+        }
+
+        private double _cameraCenterY;
+        public double CameraCenterY
+        {
+            get => _cameraCenterY;
+            set => SetProperty(ref _cameraCenterY, value);
+        }
+
+        private double _needleOffsetX;
+        public double NeedleOffsetX
+        {
+            get => _needleOffsetX;
+            set => SetProperty(ref _needleOffsetX, value);
+        }
+
+        private double _needleOffsetY;
+        public double NeedleOffsetY
+        {
+            get => _needleOffsetY;
+            set => SetProperty(ref _needleOffsetY, value);
+        }
+
+        private double _arcNeedleOffsetX;
+        public double ArcNeedleOffsetX
+        {
+            get => _arcNeedleOffsetX;
+            set => SetProperty(ref _arcNeedleOffsetX, value);
+        }
+
+        private double _arcNeedleOffsetY;
+        public double ArcNeedleOffsetY
+        {
+            get => _arcNeedleOffsetY;
+            set => SetProperty(ref _arcNeedleOffsetY, value);
+        }
+
+        /// <summary>
+        /// Arc模式专用手动补偿X（NumberUpDown，不关联全局变量）
+        /// </summary>
+        private double _arcNeedleCompX;
+        public double ArcNeedleCompX
+        {
+            get => _arcNeedleCompX;
+            set => SetProperty(ref _arcNeedleCompX, value);
+        }
+
+        /// <summary>
+        /// Arc模式专用手动补偿Y（NumberUpDown，不关联全局变量）
+        /// </summary>
+        private double _arcNeedleCompY;
+        public double ArcNeedleCompY
+        {
+            get => _arcNeedleCompY;
+            set => SetProperty(ref _arcNeedleCompY, value);
+        }
+
+        private bool _needleDescend = true;
+        /// <summary>
+        /// 是否针头下降执行点胶
+        /// </summary>
+        public bool NeedleDescend
+        {
+            get => _needleDescend;
+            set => SetProperty(ref _needleDescend, value);
+        }
+
+        private ObservableCollection<GlobalVariable> _availableGlobalVariables = new ObservableCollection<GlobalVariable>();
+        public ObservableCollection<GlobalVariable> AvailableGlobalVariables
+        {
+            get => _availableGlobalVariables;
+            set => SetProperty(ref _availableGlobalVariables, value);
+        }
+
+        private ObservableCollection<GlobalVariable> _linkableGlobalVariables = new ObservableCollection<GlobalVariable>();
+        /// <summary>
+        /// 供链接下拉框使用的全局变量（已排除 VisionCapture 内部持久化变量）
+        /// </summary>
+        public ObservableCollection<GlobalVariable> LinkableGlobalVariables
+        {
+            get => _linkableGlobalVariables;
+            private set => SetProperty(ref _linkableGlobalVariables, value);
+        }
+
+        private string _needleOffsetXLinkedVar;
+        public string NeedleOffsetXLinkedVar
+        {
+            get => _needleOffsetXLinkedVar;
+            set => ApplyNeedleOffsetLinkedVar(ref _needleOffsetXLinkedVar, value,
+                nameof(NeedleOffsetXLinkedVar), nameof(IsNeedleOffsetXLinked),
+                v => NeedleOffsetX = v, () => NeedleOffsetX = 0);
+        }
+
+        private string _needleOffsetYLinkedVar;
+        public string NeedleOffsetYLinkedVar
+        {
+            get => _needleOffsetYLinkedVar;
+            set => ApplyNeedleOffsetLinkedVar(ref _needleOffsetYLinkedVar, value,
+                nameof(NeedleOffsetYLinkedVar), nameof(IsNeedleOffsetYLinked),
+                v => NeedleOffsetY = v, () => NeedleOffsetY = 0);
+        }
+
+        public bool IsNeedleOffsetXLinked => !string.IsNullOrWhiteSpace(NeedleOffsetXLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, NeedleOffsetXLinkedVar, StringComparison.OrdinalIgnoreCase));
+        public bool IsNeedleOffsetYLinked => !string.IsNullOrWhiteSpace(NeedleOffsetYLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, NeedleOffsetYLinkedVar, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// Arc模式独立的针头偏移链接变量（与Dot模式分开，避免双向绑定冲突）
+        /// </summary>
+        private string _arcNeedleOffsetXLinkedVar;
+        public string ArcNeedleOffsetXLinkedVar
+        {
+            get => _arcNeedleOffsetXLinkedVar;
+            set => ApplyNeedleOffsetLinkedVar(ref _arcNeedleOffsetXLinkedVar, value,
+                nameof(ArcNeedleOffsetXLinkedVar), nameof(IsArcNeedleOffsetXLinked),
+                v => ArcNeedleOffsetX = v, () => ArcNeedleOffsetX = 0);
+        }
+
+        private string _arcNeedleOffsetYLinkedVar;
+        public string ArcNeedleOffsetYLinkedVar
+        {
+            get => _arcNeedleOffsetYLinkedVar;
+            set => ApplyNeedleOffsetLinkedVar(ref _arcNeedleOffsetYLinkedVar, value,
+                nameof(ArcNeedleOffsetYLinkedVar), nameof(IsArcNeedleOffsetYLinked),
+                v => ArcNeedleOffsetY = v, () => ArcNeedleOffsetY = 0);
+        }
+
+        public bool IsArcNeedleOffsetXLinked => !string.IsNullOrWhiteSpace(ArcNeedleOffsetXLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, ArcNeedleOffsetXLinkedVar, StringComparison.OrdinalIgnoreCase));
+        public bool IsArcNeedleOffsetYLinked => !string.IsNullOrWhiteSpace(ArcNeedleOffsetYLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, ArcNeedleOffsetYLinkedVar, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// 应用针头偏移全局变量链接。
+        /// 注意：必须显式传入 linkedVarPropertyName，因为 SetProperty 的 [CallerMemberName]
+        /// 在此私有方法中只能捕获方法名而非属性名，导致绑定无法感知属性变更。
+        /// </summary>
+        private void ApplyNeedleOffsetLinkedVar(
+            ref string backingField,
+            string value,
+            string linkedVarPropertyName,
+            string isLinkedPropertyName,
+            Action<double> applyLinkedValue,
+            Action applyUnlinkedValue)
+        {
+            if (_isLoadingTransformParams)
+            {
+                if (SetProperty(ref backingField, NormalizeLinkedVarName(value), linkedVarPropertyName))
+                    RaisePropertyChanged(isLinkedPropertyName);
+                return;
+            }
+
+            var normalized = NormalizeLinkedVarName(value);
+            if (!SetProperty(ref backingField, normalized, linkedVarPropertyName))
+                return;
+
+            RaisePropertyChanged(isLinkedPropertyName);
+            if (!string.IsNullOrEmpty(normalized))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v =>
+                    string.Equals(v.Name, normalized, StringComparison.OrdinalIgnoreCase));
+                if (gv != null && double.TryParse(gv.Value, out var val))
+                    applyLinkedValue(val);
+            }
+            else
+            {
+                applyUnlinkedValue();
+            }
+        }
+
+        private double ReadLinkedVariableValue(string varName)
+        {
+            if (string.IsNullOrEmpty(varName)) return 0;
+            var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == varName);
+            if (gv != null && double.TryParse(gv.Value, out var val))
+                return val;
+            return 0;
+        }
+
+        private string _offsetXExpressionLinkedVar;
+        public string OffsetXExpressionLinkedVar
+        {
+            get => _offsetXExpressionLinkedVar;
+            set
+            {
+                var normalized = NormalizeLinkedVarName(value);
+                if (SetProperty(ref _offsetXExpressionLinkedVar, normalized))
+                {
+                    RaisePropertyChanged(nameof(IsOffsetXExpressionLinked));
+                    if (_isLoadingTransformParams) return;
+                    if (SelectedRow != null)
+                        SelectedRow.OffsetXExpression = normalized;
+                    if (!string.IsNullOrEmpty(normalized))
+                    {
+                        _ = UpdateGlobalVariableValueAsync(normalized, SelectedRow?.CalculatedOffsetX ?? 0);
+                    }
+
+                    NotifyTargetOffsetChanged();
+                }
+            }
+        }
+
+        private string _offsetYExpressionLinkedVar;
+        public string OffsetYExpressionLinkedVar
+        {
+            get => _offsetYExpressionLinkedVar;
+            set
+            {
+                var normalized = NormalizeLinkedVarName(value);
+                if (SetProperty(ref _offsetYExpressionLinkedVar, normalized))
+                {
+                    RaisePropertyChanged(nameof(IsOffsetYExpressionLinked));
+                    if (_isLoadingTransformParams) return;
+                    if (SelectedRow != null)
+                        SelectedRow.OffsetYExpression = normalized;
+                    if (!string.IsNullOrEmpty(normalized))
+                    {
+                        _ = UpdateGlobalVariableValueAsync(normalized, SelectedRow?.CalculatedOffsetY ?? 0);
+                    }
+
+                    NotifyTargetOffsetChanged();
+                }
+            }
+        }
+
+        public bool IsOffsetXExpressionLinked => !string.IsNullOrWhiteSpace(OffsetXExpressionLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, OffsetXExpressionLinkedVar, StringComparison.OrdinalIgnoreCase));
+        public bool IsOffsetYExpressionLinked => !string.IsNullOrWhiteSpace(OffsetYExpressionLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, OffsetYExpressionLinkedVar, StringComparison.OrdinalIgnoreCase));
+
+        private double _cameraNeedleDistanceX;
+        /// <summary>
+        /// 相机与胶针固定距离X（可链接全局变量）
+        /// </summary>
+        public double CameraNeedleDistanceX
+        {
+            get => _cameraNeedleDistanceX;
+            set => SetProperty(ref _cameraNeedleDistanceX, value);
+        }
+
+        private double _cameraNeedleDistanceY;
+        /// <summary>
+        /// 相机与胶针固定距离Y（可链接全局变量）
+        /// </summary>
+        public double CameraNeedleDistanceY
+        {
+            get => _cameraNeedleDistanceY;
+            set => SetProperty(ref _cameraNeedleDistanceY, value);
+        }
+
+        private string _cameraNeedleDistanceXLinkedVar;
+        /// <summary>
+        /// 相机胶针距离X链接的全局变量名
+        /// </summary>
+        public string CameraNeedleDistanceXLinkedVar
+        {
+            get => _cameraNeedleDistanceXLinkedVar;
+            set
+            {
+                var normalized = NormalizeLinkedVarName(value);
+                if (SetProperty(ref _cameraNeedleDistanceXLinkedVar, normalized))
+                {
+                    RaisePropertyChanged(nameof(IsCameraNeedleDistanceXLinked));
+                    if (_isLoadingTransformParams) return;
+                    if (!string.IsNullOrEmpty(normalized))
+                    {
+                        var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == normalized);
+                        if (gv != null && double.TryParse(gv.Value, out var val))
+                            CameraNeedleDistanceX = val;
+                    }
+                    else
+                    {
+                        CameraNeedleDistanceX = 0;
+                    }
+                }
+            }
+        }
+
+        private string _cameraNeedleDistanceYLinkedVar;
+        /// <summary>
+        /// 相机胶针距离Y链接的全局变量名
+        /// </summary>
+        public string CameraNeedleDistanceYLinkedVar
+        {
+            get => _cameraNeedleDistanceYLinkedVar;
+            set
+            {
+                var normalized = NormalizeLinkedVarName(value);
+                if (SetProperty(ref _cameraNeedleDistanceYLinkedVar, normalized))
+                {
+                    RaisePropertyChanged(nameof(IsCameraNeedleDistanceYLinked));
+                    if (_isLoadingTransformParams) return;
+                    if (!string.IsNullOrEmpty(normalized))
+                    {
+                        var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == normalized);
+                        if (gv != null && double.TryParse(gv.Value, out var val))
+                            CameraNeedleDistanceY = val;
+                    }
+                    else
+                    {
+                        CameraNeedleDistanceY = 0;
+                    }
+                }
+            }
+        }
+
+        public bool IsCameraNeedleDistanceXLinked => !string.IsNullOrWhiteSpace(CameraNeedleDistanceXLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, CameraNeedleDistanceXLinkedVar, StringComparison.OrdinalIgnoreCase));
+        public bool IsCameraNeedleDistanceYLinked => !string.IsNullOrWhiteSpace(CameraNeedleDistanceYLinkedVar)
+            && AvailableGlobalVariables.Any(v => string.Equals(v.Name, CameraNeedleDistanceYLinkedVar, StringComparison.OrdinalIgnoreCase));
+
+        private ObservableCollection<string> _availableSafePositions = new ObservableCollection<string>();
+        public ObservableCollection<string> AvailableSafePositions
+        {
+            get => _availableSafePositions;
+            set => SetProperty(ref _availableSafePositions, value);
+        }
+
+        private string _safePositionName = "SafePosition";
+        public string SafePositionName
+        {
+            get => _safePositionName;
+            set
+            {
+                if (SetProperty(ref _safePositionName, value))
+                    RefreshSafePositionDisplay();
+            }
+        }
+
+        private string _standbyPositionName = "StandbyPosition";
+        public string StandbyPositionName
+        {
+            get => _standbyPositionName;
+            set => SetProperty(ref _standbyPositionName, value);
+        }
+
+        private string _dispensePositionName = "DispensePosition";
+        public string DispensePositionName
+        {
+            get => _dispensePositionName;
+            set => SetProperty(ref _dispensePositionName, value);
+        }
+
+        private string _photoHeightName = "PhotoHeight";
+        public string PhotoHeightName
+        {
+            get => _photoHeightName;
+            set => SetProperty(ref _photoHeightName, value);
+        }
+
+        private double _safePositionDx;
+        /// <summary>
+        /// 安全位置Dx示教值
+        /// </summary>
+        public double SafePositionDx
+        {
+            get => _safePositionDx;
+            set => SetProperty(ref _safePositionDx, value);
+        }
+
+        private double _safePositionDy;
+        /// <summary>
+        /// 安全位置Dy示教值
+        /// </summary>
+        public double SafePositionDy
+        {
+            get => _safePositionDy;
+            set => SetProperty(ref _safePositionDy, value);
+        }
+
+        private double _safePositionDz1;
+        /// <summary>
+        /// 安全位置Dz1示教值
+        /// </summary>
+        public double SafePositionDz1
+        {
+            get => _safePositionDz1;
+            set => SetProperty(ref _safePositionDz1, value);
+        }
+
+        private string _currentFilePath;
+        /// <summary>
+        /// 当前加载的配置文件路径
+        /// </summary>
+        public string CurrentFilePath
+        {
+            get => _currentFilePath;
+            set => SetProperty(ref _currentFilePath, value);
+        }
+
+        private string _currentFileName;
+        /// <summary>
+        /// 当前加载的文件名（显示用）
+        /// </summary>
+        public string CurrentFileName
+        {
+            get => _currentFileName;
+            set => SetProperty(ref _currentFileName, value);
+        }
+
+        public DelegateCommand<PhotoPositionRow> ExecuteCaptureCommand { get; }
+        public DelegateCommand<PhotoPositionRow> MoveToTeachPositionCommand { get; }
+        public DelegateCommand ExecuteDispenseCommand { get; }
+        public DelegateCommand PreviewMachinePointsCommand { get; }
+        public DelegateCommand SaveTransformParamsCommand { get; }
+        public DelegateCommand StopCommand { get; }
+        public DelegateCommand PauseCommand { get; }
+        public DelegateCommand ResumeCommand { get; }
+        public DelegateCommand GoPrevCommand { get; }
+        public DelegateCommand GoNextCommand { get; }
+        public DelegateCommand SyncCaptureCommand { get; }
+        public DelegateCommand SaveConfigCommand { get; }
+        public DelegateCommand LoadConfigCommand { get; }
+        public DelegateCommand UnlinkNeedleOffsetXCommand { get; }
+        public DelegateCommand UnlinkNeedleOffsetYCommand { get; }
+        public DelegateCommand UnlinkArcNeedleOffsetXCommand { get; }
+        public DelegateCommand UnlinkArcNeedleOffsetYCommand { get; }
+        public DelegateCommand UnlinkNeedleDistanceXCommand { get; }
+        public DelegateCommand UnlinkNeedleDistanceYCommand { get; }
+        public DelegateCommand UnlinkOffsetXExpressionCommand { get; }
+        public DelegateCommand UnlinkOffsetYExpressionCommand { get; }
+
+        /// <summary>
+        /// 当前步骤标题，用于底部状态栏显示
+        /// </summary>
+        public string CurrentStepTitle => CurrentStep switch
+        {
+            WorkflowStep.Step1_ConfigCapture => L("VisionCapture_Step1_Title"),
+            WorkflowStep.Step2_PreviewDispense => L("VisionCapture_Step2_Title"),
+            _ => L("VisionCapture_Step1_Title")
+        };
+
+        /// <summary>
+        /// 获取多语言文本（便捷方法）
+        /// </summary>
+        private string L(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                return string.Empty;
+
+            if (_localizationService != null)
+                return _localizationService.GetResource(key);
+
+            var resource = Application.Current?.TryFindResource(key);
+            return resource?.ToString() ?? $"[{key}]";
+        }
+
+        public VisionCaptureViewModel(
+            IRecipePoolService recipePoolService,
+            IPositionProvider positionProvider,
+            ITCPEventService tcpEventService,
+            ITCPClientManagerService tcpClientManager,
+            IMotionService motionService,
+            IStationRegistry stationRegistry,
+            VisionCaptureService visionCaptureService,
+            BezierArcDispenseService bezierArcDispenseService,
+            ILoggerService logger,
+            ILocalizationService localizationService,
+            IEventAggregator eventAggregator,
+            IDialogService dialogService,
+            IAxisParameterService axisParameterService)
+        {
+            _recipePoolService = recipePoolService;
+            _positionProvider = positionProvider;
+            _tcpEventService = tcpEventService;
+            _tcpClientManager = tcpClientManager;
+            _motionService = motionService;
+            _stationRegistry = stationRegistry;
+            _visionCaptureService = visionCaptureService;
+            _bezierArcDispenseService = bezierArcDispenseService;
+            _axisParameterService = axisParameterService;
+            _logger = logger;
+            _localizationService = localizationService;
+            _eventAggregator = eventAggregator;
+            _dialogService = dialogService;
+
+            // 订阅 MachinePoints 集合变化以更新 PointsDisplay
+            _machinePoints.CollectionChanged += (s, e) => RaisePropertyChanged(nameof(PointsDisplay));
+
+            ExecuteCaptureCommand = new DelegateCommand<PhotoPositionRow>(
+                async row => await ExecuteCaptureAsync(row),
+                row => row != null && !row.IsExecuting && !IsExecuting
+            );
+            MoveToTeachPositionCommand = new DelegateCommand<PhotoPositionRow>(
+                async row => await MoveToTeachPositionAsync(row),
+                row => row != null && !row.IsExecuting && !IsExecuting
+            );
+            ExecuteDispenseCommand = new DelegateCommand(
+                async () => await ExecuteDispenseAsync(),
+                () => SelectedRow != null && ParsedData.Count > 0 && !IsExecuting
+            );
+            PreviewMachinePointsCommand = new DelegateCommand(
+                async () => await PreviewMachinePointsAsync()
+            );
+            SaveTransformParamsCommand = new DelegateCommand(
+                async () => await SaveTransformParamsAsync()
+            );
+            StopCommand = new DelegateCommand(() => _dispenseCts?.Cancel());
+            PauseCommand = new DelegateCommand(() => { _pauseEvent.Reset(); IsPaused = true; }, () => CanPause);
+            ResumeCommand = new DelegateCommand(() => { _pauseEvent.Set(); IsPaused = false; }, () => CanResume);
+
+            GoPrevCommand = new DelegateCommand(
+                () =>
+                {
+                    if (CurrentStep > WorkflowStep.Step1_ConfigCapture)
+                        CurrentStep = WorkflowStep.Step1_ConfigCapture;
+                },
+                () => CurrentStep > WorkflowStep.Step1_ConfigCapture
+            );
+            GoNextCommand = new DelegateCommand(
+                () =>
+                {
+                    if (CurrentStep < WorkflowStep.Step2_PreviewDispense)
+                        CurrentStep = WorkflowStep.Step2_PreviewDispense;
+                },
+                () => CurrentStep < WorkflowStep.Step2_PreviewDispense
+            );
+
+            SyncCaptureCommand = new DelegateCommand(
+                async () => await SyncCaptureAllRowsAsync(),
+                () => PhotoPositionRows.Count > 0 && !IsExecuting
+            );
+            SaveConfigCommand = new DelegateCommand(
+                async () => await SaveConfigToFileAsync(),
+                () => true
+            );
+            LoadConfigCommand = new DelegateCommand(
+                async () => await LoadConfigFromFileAsync(),
+                () => true
+            );
+
+            UnlinkNeedleOffsetXCommand = new DelegateCommand(() => NeedleOffsetXLinkedVar = null);
+            UnlinkNeedleOffsetYCommand = new DelegateCommand(() => NeedleOffsetYLinkedVar = null);
+            UnlinkArcNeedleOffsetXCommand = new DelegateCommand(() => ArcNeedleOffsetXLinkedVar = null);
+            UnlinkArcNeedleOffsetYCommand = new DelegateCommand(() => ArcNeedleOffsetYLinkedVar = null);
+            UnlinkNeedleDistanceXCommand = new DelegateCommand(() => CameraNeedleDistanceXLinkedVar = null);
+            UnlinkNeedleDistanceYCommand = new DelegateCommand(() => CameraNeedleDistanceYLinkedVar = null);
+            UnlinkOffsetXExpressionCommand = new DelegateCommand(() => OffsetXExpressionLinkedVar = null);
+            UnlinkOffsetYExpressionCommand = new DelegateCommand(() => OffsetYExpressionLinkedVar = null);
+
+            // 使用示例初始数据预填充弧线解析显示，收到实际视觉数据后自动替换
+            InitializeDefaultArcData();
+
+            _ = InitializeAsync();
+            LoadConnections();
+
+            _eventAggregator.GetEvent<SaveParametersCompletedEvent>().Subscribe(OnPositionsUpdated, ThreadOption.UIThread);
+            _eventAggregator.GetEvent<RecipeChangedEvent>().Subscribe(OnRecipeChanged, ThreadOption.UIThread);
+            _eventAggregator.GetEvent<StationParameterSavedEvent>().Subscribe(OnStationPositionSaved, ThreadOption.UIThread);
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
+        }
+
+        /// <summary>
+        /// 使用示例初始数据预填充弧线解析显示，使 Offset Compensation 面板在未收到视觉数据前也能呈现完整布局。
+        /// 收到实际视觉数据（CenterX/P1X/P2X/P3X格式）后，TryApplyNewArcData 会自动替换这些值。
+        /// </summary>
+        private void InitializeDefaultArcData()
+        {
+            const double cx  = -6.653,  cy  = 594.332;
+            const double p1x = -12.174, p1y = 594.432;
+            const double p2x = -14.246, p2y = 594.988;
+            const double p3x = -16.318, p3y = 595.692;
+
+            // 存储解析坐标
+            ParsedCenterX = cx; ParsedCenterY = cy;
+            ParsedP1X = p1x;    ParsedP1Y = p1y;
+            ParsedP2X = p2x;    ParsedP2Y = p2y;
+            ParsedP3X = p3x;    ParsedP3Y = p3y;
+            HasParsedArcData = true;
+
+            // 同步到 Vision Coord
+            VisionCenterX = cx; VisionCenterY = cy;
+            Point1X = p1x; Point1Y = p1y;
+            Point2X = p2x; Point2Y = p2y;
+            Point3X = p3x; Point3Y = p3y;
+
+            // 计算 Center Offset：▲Pn = 相机中心点(CenterX/Y) - Pn
+            P1DeltaX = cx - p1x; P1DeltaY = cy - p1y;
+            P2DeltaX = cx - p2x; P2DeltaY = cy - p2y;
+            P3DeltaX = cx - p3x; P3DeltaY = cy - p3y;
+
+            IsArcMode = true;
+            IsDotMode = false;
+        }
+
+        private async void OnPositionsUpdated(string recipeName)
+        {
+            try
+            {
+                await _positionProvider.InvalidateCacheAsync();
+                _allPositions = await MergeAllPositionsAsync();
+                RefreshAvailablePositions();
+                RefreshSafePositionDisplay();
+                RefreshPhotoPosition(SelectedRow);
+                _logger.Info($"[VisionCapture] 位置数据已同步更新 (recipe={recipeName}), _allPositions count={_allPositions?.Count ?? 0}, SafePositionName={SafePositionName}, Dx={SafePositionDx}, Dy={SafePositionDy}, Dz1={SafePositionDz1}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 位置数据同步失败: {ex.Message}");
+            }
+        }
+
+        private async void OnRecipeChanged(string recipeName)
+        {
+            try
+            {
+                await _positionProvider.InvalidateCacheAsync();
+                _allPositions = await MergeAllPositionsAsync();
+                RefreshAvailablePositions();
+                RefreshSafePositionDisplay();
+                RefreshPhotoPosition(SelectedRow);
+                await LoadTransformParamsAsync();
+            }
+            catch
+            {
+            }
+        }
+
+        private async void OnStationPositionSaved(string stationIdentifier)
+        {
+            try
+            {
+                await _positionProvider.InvalidateCacheAsync();
+                _allPositions = await MergeAllPositionsAsync();
+                RefreshAvailablePositions();
+                RefreshSafePositionDisplay();
+                RefreshPhotoPosition(SelectedRow);
+                _logger.Info($"[VisionCapture] 工站 [{stationIdentifier}] 位置已保存, _allPositions count={_allPositions?.Count ?? 0}, SafePositionName={SafePositionName}, Dx={SafePositionDx}, Dy={SafePositionDy}, Dz1={SafePositionDz1}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 工站位置保存后同步失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 外部全局变量变更时重新加载，同步链接变量值和链接状态
+        /// </summary>
+        private async void OnGlobalVariablesChanged(string poolId)
+        {
+            try
+            {
+                var currentPoolId = _recipePoolService.CurrentPoolName ?? "Default";
+                if (!string.Equals(poolId, currentPoolId, StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+
+                AvailableGlobalVariables.Clear();
+                foreach (var v in variables)
+                    AvailableGlobalVariables.Add(v);
+
+                RefreshLinkableGlobalVariables();
+
+                if (IsNeedleOffsetXLinked)
+                    NeedleOffsetX = ReadLinkedVariableValue(NeedleOffsetXLinkedVar);
+                if (IsNeedleOffsetYLinked)
+                    NeedleOffsetY = ReadLinkedVariableValue(NeedleOffsetYLinkedVar);
+                if (IsArcNeedleOffsetXLinked)
+                    ArcNeedleOffsetX = ReadLinkedVariableValue(ArcNeedleOffsetXLinkedVar);
+                if (IsArcNeedleOffsetYLinked)
+                    ArcNeedleOffsetY = ReadLinkedVariableValue(ArcNeedleOffsetYLinkedVar);
+                if (IsCameraNeedleDistanceXLinked)
+                    CameraNeedleDistanceX = ReadLinkedVariableValue(CameraNeedleDistanceXLinkedVar);
+                if (IsCameraNeedleDistanceYLinked)
+                    CameraNeedleDistanceY = ReadLinkedVariableValue(CameraNeedleDistanceYLinkedVar);
+                if (IsOffsetXExpressionLinked || IsOffsetYExpressionLinked)
+                {
+                    SelectedRow?.NotifyCalculatedPropertiesChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 全局变量变更同步失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 刷新所有行的下拉位置列表，保留当前选中值
+        /// </summary>
+        private void RefreshAvailablePositions()
+        {
+            var positionNames = new HashSet<string>();
+            foreach (var key in _allPositions.Keys)
+            {
+                var parts = key.Split('.');
+                if (parts.Length >= 3)
+                    positionNames.Add($"{parts[0]}.{parts[1]}");
+            }
+            var sortedPositions = positionNames.OrderBy(p => p).ToList();
+
+            var currentSafePosition = SafePositionName;
+            AvailableSafePositions = new ObservableCollection<string>(sortedPositions);
+            SafePositionName = currentSafePosition;
+
+            foreach (var row in PhotoPositionRows)
+            {
+                var currentDx = row.DxPositionName;
+                var currentDy = row.DyPositionName;
+                var currentDz1 = row.Dz1PositionName;
+                var currentY = row.YPositionName;
+
+                row.AvailablePositions = new ObservableCollection<string>(sortedPositions);
+
+                row.DxPositionName = currentDx;
+                row.DyPositionName = currentDy;
+                row.Dz1PositionName = currentDz1;
+                row.YPositionName = currentY;
+            }
+        }
+
+        private async Task InitializeAsync()
+        {
+            _logger.Info("[VisionCapture] 开始初始化...");
+            try
+            {
+                await LoadGroupsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[VisionCapture] 初始化Group失败: {ex.Message}");
+            }
+            try
+            {
+                await TryAutoLoadConfigAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[VisionCapture] 自动加载配置异常: {ex.Message}");
+            }
+            _logger.Info("[VisionCapture] 初始化完成");
+        }
+
+        private async Task LoadGroupsAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                var workOrderData = await _recipePoolService.GetExtensionDataAsync<WorkOrderData>(poolName, "WorkOrderData") ?? new WorkOrderData();
+                Groups.Clear();
+                foreach (var site in workOrderData.Sites)
+                    Groups.Add(site.Name);
+                if (Groups.Count > 0)
+                    SelectedGroup = Groups[0];
+
+                await LoadTransformParamsAsync();
+                await _reloadRowsTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[VisionCapture] 加载Group列表失败: {ex.Message}");
+            }
+        }
+
+        private async Task OnSelectedGroupChanged()
+        {
+            if (string.IsNullOrEmpty(SelectedGroup)) return;
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                var workOrderData = await _recipePoolService.GetExtensionDataAsync<WorkOrderData>(poolName, "WorkOrderData") ?? new WorkOrderData();
+                var site = workOrderData.Sites.FirstOrDefault(s => s.Name == SelectedGroup);
+                if (site == null) return;
+
+                _allPositions = await MergeAllPositionsAsync();
+
+                PhotoPositionRows.Clear();
+                SiteFeatureNames.Clear();
+                foreach (var feature in site.Features)
+                {
+                    var row = new PhotoPositionRow(feature.Name);
+                    var positionNames = new HashSet<string>();
+                    foreach (var key in _allPositions.Keys)
+                    {
+                        var parts = key.Split('.');
+                        if (parts.Length >= 3)
+                            positionNames.Add($"{parts[0]}.{parts[1]}");
+                    }
+                    row.AvailablePositions = new ObservableCollection<string>(positionNames.OrderBy(p => p));
+                    PhotoPositionRows.Add(row);
+                    SiteFeatureNames.Add(feature.Name);
+                }
+                if (SiteFeatureNames.Count > 0)
+                {
+                    var featureName = SiteFeatureNames[0];
+                    SelectedSiteFeatureName = featureName;
+                    SelectedRow = PhotoPositionRows.FirstOrDefault(r => r.SiteFeatureName == featureName);
+                }
+
+                RefreshAvailablePositions();
+                RefreshSafePositionDisplay();
+                RefreshPhotoPosition(SelectedRow);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[VisionCapture] 加载SiteFeature失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 刷新安全位置Dx/Dy/Dz1显示值
+        /// </summary>
+        /// <summary>
+        /// 刷新拍照位置坐标显示，从位置数据中读取 Dx/Dy/Dz₁
+        /// </summary>
+        private void RefreshPhotoPosition(PhotoPositionRow row)
+        {
+            if (row == null || _allPositions == null)
+            {
+                PhotoDx = 0; PhotoDy = 0; PhotoDz1 = 0;
+                return;
+            }
+            double dx = 0, dy = 0, dz1 = 0;
+            var dxKey = ResolvePositionKey(row.DxPositionName, "Dx");
+            var dyKey = ResolvePositionKey(row.DyPositionName, "Dy");
+            var dz1Key = ResolvePositionKey(row.Dz1PositionName, "Dz₁");
+            if (dxKey != null) _allPositions.TryGetValue(dxKey, out dx);
+            if (dyKey != null) _allPositions.TryGetValue(dyKey, out dy);
+            if (dz1Key != null) _allPositions.TryGetValue(dz1Key, out dz1);
+            PhotoDx = dx;
+            PhotoDy = dy;
+            PhotoDz1 = dz1;
+        }
+
+        private void RefreshSafePositionDisplay()
+        {
+            if (_allPositions == null) return;
+            if (string.IsNullOrEmpty(SafePositionName)) return;
+            var dxKey = ResolvePositionKey(SafePositionName, "Dx");
+            var dyKey = ResolvePositionKey(SafePositionName, "Dy");
+            var dz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
+            double dx = 0, dy = 0, dz1 = 0;
+            bool dxFound = dxKey != null && _allPositions.TryGetValue(dxKey, out dx);
+            bool dyFound = dyKey != null && _allPositions.TryGetValue(dyKey, out dy);
+            bool dz1Found = dz1Key != null && _allPositions.TryGetValue(dz1Key, out dz1);
+            SafePositionDx = dx;
+            SafePositionDy = dy;
+            SafePositionDz1 = dz1;
+
+            if (!dxFound || !dyFound || !dz1Found)
+            {
+                var missingAxes = new List<string>();
+                if (!dxFound) missingAxes.Add("Dx");
+                if (!dyFound) missingAxes.Add("Dy");
+                if (!dz1Found) missingAxes.Add("Dz₁");
+                StatusMessage = string.Format(L("VisionCapture_Status_SafePosMissingAxis"), SafePositionName, string.Join(", ", missingAxes));
+                _logger.Warn($"[VisionCapture] 安全位 '{SafePositionName}' 缺少轴: {string.Join(", ", missingAxes)}，请选择包含Dx/Dy/Dz₁轴工站的位置");
+            }
+        }
+
+        private string ResolvePositionKey(string positionName, string axisName)
+        {
+            if (string.IsNullOrEmpty(positionName)) return null;
+            var exactKey = $"{positionName}.{axisName}";
+            if (_allPositions.ContainsKey(exactKey))
+                return exactKey;
+            var suffix = $".{positionName}.{axisName}";
+            foreach (var key in _allPositions.Keys)
+            {
+                if (key.EndsWith(suffix))
+                    return key;
+            }
+            return exactKey;
+        }
+
+        private string MigratePositionName(string oldName)
+        {
+            if (string.IsNullOrEmpty(oldName)) return oldName;
+            var parts = oldName.Split('.');
+            if (parts.Length >= 2)
+            {
+                var testKey = $"{oldName}.Dx";
+                if (_allPositions.ContainsKey(testKey))
+                    return oldName;
+            }
+            foreach (var key in _allPositions.Keys)
+            {
+                var keyParts = key.Split('.');
+                if (keyParts.Length >= 3 && keyParts[1] == oldName)
+                    return $"{keyParts[0]}.{oldName}";
+            }
+            return oldName;
+        }
+
+        private async Task<Dictionary<string, double>> MergeAllPositionsAsync()
+        {
+            var merged = new Dictionary<string, double>();
+            var stations = _stationRegistry.GetAllStations();
+            foreach (var station in stations)
+            {
+                try
+                {
+                    var positions = await _positionProvider.GetPositionsAsync(station.StationIdentifier);
+                    if (positions == null) continue;
+                    foreach (var kvp in positions)
+                    {
+                        var prefixedKey = $"{station.StationIdentifier}.{kvp.Key}";
+                        if (!merged.ContainsKey(prefixedKey))
+                            merged[prefixedKey] = kvp.Value;
+                    }
+                }
+                catch
+                {
+                }
+            }
+            return merged;
+        }
+
+        private void LoadConnections()
+        {
+            AvailableConnections.Clear();
+            foreach (var name in _tcpEventService.GetServerNames())
+                AvailableConnections.Add(name);
+            foreach (var name in _tcpClientManager.Clients.Keys)
+                AvailableConnections.Add(name);
+        }
+
+        private Dictionary<string, int> ResolveAxisIdMap()
+        {
+            var axisConfigs = _motionService.GetAxisConfigurations();
+            var result = new Dictionary<string, int>();
+            string[] axisNames = { "Dx", "Dy", "Dz₁", "Y" };
+            string[] mapKeys = { "Dx", "Dy", "Dz₁", "Y" };
+
+            for (int i = 0; i < axisNames.Length; i++)
+            {
+                var config = axisConfigs.FirstOrDefault(a => a.Name == axisNames[i]);
+                if (config != null)
+                    result[mapKeys[i]] = config.LogicalId;
+            }
+            return result;
+        }
+
+        private int ResolveCoordId()
+        {
+            var axisConfigs = _motionService.GetAxisConfigurations();
+            var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+            if (dxConfig == null)
+            {
+                _logger.Warn("[VisionCapture] 未找到Dx轴配置，CoordId 回退到 0");
+                return 0;
+            }
+
+            // 从 hwcfg.xml 的 InterpolationSystems 查找含有 Dx 轴的插补系
+            var systems = _axisParameterService.LoadInterpolationSystems().ToList();
+            foreach (var sys in systems)
+            {
+                // sys.Axes 格式: "actCardId-actAxisId"
+                // dxConfig.AxisId 是 actAxisId
+                foreach (var axisEntry in sys.Axes)
+                {
+                    var parts = axisEntry.Split('-');
+                    if (parts.Length == 2 && int.TryParse(parts[1], out int actAxisId))
+                    {
+                        if (actAxisId == dxConfig.AxisId)
+                        {
+                            _logger.Info($"[VisionCapture] Dx(actAxisId={dxConfig.AxisId}) 匹配插补系 CoordId={sys.CoordId}");
+                            return sys.CoordId;
+                        }
+                    }
+                }
+            }
+
+            _logger.Warn($"[VisionCapture] Dx(actAxisId={dxConfig.AxisId}) 不在任何插补系中，CoordId 回退到 0");
+            return 0;
+        }
+
+        /// <summary>
+        /// 尝试从解析数据中识别新格式弧线坐标（CenterX/P1X/P2X/P3X）。
+        /// 成功时设置 HasParsedArcData=true，同步Vision Coord并计算Center Offset（ΔP = 相机中心点 - P）。
+        /// </summary>
+        private bool TryApplyNewArcData(Dictionary<string, double> pd)
+        {
+            if (!pd.ContainsKey("CenterX") || !pd.ContainsKey("P1X")) return false;
+
+            pd.TryGetValue("CenterX", out double cx);
+            pd.TryGetValue("CenterY", out double cy);
+            pd.TryGetValue("P1X", out double p1x);
+            pd.TryGetValue("P1Y", out double p1y);
+            pd.TryGetValue("P2X", out double p2x);
+            pd.TryGetValue("P2Y", out double p2y);
+            pd.TryGetValue("P3X", out double p3x);
+            pd.TryGetValue("P3Y", out double p3y);
+
+            // 存储原始解析坐标
+            ParsedCenterX = cx; ParsedCenterY = cy;
+            ParsedP1X = p1x; ParsedP1Y = p1y;
+            ParsedP2X = p2x; ParsedP2Y = p2y;
+            ParsedP3X = p3x; ParsedP3Y = p3y;
+            HasParsedArcData = true;
+
+            // 同步到Vision Coord
+            VisionCenterX = cx; VisionCenterY = cy;
+            Point1X = p1x; Point1Y = p1y;
+            Point2X = p2x; Point2Y = p2y;
+            Point3X = p3x; Point3Y = p3y;
+
+            // 计算 Center Offset：ΔP = 相机中心点 - P
+            P1DeltaX = cx - p1x; P1DeltaY = cy - p1y;
+            P2DeltaX = cx - p2x; P2DeltaY = cy - p2y;
+            P3DeltaX = cx - p3x; P3DeltaY = cy - p3y;
+
+            // 添加归一化key，供现有解析链路（ExtractArcPoints）使用
+            pd["centerX"] = cx; pd["centerY"] = cy;
+            pd["point1X"] = p1x; pd["point1Y"] = p1y;
+            pd["point2X"] = p2x; pd["point2Y"] = p2y;
+            pd["point3X"] = p3x; pd["point3Y"] = p3y;
+
+            IsDotMode = false;
+            IsArcMode = true;
+            return true;
+        }
+
+        /// <summary>
+        /// 根据已解析的弧线数据自动计算P1-P3机械坐标并生成贝塞尔弧线。
+        /// 公式: Pn_mech = 拍照位 + ΔP(n) + 相机到针头距离 + 针头偏移 + 人工补偿
+        /// </summary>
+        private async Task AutoComputeArcMachinePointsAsync(PhotoPositionRow row)
+        {
+            try
+            {
+                _allPositions = await MergeAllPositionsAsync();
+
+                double photoDx = 0, photoDy = 0;
+                if (row != null && !string.IsNullOrEmpty(row.DxPositionName) && !string.IsNullOrEmpty(row.DyPositionName))
+                {
+                    var dxKey = ResolvePositionKey(row.DxPositionName, "Dx");
+                    var dyKey = ResolvePositionKey(row.DyPositionName, "Dy");
+                    if (dxKey != null) _allPositions.TryGetValue(dxKey, out photoDx);
+                    if (dyKey != null) _allPositions.TryGetValue(dyKey, out photoDy);
+                }
+
+                PhotoDx = photoDx;
+                PhotoDy = photoDy;
+
+                var camDist = (CameraNeedleDistanceX, CameraNeedleDistanceY);
+                var needleOff = (ArcNeedleOffsetX, ArcNeedleOffsetY);
+                var comp = (ArcNeedleCompX, ArcNeedleCompY);
+
+                // 使用公式: Pn_mech = Photo + ΔP + CamNeedle + NeedleOffset + Comp
+                var (p1mx, p1my) = BezierArcDispenseService.ComputeMachineCoordinateFromOffset(
+                    (photoDx, photoDy), (P1DeltaX, P1DeltaY), camDist, needleOff, comp);
+                var (p2mx, p2my) = BezierArcDispenseService.ComputeMachineCoordinateFromOffset(
+                    (photoDx, photoDy), (P2DeltaX, P2DeltaY), camDist, needleOff, comp);
+                var (p3mx, p3my) = BezierArcDispenseService.ComputeMachineCoordinateFromOffset(
+                    (photoDx, photoDy), (P3DeltaX, P3DeltaY), camDist, needleOff, comp);
+
+                P1MechX = p1mx; P1MechY = p1my;
+                P2MechX = p2mx; P2MechY = p2my;
+                P3MechX = p3mx; P3MechY = p3my;
+
+                int segCount = (row?.ArcSegments > 0) ? row.ArcSegments : 50;
+                var bezierPoints = BezierArcDispenseService.DiscretizeQuadraticBezier(
+                    (p1mx, p1my), (p2mx, p2my), (p3mx, p3my), segCount);
+
+                BezierPointCount = bezierPoints.Count;
+
+                MachinePoints.Clear();
+                for (int i = 0; i < bezierPoints.Count; i++)
+                    MachinePoints.Add(new MachinePointItem { Index = i + 1, X = bezierPoints[i].X, Y = bezierPoints[i].Y });
+                RaisePropertyChanged(nameof(HasMachinePoints));
+
+                // 转换为 CoordinateTransformDetail 以复用 GenerateArcPathGeometry
+                var details = bezierPoints
+                    .Select(p => new CoordinateTransformDetail { PhotoDx = photoDx, PhotoDy = photoDy, FinalX = p.X, FinalY = p.Y })
+                    .ToList();
+                GenerateArcPathGeometry(details);
+
+                CurrentStep = WorkflowStep.Step2_PreviewDispense;
+                StatusMessage = string.Format(L("VisionCapture_Status_PreviewArcComplete"), bezierPoints.Count);
+                _logger.Info($"[VisionCapture] 新格式弧线机械坐标完成: P1({p1mx:F3},{p1my:F3}) P2({p2mx:F3},{p2my:F3}) P3({p3mx:F3},{p3my:F3})，贝塞尔{bezierPoints.Count}点");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 自动计算弧线机械坐标失败: {ex.Message}");
+            }
+        }
+
+        private async Task ExecuteCaptureAsync(PhotoPositionRow row)
+        {
+            if (row == null || row.IsExecuting || IsExecuting) return;
+
+            IsExecuting = true;
+            row.IsExecuting = true;
+            StatusMessage = L("VisionCapture_Status_PhotoExecuting");
+            RaiseCanExecuteChanged();
+
+            var cts = new CancellationTokenSource();
+            try
+            {
+                var result = await _visionCaptureService.ExecuteCaptureAsync(
+                    row.ConnectionName, row.TriggerCommand, row.Timeout, cts.Token);
+
+                HasParsedArcData = false;
+                RawResponse = result.RawResponse ?? L("VisionCapture_DataReceivedSuccess");
+                var pd = result.ParsedData;
+
+                // 优先检测新格式弧线数据（CenterX/P1X/P2X/P3X）
+                bool isNewArcFormat = TryApplyNewArcData(pd);
+
+                // 更新ParsedData（归一化后可能已添加新key，一并展示）
+                ParsedData = new ObservableCollection<KeyValuePair<string, double>>(pd);
+                StatusMessage = string.Format(L("VisionCapture_Status_PhotoComplete"), pd.Count);
+
+                if (isNewArcFormat)
+                {
+                    // 新格式：自动计算机械坐标并生成贝塞尔弧线，完成后跳转Step2
+                    if (row.ReturnToSafeAfterCapture)
+                    {
+                        _allPositions = await MergeAllPositionsAsync();
+                        var axisIdMap = ResolveAxisIdMap();
+                        var coordId = ResolveCoordId();
+                        StatusMessage = L("VisionCapture_Status_ReturningToSafe");
+                        await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts.Token);
+                    }
+                    await AutoComputeArcMachinePointsAsync(row);
+                }
+                else
+                {
+                    // 旧格式：写入 Offset Compensation offsetX/offsetY
+                    if (pd.TryGetValue("offsetX", out var ox)) row.NeedleOffsetX = ox;
+                    else if (pd.TryGetValue("X", out var px)) row.NeedleOffsetX = px;
+                    if (pd.TryGetValue("offsetY", out var oy)) row.NeedleOffsetY = oy;
+                    else if (pd.TryGetValue("Y", out var py)) row.NeedleOffsetY = py;
+
+                    var calcOffsetX = row.CalculatedOffsetX;
+                    var calcOffsetY = row.CalculatedOffsetY;
+
+                    if (IsNeedleOffsetXLinked)
+                        await UpdateGlobalVariableValueAsync(NeedleOffsetXLinkedVar, calcOffsetX);
+                    if (IsNeedleOffsetYLinked)
+                        await UpdateGlobalVariableValueAsync(NeedleOffsetYLinkedVar, calcOffsetY);
+
+                    if (IsNeedleOffsetXLinked)
+                        NeedleOffsetX = ReadLinkedVariableValue(NeedleOffsetXLinkedVar);
+                    if (IsNeedleOffsetYLinked)
+                        NeedleOffsetY = ReadLinkedVariableValue(NeedleOffsetYLinkedVar);
+
+                    NotifyTargetOffsetChanged();
+
+                    if (row.ReturnToSafeAfterCapture)
+                    {
+                        _allPositions = await MergeAllPositionsAsync();
+                        var axisIdMap = ResolveAxisIdMap();
+                        var coordId = ResolveCoordId();
+                        StatusMessage = L("VisionCapture_Status_ReturningToSafe");
+                        await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts.Token);
+                    }
+
+                    CurrentStep = WorkflowStep.Step2_PreviewDispense;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    _allPositions = await MergeAllPositionsAsync();
+                    var axisIdMap = ResolveAxisIdMap();
+                    var dz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
+                    if (dz1Key != null && _allPositions.TryGetValue(dz1Key, out var dz1Safe) && axisIdMap.TryGetValue("Dz₁", out var dz1AxisId))
+                    {
+                        await _motionService.MoveAbsAsync(dz1AxisId, dz1Safe, row.Speed, CancellationToken.None);
+                    }
+                }
+                catch { }
+                StatusMessage = L("VisionCapture_PhotoCancelled");
+            }
+            catch (RecoverableException)
+            {
+                StatusMessage = L("VisionCapture_Status_VisionFault");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_ErrorFormat"), ex.Message);
+                _logger.Error($"[VisionCapture] 执行失败: {ex.Message}");
+            }
+            finally
+            {
+                row.IsExecuting = false;
+                IsExecuting = false;
+                RaiseCanExecuteChanged();
+            }
+        }
+
+        /// <summary>
+        /// 返回安全位：Z轴抬起 → XY移至安全位 → Z轴降至安全高度
+        /// </summary>
+        private async Task ReturnToSafePositionAsync(Dictionary<string, int> axisIdMap, int coordId, double speed, CancellationToken token)
+        {
+            double safeZ = 0, safeX = 0, safeY = 0, safeYAxis = 0;
+            var dz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
+            var dxKey = ResolvePositionKey(SafePositionName, "Dx");
+            var dyKey = ResolvePositionKey(SafePositionName, "Dy");
+            var yKey = ResolvePositionKey(SafePositionName, "Y");
+            if (dz1Key != null) _allPositions.TryGetValue(dz1Key, out safeZ);
+            if (dxKey != null) _allPositions.TryGetValue(dxKey, out safeX);
+            if (dyKey != null) _allPositions.TryGetValue(dyKey, out safeY);
+            if (yKey != null) _allPositions.TryGetValue(yKey, out safeYAxis);
+
+            if (safeZ <= 0 || safeX <= 0 || safeY <= 0)
+            {
+                _logger.Warn($"[VisionCapture] 返回安全位失败: 安全位 '{SafePositionName}' 位置数据不完整 (Dz={safeZ}, Dx={safeX}, Dy={safeY})");
+                return;
+            }
+
+            await _motionService.MoveAbsAsync(axisIdMap["Dz₁"], safeZ, speed, token);
+            await _motionService.MoveLineAbsAsync(coordId,
+                new[] { axisIdMap["Dx"], axisIdMap["Dy"] },
+                new[] { safeX, safeY }, speed, token);
+            if (safeYAxis > 0)
+                await _motionService.MoveAbsAsync(axisIdMap["Y"], safeYAxis, speed, token);
+
+            _logger.Info("[VisionCapture] 已返回安全位");
+        }
+
+        private async Task MoveToTeachPositionAsync(PhotoPositionRow row)
+        {
+            if (row == null || row.IsExecuting || IsExecuting) return;
+
+            var confirmed = await ShowConfirmationAsync(
+                L("VisionCapture_MoveConfirmTitle"),
+                string.Format(L("VisionCapture_MoveConfirmMessage"), row.SiteFeatureName));
+            if (!confirmed) return;
+
+            IsExecuting = true;
+            row.IsExecuting = true;
+            StatusMessage = L("VisionCapture_Status_MovingToTeach");
+            RaiseCanExecuteChanged();
+
+            var cts = new CancellationTokenSource();
+            try
+            {
+                _allPositions = await MergeAllPositionsAsync();
+                var axisIdMap = ResolveAxisIdMap();
+                var coordId = ResolveCoordId();
+
+                double safeZ = 0, photoZ = 0;
+                var safeDz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
+                var photoDz1Key = ResolvePositionKey(row.Dz1PositionName, "Dz₁");
+                if (safeDz1Key != null) _allPositions.TryGetValue(safeDz1Key, out safeZ);
+                if (photoDz1Key != null) _allPositions.TryGetValue(photoDz1Key, out photoZ);
+
+                double targetX = 0, targetY = 0;
+                var dxKey = ResolvePositionKey(row.DxPositionName, "Dx");
+                var dyKey = ResolvePositionKey(row.DyPositionName, "Dy");
+                if (dxKey != null) _allPositions.TryGetValue(dxKey, out targetX);
+                if (dyKey != null) _allPositions.TryGetValue(dyKey, out targetY);
+
+                await _motionService.MoveAbsAsync(axisIdMap["Dz₁"], safeZ, row.Speed, cts.Token);
+                await _motionService.MoveLineAbsAsync(coordId,
+                    new[] { axisIdMap["Dx"], axisIdMap["Dy"] },
+                    new[] { targetX, targetY }, row.Speed, cts.Token);
+                await _motionService.MoveAbsAsync(axisIdMap["Dz₁"], photoZ, row.Speed, cts.Token);
+
+                StatusMessage = string.Format(L("VisionCapture_Status_MoveComplete"), targetX, targetY);
+                _logger.Info($"[VisionCapture] 移动完成 [{row.SiteFeatureName}]: ({targetX:F3}, {targetY:F3})");
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = L("VisionCapture_MoveCancelled");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_MoveFail"), ex.Message);
+                _logger.Error($"[VisionCapture] 移动失败: {ex.Message}");
+            }
+            finally
+            {
+                row.IsExecuting = false;
+                IsExecuting = false;
+                RaiseCanExecuteChanged();
+            }
+        }
+
+        private async Task ExecuteDispenseAsync()
+        {
+            if (SelectedRow == null || ParsedData.Count == 0 || IsExecuting) return;
+
+            IsExecuting = true;
+            SelectedRow.IsExecuting = true;
+            StatusMessage = L("VisionCapture_Status_Dispensing");
+            RaiseCanExecuteChanged();
+
+            var visionData = ParsedData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            var axisIdMap = ResolveAxisIdMap();
+            var coordId = ResolveCoordId();
+            _dispenseCts = new CancellationTokenSource();
+            var token = _dispenseCts.Token;
+            bool dryRun = CurrentRunMode == RunMode.DryRun;
+
+            try
+            {
+                _allPositions = await MergeAllPositionsAsync();
+                double dzSafePos = 0, dzDispensePos = 0, photoDx = 0, photoDy = 0;
+                var safeDz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
+                if (safeDz1Key != null && _allPositions.TryGetValue(safeDz1Key, out var safeVal))
+                    dzSafePos = safeVal;
+                var dispenseDz1Key = ResolvePositionKey(DispensePositionName, "Dz₁");
+                if (dispenseDz1Key != null && _allPositions.TryGetValue(dispenseDz1Key, out var dispenseVal))
+                    dzDispensePos = dispenseVal;
+                var pDxKey = ResolvePositionKey(SelectedRow.DxPositionName, "Dx");
+                if (pDxKey != null && _allPositions.TryGetValue(pDxKey, out var pDxVal))
+                    photoDx = pDxVal;
+                var pDyKey = ResolvePositionKey(SelectedRow.DyPositionName, "Dy");
+                if (pDyKey != null && _allPositions.TryGetValue(pDyKey, out var pDyVal))
+                    photoDy = pDyVal;
+
+                if (SelectedRow.DispenseType == DispenseType.Dot)
+                {
+                    await _bezierArcDispenseService.ExecuteDotDispenseAsync(
+                        visionData, photoDx, photoDy,
+                        axisIdMap["Dx"], axisIdMap["Dy"], axisIdMap["Dz₁"],
+                        coordId,
+                        SelectedRow.Speed, dzSafePos, dzDispensePos,
+                        dryRun, NeedleDescend,
+                        CameraNeedleDistanceX, CameraNeedleDistanceY,
+                        SelectedRow.CalculatedOffsetX, SelectedRow.CalculatedOffsetY,
+                        NeedleOffsetX, NeedleOffsetY,
+                        SelectedRow.CalculatedCompensationX, SelectedRow.CalculatedCompensationY,
+                        token);
+                    StatusMessage = dryRun ? L("VisionCapture_Status_DotDryRunComplete") : L("VisionCapture_Status_DotDispenseComplete");
+                }
+                else
+                {
+                    // Arc模式：视觉返回 Center/P1/P2/P3 均为9点标定后的绝对机械坐标，不使用拍照位。
+                    // 公式：Mech_n = P_n + CamToNeedle + ArcNeedleOffset + ArcNeedleComp（经贝塞尔离散后逐段插补）
+                    // 与Dot模式不同，Arc无 targetOffset，P_n 即是目标绝对坐标。
+                    await _bezierArcDispenseService.ExecuteArcDispenseAsync(
+                        visionData, photoDx, photoDy,
+                        axisIdMap["Dx"], axisIdMap["Dy"], axisIdMap["Dz₁"],
+                        coordId,
+                        SelectedRow.Speed, dzSafePos, dzDispensePos,
+                        SelectedRow.ArcSegments, dryRun, NeedleDescend,
+                        CameraNeedleDistanceX, CameraNeedleDistanceY,
+                        ArcNeedleOffsetX, ArcNeedleOffsetY,
+                        ArcNeedleCompX, ArcNeedleCompY,
+                        _pauseEvent, _dispenseCts.Token);
+                    StatusMessage = dryRun ? L("VisionCapture_Status_ArcDryRunComplete") : L("VisionCapture_Status_ArcDispenseComplete");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = L("VisionCapture_DispenseCancelled");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_DispenseError"), ex.Message);
+                _logger.Error($"[VisionCapture] 点胶失败: {ex.Message}");
+            }
+            finally
+            {
+                IsPaused = false;
+                _pauseEvent.Set();
+                SelectedRow.IsExecuting = false;
+                IsExecuting = false;
+                RaiseCanExecuteChanged();
+            }
+        }
+
+        private async Task PreviewMachinePointsAsync()
+        {
+            if (SelectedRow == null)
+            {
+                StatusMessage = L("VisionCapture_NeedPhotoFirst");
+                return;
+            }
+
+            // 新格式弧线数据（CenterX/P1X）走独立计算路径
+            if (HasParsedArcData)
+            {
+                await AutoComputeArcMachinePointsAsync(SelectedRow);
+                return;
+            }
+
+            try
+            {
+                _allPositions = await MergeAllPositionsAsync();
+                var visionData = ParsedData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+                double photoDx = 0, photoDy = 0;
+                if (!string.IsNullOrEmpty(SelectedRow.DxPositionName) && !string.IsNullOrEmpty(SelectedRow.DyPositionName))
+                {
+                    var dxKey = ResolvePositionKey(SelectedRow.DxPositionName, "Dx");
+                    var dyKey = ResolvePositionKey(SelectedRow.DyPositionName, "Dy");
+                    if (dxKey != null) _allPositions.TryGetValue(dxKey, out photoDx);
+                    if (dyKey != null) _allPositions.TryGetValue(dyKey, out photoDy);
+                }
+
+                bool isArc = SelectedRow.DispenseType == DispenseType.Arc;
+                IsDotMode = !isArc;
+                IsArcMode = isArc;
+
+                var points = await _bezierArcDispenseService.ComputeMachinePointsAsync(
+                    visionData, photoDx, photoDy, isArc, SelectedRow.ArcSegments,
+                    CameraNeedleDistanceX, CameraNeedleDistanceY,
+                    // Arc模式 targetOffset=0，P_n是绝对坐标，由服务内部忽略该参数；Dot模式使用CalculatedOffsetX/Y
+                    isArc ? 0 : SelectedRow.CalculatedOffsetX,
+                    isArc ? 0 : SelectedRow.CalculatedOffsetY,
+                    isArc ? ArcNeedleOffsetX : NeedleOffsetX,
+                    isArc ? ArcNeedleOffsetY : NeedleOffsetY,
+                    isArc ? ArcNeedleCompX : SelectedRow.CalculatedCompensationX,
+                    isArc ? ArcNeedleCompY : SelectedRow.CalculatedCompensationY);
+
+                PhotoDx = photoDx;
+                PhotoDy = photoDy;
+
+                if (!isArc)
+                {
+                    double centerX = GetVisionValue(visionData, "centerX", 0);
+                    double centerY = GetVisionValue(visionData, "centerY", 0);
+                    double needleX = GetVisionValue(visionData, "needleX", 0);
+                    double needleY = GetVisionValue(visionData, "needleY", 0);
+                    TargetDeltaX = needleX - centerX;
+                    TargetDeltaY = needleY - centerY;
+                    if (points.Count > 0)
+                    {
+                        FinalX = points[0].FinalX;
+                        FinalY = points[0].FinalY;
+                    }
+                }
+                else
+                {
+                    VisionCenterX = GetVisionValue(visionData, "centerX", 0);
+                    VisionCenterY = GetVisionValue(visionData, "centerY", 0);
+                    Point1X = GetVisionValue(visionData, "point1X", 0);
+                    Point1Y = GetVisionValue(visionData, "point1Y", 0);
+                    Point2X = GetVisionValue(visionData, "point2X", 0);
+                    Point2Y = GetVisionValue(visionData, "point2Y", 0);
+                    Point3X = GetVisionValue(visionData, "point3X", 0);
+                    Point3Y = GetVisionValue(visionData, "point3Y", 0);
+                    P1DeltaX = Point1X - VisionCenterX;
+                    P1DeltaY = Point1Y - VisionCenterY;
+                    P2DeltaX = Point2X - VisionCenterX;
+                    P2DeltaY = Point2Y - VisionCenterY;
+                    P3DeltaX = Point3X - VisionCenterX;
+                    P3DeltaY = Point3Y - VisionCenterY;
+                    if (points.Count >= 3)
+                    {
+                        P1MechX = points[0].FinalX;
+                        P1MechY = points[0].FinalY;
+                        int midIdx = points.Count / 2;
+                        P2MechX = points[midIdx].FinalX;
+                        P2MechY = points[midIdx].FinalY;
+                        P3MechX = points[points.Count - 1].FinalX;
+                        P3MechY = points[points.Count - 1].FinalY;
+                    }
+                    BezierPointCount = points.Count;
+                }
+
+                MachinePoints.Clear();
+                for (int i = 0; i < points.Count; i++)
+                {
+                    MachinePoints.Add(new MachinePointItem { Index = i + 1, X = points[i].FinalX, Y = points[i].FinalY });
+                }
+                RaisePropertyChanged(nameof(HasMachinePoints));
+
+                if (isArc)
+                    GenerateArcPathGeometry(points);
+
+                CurrentStep = WorkflowStep.Step2_PreviewDispense;
+                StatusMessage = isArc ? string.Format(L("VisionCapture_Status_PreviewArcComplete"), points.Count) : L("VisionCapture_Status_PreviewDotComplete");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_PreviewFail"), ex.Message);
+                _logger.Error($"[VisionCapture] 预览失败: {ex.Message}");
+            }
+        }
+
+        private void GenerateArcPathGeometry(List<CoordinateTransformDetail> points)
+        {
+            ArcPathGeometry.Clear();
+            if (points == null || points.Count < 2) return;
+
+            double canvasWidth = 380;
+            double canvasHeight = 200;
+            double padding = 25;
+
+            double minX = points.Min(p => p.FinalX);
+            double maxX = points.Max(p => p.FinalX);
+            double minY = points.Min(p => p.FinalY);
+            double maxY = points.Max(p => p.FinalY);
+
+            double rangeX = maxX - minX;
+            double rangeY = maxY - minY;
+            if (rangeX < 0.001) rangeX = 1;
+            if (rangeY < 0.001) rangeY = 1;
+
+            double scaleX = (canvasWidth - 2 * padding) / rangeX;
+            double scaleY = (canvasHeight - 2 * padding) / rangeY;
+            double scale = Math.Min(scaleX, scaleY);
+
+            double offsetX = padding + (canvasWidth - 2 * padding - rangeX * scale) / 2;
+            double offsetY = padding + (canvasHeight - 2 * padding - rangeY * scale) / 2;
+
+            Func<double, double> toCanvasX = x => offsetX + (x - minX) * scale;
+            Func<double, double> toCanvasY = y => canvasHeight - offsetY - (y - minY) * scale;
+
+            var gridPen = new Pen(Brushes.LightGray, 0.5);
+            for (double gx = minX; gx <= maxX; gx += rangeX / 5)
+            {
+                double cx = toCanvasX(gx);
+                ArcPathGeometry.Add(new Line { X1 = cx, Y1 = padding, X2 = cx, Y2 = canvasHeight - padding, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
+            }
+            for (double gy = minY; gy <= maxY; gy += rangeY / 5)
+            {
+                double cy = toCanvasY(gy);
+                ArcPathGeometry.Add(new Line { X1 = padding, Y1 = cy, X2 = canvasWidth - padding, Y2 = cy, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
+            }
+
+            var polyline = new Polyline
+            {
+                Stroke = new SolidColorBrush(Color.FromRgb(0x15, 0x65, 0xC0)),
+                StrokeThickness = 2,
+                Points = new PointCollection()
+            };
+            foreach (var pt in points)
+            {
+                polyline.Points.Add(new Point(toCanvasX(pt.FinalX), toCanvasY(pt.FinalY)));
+            }
+            ArcPathGeometry.Add(polyline);
+
+            if (points.Count >= 3)
+            {
+                var startEllipse = new Ellipse
+                {
+                    Width = 10, Height = 10,
+                    Fill = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32)),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.5
+                };
+                Canvas.SetLeft(startEllipse, toCanvasX(points[0].FinalX) - 5);
+                Canvas.SetTop(startEllipse, toCanvasY(points[0].FinalY) - 5);
+                ArcPathGeometry.Add(startEllipse);
+
+                int midIdx = points.Count / 2;
+                var midEllipse = new Ellipse
+                {
+                    Width = 10, Height = 10,
+                    Fill = new SolidColorBrush(Color.FromRgb(0xF5, 0x7C, 0x00)),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.5
+                };
+                Canvas.SetLeft(midEllipse, toCanvasX(points[midIdx].FinalX) - 5);
+                Canvas.SetTop(midEllipse, toCanvasY(points[midIdx].FinalY) - 5);
+                ArcPathGeometry.Add(midEllipse);
+
+                var endEllipse = new Ellipse
+                {
+                    Width = 10, Height = 10,
+                    Fill = new SolidColorBrush(Color.FromRgb(0xD3, 0x2F, 0x2F)),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.5
+                };
+                Canvas.SetLeft(endEllipse, toCanvasX(points[points.Count - 1].FinalX) - 5);
+                Canvas.SetTop(endEllipse, toCanvasY(points[points.Count - 1].FinalY) - 5);
+                ArcPathGeometry.Add(endEllipse);
+            }
+
+            for (int i = 0; i < points.Count; i += Math.Max(1, points.Count / 15))
+            {
+                var dot = new Ellipse
+                {
+                    Width = 4, Height = 4,
+                    Fill = new SolidColorBrush(Color.FromRgb(0x90, 0xA4, 0xAE))
+                };
+                Canvas.SetLeft(dot, toCanvasX(points[i].FinalX) - 2);
+                Canvas.SetTop(dot, toCanvasY(points[i].FinalY) - 2);
+                ArcPathGeometry.Add(dot);
+            }
+
+            RaisePropertyChanged(nameof(HasArcPathGeometry));
+        }
+
+        private async Task SaveTransformParamsAsync()
+        {
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+                var variableList = variables.ToList();
+
+                UpdateOrAddGlobalVariable(variableList, "CameraCenterX", CameraCenterX.ToString("F6"), "相机中心X坐标");
+                UpdateOrAddGlobalVariable(variableList, "CameraCenterY", CameraCenterY.ToString("F6"), "相机中心Y坐标");
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetX", NeedleOffsetX.ToString("F6"), "针尖X偏移");
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetY", NeedleOffsetY.ToString("F6"), "针尖Y偏移");
+
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetX_LinkedVar", NeedleOffsetXLinkedVar ?? "", "NeedleOffsetX链接的全局变量名");
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetY_LinkedVar", NeedleOffsetYLinkedVar ?? "", "NeedleOffsetY链接的全局变量名");
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetX_LinkedVar", ArcNeedleOffsetXLinkedVar ?? "", "Arc模式NeedleOffsetX链接的全局变量名");
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetY_LinkedVar", ArcNeedleOffsetYLinkedVar ?? "", "Arc模式NeedleOffsetY链接的全局变量名");
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetX", ArcNeedleOffsetX.ToString("F6"), "Arc模式针头偏移X");
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetY", ArcNeedleOffsetY.ToString("F6"), "Arc模式针头偏移Y");
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleCompX", ArcNeedleCompX.ToString("F6"), "Arc模式专用补偿X");
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleCompY", ArcNeedleCompY.ToString("F6"), "Arc模式专用补偿Y");
+
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceX", CameraNeedleDistanceX.ToString("F6"), "相机胶针固定距离X");
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceY", CameraNeedleDistanceY.ToString("F6"), "相机胶针固定距离Y");
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceX_LinkedVar", CameraNeedleDistanceXLinkedVar ?? "", "相机胶针距离X链接的全局变量名");
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceY_LinkedVar", CameraNeedleDistanceYLinkedVar ?? "", "相机胶针距离Y链接的全局变量名");
+
+                for (int i = 0; i < variableList.Count; i++)
+                    variableList[i].Index = i + 1;
+
+                await _recipePoolService.SaveGlobalVariablesAsync(poolId, variableList);
+                StatusMessage = L("VisionCapture_CoordParamsSaved");
+                _logger.Info("[VisionCapture] 坐标转换参数已保存到全局变量");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_SaveFail"), ex.Message);
+                _logger.Error($"[VisionCapture] 保存坐标转换参数失败: {ex.Message}");
+            }
+        }
+
+        private async Task LoadTransformParamsAsync()
+        {
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+
+                _isLoadingTransformParams = true;
+                try
+                {
+                    AvailableGlobalVariables.Clear();
+                    foreach (var v in variables)
+                        AvailableGlobalVariables.Add(v);
+
+                    RefreshLinkableGlobalVariables();
+
+                    var ccxVar = variables.FirstOrDefault(v => v.Name == "CameraCenterX");
+                    var ccyVar = variables.FirstOrDefault(v => v.Name == "CameraCenterY");
+                    var noxVar = variables.FirstOrDefault(v => v.Name == "NeedleOffsetX");
+                    var noyVar = variables.FirstOrDefault(v => v.Name == "NeedleOffsetY");
+
+                    if (ccxVar != null && double.TryParse(ccxVar.Value, out var ccx))
+                        CameraCenterX = ccx;
+                    if (ccyVar != null && double.TryParse(ccyVar.Value, out var ccy))
+                        CameraCenterY = ccy;
+
+                    var noxLink = variables.FirstOrDefault(v => v.Name == "NeedleOffsetX_LinkedVar");
+                    var noyLink = variables.FirstOrDefault(v => v.Name == "NeedleOffsetY_LinkedVar");
+
+                    NeedleOffsetXLinkedVar = NormalizeLinkedVarName(noxLink?.Value);
+                    NeedleOffsetYLinkedVar = NormalizeLinkedVarName(noyLink?.Value);
+
+                    if (noyLink != null && !string.IsNullOrWhiteSpace(noyLink.Value) && NeedleOffsetYLinkedVar == null)
+                        _logger.Info($"[VisionCapture] 忽略无效的 NeedleOffsetY 链接变量: {noyLink.Value.Trim()}");
+                    if (noxLink != null && !string.IsNullOrWhiteSpace(noxLink.Value) && NeedleOffsetXLinkedVar == null)
+                        _logger.Info($"[VisionCapture] 忽略无效的 NeedleOffsetX 链接变量: {noxLink.Value.Trim()}");
+
+                    var arcNoxLink = variables.FirstOrDefault(v => v.Name == "ArcNeedleOffsetX_LinkedVar");
+                    var arcNoyLink = variables.FirstOrDefault(v => v.Name == "ArcNeedleOffsetY_LinkedVar");
+                    ArcNeedleOffsetXLinkedVar = NormalizeLinkedVarName(arcNoxLink?.Value);
+                    ArcNeedleOffsetYLinkedVar = NormalizeLinkedVarName(arcNoyLink?.Value);
+
+                    if (IsArcNeedleOffsetXLinked)
+                        ArcNeedleOffsetX = ReadLinkedVariableValue(ArcNeedleOffsetXLinkedVar);
+                    else
+                    {
+                        var arcNoxVar = variables.FirstOrDefault(v => v.Name == "ArcNeedleOffsetX");
+                        if (arcNoxVar != null && double.TryParse(arcNoxVar.Value, out var arcNox))
+                            ArcNeedleOffsetX = arcNox;
+                        else
+                            ArcNeedleOffsetX = NeedleOffsetX;
+                    }
+                    if (IsArcNeedleOffsetYLinked)
+                        ArcNeedleOffsetY = ReadLinkedVariableValue(ArcNeedleOffsetYLinkedVar);
+                    else
+                    {
+                        var arcNoyVar = variables.FirstOrDefault(v => v.Name == "ArcNeedleOffsetY");
+                        if (arcNoyVar != null && double.TryParse(arcNoyVar.Value, out var arcNoy))
+                            ArcNeedleOffsetY = arcNoy;
+                        else
+                            ArcNeedleOffsetY = NeedleOffsetY;
+                    }
+
+                    var arcCompXVar = variables.FirstOrDefault(v => v.Name == "ArcNeedleCompX");
+                    var arcCompYVar = variables.FirstOrDefault(v => v.Name == "ArcNeedleCompY");
+                    if (arcCompXVar != null && double.TryParse(arcCompXVar.Value, out var arcCompX))
+                        ArcNeedleCompX = arcCompX;
+                    else
+                        ArcNeedleCompX = 0;
+                    if (arcCompYVar != null && double.TryParse(arcCompYVar.Value, out var arcCompY))
+                        ArcNeedleCompY = arcCompY;
+                    else
+                        ArcNeedleCompY = 0;
+
+                    if (IsNeedleOffsetXLinked)
+                        NeedleOffsetX = ReadLinkedVariableValue(NeedleOffsetXLinkedVar);
+                    else if (noxVar != null && double.TryParse(noxVar.Value, out var nox))
+                        NeedleOffsetX = nox;
+                    else
+                        NeedleOffsetX = 0;
+
+                    if (IsNeedleOffsetYLinked)
+                        NeedleOffsetY = ReadLinkedVariableValue(NeedleOffsetYLinkedVar);
+                    else if (noyVar != null && double.TryParse(noyVar.Value, out var noy))
+                        NeedleOffsetY = noy;
+                    else
+                        NeedleOffsetY = 0;
+
+                    RaisePropertyChanged(nameof(IsNeedleOffsetXLinked));
+                    RaisePropertyChanged(nameof(IsNeedleOffsetYLinked));
+
+                    var cndxLink = variables.FirstOrDefault(v => v.Name == "CameraNeedleDistanceX_LinkedVar");
+                    var cndyLink = variables.FirstOrDefault(v => v.Name == "CameraNeedleDistanceY_LinkedVar");
+                    CameraNeedleDistanceXLinkedVar = NormalizeLinkedVarName(cndxLink?.Value);
+                    CameraNeedleDistanceYLinkedVar = NormalizeLinkedVarName(cndyLink?.Value);
+
+                    if (IsCameraNeedleDistanceXLinked)
+                        CameraNeedleDistanceX = ReadLinkedVariableValue(CameraNeedleDistanceXLinkedVar);
+                    else
+                    {
+                        var cndXVar = variables.FirstOrDefault(v => v.Name == "CameraNeedleDistanceX");
+                        if (cndXVar != null && double.TryParse(cndXVar.Value, out var cndx))
+                            CameraNeedleDistanceX = cndx;
+                        else
+                            CameraNeedleDistanceX = 0;
+                    }
+
+                    if (IsCameraNeedleDistanceYLinked)
+                        CameraNeedleDistanceY = ReadLinkedVariableValue(CameraNeedleDistanceYLinkedVar);
+                    else
+                    {
+                        var cndYVar = variables.FirstOrDefault(v => v.Name == "CameraNeedleDistanceY");
+                        if (cndYVar != null && double.TryParse(cndYVar.Value, out var cndy))
+                            CameraNeedleDistanceY = cndy;
+                        else
+                            CameraNeedleDistanceY = 0;
+                    }
+
+                    RaisePropertyChanged(nameof(IsCameraNeedleDistanceXLinked));
+                    RaisePropertyChanged(nameof(IsCameraNeedleDistanceYLinked));
+                }
+                finally
+                {
+                    _isLoadingTransformParams = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _isLoadingTransformParams = false;
+                _logger.Warn($"[VisionCapture] 加载坐标转换参数失败: {ex.Message}");
+            }
+        }
+
+        private void UpdateOrAddGlobalVariable(List<GlobalVariable> variables, string name, string value, string comment)
+        {
+            var existing = variables.FirstOrDefault(v => v.Name == name);
+            if (existing != null)
+            {
+                existing.Value = value;
+            }
+            else
+            {
+                variables.Add(new GlobalVariable
+                {
+                    Name = name,
+                    Type = GlobalVariableType.Double,
+                    Value = value,
+                    Comment = comment
+                });
+            }
+        }
+
+        public async Task UpdateGlobalVariableValueAsync(string varName, double value)
+        {
+            if (string.IsNullOrEmpty(varName)) return;
+            try
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == varName);
+                if (gv != null)
+                    gv.Value = value.ToString("F6");
+
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+                var persistedGv = variables.FirstOrDefault(v => v.Name == varName);
+                if (persistedGv != null)
+                {
+                    persistedGv.Value = value.ToString("F6");
+                    await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 更新全局变量值失败: {ex.Message}");
+            }
+        }
+
+        private double GetVisionValue(Dictionary<string, double> data, string key, double defaultValue)
+        {
+            if (data != null && data.TryGetValue(key, out double value))
+                return value;
+            return defaultValue;
+        }
+
+        private async Task<bool> ShowConfirmationAsync(string title, string message)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            _dialogService.ShowDialog("ConfirmationDialog", new DialogParameters
+            {
+                { "title", title },
+                { "message", message }
+            }, result => tcs.SetResult(result.Result == ButtonResult.Yes));
+            return await tcs.Task;
+        }
+
+        private void RaiseCanExecuteChanged()
+        {
+            ExecuteCaptureCommand.RaiseCanExecuteChanged();
+            ExecuteDispenseCommand.RaiseCanExecuteChanged();
+            PreviewMachinePointsCommand.RaiseCanExecuteChanged();
+            StopCommand?.RaiseCanExecuteChanged();
+            PauseCommand?.RaiseCanExecuteChanged();
+            ResumeCommand?.RaiseCanExecuteChanged();
+            SyncCaptureCommand?.RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(CanStartDispense));
+            RaisePropertyChanged(nameof(CanStop));
+            RaisePropertyChanged(nameof(CanPause));
+            RaisePropertyChanged(nameof(CanResume));
+        }
+
+        /// <summary>
+        /// 同步拍照：对当前Group所有行依次执行拍照
+        /// </summary>
+        private async Task SyncCaptureAllRowsAsync()
+        {
+            if (PhotoPositionRows.Count == 0 || IsExecuting) return;
+
+            IsExecuting = true;
+            StatusMessage = L("VisionCapture_Status_SyncCaptureStart");
+            RaiseCanExecuteChanged();
+
+            try
+            {
+                foreach (var row in PhotoPositionRows.ToList())
+                {
+                    if (row.IsExecuting) continue;
+                    await ExecuteCaptureAsync(row);
+                }
+                StatusMessage = L("VisionCapture_Status_SyncCaptureComplete");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_ErrorFormat"), ex.Message);
+                _logger.Error($"[VisionCapture] 同步拍照失败: {ex.Message}");
+            }
+            finally
+            {
+                IsExecuting = false;
+                RaiseCanExecuteChanged();
+            }
+        }
+
+        /// <summary>
+        /// 获取配置文件默认目录
+        /// </summary>
+        private static string GetConfigDirectory()
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory ?? Directory.GetCurrentDirectory();
+            var configDir = System.IO.Path.Combine(baseDir, "Config", "VisionCapture");
+            if (!Directory.Exists(configDir))
+                Directory.CreateDirectory(configDir);
+            return configDir;
+        }
+
+        /// <summary>
+        /// 保存当前页面所有参数到JSON文件
+        /// </summary>
+        private async Task SaveConfigToFileAsync()
+        {
+            try
+            {
+                var configDir = GetConfigDirectory();
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    DefaultExt = ".json",
+                    InitialDirectory = configDir,
+                    FileName = !string.IsNullOrEmpty(CurrentFileName) ? CurrentFileName : $"VisionCapture_{DateTime.Now:yyyyMMdd_HHmmss}"
+                };
+
+                if (dialog.ShowDialog() != true) return;
+
+                var config = BuildCurrentConfig();
+                var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+                await File.WriteAllTextAsync(dialog.FileName, json);
+
+                CurrentFilePath = dialog.FileName;
+                CurrentFileName = System.IO.Path.GetFileName(dialog.FileName);
+                await SaveCurrentFileToRecipePoolAsync();
+
+                StatusMessage = string.Format(L("VisionCapture_Status_ConfigSaved"), CurrentFileName);
+                _logger.Info($"[VisionCapture] 配置已保存: {dialog.FileName}");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_SaveFail"), ex.Message);
+                _logger.Error($"[VisionCapture] 保存配置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从JSON文件加载配置
+        /// </summary>
+        private async Task LoadConfigFromFileAsync()
+        {
+            try
+            {
+                var configDir = GetConfigDirectory();
+                var dialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    InitialDirectory = configDir
+                };
+
+                if (dialog.ShowDialog() != true) return;
+
+                await LoadConfigFromPathAsync(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("VisionCapture_Status_LoadFail"), ex.Message);
+                _logger.Error($"[VisionCapture] 加载配置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从指定路径加载配置
+        /// </summary>
+        private async Task LoadConfigFromPathAsync(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                StatusMessage = L("VisionCapture_Status_FileNotFound");
+                return;
+            }
+
+            var json = await File.ReadAllTextAsync(filePath);
+            var config = JsonConvert.DeserializeObject<VisionCaptureConfig>(json);
+            if (config == null) return;
+
+            await ApplyConfig(config);
+
+            CurrentFilePath = filePath;
+            CurrentFileName = System.IO.Path.GetFileName(filePath);
+            //await SaveCurrentFileToRecipePoolAsync();
+
+            StatusMessage = string.Format(L("VisionCapture_Status_ConfigLoaded"), CurrentFileName);
+            _logger.Info($"[VisionCapture] 配置已加载: {filePath}");
+        }
+
+        /// <summary>
+        /// 尝试从配方池自动加载上次使用的配置文件
+        /// </summary>
+        private async Task TryAutoLoadConfigAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                var extData = await _recipePoolService.GetExtensionDataAsync<VisionCaptureFileRecord>(poolName, "VisionCapture_CurrentFile");
+                if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                {
+                    _logger.Info($"[VisionCapture] 从配方池记录加载配置: {extData.FilePath}");
+                    await LoadConfigFromPathAsync(extData.FilePath);
+                    return;
+                }
+
+                var configDir = GetConfigDirectory();
+                var defaultPath = System.IO.Path.Combine(configDir, "VisionCapture.json");
+                if (File.Exists(defaultPath))
+                {
+                    _logger.Info($"[VisionCapture] 配方池无记录，从默认路径加载: {defaultPath}");
+                    await LoadConfigFromPathAsync(defaultPath);
+                    return;
+                }
+
+                _logger.Info("[VisionCapture] 无可加载的配置文件");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 自动加载配置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 将当前加载的文件路径保存到配方池ExtensionData
+        /// </summary>
+        private async Task SaveCurrentFileToRecipePoolAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                await _recipePoolService.SetExtensionDataAsync(poolName, "VisionCapture_CurrentFile",
+                    new VisionCaptureFileRecord { FilePath = CurrentFilePath });
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 保存文件记录到配方池失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从当前ViewModel状态构建配置对象
+        /// </summary>
+        private VisionCaptureConfig BuildCurrentConfig()
+        {
+            var config = new VisionCaptureConfig
+            {
+                SafePositionName = SafePositionName,
+                StandbyPositionName = StandbyPositionName,
+                DispensePositionName = DispensePositionName,
+                CameraCenterX = CameraCenterX,
+                CameraCenterY = CameraCenterY,
+                CameraNeedleDistanceX = CameraNeedleDistanceX,
+                CameraNeedleDistanceY = CameraNeedleDistanceY,
+                SelectedGroup = SelectedGroup,
+                CurrentRunMode = CurrentRunMode,
+                Rows = PhotoPositionRows.Select(r => new PhotoPositionRowConfig
+                {
+                    SiteFeatureName = r.SiteFeatureName,
+                    DxPositionName = r.DxPositionName,
+                    DyPositionName = r.DyPositionName,
+                    Dz1PositionName = r.Dz1PositionName,
+                    YPositionName = r.YPositionName,
+                    Speed = r.Speed,
+                    TriggerCommand = r.TriggerCommand,
+                    ConnectionName = r.ConnectionName,
+                    Timeout = r.Timeout,
+                    DispenseType = r.DispenseType,
+                    ArcSegments = r.ArcSegments,
+                    ReturnToSafeAfterCapture = r.ReturnToSafeAfterCapture,
+                    NeedleOffsetX = r.NeedleOffsetX,
+                    NeedleOffsetY = r.NeedleOffsetY,
+                    OffsetXExpression = r.OffsetXExpression,
+                    OffsetYExpression = r.OffsetYExpression,
+                    NeedleCompensationX = r.NeedleCompensationX,
+                    NeedleCompensationY = r.NeedleCompensationY,
+                    CompensationXExpression = r.CompensationXExpression,
+                    CompensationYExpression = r.CompensationYExpression
+                }).ToList()
+            };
+            return config;
+        }
+
+        /// <summary>
+        /// 将配置对象应用到当前ViewModel
+        /// </summary>
+        private async Task ApplyConfig(VisionCaptureConfig config)
+        {
+            SafePositionName = MigratePositionName(config.SafePositionName ?? "SafePosition");
+            StandbyPositionName = MigratePositionName(config.StandbyPositionName ?? "StandbyPosition");
+            DispensePositionName = MigratePositionName(config.DispensePositionName ?? "DispensePosition");
+            CameraCenterX = config.CameraCenterX;
+            CameraCenterY = config.CameraCenterY;
+            CameraNeedleDistanceX = config.CameraNeedleDistanceX;
+            CameraNeedleDistanceY = config.CameraNeedleDistanceY;
+            CurrentRunMode = config.CurrentRunMode;
+
+            if (!string.IsNullOrEmpty(config.SelectedGroup) && Groups.Contains(config.SelectedGroup))
+                SelectedGroup = config.SelectedGroup;
+
+            await _reloadRowsTask;
+
+            foreach (var rowConfig in config.Rows)
+            {
+                var row = PhotoPositionRows.FirstOrDefault(r => r.SiteFeatureName == rowConfig.SiteFeatureName);
+                if (row != null)
+                {
+                    row.DxPositionName = MigratePositionName(rowConfig.DxPositionName);
+                    row.DyPositionName = MigratePositionName(rowConfig.DyPositionName);
+                    row.Dz1PositionName = MigratePositionName(rowConfig.Dz1PositionName);
+                    row.YPositionName = MigratePositionName(rowConfig.YPositionName);
+                    row.Speed = rowConfig.Speed;
+                    row.TriggerCommand = rowConfig.TriggerCommand;
+                    row.ConnectionName = rowConfig.ConnectionName;
+                    row.Timeout = rowConfig.Timeout;
+                    row.DispenseType = rowConfig.DispenseType;
+                    row.ArcSegments = rowConfig.ArcSegments;
+                    row.ReturnToSafeAfterCapture = rowConfig.ReturnToSafeAfterCapture;
+                    row.NeedleOffsetX = rowConfig.NeedleOffsetX;
+                    row.NeedleOffsetY = rowConfig.NeedleOffsetY;
+                    row.OffsetXExpression = rowConfig.OffsetXExpression;
+                    row.OffsetYExpression = rowConfig.OffsetYExpression;
+                    row.NeedleCompensationX = rowConfig.NeedleCompensationX;
+                    row.NeedleCompensationY = rowConfig.NeedleCompensationY;
+                    row.CompensationXExpression = rowConfig.CompensationXExpression;
+                    row.CompensationYExpression = rowConfig.CompensationYExpression;
+                }
+            }
+
+            RefreshSafePositionDisplay();
+        }
+    }
+}
+
+/// <summary>
+/// VisionCapture页面配置持久化模型
+/// </summary>
+public class VisionCaptureConfig
+{
+    public string SafePositionName { get; set; } = "SafePosition";
+    public string StandbyPositionName { get; set; } = "StandbyPosition";
+    public string DispensePositionName { get; set; } = "DispensePosition";
+    public double CameraCenterX { get; set; }
+    public double CameraCenterY { get; set; }
+    public double CameraNeedleDistanceX { get; set; }
+    public double CameraNeedleDistanceY { get; set; }
+    public string SelectedGroup { get; set; }
+    public RunMode CurrentRunMode { get; set; }
+    public List<PhotoPositionRowConfig> Rows { get; set; } = new();
+}
+
+/// <summary>
+/// 单个拍照位配置持久化模型
+/// </summary>
+public class PhotoPositionRowConfig
+{
+    public string SiteFeatureName { get; set; }
+    public string DxPositionName { get; set; }
+    public string DyPositionName { get; set; }
+    public string Dz1PositionName { get; set; }
+    public string YPositionName { get; set; }
+    public double Speed { get; set; } = 10.0;
+    public string TriggerCommand { get; set; } = "TRIGGER";
+    public string ConnectionName { get; set; }
+    public int Timeout { get; set; } = 5000;
+    public DispenseType DispenseType { get; set; }
+    public int ArcSegments { get; set; } = 20;
+    public bool ReturnToSafeAfterCapture { get; set; } = true;
+    public double NeedleOffsetX { get; set; }
+    public double NeedleOffsetY { get; set; }
+    public string OffsetXExpression { get; set; }
+    public string OffsetYExpression { get; set; }
+    public double NeedleCompensationX { get; set; }
+    public double NeedleCompensationY { get; set; }
+    public string CompensationXExpression { get; set; }
+    public string CompensationYExpression { get; set; }
+}
+
+/// <summary>
+/// 配方池中记录当前加载文件的扩展数据
+/// </summary>
+public class VisionCaptureFileRecord
+{
+    public string FilePath { get; set; }
+}

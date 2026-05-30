@@ -1,0 +1,370 @@
+<UserControl x:Class="TCPIPModule.Views.TcpConfigView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="700"
+             d:DesignWidth="1000">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="DeepPurple"
+                                             SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="8"
+          Background="{DynamicResource MaterialDesignPaper}"
+          TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="200" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <TextBlock Grid.Row="0"
+                   Text="{lang:Lang TcpConfigManagement}"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12"
+                   Foreground="{DynamicResource PrimaryHueMidBrush}" />
+
+        <!-- 主内容区：左侧列表 + 右侧详情 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="400" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="3*" MinWidth="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧：配置列表 DataGrid -->
+            <materialDesign:Card Grid.Column="0"
+                                 UniformCornerRadius="6">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="{lang:Lang ConfigList}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8" />
+
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding ConfigItems}"
+                              SelectedItem="{Binding SelectedConfig}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              materialDesign:DataGridAssist.CellPadding="6"
+                              materialDesign:DataGridAssist.ColumnHeaderPadding="6"
+                              HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{lang:Lang Name}"
+                                                Binding="{Binding Name}"
+                                                Width="100" />
+                            <DataGridTextColumn Header="{lang:Lang Mode}"
+                                                Binding="{Binding Mode}"
+                                                Width="70" />
+                            <DataGridTextColumn Header="{lang:Lang IPAddress}"
+                                                Binding="{Binding IP}"
+                                                Width="120" />
+                            <DataGridTextColumn Header="{lang:Lang Port}"
+                                                Binding="{Binding Port}"
+                                                Width="60" />
+                            <DataGridTextColumn Header="{lang:Lang TimeoutMs}"
+                                                Binding="{Binding Timeout}"
+                                                Width="70" />
+                            <DataGridTextColumn Header="{lang:Lang Encoding}"
+                                                Binding="{Binding Encoding}"
+                                                Width="65" />
+                            <DataGridCheckBoxColumn Header="{lang:Lang Enabled}"
+                                                    Binding="{Binding IsEnabled}"
+                                                    Width="50" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </materialDesign:Card>
+
+            <!-- 右侧：详情编辑面板 -->
+            <materialDesign:Card Grid.Column="2"
+                                 UniformCornerRadius="6">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              Padding="12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="{lang:Lang ConfigDetail}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,12" />
+
+                        <!-- 名称 -->
+                        <TextBox Grid.Row="1"
+                                 Text="{Binding SelectedConfig.Name, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="{lang:Lang ConnectionName}"
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                 Margin="0,0,0,12" />
+
+                        <!-- 模式 -->
+                        <ComboBox Grid.Row="2"
+                                  ItemsSource="{Binding ModeOptions}"
+                                  SelectedItem="{Binding SelectedConfig.Mode}"
+                                  materialDesign:HintAssist.Hint="{lang:Lang ConnectionMode}"
+                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                  Margin="0,0,0,12" />
+
+                        <!-- IP地址 -->
+                        <TextBox Grid.Row="3"
+                                 Text="{Binding SelectedConfig.IP, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="{lang:Lang IPAddress}"
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                 Margin="0,0,0,12" />
+
+                        <!-- 端口和超时 -->
+                        <Grid Grid.Row="4"
+                              Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding SelectedConfig.Port, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="{lang:Lang PortNumber}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding SelectedConfig.Timeout, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="{lang:Lang TimeoutMs}"
+                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}" />
+                        </Grid>
+
+                        <!-- 编码方式 -->
+                        <ComboBox Grid.Row="5"
+                                  ItemsSource="{Binding EncodingOptions}"
+                                  SelectedItem="{Binding SelectedConfig.Encoding}"
+                                  materialDesign:HintAssist.Hint="{lang:Lang EncodingMethod}"
+                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                  Margin="0,0,0,12" />
+
+                        <!-- 是否启用 -->
+                        <StackPanel Grid.Row="6"
+                                    Orientation="Horizontal"
+                                    Margin="0,0,0,12">
+                            <CheckBox IsChecked="{Binding SelectedConfig.IsEnabled}"
+                                      Content="{lang:Lang EnableThisConnection}"
+                                      Style="{StaticResource MaterialDesignCheckBox}" />
+                        </StackPanel>
+
+                        <!-- 描述 -->
+                        <TextBox Grid.Row="7"
+                                 Text="{Binding SelectedConfig.Description, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="{lang:Lang Desc}"
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MaxHeight="80"
+                                 VerticalScrollBarVisibility="Auto" />
+                    </Grid>
+                </ScrollViewer>
+            </materialDesign:Card>
+        </Grid>
+
+        <!-- 操作按钮栏 -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    Margin="0,12,0,0">
+            <Button Content="{lang:Lang Add}"
+                    Command="{Binding AddConfigCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Margin="0,0,8,0"
+                    Width="90">
+                <Button.ToolTip>{lang:Lang AddNewTcpConfig}</Button.ToolTip>
+            </Button>
+            <Button Content="{lang:Lang Delete}"
+                    Command="{Binding DeleteConfigCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="0,0,8,0"
+                    Width="90">
+                <Button.ToolTip>{lang:Lang DeleteSelectedConfig}</Button.ToolTip>
+            </Button>
+            <Button Content="{lang:Lang Save}"
+                    Command="{Binding SaveConfigCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Margin="0,0,8,0"
+                    Width="90"
+                    materialDesign:ButtonAssist.CornerRadius="4">
+                <Button.ToolTip>{lang:Lang SaveAllConfigToPool}</Button.ToolTip>
+            </Button>
+            <Button Command="{Binding TestConnectionCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="0,0,8,0"
+                    Width="120">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="LanConnect"
+                                             Width="18"
+                                             Height="18"
+                                             Margin="-8,0,4,0"
+                                             VerticalAlignment="Center" />
+                    <TextBlock Text="{lang:Lang TestConnection}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <Button.ToolTip>{lang:Lang TestTcpConnection}</Button.ToolTip>
+            </Button>
+        </StackPanel>
+
+        <!-- 发送消息栏 -->
+        <materialDesign:Card Grid.Row="3"
+                             UniformCornerRadius="4"
+                             Margin="0,8,0,0"
+                             Padding="8,6">
+            <DockPanel>
+                <Button DockPanel.Dock="Right"
+                        Content="{lang:Lang Send}"
+                        Command="{Binding SendCustomMessageCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Margin="8,0,0,0"
+                        Padding="12,4"
+                        ToolTip="{lang:Lang SendCustomMessage}" />
+                <Button DockPanel.Dock="Right"
+                        Content="{lang:Lang ClearLog}"
+                        Command="{Binding ClearLogsCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,4,0"
+                        Padding="8,4"
+                        ToolTip="{lang:Lang ClearMessageLog}" />
+                <materialDesign:PackIcon DockPanel.Dock="Left"
+                                         Kind="Send"
+                                         Width="20"
+                                         Height="20"
+                                         Margin="0,0,8,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                <TextBox Text="{Binding CustomMessage, UpdateSourceTrigger=PropertyChanged}"
+                         materialDesign:HintAssist.Hint="{lang:Lang InputMessageToSend}"
+                         VerticalAlignment="Center"
+                         VerticalContentAlignment="Center" />
+            </DockPanel>
+        </materialDesign:Card>
+
+        <!-- 消息日志展示区 -->
+        <materialDesign:Card Grid.Row="4"
+                             UniformCornerRadius="4"
+                             Margin="0,8,0,0"
+                             Padding="0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           Text="{lang:Lang MessageLog}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Margin="12,8,0,4"
+                           Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                <ListBox ItemsSource="{Binding MessageLogs}"
+                         HorizontalContentAlignment="Stretch"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         FontFamily="Consolas"
+                         FontSize="12">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="2,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="44" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding TimestampStr}"
+                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                           VerticalAlignment="Center" />
+
+                                <Border Grid.Column="1"
+                                        CornerRadius="3"
+                                        Padding="4,1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#E8F5E9" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Direction}" Value="Receive">
+                                                    <Setter Property="Background" Value="#E3F2FD" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Direction}" Value="System">
+                                                    <Setter Property="Background" Value="#FFF3E0" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding DirectionDisplay}"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Direction}" Value="Receive">
+                                                        <Setter Property="Foreground" Value="#1565C0" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Direction}" Value="System">
+                                                        <Setter Property="Foreground" Value="#E65100" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding ClientName}"
+                                           FontWeight="Medium"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MaterialDesignBody}" />
+
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding Message}"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextWrapping="NoWrap"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MaterialDesignBody}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </materialDesign:Card>
+    </Grid>
+</UserControl>

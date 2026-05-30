@@ -1,0 +1,16 @@
+- [x] AppSettings 模型包含 EnableSafetyGate、EnableBuzzer、EnableGrating、EnableSafetyEventLog 属性，默认值正确
+- [x] Core.Events.DeviceConfigChangedEvent 已创建，载荷类型为 AppSettings
+- [x] DeviceConfigViewModel 通过 IAppSettingService 读写配置，不再依赖 Interfaces.DeviceConfigService
+- [x] DeviceConfigViewModel 正确加载/保存/重置 EnableGrating 和 EnableSafetyEventLog
+- [x] DeviceConfigView 安全信号分组 UI 展示正确，包含安全门、光幕、蜂鸣器、安全事件日志四个开关
+- [x] SystemStateService 订阅 Core.Events.DeviceConfigChangedEvent，配置变更实时生效
+- [x] EnableSafetyGate=false 时，安全门信号不触发暂停，CanStart 不检查安全门，RequestResume 不检查安全门
+- [x] EnableGrating=false 时，光幕信号不触发暂停，CanStart 不检查光幕，RequestResume 不检查光幕
+- [x] EnableBuzzer=false 时，WriteBuzzer() 不输出任何信号
+- [x] EnableSafetyEventLog=true 时，安全信号触发/恢复记录详细日志
+- [x] EnableSafetyEventLog=false 时，仅记录基本状态转换日志
+- [x] 信号分组 SafetyGates 和 Grating 独立加载到对应列表
+- [x] 急停(EStop)信号检测不受 EnableSafetyGate/EnableGrating 影响，始终生效
+- [x] 语言资源文件包含新增翻译键
+- [x] Interfaces 项目中 DeviceConfigChangedEvent 和 DeviceConfigService 的废弃引用已清理
+- [x] DeviceConfigService 中未使用的方法（ChangeConfigDirectory、CleanupExpiredDataAsync、CleanDirectoryAsync、GetFilesAsync）已移除

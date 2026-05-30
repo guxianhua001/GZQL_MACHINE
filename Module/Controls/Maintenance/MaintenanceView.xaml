@@ -1,0 +1,130 @@
+<UserControl x:Class="Module.Views.MaintenanceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:local="clr-namespace:Module.Views"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="700"
+             d:DesignWidth="1100"
+             MinWidth="1100"
+             MinHeight="800"
+             Background="#EEF2F5">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <Style x:Key="StatusPill" TargetType="Border">
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="8,3" />
+                <Setter Property="Background" Value="#F5F5F5" />
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ==================== HEADER ==================== -->
+        <Border Grid.Row="0" Background="White" Padding="16,12" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.08" Direction="270" />
+            </Border.Effect>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧标题区 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <materialDesign:PackIcon Kind="WrenchOutline" Width="24" Height="24"
+                                             Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                             VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Text="{lang:Lang Maintenance_Title}"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="#333333"
+                               VerticalAlignment="Center" />
+                    <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="4" Padding="8,2" Margin="14,0,0,0">
+                        <TextBlock Text="{lang:Lang Maintenance_Subtitle}" FontSize="11"
+                                   Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                                   VerticalAlignment="Center" FontWeight="Medium" />
+                    </Border>
+                </StackPanel>
+
+                <!-- 右侧维护状态 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Style="{StaticResource StatusPill}" Background="#E8F5E9">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="#4CAF50"
+                                     VerticalAlignment="Center" Margin="0,0,5,0" />
+                            <TextBlock Text="{lang:Lang Maintenance_Status_Ready}"
+                                       FontSize="11" Foreground="#2E7D32" FontWeight="Medium"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================== MAIN CONTENT: TabControl (Lazy-loaded) ==================== -->
+        <Grid Grid.Row="1" Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Tab Headers -->
+            <TabControl x:Name="MainTab" SelectedIndex="{Binding SelectedTabIndex}"
+                        Style="{StaticResource MaterialDesignTabControl}">
+                <TabItem Header="{lang:Lang Maintenance_Tab_CameraAlignment}" />
+                <TabItem Header="{lang:Lang Maintenance_Tab_NeedleAligner}" />
+                <TabItem Header="{lang:Lang Maintenance_Tab_CalibrationVerify}" />
+            </TabControl>
+
+            <!-- Lazy-loaded Content: only creates ViewModel when tab is selected -->
+            <ContentControl Grid.Row="1">
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedTabIndex}" Value="0">
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <local:NeedleCameraAlignmentView />
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding SelectedTabIndex}" Value="1">
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <local:NeedleAlignerView />
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding SelectedTabIndex}" Value="2">
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <local:NeedleCalibrationVerifyView />
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
+        </Grid>
+    </Grid>
+</UserControl>

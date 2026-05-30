@@ -1,0 +1,129 @@
+<UserControl x:Class="Module.Views.DispensingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:local="clr-namespace:Module.Views"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="800" d:DesignWidth="1000">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ========== 顶部工具栏 ========== -->
+        <Border Grid.Row="0" Background="#FFFAFAFA" BorderBrush="#FFE0E0E0" BorderThickness="0,0,0,1" Padding="6,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧：工站标识 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <materialDesign:PackIcon Kind="Needle" Width="22" Height="22" Margin="0,0,8,0"
+                                             Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                    <TextBlock Text="{lang:Lang Dispensing_Title}" FontWeight="Bold" FontSize="15"
+                               VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="4" Padding="6,2" Margin="12,0,0,0">
+                        <TextBlock Text="Dispense" FontSize="11" Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                                   VerticalAlignment="Center" FontWeight="Medium"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- 右侧：状态指示 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#C8E6C9" CornerRadius="4" Padding="8,3">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="#2E7D32" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{lang:Lang Dispensing_Dot_Status_Ready}" FontSize="11" Foreground="#1B5E20" VerticalAlignment="Center" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ========== 主内容区：Tab切换 ========== -->
+        <TabControl Grid.Row="1" 
+            Style="{StaticResource MaterialDesignTabControl}"
+            Margin="0"
+            Padding="0">
+
+            <!-- Tab 1：点涂(类型A) -->
+            <TabItem Padding="0">
+                <TabItem.Header>
+                    <!-- 用 DockPanel 替代 StackPanel，给 TextBlock 足够空间 -->
+                    <DockPanel Margin="10,8" LastChildFill="True">
+                        <materialDesign:PackIcon Kind="CircleSmall" 
+                                        Width="16" Height="16"
+                                        VerticalAlignment="Center" Margin="0 0 6 0"/>
+                        <TextBlock Text="{lang:Lang Dispensing_Tab_DotA}" 
+                           VerticalAlignment="Center" 
+                           FontSize="12" 
+                           FontWeight="Medium"
+                           TextTrimming="None"
+                           HorizontalAlignment="Left"/>
+            </DockPanel>
+                </TabItem.Header>
+                <local:DotPointEditorView/>
+            </TabItem>
+
+            <!-- Tab 2：2D线条(类型B) -->
+            <TabItem Padding="0">
+                <TabItem.Header>
+                    <DockPanel Margin="10,8" LastChildFill="True">
+                        <materialDesign:PackIcon Kind="VectorLine" 
+                                        Width="16" Height="16"
+                                        VerticalAlignment="Center" Margin="0 0 6 0"/>
+                        <TextBlock Text="{lang:Lang Dispensing_Tab_Line2D}" 
+                           VerticalAlignment="Center" 
+                           FontSize="12" 
+                           FontWeight="Medium"
+                           TextTrimming="None"/>
+                    </DockPanel>
+                </TabItem.Header>
+                <local:CadPointEditorView/>
+            </TabItem>
+
+            <!-- Tab 3：视觉引导(类型D) -->
+            <TabItem Padding="0">
+                <TabItem.Header>
+                    <DockPanel Margin="10,8" LastChildFill="True">
+                        <materialDesign:PackIcon Kind="CameraOutline" 
+                                        Width="16" Height="16"
+                                        VerticalAlignment="Center" Margin="0 0 6 0"/>
+                        <TextBlock Text="{lang:Lang Dispensing_Tab_VisionD}" 
+                           VerticalAlignment="Center" 
+                           FontSize="12" 
+                           FontWeight="Medium"
+                           TextTrimming="None"/>
+                    </DockPanel>
+                </TabItem.Header>
+                <local:VisionCaptureView/>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- ========== 底部状态栏 ========== -->
+        <StatusBar Grid.Row="2" Background="#FF37474F">
+            <StatusBarItem>
+                <TextBlock Text="{lang:Lang Dispensing_StatusBar_Main}" Foreground="White" FontSize="11"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Foreground="#FFB0BEC5" FontSize="11" Text="{lang:Lang Dispensing_StatusBar_Axis}"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="{lang:Lang Dispensing_StatusBar_Modes}" Foreground="#FF80CBC4" FontSize="11" VerticalAlignment="Center"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</UserControl>

@@ -1,18 +1,19 @@
-﻿<UserControl x:Class="ModuleCore.Views.DeviceConfigView"
+<UserControl x:Class="ModuleCore.Views.DeviceConfigView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
-             d:DesignHeight="300"
+             d:DesignHeight="800"
              d:DesignWidth="400">
 
     <StackPanel Margin="16">
         <!-- 设备控制标题 -->
-        <TextBlock Text="硬件设备控制"
+        <TextBlock Text="{lang:Lang DeviceConfig_HardwareControl}"
                    Style="{StaticResource MaterialDesignHeadline6TextBlock}"
                    Margin="0,0,0,16" />
 
@@ -22,116 +23,93 @@
                 Padding="16"
                 Margin="0,0,0,16">
             <StackPanel>
-                <!-- 安全门控制 -->
-                <CheckBox Content="安全门联锁功能"
-                          IsChecked="{Binding EnableSafetyGate}"
-                          Style="{StaticResource MaterialDesignCheckBox}"
-                          Margin="0,8"
-                          ToolTip="启用设备安全门状态监测">
-                    <CheckBox.LayoutTransform>
-                        <ScaleTransform ScaleX="1.2"
-                                        ScaleY="1.2" />
-                    </CheckBox.LayoutTransform>
-                </CheckBox>
-
-                <!-- 蜂鸣器控制 -->
-                <CheckBox Content="警报蜂鸣器"
-                          IsChecked="{Binding EnableBuzzer}"
-                          Style="{StaticResource MaterialDesignCheckBox}"
-                          Margin="0,8"
-                          ToolTip="启用设备报警提示音">
-                    <CheckBox.LayoutTransform>
-                        <ScaleTransform ScaleX="1.2"
-                                        ScaleY="1.2" />
-                    </CheckBox.LayoutTransform>
-                </CheckBox>
-
-                <!-- SN控制 -->
-                <CheckBox Content="启用产品SN"
-                          IsChecked="{Binding EnableSnCode}"
-                          Style="{StaticResource MaterialDesignCheckBox}"
-                          Margin="0,8"
-                          ToolTip="启用产品SN">
-                    <CheckBox.LayoutTransform>
-                        <ScaleTransform ScaleX="1.2"
-                                        ScaleY="1.2" />
-                    </CheckBox.LayoutTransform>
-                </CheckBox>
-                
-                <!-- 拨针模组屏蔽设置 -->
+                <!-- 安全信号分组 -->
                 <materialDesign:Card Margin="0,8"
                                      Padding="0">
-                    <Expander Header="拨针模组屏蔽配置"
-                              IsExpanded="{Binding PinModuleExpanded, Mode=TwoWay}">
-                        <StackPanel Margin="16,8"
-                                    Orientation="Vertical">
-                            <!-- 四列模组切换 -->
-                            <CheckBox Content="启用模组 1"
-                                      IsChecked="{Binding IsModule1Enabled}"
+                    <Expander Header="{lang:Lang DeviceConfig_SafetySignalGroup}"
+                              IsExpanded="True">
+                        <StackPanel Margin="16,8">
+                            <!-- 安全门控制 -->
+                            <CheckBox IsChecked="{Binding EnableSafetyGate}"
                                       Style="{StaticResource MaterialDesignCheckBox}"
                                       Margin="0,8"
-                                      ToolTip="启用第1组拨针设备">
+                                      ToolTip="{lang:Lang DeviceConfig_SafetyGateToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Door"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,8,0" />
+                                    <TextBlock Text="{lang:Lang DeviceConfig_SafetyGateInterlock}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="1.1"
-                                                    ScaleY="1.1" />
+                                    <ScaleTransform ScaleX="1.2"
+                                                    ScaleY="1.2" />
                                 </CheckBox.LayoutTransform>
                             </CheckBox>
 
-                            <CheckBox Content="启用模组 2"
-                                      IsChecked="{Binding IsModule2Enabled}"
+                            <!-- 光幕控制 -->
+                            <CheckBox IsChecked="{Binding EnableGrating}"
                                       Style="{StaticResource MaterialDesignCheckBox}"
                                       Margin="0,8"
-                                      ToolTip="启用第2组拨针设备">
+                                      ToolTip="{lang:Lang DeviceConfig_EnableGratingToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="EyeOutline"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,8,0" />
+                                    <TextBlock Text="{lang:Lang DeviceConfig_EnableGrating}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="1.1"
-                                                    ScaleY="1.1" />
+                                    <ScaleTransform ScaleX="1.2"
+                                                    ScaleY="1.2" />
                                 </CheckBox.LayoutTransform>
                             </CheckBox>
 
-                            <CheckBox Content="启用模组 3"
-                                      IsChecked="{Binding IsModule3Enabled}"
+                            <!-- 蜂鸣器控制 -->
+                            <CheckBox IsChecked="{Binding EnableBuzzer}"
                                       Style="{StaticResource MaterialDesignCheckBox}"
                                       Margin="0,8"
-                                      ToolTip="启用第3组拨针设备">
+                                      ToolTip="{lang:Lang DeviceConfig_AlarmBuzzerToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="BellOutline"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,8,0" />
+                                    <TextBlock Text="{lang:Lang DeviceConfig_AlarmBuzzer}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="1.1"
-                                                    ScaleY="1.1" />
+                                    <ScaleTransform ScaleX="1.2"
+                                                    ScaleY="1.2" />
                                 </CheckBox.LayoutTransform>
                             </CheckBox>
 
-                            <CheckBox Content="启用模组 4"
-                                      IsChecked="{Binding IsModule4Enabled}"
+                            <!-- 安全事件日志 -->
+                            <CheckBox IsChecked="{Binding EnableSafetyEventLog}"
                                       Style="{StaticResource MaterialDesignCheckBox}"
                                       Margin="0,8"
-                                      ToolTip="启用第4组拨针设备">
+                                      ToolTip="{lang:Lang DeviceConfig_EnableSafetyEventLogToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileDocumentOutline"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,8,0" />
+                                    <TextBlock Text="{lang:Lang DeviceConfig_EnableSafetyEventLog}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
                                 <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="1.1"
-                                                    ScaleY="1.1" />
+                                    <ScaleTransform ScaleX="1.2"
+                                                    ScaleY="1.2" />
                                 </CheckBox.LayoutTransform>
                             </CheckBox>
-                            
-                            <!-- 快速操作按钮 -->
-                            <StackPanel Orientation="Horizontal"
-                                        Margin="0,8">
-                                <Button Content="全选"
-                                        Command="{Binding CheckAllModulesCommand}"
-                                        Style="{StaticResource MaterialDesignFlatButton}"
-                                        Margin="4,0" />
-                                <Button Content="清空"
-                                        Command="{Binding UncheckAllModulesCommand}"
-                                        Style="{StaticResource MaterialDesignFlatButton}"
-                                        Margin="4,0" />
-                            </StackPanel>
                         </StackPanel>
                     </Expander>
                 </materialDesign:Card>
 
                 <!-- SEC/GEM通信选项 -->
-                <CheckBox Content="启用SECS/GEM通信"
+                <CheckBox Content="{lang:Lang DeviceConfig_EnableSecsGem}"
                           IsChecked="{Binding EnableSecsGem}"
                           Style="{StaticResource MaterialDesignCheckBox}"
                           Margin="0,8"
-                          ToolTip="启用半导体设备通讯标准协议">
+                          ToolTip="{lang:Lang DeviceConfig_EnableSecsGemToolTip}">
                     <CheckBox.LayoutTransform>
                         <ScaleTransform ScaleX="1.2"
                                         ScaleY="1.2" />
@@ -140,22 +118,22 @@
                 <!-- SECS/GEM高级设置（可折叠） -->
                 <materialDesign:Card Margin="0,8"
                                      Padding="0">
-                    <Expander Header="SECS/GEM高级设置"
+                    <Expander Header="{lang:Lang DeviceConfig_SecsGemAdvancedSettings}"
                               IsExpanded="{Binding SecsGemAdvancedExpanded, Mode=TwoWay}">
                         <StackPanel Margin="16,8">
                             <TextBox Text="{Binding SecsGemIP, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      Margin="0,8"
-                                     materialDesign:HintAssist.Hint="IP地址 (默认127.0.0.1)" />
+                                     materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_SecsGemIPHint}" />
                             <TextBox Text="{Binding SecsGemPort, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      Margin="0,8"
-                                     materialDesign:HintAssist.Hint="端口号 (默认5000)" />
+                                     materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_SecsGemPortHint}" />
 
                             <TextBox Text="{Binding SecsGemDeviceId, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      Margin="0,8"
-                                     materialDesign:HintAssist.Hint="设备ID" />
+                                     materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_DeviceID}" />
                         </StackPanel>
                     </Expander>
                 </materialDesign:Card>
@@ -175,7 +153,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <!-- 路径标题 -->
-                        <TextBlock Text="数据文件存储位置"
+                        <TextBlock Text="{lang:Lang DeviceConfig_DataFileLocation}"
                                    Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
                                    Grid.Row="0"
                                    Grid.ColumnSpan="2"
@@ -186,17 +164,17 @@
                                  Grid.Row="1"
                                  Grid.Column="0"
                                  Margin="0,0,8,0"
-                                 materialDesign:HintAssist.Hint="配置存储路径"
+                                 materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_ConfigStoragePath}"
                                  VerticalAlignment="Center" />
                         <!-- 浏览按钮 -->
                         <Button Command="{Binding BrowsePathCommand}"
-                                Content="浏览..."
+                                Content="{lang:Lang DeviceConfig_Browse}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
                                 Grid.Row="1"
                                 Grid.Column="1"
                                 Padding="16,4"
                                 VerticalAlignment="Center"
-                                ToolTip="选择配置文件保存目录" />
+                                ToolTip="{lang:Lang DeviceConfig_BrowseToolTip}" />
                     </Grid>
                 </Border>
 
@@ -216,25 +194,25 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="数据保留设置"
+                        <TextBlock Text="{lang:Lang DeviceConfig_DataRetentionSettings}"
                                    Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
                                    Grid.Row="0"
                                    Grid.ColumnSpan="2"
                                    Margin="0,0,0,8" />
 
                         <!-- 自动清理开关 -->
-                        <CheckBox Content="自动清理旧数据"
+                        <CheckBox Content="{lang:Lang DeviceConfig_AutoCleanOldData}"
                                   IsChecked="{Binding AutoCleanOldData}"
                                   Style="{StaticResource MaterialDesignCheckBox}"
                                   Grid.Row="1"
                                   Grid.Column="0"
                                   Margin="0,8,16,0"
                                   VerticalAlignment="Center"
-                                  ToolTip="当磁盘空间不足时自动删除旧数据"
+                                  ToolTip="{lang:Lang DeviceConfig_AutoCleanToolTip}"
                                   Grid.ColumnSpan="2" />
 
                         <!-- 保留天数设置 -->
-                        <TextBlock Text="保留天数："
+                        <TextBlock Text="{lang:Lang DeviceConfig_RetentionDays}"
                                    Style="{StaticResource MaterialDesignCaptionTextBlock}"
                                    Grid.Row="2"
                                    Grid.Column="0"
@@ -249,7 +227,7 @@
                                  Margin="0,8"
                                  Width="80"
                                  HorizontalAlignment="Left"
-                                 materialDesign:HintAssist.Hint="天数 (0=永久)">
+                                 materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_DaysHint}">
                             <TextBox.InputBindings>
                                 <!-- 限制只能输入整数 -->
                                 <KeyBinding Command="{x:Null}"
@@ -266,20 +244,20 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right">
             <!-- 保存按钮 -->
-            <Button Content="应用设置"
+            <Button Content="{lang:Lang DeviceConfig_ApplySettings}"
                     Command="{Binding SaveCommand}"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Width="120"
                     Margin="8,0"
                     materialDesign:ButtonAssist.CornerRadius="4">
                 <Button.ToolTip>
-                    <TextBlock Text="保存当前硬件配置参数 (Ctrl+S)"
+                    <TextBlock Text="{lang:Lang DeviceConfig_SaveHardwareConfigToolTip}"
                                Style="{StaticResource MaterialDesignCaptionTextBlock}" />
                 </Button.ToolTip>
             </Button>
 
             <!-- 重置按钮（可选） -->
-            <Button Content="恢复默认"
+            <Button Content="{lang:Lang ResetParameters}"
                     Command="{Binding LoadDefaultCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Width="120"

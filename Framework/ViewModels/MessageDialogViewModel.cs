@@ -1,6 +1,8 @@
 ﻿
 using MaterialDesignThemes.Wpf;
 using Prism.Commands;
+using Prism.Mvvm;
+using Prism.Services.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,7 +14,7 @@ using System.Windows.Input;
 
 namespace Framework.ViewModels
 {
-    public class MessageDialogViewModel : INotifyPropertyChanged
+    public class MessageDialogViewModel : BindableBase, IDialogAware
     {
         private Action<object?> _closeCallback;
         private Timer _autoCloseTimer;
@@ -23,41 +25,41 @@ namespace Framework.ViewModels
         public Action<object> CloseCallback
         {
             get => _closeCallback;
-            set => SetField(ref _closeCallback, value, nameof(CloseCallback));
+            set => SetProperty(ref _closeCallback, value, nameof(CloseCallback));
         }
 
         private bool _isYesButtonVisible;
         public bool IsYesButtonVisible
         {
             get => _isYesButtonVisible;
-            set => SetField(ref _isYesButtonVisible, value);
+            set => SetProperty(ref _isYesButtonVisible, value);
         }
 
         private bool _isNoButtonVisible;
         public bool IsNoButtonVisible
         {
             get => _isNoButtonVisible;
-            set => SetField(ref _isNoButtonVisible, value);
+            set => SetProperty(ref _isNoButtonVisible, value);
         }
 
         private bool _isProgressVisible;
         public bool IsProgressVisible
         {
             get => _isProgressVisible;
-            set => SetField(ref _isProgressVisible, value);
+            set => SetProperty(ref _isProgressVisible, value);
         }
 
         private bool _isExtraButtonVisible;
         public bool IsExtraButtonVisible
         {
             get => _isExtraButtonVisible;
-            set => SetField(ref _isExtraButtonVisible, value);
+            set => SetProperty(ref _isExtraButtonVisible, value);
         }
         private string _extraButtonText = "附加操作";
         public string ExtraButtonText
         {
             get => _extraButtonText;
-            set => SetField(ref _extraButtonText, value);
+            set => SetProperty(ref _extraButtonText, value);
         }
         public bool IsYesButtonDefault { get; set; }
         public bool IsNoButtonDefault { get; set; }
@@ -67,44 +69,47 @@ namespace Framework.ViewModels
         public string Title
         {
             get => _title;
-            set => SetField(ref _title, value);
+            set => SetProperty(ref _title, value);
         }
 
         private string _message;
         public string Message
         {
             get => _message;
-            set => SetField(ref _message, value);
+            set => SetProperty(ref _message, value);
         }
 
         private PackIconKind? _iconKind;
         public PackIconKind? IconKind
         {
             get => _iconKind;
-            set => SetField(ref _iconKind, value);
+            set => SetProperty(ref _iconKind, value);
         }
 
         private string _yesButtonText;
         public string YesButtonText
         {
             get => _yesButtonText;
-            set => SetField(ref _yesButtonText, value);
+            set => SetProperty(ref _yesButtonText, value);
         }
 
         private string _noButtonText;
         public string NoButtonText
         {
             get => _noButtonText;
-            set => SetField(ref _noButtonText, value);
+            set => SetProperty(ref _noButtonText, value);
         }
 
         private int? _autoCloseTimeout;
+
+        public event Action<IDialogResult> RequestClose;
+
         public int? AutoCloseTimeout
         {
             get => _autoCloseTimeout;
             set
             {
-                SetField(ref _autoCloseTimeout, value);
+                SetProperty(ref _autoCloseTimeout, value);
                 SetupAutoCloseTimer();
             }
         }
@@ -170,20 +175,36 @@ namespace Framework.ViewModels
             }
         }
 
-        #region INotifyPropertyChanged 实现
-        public event PropertyChangedEventHandler PropertyChanged;
+        #region IDialogAware 实现
+        public bool CanCloseDialog() => true;
 
-        protected virtual void OnPropertyChanged(string propertyName)
+        public void OnDialogClosed()
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            _autoCloseTimer?.Dispose();
         }
 
-        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = "")
+        public void OnDialogOpened(IDialogParameters parameters)
         {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-            field = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            return true;
+            if (parameters.ContainsKey("message"))
+                Message = parameters.GetValue<string>("message");
+            if (parameters.ContainsKey("title"))
+                Title = parameters.GetValue<string>("title");
+            if (parameters.ContainsKey("iconKind"))
+                IconKind = parameters.GetValue<PackIconKind>("iconKind");
+            if (parameters.ContainsKey("yesButtonText"))
+                YesButtonText = parameters.GetValue<string>("yesButtonText");
+            if (parameters.ContainsKey("noButtonText"))
+                NoButtonText = parameters.GetValue<string>("noButtonText");
+            if (parameters.ContainsKey("extraButtonText"))
+                ExtraButtonText = parameters.GetValue<string>("extraButtonText");
+            if (parameters.ContainsKey("showYesButton"))
+                IsYesButtonVisible = parameters.GetValue<bool>("showYesButton");
+            if (parameters.ContainsKey("showNoButton"))
+                IsNoButtonVisible = parameters.GetValue<bool>("showNoButton");
+            if (parameters.ContainsKey("showExtraButton"))
+                IsExtraButtonVisible = parameters.GetValue<bool>("showExtraButton");
+            if (parameters.ContainsKey("autoCloseTimeout"))
+                AutoCloseTimeout = parameters.GetValue<int>("autoCloseTimeout");
         }
         #endregion
     }

@@ -1,0 +1,15 @@
+<UserControl x:Class="Module.Views.SimpleInputDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             Width="400"
+             Height="Auto">
+    <StackPanel Margin="20">
+        <TextBox Text="{Binding InputValue}" materialDesign:HintAssist.Hint="{lang:Lang Dialog_EnterName}" Margin="0,0,0,16"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="{lang:Lang Dialog_Cancel}" Command="{Binding CancelCommand}" Style="{StaticResource MaterialDesignFlatButton}"/>
+            <Button Content="{lang:Lang Dialog_OK}" Command="{Binding OkCommand}" Margin="0,0,8,0" Style="{StaticResource MaterialDesignRaisedButton}"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

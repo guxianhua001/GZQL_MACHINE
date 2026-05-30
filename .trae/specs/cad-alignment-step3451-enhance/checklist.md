@@ -1,0 +1,23 @@
+# Checklist
+
+- [x] FitPoint 模型支持行索引绑定（Index 属性已添加）
+- [x] TeachFitPointCommand 已注册到 CadAlignmentViewModel，参数为 rowIndex
+- [x] Tab1 DataGrid 包含 4 列（角度|X|Y|操作），操作列有示教按钮(CrosshairsGps 图标)
+- [x] PickBaselineFromCadCommand / PickTargetFromCadCommand 已实现
+- [x] HasCadDrawingLoaded 属性控制步骤3选取按钮的启用/禁用状态
+- [x] Tab3 SectionCard1 基准线段和目标线段 ComboBox 旁各有一个「从CAD选取」按钮
+- [x] InheritTargetFromStep3Command 已实现：自动设置 TransformSelectedIndex
+- [x] CanInheritFromStep3 在步骤3未完成时返回 false
+- [x] Tab4 SectionCard1 有「↓ 用步骤3目标」快捷按钮，绑定 InheritTargetFromStep3Command
+- [x] TeachX / TeachY / TeachRy / TeachZ 属性已添加到 CadAlignmentViewModel（BindableBase）
+- [x] CalcOffX = TeachX - TransResultX 计算属性正确
+- [x] CalcOffY = TeachY - TransResultY 计算属性正确
+- [x] UseCalculatedOffset 属性存在，默认 false
+- [x] TeachGripperPositionCommand 已实现：读取末端坐标 → 赋值 TeachX/Y/Ry/Z
+- [x] ApplyCalcOffsetCommand 已实现：CalcOffX/Y → OffX/Y + UseCalculatedOffset=true
+- [x] ComputeGripperPosition() 支持 UseCalculatedOffset 分支逻辑
+- [x] Tab5 SectionCard1 包含示教区（4坐标只读框+🎯示教按钮）
+- [x] Tab5 SectionCard1 包含双偏移区（计算偏移只读+应用按钮 + 固定偏移输入框 + RadioButton切换）
+- [x] 两种偏移模式有视觉区分（RadioButton选中状态+背景色差异）
+- [x] dotnet build 通过（0 error, 0 XAML error）
+- [x] 原有5步流程回归测试通过（手动输入模式仍可正常工作）

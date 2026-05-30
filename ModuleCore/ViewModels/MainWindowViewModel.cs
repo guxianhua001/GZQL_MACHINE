@@ -1,6 +1,7 @@
-﻿using ModuleCore.Common.Authority;
+using ModuleCore.Common.Authority;
 using ModuleCore.Models;
-using ModuleCore.Services;
+using MotionControl.Events;
+using MotionControl.Models;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Ioc;
@@ -17,37 +18,27 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using NLog.Fluent;
 using NLog;
-using Interfaces;
-using System.ComponentModel;
-using Stations;
-using Interfaces.Mvvm;
+using Core.Utilities;
+using Core.Events;
 using System.Collections.Concurrent;
 using System.Windows;
-using TCPLib.TCPHelper;
 using System.Net.Sockets;
 using ModuleCore.Views;
 using MaterialDesignThemes.Wpf;
-using HSMS;
 using System.Windows.Media;
 using System.IO;
-using Interfaces.Services;
 using System.Reflection;
-using System.Threading;
-using Interfaces.Views;
-using Interfaces.Events;
-using HandyControl.Controls;
-using SmarterMotion;
-using Framework.Mvvm;
-using Core.Abstraction;
 using Core.Services;
-using Core.Abstractions.IConfiguration;
+using Core.Abstraction;
+using Framework.Mvvm;
 using Recipe.Events;
+using Core.ViewModels;
 
 namespace ModuleCore.ViewModels
 {
-    public class MainWindowViewModel : BindableBase
+    public class MainWindowViewModel : LocalizedViewModelBase
     {
-        private string _title = "JQS";
+        private string _title;
 
         public string Title
         {
@@ -61,14 +52,14 @@ namespace ModuleCore.ViewModels
             set => SetProperty(ref _appVersion, value);
         }
 
-        private string _recipeName = "未选择配方";
+        private string _recipeName;
         public string RecipeName
         {
             get => _recipeName;
             set => SetProperty(ref _recipeName, value);
         }
         // SEC/GEM 状态相关属性
-        private string _secsStatusText = "断开";
+        private string _secsStatusText;
         public string SecsStatusText
         {
             get => _secsStatusText;
@@ -84,31 +75,28 @@ namespace ModuleCore.ViewModels
         public NavigateModel Navigate { get; set; }
         private readonly IDialogService _dialogService;
         private readonly IEventAggregator _eventAggregator;
-        private readonly ISecsGemService _secsGemService;
-        private readonly IAxisConfigService _configService;
-        private readonly IAppConfig _appConfig;
+        private readonly IAppSettingService _appConfig;
+        private readonly ILoggerService _logger;
         private SubscriptionToken _refreshToken;
         private SubscriptionToken _secsCommandToken;
-        private readonly ClampJawViewModel _clampJawViewModel;
-        private readonly TaskInstanceManager _taskManager;
         public MainWindowViewModel(IDialogService dialogService,
                                    IRegionManager regionManager,
                                    IContainerExtension container,
                                    IEventAggregator eventAggregator,
-                                   IAppConfig appConfig,
-                                   ClampJawViewModel clampJawViewModel,
-                                   TaskInstanceManager taskManager,
-                                   IAxisConfigService configService)
+                                   IAppSettingService appConfig,
+                                   ILoggerService logger,
+                                   ILocalizationService localizationService)
+            : base(localizationService, eventAggregator)
         {
             _regionManager = regionManager;
             _dialogService = dialogService;
             _appConfig = appConfig;
+            _logger = logger;
             Model = container.Resolve<LoginModel>();
             Navigate = container.Resolve<NavigateModel>();
-            RecipeName = "当前配方: " + _appConfig.Name;
-            _eventAggregator = container.Resolve<IEventAggregator>();
-            _clampJawViewModel = clampJawViewModel;
-            _taskManager = taskManager;
+            RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
+            Title = L("MainWindow_ApplicationTitle");
+            _eventAggregator = eventAggregator;
             //注册发送给errLog的消息
             _eventAggregator.GetEvent<MessageEvent>().Subscribe(
                 MessageReceived,
@@ -123,60 +111,31 @@ namespace ModuleCore.ViewModels
 
             _eventAggregator.GetEvent<ThresholdWarningEvent>()
                  .Subscribe(ShowWarningDialog, ThreadOption.UIThread);
-
-            // 订阅SECS命令事件
-            _secsCommandToken = _eventAggregator.GetEvent<SecsCommandEvent>()
-                .Subscribe(OnSecsCommandReceived);
-            // 订阅SECS/GEM连接状态变化
-            //_secsGemService.ConnectionStatusChanged += OnSecsConnectionStatusChanged;
             // 获取程序集版本
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            var version = Assembly.GetEntryAssembly().GetName().Version;
             AppVersion = $"v{version.Major}.{version.Minor}.{version.Build}";
-            InitializeHardware(container); // 初始化硬件
-            InitializeSoftware(); // 初始化软件配置
+
+            // 记录系统启动日志
+            _logger.Info("========================================");
+            _logger.Info($"系统启动 - 版本 {AppVersion}");
+            _logger.Info($"配方: {_appConfig.RecipeName}");
+            _logger.Info("========================================");
+
             // 发布系统初始化完成事件
             _eventAggregator.GetEvent<SystemInitializedEvent>().Publish();
+
+            // 初始化工业控制按钮组命令（通过EventAggregator与OverViewModel通信）
+            InitializeCommand = new DelegateCommand(OnInitializeFromMain);
+            StartCommand = new DelegateCommand(OnStartFromMain);
+            PauseCommand = new DelegateCommand(OnPauseFromMain);
+            ResumeCommand = new DelegateCommand(OnResumeFromMain);
+            StopCommand = new DelegateCommand(OnStopFromMain);
+
+            // 订阅系统状态变化事件，驱动IsSystemRunning属性更新
+            _eventAggregator.GetEvent<StationStateChangedEvent>().Subscribe(OnStationStateChanged, ThreadOption.PublisherThread, false);
+
             InitializeCommands(); // 初始化命令
             LoadDefaultView(appConfig, container); // 加载默认视图
-            _configService = configService;
-        }
-        private void OnSecsCommandReceived(SecsCommandParameter param)
-        {
-            IMessage.Logger.Warn(param.LogMessage); // 记录原始命令日志
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                switch (param.CommandType)
-                {
-                    case SecsCommandType.Hold:
-                        ExecutePause(); // 执行暂停命令
-                        IMessage.Logger.Info("【远程命令】设备暂停");
-                        break;
-                    case SecsCommandType.Release:
-                        ExecuteContinue(); // 执行继续命令
-                        IMessage.Logger.Info("【远程命令】设备继续");
-                        break;
-                    case SecsCommandType.Stop:
-                        ExecuteStop(); // 执行停止命令
-                        IMessage.Logger.Info("【远程命令】设备停止");
-                        break;
-                    case SecsCommandType.Start:
-                        ExecuteStart(); // 执行启动命令
-                        IMessage.Logger.Info("【远程命令】设备启动");
-                        break;
-                }
-            });
-        }
-        private void OnSecsConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs e)
-        {
-            // 在UI线程更新状态
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                SecsStatusText = e.StatusText;
-                SecsStatusColor = e.IsConnected ? Brushes.Green : Brushes.Red;
-
-                IMessage.Logger.Info($"SECS/GEM状态更新: {e.StatusText}");
-            });
         }
         private void ShowWarningDialog(ThresholdWarningNotification notification)
         {
@@ -190,7 +149,7 @@ namespace ModuleCore.ViewModels
             {
                 // 执行阻塞操作，例如暂停或停止设备
                 ExecutePause();
-                IMessage.Logger.Info($"【WarningDialog】{notification.FormattedMessage}");
+                _logger.Info($"【WarningDialog】{notification.FormattedMessage}");
             }
         }
         private void HandleDialogClose(object sender, DialogClosingEventArgs args)
@@ -206,34 +165,9 @@ namespace ModuleCore.ViewModels
             // 带条件刷新的智能重载
             if (!string.IsNullOrEmpty(recipeName))
             {
-                RecipeName = "当前配方: " + recipeName;
+                RecipeName = L("MainWindow_CurrentRecipePrefix") + recipeName;
             }
         }
-        /// <summary>
-        /// 初始化硬件和任务，此处显式调用是为了确保在程序启动时立即进行硬件的初始化。
-        /// </summary>
-        private void InitializeHardware(IContainerExtension container)
-        {
-            var registerTask = container.Resolve<RegisterTask>();
-            registerTask.InitializeHardware(); // 显式调用初始化
-        }
-        /// <summary>
-        /// 初始化设备配置
-        /// </summary>
-        private void InitializeSoftware()
-        {
-            // 初始化软件配置
-            var deviceConfig = DeviceConfigService.LoadDeviceConfig();
-            XMachine.Instance.DoorEnabled = deviceConfig.EnableSafetyGate;
-            XMachine.Instance.BuzzerEnabled = deviceConfig.EnableBuzzer;
-            //_secsGemService.IsEnableSecs = deviceConfig.EnableSecsGem;
-            XStationManager.Instance.FindStationById(1).IsEnableBuzzer = deviceConfig.EnableBuzzer;
-            //if (_secsGemService.IsEnableSecs)
-            //    _secsGemService.controlMode = 1;
-            //else
-            //    _secsGemService.controlMode = 0;
-        }
-
         public void IsAdmin(object sender, CanExecuteRoutedEventArgs e)
         {
             if ((int)Model.LoginUser.Authority >= 2)
@@ -248,7 +182,7 @@ namespace ModuleCore.ViewModels
             e.Handled = true;
         }
 
-        private void MessageReceived(Interfaces.Mvvm.Message message)
+        private void MessageReceived(Core.Events.Message message)
         {
             var msg = message.Content;
             AddErr(new ErrModel() { ErrMsg = msg });
@@ -270,33 +204,31 @@ namespace ModuleCore.ViewModels
         /// <summary>
         /// 延迟加载默认工作视图
         /// </summary>
-        private async void LoadDefaultView(IAppConfig appConfig, IContainerExtension container)
+        private async void LoadDefaultView(IAppSettingService appConfig, IContainerExtension container)
         {
             await Task.Delay(1000);//延迟加载，否则不显示主视图
             ViewDisplayLoad();
             var defaultView = Navigate.DefaultView;
             NavigateCommand.Execute(defaultView);
             ShowLogViewer();
-            //InitialSecs(); // 初始化SECS/GEM连接
             //ShowLoginDialog(); // 显示登录对话框
         }
         private void InitialSecs()
         {
-            if (_secsGemService.Initialize(5000, "0"))
-            {
-                SecsStatusText = "已连接";
-                SecsStatusColor = Brushes.Green;
-                IMessage.Logger.Info("SECS/GEM初始化成功");
-            }
-            else
-            {
-                SecsStatusText = "断开";
+            //if (_secsGemService.Initialize(5000, "0"))
+            //{
+            //    SecsStatusText = "已连接";
+            //    SecsStatusColor = Brushes.Green;
+            //    IMessage.Logger.Info("SECS/GEM初始化成功");
+            //}
+            //else
+            //{
+                SecsStatusText = L("MainWindow_SecsOffline");
                 SecsStatusColor = Brushes.Red;
-                IMessage.Logger.Error("SECS/GEM初始化失败");
-            }
+            //}
         }
         // 重新连接命令
-        public ICommand ReconnectSecsCommand => new RelayCommand(() =>
+        public ICommand ReconnectSecsCommand => new DelegateCommand(() =>
         {
             InitialSecs();
         });
@@ -353,7 +285,7 @@ namespace ModuleCore.ViewModels
             //设置时检查权限
             if (navigatePath == "Setting" && (int)Model.LoginUser.Authority < 2)
             {
-                AddErr(new ErrModel() { ErrMsg = "请登录管理员权限" });
+                AddErr(new ErrModel() { ErrMsg = L("MainWindow_ErrAdminRequired") });
                 return;
             }
             _regionManager.RequestNavigate("ContentRegionCore", navigatePath);
@@ -373,7 +305,7 @@ namespace ModuleCore.ViewModels
             _dialogService.ShowDialog("AlertDialog", new DialogParameters($"message={"message:"}"), r =>
             {
                 if (r.Result == ButtonResult.Yes)
-                    Title = "YIJI";
+                    Title = L("MainWindow_ApplicationTitle");
             });
         }
 
@@ -476,7 +408,7 @@ namespace ModuleCore.ViewModels
                     { "windowStyle", WindowStyle.SingleBorderWindow },
                     { "windowStartupLocation", WindowStartupLocation.CenterOwner }
                 };
-                _dialogService.Show("LogViewer", parameters, r => { });
+                _dialogService.Show("LogView", parameters, r => { });
             }, DispatcherPriority.Background);
         }
 
@@ -488,30 +420,7 @@ namespace ModuleCore.ViewModels
 
         private async void ExecuteStart()
         {
-            foreach (var item in XStationManager.Instance.Stations)
-            {
-                if(item.Value.State != XStationState.WAITRUN)
-                {
-                    AddErr(new ErrModel() { ErrMsg = "请先初始化设备" });
-                    return;
-                }
-            }
-            if (XMachine.Instance.CheckStartCondition() == false)
-            {
-                AddErr(new ErrModel() { ErrMsg = "启动设备条件不满足" });
-                return;
-            }
-            if( XMachine.Instance.HostToEqpHoldMachine == true)
-            {
-                AddErr(new ErrModel() { ErrMsg = "设备已被远程锁定，请解锁后启动" });
-                return;
-            }
-            foreach (var item in XStationManager.Instance.Stations)
-            {
-                item.Value.Start("Auto");
-            }
-            XMachine.Instance.SetGreenBtnLight();
-            IMessage.Logger.Log(LogLevel.Info, $"【按钮】设备启动");
+
         }
 
         private DelegateCommand _Pause;
@@ -521,12 +430,7 @@ namespace ModuleCore.ViewModels
 
         private void ExecutePause()
         {
-            foreach (var station in XStationManager.Instance.Stations)
-            {
-                station.Value.Pause();
-                station.Value.ResetBuzz();
-            }
-            IMessage.Logger.Log(LogLevel.Info, $"【按钮】设备暂停");
+
         }
 
         private DelegateCommand _Continue;
@@ -536,16 +440,7 @@ namespace ModuleCore.ViewModels
 
         private void ExecuteContinue()
         {
-            if (XMachine.Instance.HostToEqpHoldMachine == true)
-            {
-                AddErr(new ErrModel() { ErrMsg = "设备已被远程锁定，请解锁后继续" });
-                return;
-            }
-            foreach (var station in XStationManager.Instance.Stations)
-            {
-                station.Value.Continue();
-            }
-            IMessage.Logger.Log(LogLevel.Info, $"【按钮】设备继续");
+
         }
 
         private DelegateCommand _Stop;
@@ -555,12 +450,7 @@ namespace ModuleCore.ViewModels
 
         private void ExecuteStop()
         {
-            foreach (var item in XStationManager.Instance.Stations)
-            {
-                item.Value.Stop();
-            }
-            XMachine.Instance.SetRedBtnLight();
-            IMessage.Logger.Log(LogLevel.Info, $"【按钮】设备停止");
+
         }
         private DelegateCommand _Initialize;
 
@@ -569,62 +459,19 @@ namespace ModuleCore.ViewModels
 
         private async void ExecuteInitialize()
         {
-            foreach (var task in XTaskManager.Instance.Tasks.Values)
-            {
-                if (task.Station.State == StationState.Running || task.Station.State == StationState.Pause)
-                {
-                    AddErr(new ErrModel() { ErrMsg = "设备运行中,不能初始化" });
-                    return;
-                }
-            }
-            if (XMachine.Instance.CheckResetCondition() == false)
-            {
-                AddErr(new ErrModel() { ErrMsg = "初始化条件不满足" });
-                return;
-            }
-            if (XMachine.Instance.CheckStartCondition() == false)
-            {
-                AddErr(new ErrModel() { ErrMsg = "复位设备条件不满足" });
-                return;
-            }
 
-            if (!ShowExecuteInitializeDialog())
-            {
-                return;
-            }
-            foreach (var task in XTaskManager.Instance.Tasks.Values)
-            {
-                task.IsMaterialInitialization = false;
-            }
-            // 步骤 1: 下载所有轴参数
-            await _configService.DownloadAllParametersAsync(null);
-            // 步骤 2: 应用所有插补系参数
-            //await Task.Run(() =>
-            //{
-            //    foreach (var system in _configService.LoadInterpolationSystems())
-            //    {
-            //        _configService.ApplyInterpolationParameters(system);
-            //    }
-            //});
-            foreach (var item in XStationManager.Instance.Stations)
-            {
-                item.Value.Reset();
-            }
-            XMachine.Instance.SetResetBtnLight();
-            IMessage.Logger.Log(LogLevel.Info, $"【按钮】设备初始化");
         }
         public void CloseSecsGemService()
         {
-            //_secsGemService.CloseSECS();
-            IMessage.Logger.Log(LogLevel.Info, "SECS/GEM服务已关闭");
+
         }
         private bool ShowExecuteInitializeDialog()
         {
             var result = Framework.Services.DialogService.ShowBlockingDialog(
-                title: "警告",
-                message: $"请确认设备处在安全状态下,是否执行初始化? \n\n",
-                yesButtonText: "是",
-                noButtonText: "否",
+                title: L("MainWindow_InitConfirmTitle"),
+                message: L("MainWindow_InitConfirmMsg") + "\n\n",
+                yesButtonText: L("MainWindow_InitConfirmYes"),
+                noButtonText: L("MainWindow_InitConfirmNo"),
                 showYesButton: true,
                 showNoButton: true,
                 icon: PackIconKind.ClockAlert
@@ -632,12 +479,12 @@ namespace ModuleCore.ViewModels
 
             if ((int)result == 0) // YES
             {
-                IMessage.Logger.Info("用户选择执行初始化操作");
+                _logger.Info("用户选择执行初始化操作");
                 return true;
             }
             else
             {
-                IMessage.Logger.Info("用户选择取消初始化操作");
+                _logger.Info("用户选择取消初始化操作");
             }
             return false;
         }
@@ -645,54 +492,151 @@ namespace ModuleCore.ViewModels
         #region 任务监控窗口相关
         public DelegateCommand ShowTaskMonitorCommand { get; private set; }
 
+        /// <summary>
+        /// 轴控制面板是否打开（绑定到右侧 Drawer）
+        /// </summary>
+        private bool _isAxisPanelOpen;
+        public bool IsAxisPanelOpen
+        {
+            get => _isAxisPanelOpen;
+            set => SetProperty(ref _isAxisPanelOpen, value);
+        }
+
+        #region 工业控制按钮组 - 命令与状态属性
+
+        private bool _isSystemRunning = false;
+        public bool IsSystemRunning
+        {
+            get => _isSystemRunning;
+            set => SetProperty(ref _isSystemRunning, value);
+        }
+
+        public DelegateCommand InitializeCommand { get; }
+        public DelegateCommand StartCommand { get; }
+        public DelegateCommand PauseCommand { get; }
+        public DelegateCommand ResumeCommand { get; }
+        public DelegateCommand StopCommand { get; }
+
+        #endregion
+
         private void InitializeCommands()
         {
-            loadingStation = _taskManager.GetTask<LoadingStation>();
-            dispenserStation = _taskManager.GetTask<DispenserStation>();
-            assemblyStation = _taskManager.GetTask<AssemblyStation>();
             // 添加显示任务监控窗口的命令
-            ShowTaskMonitorCommand = new DelegateCommand(ExecuteShowTaskMonitor);
-        }
-        private LoadingStation loadingStation;
-        private DispenserStation dispenserStation;
-        private AssemblyStation assemblyStation;
-        // 显示任务监控窗口
-        private void ExecuteShowTaskMonitor()
-        {
-            try
-            {
-                // 创建任务监控视图模型
-                var viewModel = new TaskMonitorViewModel(new SnackbarMessageQueue(), _eventAggregator);
-
-                // 添加要监控的任务
-                viewModel.AddTaskToMonitor(loadingStation);
-                viewModel.AddTaskToMonitor(dispenserStation);
-                viewModel.AddTaskToMonitor(assemblyStation);
-
-                // 准备窗口容器
-                var content = new TaskMonitorView
-                {
-                    DataContext = viewModel,
-                    Width = 800,
-                    Height = 600
-                };
-
-                // 创建窗口并显示
-                new System.Windows.Window
-                {
-                    Title = "任务执行监控",
-                    Content = content,
-                    Width = 900,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    Owner = Application.Current.MainWindow
-                }.Show();
-            }
-            catch (Exception ex)
-            {
-                IMessage.Logger.Error($"打开任务监控窗口失败: {ex.Message}");
-            }
+            OpenAxisOperationCommand = new DelegateCommand(OpenAxisOperation);
         }
 
         #endregion
+
+        public ICommand OpenAxisOperationCommand { get; private set; }
+        private void OpenAxisOperation()
+        {
+            // 新实现：切换轴控制面板（替代旧对话框）
+            IsAxisPanelOpen = !IsAxisPanelOpen;
+
+            // 保留旧对话框作为备用（已废弃）
+            //_dialogService.ShowDialog("AxisOperationView", null, result =>
+            //{
+            //    if (result.Result == ButtonResult.OK)
+            //    {
+            //        // 处理确认后的逻辑
+            //    }
+            //});
+        }
+
+        #region 工业控制按钮组 - 命令实现
+
+        /// <summary>
+        /// 初始化按钮点击事件 - 发布初始化请求事件
+        /// </summary>
+        private void OnInitializeFromMain()
+        {
+            _logger.Info("【MainWindow】用户点击初始化按钮");
+            _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Initialize");
+        }
+
+        /// <summary>
+        /// 启动按钮点击事件 - 发布启动请求事件
+        /// </summary>
+        private void OnStartFromMain()
+        {
+            _logger.Info("【MainWindow】用户点击启动按钮");
+            _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Start");
+        }
+
+        /// <summary>
+        /// 暂停按钮点击事件 - 发布暂停请求事件
+        /// </summary>
+        private void OnPauseFromMain()
+        {
+            _logger.Info("【MainWindow】用户点击暂停按钮");
+            _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Pause");
+        }
+
+        /// <summary>
+        /// 恢复按钮点击事件 - 发布恢复请求事件
+        /// </summary>
+        private void OnResumeFromMain()
+        {
+            _logger.Info("【MainWindow】用户点击恢复按钮");
+            _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Resume");
+        }
+
+        /// <summary>
+        /// 停止按钮点击事件 - 发布停止请求事件
+        /// </summary>
+        private void OnStopFromMain()
+        {
+            _logger.Info("【MainWindow】用户点击停止按钮");
+            _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Stop");
+        }
+
+        /// <summary>
+        /// 系统状态变化回调 - 更新IsSystemRunning属性
+        /// </summary>
+        private void OnStationStateChanged(StationStatePayload payload)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.HasShutdownStarted)
+                return;
+
+            try
+            {
+                dispatcher.Invoke(() =>
+                {
+                    IsSystemRunning = payload.State == StationState.RUNNING;
+                });
+            }
+            catch (TaskCanceledException) { }
+            catch (OperationCanceledException) { }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 语言切换时刷新导航菜单 DisplayName 及其他依赖多语言的属性
+        /// </summary>
+        protected override void OnLanguageChanged()
+        {
+            base.OnLanguageChanged();
+
+            foreach (var item in Navigate.NavigateList)
+            {
+                if (!string.IsNullOrEmpty(item.DisplayNameKey))
+                {
+                    item.DisplayName = L(item.DisplayNameKey);
+                }
+            }
+
+            foreach (var item in Navigate.NavigateShowList)
+            {
+                if (!string.IsNullOrEmpty(item.DisplayNameKey))
+                {
+                    item.DisplayName = L(item.DisplayNameKey);
+                }
+            }
+
+            RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
+            SecsStatusText = L("MainWindow_SecsOffline");
+        }
     }
 }

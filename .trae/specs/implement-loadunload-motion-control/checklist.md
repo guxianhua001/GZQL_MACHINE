@@ -1,0 +1,19 @@
+- [x] ILoadUnloadController 接口定义在 Module/Services/ 层，工站专用接口不污染 Core.Abstractions
+- [x] LoadUnloadControllerImpl 实现放在 Module/Services/ 层，具体业务逻辑不属于 MotionControl
+- [x] ILoadUnloadStationOperations 适配接口放在 Module/Services/ 层，不属于 MotionControl 通用接口
+- [x] LoadUnloadControllerImpl 通过 LoadingTask.ExecuteManualProcess 执行所有运动操作，享受 RunStep 安全保护
+- [x] 真空控制使用 IMotionService.WriteDo/ReadDi，DO/DI 端口号从 hwcfg.xml 配置读取
+- [x] 夹爪操作使用 IGripperService.ClampAsync/ReleaseAsync/MoveToPositionAsync
+- [x] 轴定位使用 LoadingTask.ExecuteMoveAsync（自动应用速度倍率）
+- [x] HomeAll 依次回零 Y/Rx/Rz 轴后移动到待机位
+- [x] 自动流程（AutoPickUp/AutoScan/AutoUnload）按旧项目 LoadingStationFuncition.cs 的步骤顺序实现
+- [x] ViewModel 所有操作异步执行，UI 不卡顿
+- [x] IsMoving 属性在操作期间为 true，按钮 CanExecute 自动禁用
+- [x] 异常捕获后通过 DialogService 显示错误，StepStatusList 记录失败步骤
+- [x] DispatcherTimer 500ms 刷新轴状态、实时位置、真空状态、夹爪状态
+- [x] 所有用户可见文本使用 ILocalizationService.GetResource() 获取
+- [x] StationTaskBase 不再实现 ILoadUnloadStationOperations，保持 MotionControl 层纯净
+- [x] DI 注册从 MotionControlModule 移至 PrimModel（Module 层）
+- [x] Core.Abstractions 不包含工站专用接口
+- [x] MotionControl 不包含具体工站业务实现
+- [x] 全量编译 0 错误，现有测试全部通过 (24/24)

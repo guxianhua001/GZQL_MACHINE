@@ -1,4 +1,5 @@
-﻿using Core.Models;
+﻿﻿﻿﻿using Core.Abstraction;
+using Core.Models;
 using Core.Utilities;
 using System.IO;
 using System.Xml.Linq;
@@ -60,9 +61,8 @@ namespace Core.Configuration
         {
             try
             {
-                var defaultConfig = new AppConfiguration
+                var defaultConfig = new AppSettings
                 {
-                    Name = "Default",
                     RecipeName = "Default",
                     LastRecipeName = "Default",
                     LastSelectedRecipePath = string.Empty,
@@ -106,12 +106,11 @@ namespace Core.Configuration
         {
             var config = new T();
 
-            if (typeof(T) == typeof(AppConfiguration))
+            if (typeof(T) == typeof(AppSettings))
             {
-                var appConfig = config as AppConfiguration;
+                var appConfig = config as AppSettings;
                 if (appConfig != null)
                 {
-                    appConfig.Name = element.Element("Name")?.Value ?? "Default";
                     appConfig.RecipeName = element.Element("RecipeName")?.Value ?? "Default";
                     appConfig.LastRecipeName = element.Element("LastRecipeName")?.Value ?? "Default";
                     appConfig.LastSelectedRecipePath = element.Element("LastSelectedRecipePath")?.Value ?? string.Empty;
@@ -136,6 +135,7 @@ namespace Core.Configuration
                             var client = new ClientConfiguration
                             {
                                 ClientName = clientElement.Element("ClientName")?.Value ?? string.Empty,
+                                Mode = clientElement.Element("Mode")?.Value ?? "Client",
                                 IP = clientElement.Element("IP")?.Value ?? "127.0.0.1",
                                 Port = int.Parse(clientElement.Element("Port")?.Value ?? "8080"),
                                 Description = clientElement.Element("Description")?.Value ?? string.Empty,
@@ -155,7 +155,7 @@ namespace Core.Configuration
             return config;
         }
 
-        private void MigrateFromLegacyFormat(XElement element, AppConfiguration appConfig)
+        private void MigrateFromLegacyFormat(XElement element, AppSettings appConfig)
         {
             // 迁移 Client1
             var client1Element = element.Element("Client1");
@@ -188,12 +188,11 @@ namespace Core.Configuration
 
         private XDocument SerializeToXml<T>(T config) where T : class
         {
-            if (config is AppConfiguration appConfig)
+            if (config is AppSettings appConfig)
             {
                 var doc = new XDocument(
                     new XElement("Configuration",
                         new XAttribute("Version", "2.0"), // 版本升级
-                        new XElement("Name", appConfig.Name),
                         new XElement("RecipeName", appConfig.RecipeName),
                         new XElement("LastRecipeName", appConfig.LastRecipeName),
                         new XElement("LastSelectedRecipePath", appConfig.LastSelectedRecipePath),
@@ -207,6 +206,7 @@ namespace Core.Configuration
                             appConfig.Clients.Select(client =>
                                 new XElement("Client",
                                     new XElement("ClientName", client.ClientName),
+                                    new XElement("Mode", client.Mode),
                                     new XElement("IP", client.IP),
                                     new XElement("Port", client.Port),
                                     new XElement("Description", client.Description),

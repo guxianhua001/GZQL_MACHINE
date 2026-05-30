@@ -4,20 +4,20 @@ using Prism.Mvvm;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
-using Core.Abstractions.IConfiguration;
 using Core.Models;
 using Core.Utilities;
+using Core.Abstraction;
 
 namespace Framework.ViewModels
 {
     public class ConfigurationViewModel : BindableBase
     {
-        private readonly IAppConfig _appConfig;
+        private readonly IAppSettingService _appConfig;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILoggerService _logger;
 
         public ConfigurationViewModel(
-            IAppConfig appConfig,
+            IAppSettingService appConfig,
             IEventAggregator eventAggregator,
             ILoggerService logger)
         {
@@ -158,7 +158,7 @@ namespace Framework.ViewModels
                 EncodingMethod = _appConfig.ServerConfig.EncodingMethod;
 
                 // 加载应用程序配置
-                AppName = _appConfig.Name;
+                AppName = _appConfig.RecipeName;
                 RecipeName = _appConfig.RecipeName;
                 LastRecipeName = _appConfig.LastRecipeName;
                 LastSelectedRecipePath = _appConfig.LastSelectedRecipePath;
@@ -218,7 +218,7 @@ namespace Framework.ViewModels
                 _appConfig.ServerConfig.EncodingMethod = EncodingMethod;
 
                 // 更新应用程序配置
-                _appConfig.Name = AppName;
+                //_appConfig.Name = AppName;
                 _appConfig.RecipeName = RecipeName;
                 _appConfig.LastRecipeName = LastRecipeName;
                 _appConfig.LastSelectedRecipePath = LastSelectedRecipePath;

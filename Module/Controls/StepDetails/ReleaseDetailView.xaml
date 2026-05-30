@@ -1,0 +1,261 @@
+<UserControl x:Class="Module.Views.ReleaseDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:localConverters="clr-namespace:Module.Converters"
+             Width="800">
+    <UserControl.Resources>
+        <localConverters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+    <Border Padding="16"
+            Background="{DynamicResource MaterialDesignCardBackground}"
+            CornerRadius="4">
+        <StackPanel>
+            <DockPanel Margin="0,0,0,12">
+                <Button DockPanel.Dock="Right"
+                        Command="{Binding CloseCommand}"
+                        ToolTip="{lang:Lang Close}"
+                        Width="30" Height="30"
+                        Style="{StaticResource MaterialDesignIconButton}">
+                    <materialDesign:PackIcon Kind="Close" />
+                </Button>
+                <TextBlock FontWeight="Bold"
+                           FontSize="14"
+                           VerticalAlignment="Center"
+                           Text="{Binding StepDescription, StringFormat=RELEASE {0}}" />
+            </DockPanel>
+
+            <GroupBox Header="{lang:Lang ReleaseDetail_GripperConfig}" Margin="0,0,0,16">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="140"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang ReleaseDetail_VacuumControl}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="4,2">
+                        <Button Content="{lang:Lang ReleaseDetail_VacuumOn}"
+                                Command="{Binding VacuumOnCommand}"
+                                Margin="0,0,4,0"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Width="60"/>
+                        <Button Content="{lang:Lang ReleaseDetail_VacuumOff}"
+                                Command="{Binding VacuumOffCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Width="60"/>
+                        <TextBlock Text="{Binding VacuumStatusText}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang ReleaseDetail_ReleasePosition}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="4,2">
+                        <TextBox Text="{Binding ReleasePosition}" Width="80" materialDesign:HintAssist.Hint="mm"/>
+                        <Button Command="{Binding QuickReleaseCommand}"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource MaterialDesignRaisedButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="OpenInNew" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <TextBlock Text="{lang:Lang ReleaseDetail_Release}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang ReleaseDetail_ReleaseDelayTime}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="2" Grid.Column="1"
+                             Text="{Binding ReleaseDelayTime}"
+                             Margin="4,2"
+                             Width="120"
+                             HorizontalAlignment="Left"
+                             materialDesign:HintAssist.Hint="milliseconds"/>
+
+                    <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Command="{Binding OpenGripperControlCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="{DynamicResource PrimaryHueMidBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="TuneVertical" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{lang:Lang ReleaseDetail_OpenGripperPanel}" VerticalAlignment="Center" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="{lang:Lang ReleaseDetail_ReleaseMotionSeq}" Margin="0,0,0,8">
+                <StackPanel>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <DataGrid ItemsSource="{Binding SubMoveRows}"
+                                  SelectedItem="{Binding SelectedSubMoveRow}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  materialDesign:DataGridAssist.CellPadding="4"
+                                  MaxHeight="300">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{lang:Lang ReleaseDetail_Column_Sub}" Binding="{Binding SubSeq}" Width="SizeToCells" MinWidth="40" IsReadOnly="True"/>
+
+                                <DataGridTemplateColumn Header="Action" Width="SizeToCells" MinWidth="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Action}" VerticalAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailableActions}"
+                                                      SelectedItem="{Binding Action, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang ReleaseDetail_Column_Station}" Width="SizeToCells" MinWidth="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding StationId}" VerticalAlignment="Center"
+                                                       Opacity="{Binding IsMotionEnabled, Converter={StaticResource BoolToOpacityConverter}}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.StationItems, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      SelectedValue="{Binding StationId, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="StationId"
+                                                      DisplayMemberPath="DisplayName"
+                                                      IsEditable="False"
+                                                      IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang ReleaseDetail_Column_Axis}" Width="SizeToCells" MinWidth="60">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock VerticalAlignment="Center"
+                                                       Opacity="{Binding IsMotionEnabled, Converter={StaticResource BoolToOpacityConverter}}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0}.{1}">
+                                                        <Binding Path="StationId" />
+                                                        <Binding Path="Axis" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailableAxes}"
+                                                      SelectedItem="{Binding Axis, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False"
+                                                      IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang ReleaseDetail_Column_Position}" Width="SizeToCells" MinWidth="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding PositionName}" VerticalAlignment="Center"
+                                                       Opacity="{Binding IsMotionEnabled, Converter={StaticResource BoolToOpacityConverter}}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                      SelectedItem="{Binding PositionName, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False"
+                                                      IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang ReleaseDetail_Column_Offset}" Width="SizeToCells" MinWidth="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <DockPanel VerticalAlignment="Center">
+                                                <materialDesign:PackIcon Kind="LinkVariant"
+                                                                         Width="14" Height="14"
+                                                                         VerticalAlignment="Center"
+                                                                         Margin="0,0,2,0"
+                                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                                         Visibility="{Binding IsOffsetLinked, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                <TextBlock Text="{Binding OffsetDisplayText}" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.AvailableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      SelectedValuePath="Name" DisplayMemberPath="Name"
+                                                      SelectedValue="{Binding OffsetVariableName, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="True"
+                                                      IsEnabled="{Binding IsMotionEnabled}"
+                                                      materialDesign:HintAssist.Hint="{lang:Lang VisionCapture_LinkVariable}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang ReleaseDetail_Column_Speed}" Width="SizeToCells" MinWidth="50">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang ReleaseDetail_Column_Description}" Width="SizeToCells" MinWidth="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Left"
+                                Margin="0,12,0,0">
+                        <Button Content="{lang:Lang PickDetail_Add}"
+                                Margin="0,0,4,0"
+                                Command="{Binding AddMoveCommand}" />
+                        <Button Content="{lang:Lang PickDetail_Delete}"
+                                Margin="0,0,4,0"
+                                Command="{Binding DeleteMoveCommand}" />
+                        <Button Content="↑"
+                                Margin="0,0,4,0"
+                                Command="{Binding MoveUpCommand}" />
+                        <Button Content="↓"
+                                Margin="0,0,4,0"
+                                Command="{Binding MoveDownCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,16,0,0">
+                <Button Content="{lang:Lang Close}"
+                        Command="{Binding CloseCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0" />
+                <Button Content="{lang:Lang Save}"
+                        Command="{Binding SaveCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

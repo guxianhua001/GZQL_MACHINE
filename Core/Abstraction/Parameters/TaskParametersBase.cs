@@ -118,7 +118,7 @@ namespace Core.Abstraction
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            LastModified = DateTime.UtcNow;
+            //LastModified = DateTime.UtcNow;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 

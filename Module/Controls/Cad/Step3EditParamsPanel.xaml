@@ -1,0 +1,403 @@
+<UserControl x:Class="Module.Controls.Step3EditParamsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" 
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:conv="clr-namespace:Module.Converters">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <conv:BooleanToVisibilityConverter x:Key="BoolToVisConv"/>
+            <Style x:Key="ParamLabel" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Foreground" Value="#FF607D8B"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+    <StackPanel Margin="12">
+        <!-- 标题 -->
+        <TextBlock Text="{lang:Lang Step3_Title}" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
+        <TextBlock Text="{lang:Lang Step3_Description}" FontSize="11" Foreground="#616161" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+        <!-- 参数模式切换 -->
+        <materialDesign:Card Padding="10" Margin="0,0,0,8">
+            <DockPanel>
+                <Border DockPanel.Dock="Left" Width="4" Background="#1565C0" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang Step3_Section_DispenseMode}" FontWeight="Bold" FontSize="12"
+                               Foreground="#1565C0" Margin="0,0,0,6"/>
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="{lang:Lang Step3_Radio_ContinuousInterpolation}"
+                                     IsChecked="{Binding IsContinuousInterpolationMode}"
+                                     GroupName="DispenseMode" Margin="0,0,16,0"
+                                     FontSize="12" Foreground="#212121"/>
+                        <RadioButton Content="{lang:Lang Step3_Radio_SinglePoint}"
+                                     IsChecked="{Binding IsSinglePointMode}"
+                                     GroupName="DispenseMode"
+                                     FontSize="12" Foreground="#212121"/>
+                    </StackPanel>
+                    <TextBlock Text="{lang:Lang Step3_Desc_ModeSwitch}"
+                               FontSize="10" Foreground="#757575" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </materialDesign:Card>
+
+        <!-- 批量操作工具栏 -->
+        <materialDesign:Card Padding="8" Margin="0,0,0,8">
+            <WrapPanel>
+                <Button Content="{lang:Lang Step3_Btn_SelectAll}" Command="{Binding SelectAllSegmentsCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0"/>
+                <Button Content="{lang:Lang Step3_Btn_InvertSelection}" Command="{Binding InvertSelectionCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0"/>
+                <Button Content="{lang:Lang Step3_Btn_BatchSetSpeed}" Command="{Binding BatchSetSpeedCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0"/>
+                <Button Content="{lang:Lang Step3_Btn_BatchSetAll}" Command="{Binding BatchSetAllCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0"/>
+                <Button Content="{lang:Lang Step3_Btn_DeleteSelected}" Command="{Binding DeleteSelectedSegmentsCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Foreground="#D32F2F"/>
+            </WrapPanel>
+        </materialDesign:Card>
+
+        <!-- ROI 工具栏 -->
+        <materialDesign:Card Padding="8" Margin="0,0,0,8" Background="#FFF8E1">
+            <WrapPanel>
+                <TextBlock Text="{lang:Lang Step3_Label_RoiTools}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Medium"/>
+                <ToggleButton Content="{lang:Lang Step3_ToggleBtn_LineSegment}" IsChecked="{Binding IsLineRoiActive}"
+                              Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="62"/>
+                <ToggleButton Content="{lang:Lang Step3_ToggleBtn_Polyline}" IsChecked="{Binding IsPolylineRoiActive}"
+                              Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="62"/>
+                <ToggleButton Content="{lang:Lang Step3_ToggleBtn_Arc}" IsChecked="{Binding IsArcRoiActive}"
+                              Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="62"/>
+                <Button Content="{lang:Lang Step3_Btn_ConfirmRoi}" Command="{Binding ConfirmRoiCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3" Margin="8,0,4,0"/>
+                <Button Content="{lang:Lang Step3_Btn_CancelRoi}" Command="{Binding CancelRoiCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3"/>
+            </WrapPanel>
+        </materialDesign:Card>
+
+        <!-- 轨迹段 DataGrid（启用虚拟化防止大量数据卡死UI，支持多选） -->
+        <DataGrid ItemsSource="{Binding Segments}"
+                  SelectedItem="{Binding SelectedSegment}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserSortColumns="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeRows="False"
+                  IsReadOnly="True"
+                  SelectionMode="Extended"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  MaxHeight="260" MinHeight="120"
+                  Margin="0,0,0,6"
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_ID}" Binding="{Binding SegmentId}" Width="90"/>
+                <DataGridCheckBoxColumn Header="{lang:Lang Step3_Header_Enabled}" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" Width="50" IsReadOnly="False"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_Type}" Binding="{Binding EntityType}" Width="55"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_Layer}" Binding="{Binding LayerName}" Width="70"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_Speed}" Binding="{Binding MoveSpeed, StringFormat=F1}" Width="70"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_GlueAmount}" Binding="{Binding DispenseAmount, StringFormat=F2}" Width="55"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_Length}" Binding="{Binding Length, StringFormat=F2}" Width="65"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_TeachHeight}" Binding="{Binding TeachHeight, StringFormat=F2}" Width="65"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_Compensation}" Binding="{Binding HeightCompensation, StringFormat=F2}" Width="50"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_GlueTriggerOffset}" Binding="{Binding GlueTriggerOffsetMm, StringFormat=F1}" Width="60"/>
+                <DataGridTextColumn Header="{lang:Lang Step3_Header_PointCount}" Binding="{Binding SamplePointCount}" Width="45"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- 选中段参数编辑区（连续插补模式 - 三列彩色分组） -->
+        <materialDesign:Card Padding="10" Visibility="{Binding ShowContinuousInterpolationParams, Converter={StaticResource BoolToVisConv}, FallbackValue=Collapsed}">
+            <StackPanel>
+                <TextBlock Text="{lang:Lang Step3_Section_SelectedParams}" FontWeight="Bold" FontSize="12" Margin="0,0,0,6"/>
+                <DockPanel Margin="0,0,0,6">
+                    <Button DockPanel.Dock="Right" Content="{lang:Lang Step3_Btn_Apply}" Command="{Binding ApplySegmentSplitCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2" FontSize="11" Margin="4,0,0,0"/>
+                    <TextBlock Text="{lang:Lang Step3_Label_PointCount}" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="11"/>
+                    <TextBox Text="{Binding SegmentSplitCount, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="50" VerticalAlignment="Center" FontSize="11" Margin="0,0,4,0"/>
+                    <TextBlock Text="{lang:Lang Step3_Desc_SetPointCount}" 
+                               VerticalAlignment="Center" FontSize="10" Foreground="#9E9E9E"/>
+                </DockPanel>
+                <!-- 三列彩色参数分组 -->
+                <Grid Margin="0,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 第一组：运动参数（蓝色） -->
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#1565C0"
+                                   Text="{lang:Lang Step3_Group_MotionParams}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_JumpSpeed}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.JumpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_SafeHeight}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.SafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_ApproachHeight}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.ApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_DecelFactor}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.CornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_InterpolationSpeed}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                    <!-- 第二组：出胶控制（琥珀色） -->
+                    <StackPanel Grid.Column="2" Margin="12,0,12,0">
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#F57C00"
+                                   Text="{lang:Lang Step3_Group_DispenseControl}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_GlueTriggerOffset}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.GlueTriggerOffsetMm, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_PreDelay}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.PreDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_PostDelay}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SelectedSegment.PostDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Grid.Column="3" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                        <!-- 第三组：高度参数（青色） -->
+                        <StackPanel Grid.Column="4" Margin="12,0,0,0">
+                            <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#00838F"
+                                               Text="{lang:Lang Step3_Group_HeightParams}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="70"/>
+                                    <!-- 防文字被截断 -->
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="30"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- 给按钮加独立行 -->
+                                </Grid.RowDefinitions>
+
+                                <!-- 示教高度 -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}"
+                                                   Text="{lang:Lang Step3_Label_TeachHeight}" Margin="0,4,8,0"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                Text="{Binding SelectedSegment.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
+                                                Padding="4,2" FontSize="11" MinHeight="24"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm" Margin="4,4,0,0"/>
+
+                                <!-- 高度补偿 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}"
+                                                   Text="{lang:Lang Step3_Label_HeightCompensation}" Margin="0,4,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                Text="{Binding SelectedSegment.HeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
+                                                Padding="4,2" FontSize="11" MinHeight="24"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm" Margin="4,4,0,0"/>
+
+                                <!-- 有效高度（只读，不会覆盖） -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}"
+                                                   Text="{lang:Lang Step3_Label_EffectiveHeight}" Margin="0,4,8,0" Foreground="#757575"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1"
+                                                   Text="{Binding SelectedSegment.EffectiveZHeight, StringFormat=F3}"
+                                                   VerticalAlignment="Center" Margin="0,4,0,0"
+                                                   Foreground="#424242" FontWeight="Medium" FontSize="11"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm" Foreground="#757575" Margin="4,4,0,0"/>
+
+                                <!-- 提取CAD Z高度按钮 -->
+                                <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                            Content="{lang:Lang Step3_Btn_ExtractCADZ}"
+                                            Command="{Binding ExtractCADZValuesCommand}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="6,3" FontSize="10"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,6,0,0">
+                                    <Button.ContentTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ArrowDownBold" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </Button.ContentTemplate>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+
+                <!-- 采样点位列表 -->
+                <DockPanel Margin="0,8,0,0">
+                    <Button DockPanel.Dock="Right" Content="{lang:Lang Step3_Btn_DeletePoint}" Command="{Binding DeleteSelectedPointCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3" Foreground="#D32F2F"
+                            VerticalAlignment="Top" Margin="4,0,0,0"/>
+                    <DataGrid ItemsSource="{Binding SelectedSegmentPoints}"
+                              SelectedIndex="{Binding SelectedPointIndex}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              MaxHeight="150" MinHeight="60"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="{lang:Lang Step3_Header_Index}" Width="45" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Center" Loaded="OnPointNumberLoaded"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_X}" Binding="{Binding X, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_Y}" Binding="{Binding Y, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_Z}" Binding="{Binding Z, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MX}" Binding="{Binding MachineX, StringFormat=F2}" Width="50"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MY}" Binding="{Binding MachineY, StringFormat=F2}" Width="50"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MZ}" Binding="{Binding MachineZ, StringFormat=F2}" Width="50"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- 单点模式全局工艺参数面板（三列彩色分组，与DotPointEditorView一致） -->
+        <materialDesign:Card Padding="10" Margin="0,0,0,8"
+                              Visibility="{Binding IsSinglePointMode, Converter={StaticResource BoolToVisConv}, FallbackValue=Collapsed}">
+            <StackPanel>
+                <TextBlock Text="{lang:Lang Step3_Section_SinglePointParams}" FontWeight="Bold" FontSize="12" Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 第一组：运动参数（蓝色） -->
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#1565C0"
+                                   Text="{lang:Lang Step3_Group_MotionParams}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_JumpSpeed}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_SafeHeight}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.SafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_ApproachHeight}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.ApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_DecelFactor}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.CornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                    <!-- 第二组：出胶控制（琥珀色） -->
+                    <StackPanel Grid.Column="2" Margin="12,0,12,0">
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#F57C00"
+                                   Text="{lang:Lang Step3_Group_DispenseControl}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Foreground="#F57C00" FontWeight="Medium" Text="{lang:Lang Step3_Label_DispenseTime}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.DispenseTime, StringFormat=F0, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Foreground="#F57C00" Text="ms"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Foreground="#F57C00" FontWeight="Medium" Text="{lang:Lang Step3_Label_GlueTriggerOffset}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.DotGlueTriggerOffsetMm, StringFormat=F2, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Foreground="#F57C00" Text="mm"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_PreDispenseDelay}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.PreDispenseDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_PostDelay}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.PostDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Grid.Column="3" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                    <!-- 第三组：阀控参数（青色） -->
+                    <StackPanel Grid.Column="4" Margin="12,0,0,0">
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#00838F"
+                                   Text="{lang:Lang Step3_Group_ValveControl}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_DispensingPressure}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.DispensingPressure, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MPa"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_SuckBackTime}" Margin="0,2,8,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.SuckBackTime, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </materialDesign:Card>
+    </StackPanel>
+    </ScrollViewer>
+</UserControl>

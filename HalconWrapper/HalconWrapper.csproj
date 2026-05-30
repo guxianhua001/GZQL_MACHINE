@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 项目基本属性 -->
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <!-- 启用 WPF 支持 -->
+    <UseWPF>true</UseWPF>
+    <!-- 启用 WinForms 支持（用于 UserControl） -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>HalconWrapper</RootNamespace>
+    <AssemblyName>HalconWrapper</AssemblyName>
+    <OutputType>Library</OutputType>
+    <!-- 允许使用 BinaryFormatter（遗留代码兼容性） -->
+    <SuppressWarningsWhenUsingBinaryFormatter>true</SuppressWarningsWhenUsingBinaryFormatter>
+    <!-- 禁用 WinForms Designer 序列化警告（遗留 UserControl 兼容性） -->
+    <NoWarn>$(NoWarn);WFO1000;SYSLIB0011</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="halcondotnet">
+      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 引用 halcondotnet.dll（指向 MainApp 输出目录） -->
+
+</Project>

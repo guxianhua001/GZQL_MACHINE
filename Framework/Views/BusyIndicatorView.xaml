@@ -1,10 +1,11 @@
-﻿<UserControl x:Class="Framework.Views.BusyIndicatorView"
+<UserControl x:Class="Framework.Views.BusyIndicatorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
              d:DesignHeight="150"
@@ -55,7 +56,7 @@
                              Foreground="{DynamicResource PrimaryHueMidBrush}" />
 
                 <!-- 提示文本 -->
-                <TextBlock Text="请稍候，该操作可能需要一些时间..."
+                <TextBlock Text="{lang:Lang BusyIndicator_PleaseWait}"
                            HorizontalAlignment="Center"
                            FontSize="14"
                            Foreground="{DynamicResource MaterialDesignBodyLight}" />

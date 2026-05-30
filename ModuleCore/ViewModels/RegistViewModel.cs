@@ -1,6 +1,5 @@
-﻿using Interfaces.Services;
+using Core.Services;
 using ModuleCore.Common;
-using ModuleCore.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 using Prism.Services.Dialogs;

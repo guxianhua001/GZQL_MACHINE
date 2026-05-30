@@ -1,0 +1,23 @@
+- [x] AxisStateChangedEvent.cs 已创建且包含完整的轴状态信息
+- [x] IMotionService 已扩展 IObservable<AxisStateChangedEvent> 接口
+- [x] MotionService 实现正确发布状态变更事件（非定时器轮询）
+- [x] SafeJogBehavior 继承 Behavior<Button> 且四重停止机制完整（MouseUp + LostCapture + LostFocus + Deactivated）
+- [x] SafeJogBehavior.IsJogging 属性可绑定到 LED Ellipse
+- [x] Jog 按下时 LED 变绿，松开时变灰（使用 BoolToJogLedBrushConverter）
+- [x] 快速按住→移开→松开测试通过：轴立即停止无残留运动（四重保障机制）
+- [x] SingleAxisViewModel 使用事件驱动（非 DispatcherTimer）
+- [x] SingleAxisViewModel 使用 SemaphoreSlim 防止重入
+- [x] SingleAxisViewModel 所有属性正确暴露（AxisId、Name、Position、Speed、StepSize、IsJogging、状态指示灯、LocalizedHomeStatus）
+- [x] SingleAxisViewModel 所有命令可执行（MovePositive/Negative、Home、Stop、ClearPosition、ClearAlarm、ServoOn/Off）
+- [x] SingleAxisControlView 包含所有必需控件（按 spec 表格）
+- [x] Jog-/Jog+ 按钮图标根据 axisDirection 动态显示（X→左右, Y/Z→上下, R→旋转）
+- [x] 状态指示灯 6 个 Ellipse 正确显示 ON/MEL/ORG/PEL/ALM/ASTP
+- [x] StationAxisView 正确展示工站内所有轴的 SingleAxisControlView
+- [x] AxisControlPanelView 使用 MaterialDesignNavigationRailTabControl 且 TabStripPlacement=Right
+- [x] TabItem Header 包含 PackIcon 图标和工站名称
+- [x] 全局紧急停止按钮可见且功能正常（红色醒目样式）
+- [x] MainWindow 右侧工具栏显示轴控制入口按钮（60px 宽度）
+- [x] 点击后面板以 Drawer 形式展开/收起（遮罩层+ToggleButton绑定）
+- [x] 代码位于 MotionControl 项目内，无倒置依赖
+- [x] Module/JogButtonHelper.cs 已删除
+- [x] Module/WorkStation/Axes/ 旧文件已清理或标记废弃

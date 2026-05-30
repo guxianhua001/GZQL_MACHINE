@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0-windows7.0</TargetFramework>
     <UseWPF>true</UseWPF>
@@ -13,44 +13,24 @@
     <PackageReference Include="CommonServiceLocator" Version="2.0.7" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="DotNetCore.Natasha.CSharp.All" Version="3.6.0" />
+    <PackageReference Include="EPPlus" Version="5.8.8" />
     <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
     <PackageReference Include="HandyControl" Version="3.5.1" />
     <PackageReference Include="LiveCharts.Wpf.Core" Version="0.9.8" />
-    <PackageReference Include="MaterialDesignColors" Version="5.2.1" />
-    <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
+    <PackageReference Include="MaterialDesignColors" Version="5.3.2" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="OpenCvSharp4.Windows" Version="4.5.3.20210817" />
     <PackageReference Include="OxyPlot.Core" Version="2.2.0" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
     <PackageReference Include="Prism.Wpf" Version="8.1.97" />
-    <PackageReference Include="SkiaSharp" Version="3.119.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.NanoServer" Version="3.119.0" />
     <PackageReference Include="System.IO.Ports" Version="9.0.7" />
     <PackageReference Include="ZXing.Net" Version="0.16.6" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ModuleCore\ModuleCore.csproj" />
-    <ProjectReference Include="..\MvvmTextEditor\MvvmTextEditor.csproj" />
-    <ProjectReference Include="..\RecipeManagement\Recipe.csproj" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="Basler.Pylon">
       <HintPath>Common\Basler.Pylon.dll</HintPath>
-    </Reference>
-    <Reference Include="Core">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Framework">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Framework.dll</HintPath>
-    </Reference>
-    <Reference Include="HSMS">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\HSMS.dll</HintPath>
-    </Reference>
-    <Reference Include="Interfaces">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Interfaces.dll</HintPath>
-    </Reference>
-    <Reference Include="Language">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Language.dll</HintPath>
     </Reference>
     <Reference Include="MvCameraControl.Net">
       <HintPath>Common\MvCameraControl.Net.dll</HintPath>
@@ -58,20 +38,12 @@
     <Reference Include="NLog">
       <HintPath>..\MainApp\NLog.dll</HintPath>
     </Reference>
-    <Reference Include="SmarterMotion">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\SmarterMotion.dll</HintPath>
+    <Reference Include="halcondotnet">
+      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
     </Reference>
-    <Reference Include="Stations">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Stations.dll</HintPath>
-    </Reference>
+
   </ItemGroup>
   <ItemGroup>
-    <None Update="Common\barcode\sr.caffemodel">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Common\barcode\sr.prototxt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Common\BaslerRuntimeX64\BaslerCSC_v6_1.ax">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -633,28 +605,26 @@
     <None Update="Common\opencv452\opencv_xphoto452d.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Common\wechat_qrcode\detect.caffemodel">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Common\wechat_qrcode\detect.prototxt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Common\wechat_qrcode\sr.caffemodel">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Common\wechat_qrcode\sr.prototxt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Scripts\new.script">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Operators\Morphology\MorphologyView.xaml">
-      <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-    </Page>
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.203" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" />
+    <Folder Include="Controls\LiveCharts\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AlarmModule\AlarmModule.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Framework\Framework.csproj" />
+    <ProjectReference Include="..\HalconWrapper\HalconWrapper.csproj" />
+    <ProjectReference Include="..\LanguageModule\Language.csproj" />
+    <ProjectReference Include="..\ModuleCore\ModuleCore.csproj" />
+    <ProjectReference Include="..\MotionControl\MotionControl.csproj" />
+    <ProjectReference Include="..\StationTasks\StationTasks.csproj" />
+    <ProjectReference Include="..\RecipeManagement\Recipe.csproj" />
+    <ProjectReference Include="..\TCPIPModule\TCPIPModule.csproj" />
   </ItemGroup>
 </Project>

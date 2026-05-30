@@ -9,15 +9,31 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+    <PackageReference Include="NLog" Version="4.7.12" />
     <PackageReference Include="Prism.Wpf" Version="8.1.97" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HalconWrapper\HalconWrapper.csproj" />
+    
+    <!-- 
+      LogGenerator 暂时禁用（环境调试中）
+      待 VS 中测试成功后重新启用
+      <ProjectReference Include="..\LogGenerator\LogGenerator.csproj"
+                        OutputItemType="Analyzer"
+                        ReferenceOutputAssembly="false"
+                        PrivateAssets="all" />
+    -->
+    
+    <Reference Include="halcondotnet">
+      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Plugins\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="NLog">
       <HintPath>obj\NLog.dll</HintPath>

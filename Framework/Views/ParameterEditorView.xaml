@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Framework.Views.ParameterEditorView"
+<UserControl x:Class="Framework.Views.ParameterEditorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,11 +10,11 @@
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
              prism:ViewModelLocator.AutoWireViewModel="True"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              xmlns:converters="clr-namespace:Framework.Converters"
              xmlns:interactivity="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d"
-             Height="650"
-             Width="800"
+             MinWidth="800" MaxHeight="800"
              Background="{DynamicResource MaterialDesignPaper}"
              TextElement.Foreground="{DynamicResource MaterialDesignBody}">
     <UserControl.Resources>
@@ -118,7 +118,7 @@
                             <TextBlock Text="{Binding DisplayString}"
                                        VerticalAlignment="Center"
                                        Visibility="{Binding IsEditable, Converter={StaticResource BooleanToVisibilityInverseConverter}}"
-                                       ToolTip="只读模式不能编辑" />
+                                       ToolTip="{lang:Lang ParamEditor_ReadOnlyMode}" />
 
                             <!-- 编辑模式显示 -->
                             <Grid Visibility="{Binding IsEditable, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -134,7 +134,7 @@
                                         Maximum="{Binding MaxValue}"
                                         Grid.Row="0"
                                         Margin="5,0,5,5"
-                                        ToolTip="拖动滑块调整值"
+                                        ToolTip="{lang:Lang ParamEditor_DragSlider}"
                                         IsSnapToTickEnabled="True">
                                     <Slider.Style>
                                         <Style TargetType="Slider"
@@ -214,7 +214,7 @@
                                     BorderBrush="{DynamicResource MaterialDesignDivider}"
                                     BorderThickness="1"
                                     Margin="0,0,10,0" />
-                            <Button Content="选择颜色"
+                            <Button Content="{lang:Lang ParamEditor_SelectColor}"
                                     Command="{x:Static helpers:ColorPickerHelper.SelectColorCommand}"
                                     CommandParameter="{Binding}"
                                     Style="{StaticResource MaterialDesignOutlinedButton}" />
@@ -264,7 +264,7 @@
                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                      Width="200"
                      Margin="0,0,10,0"
-                     materialDesign:HintAssist.Hint="搜索参数..."
+                     materialDesign:HintAssist.Hint="{lang:Lang ParamEditor_SearchParam}"
                      materialDesign:HintAssist.IsFloating="True"
                      materialDesign:TextFieldAssist.HasClearButton="True">
                 <TextBox.InputBindings>
@@ -272,7 +272,7 @@
                                 Key="Escape" />
                 </TextBox.InputBindings>
             </TextBox>
-            <Button ToolTip="重置搜索"
+            <Button ToolTip="{lang:Lang ParamEditor_ResetSearch}"
                     Command="{Binding ClearSearchCommand}"
                     Style="{StaticResource MaterialDesignIconButton}"
                     Margin="0">
@@ -321,26 +321,27 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+        
         <!-- 按钮区域 -->
         <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,20,0,0">
-            <Button Content="保存"
+            <Button Content="{lang:Lang Save}"
                     Command="{Binding ApplyCommand}"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Width="120"
                     Height="40"
                     Margin="5,0" />
 
-            <Button Content="取消"
+            <Button Content="{lang:Lang Cancel}"
                     Command="{Binding CancelCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Width="120"
                     Height="40"
                     Margin="5,0" />
 
-            <Button Content="恢复默认"
+            <Button Content="{lang:Lang ResetParameters}"
                     Command="{Binding ResetCommand}"
                     Style="{StaticResource MaterialDesignFlatButton}"
                     Width="120"

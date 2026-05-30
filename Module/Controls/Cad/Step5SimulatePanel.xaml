@@ -1,0 +1,72 @@
+<UserControl x:Class="Module.Controls.Step5SimulatePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core">
+    <StackPanel Margin="12">
+        <!-- 标题 -->
+        <TextBlock Text="{lang:Lang Step5_Title}" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
+        <TextBlock Text="{lang:Lang Step5_Description}" FontSize="11" Foreground="#616161" Margin="0,0,0,12" TextWrapping="Wrap"/>
+
+        <!-- 执行模式选择 -->
+        <materialDesign:Card Padding="12" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="{lang:Lang Step5_Section_ExecMode}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <RadioButton Content="{lang:Lang Step5_Radio_SimMode}" IsChecked="{Binding IsSimMode}" GroupName="ExecMode" Margin="0,2"/>
+                <RadioButton Content="{lang:Lang Step5_Radio_RealDryRun}" IsChecked="{Binding IsRealDryRunMode}" GroupName="ExecMode" Margin="0,2"/>
+                <CheckBox Content="{lang:Lang Step5_CheckBox_DescendToWorkHeight}" IsChecked="{Binding DescendInDryRun}" Margin="16,4,0,0"
+                          ToolTip="{lang:Lang Step5_ToolTip_DescendToWorkHeight}"/>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- 执行按钮 -->
+        <Button Content="{lang:Lang Step5_Btn_StartExec}" Command="{Binding ExecuteRunCommand}"
+                Style="{StaticResource MaterialDesignRaisedButton}"
+                HorizontalAlignment="Stretch" Padding="0,5"
+                FontSize="15" FontWeight="Bold"
+                IsEnabled="{Binding CanExecute, FallbackValue=False}"
+                Margin="0,0,0,10"/>
+
+        <!-- 进度区域 -->
+        <materialDesign:Card Padding="12" Margin="0,0,0,8">
+            <StackPanel>
+                <ProgressBar Value="{Binding SimProgress, Mode=OneWay}" Maximum="100"
+                             Minimum="0" Height="20" Margin="0,0,0,8"
+                             Background="#E0E0E0">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar" BasedOn="{StaticResource MaterialDesignCircularProgressBar}">
+                            <Setter Property="Foreground" Value="#4CAF50"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSimulating}" Value="True">
+                                    <Setter Property="Foreground" Value="#2196F3"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
+                <TextBlock>
+                    <Run Text="Progress: "/><Run Text="{Binding SimProgress, StringFormat='{}{0}', FallbackValue=0}"/><Run Text="%"/>
+                </TextBlock>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- 状态文本 -->
+        <Border Background="#E8F5E9" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+            <TextBlock Text="{Binding SimStatusText}" FontSize="12" Foreground="#2E7D32"/>
+        </Border>
+
+        <!-- 控制按钮 -->
+        <Grid Margin="0,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="{lang:Lang Step5_Btn_Pause}" Command="{Binding PauseSimCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,4,0"
+                    IsEnabled="{Binding IsSimulating, FallbackValue=False}"/>
+            <Button Grid.Column="1" Content="{lang:Lang Step5_Btn_Stop}" Command="{Binding StopSimCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}" Margin="4,0,0,0"
+                    Foreground="#D32F2F"/>
+        </Grid>
+    </StackPanel>
+</UserControl>

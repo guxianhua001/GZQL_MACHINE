@@ -1,0 +1,18 @@
+- [x] AlarmModule 项目创建完成，包含正确的 NuGet 引用（Prism.DryIoc, EF Core SQLite, ClosedXML）
+- [x] AlarmRecord 实体包含所有12+必填字段（Id, AlarmTime, AlarmLevel, AlarmCode, AlarmSource, AlarmType, Description, TriggerValue, ThresholdValue, Status, ConfirmedBy, ConfirmedTime, ResetBy, ResetTime, ProcessingNotes, SuppressedUntil）
+- [x] AlarmLevel 枚举包含4级（Emergency=1, Serious=2, General=3, Prompt=4）
+- [x] AlarmType 枚举包含4类（HardwareFault, ParameterOutOfLimit, CommunicationError, ProcessError）
+- [x] AlarmStatus 枚举包含4状态（Unconfirmed, Confirmed, Reset, Eliminated）
+- [x] AlarmDbContext 使用 SQLite 提供程序，数据库文件路径 Config/alarms.db
+- [x] IAlarmService.TriggerAlarmAsync 支持单行代码触发报警
+- [x] 报警防抖机制：相同 Code+Source 在配置时间窗口内不重复触发
+- [x] 报警生命周期状态转换正确实现（Unconfirmed→Confirmed→Reset→Eliminated）
+- [x] 实时报警弹窗通知：Level 1/2 模态弹窗，Level 3/4 Toast 通知
+- [x] 报警列表 UI 颜色编码（红/橙/黄/蓝对应 Level 1-4）
+- [x] 批量操作：确认全部、复位全部
+- [x] 多条件过滤查询（时间/等级/源/状态/类型）
+- [x] Excel 导出功能正常
+- [x] 阈值配置界面可持久化到数据库
+- [x] 旧报警代码完全移除（Interfaces/Alarm/, AlarmService.cs, Migrations/, AlarmReportingView 等）
+- [x] App.xaml.cs 中移除旧 DI 注册，添加新 AlarmModule 注册
+- [x] 全量编译通过无错误

@@ -19,7 +19,7 @@ namespace Recipe.Interfaces
         // 配方操作
         Task<Recipe.Models.RecipeInfo> LoadRecipeAsync(string poolId, string recipeId);
         Task SaveRecipeAsync(string poolId, Recipe.Models.RecipeInfo recipe);
-        Task<bool> DeleteRecipeAsync(string poolName, string poolId, string recipeId);
+        Task<bool> DeleteRecipeAsync(string poolName, string recipeId);
         Task<IEnumerable<Recipe.Models.RecipeInfo>> SearchRecipesAsync(string poolId, string searchTerm);
 
         // 配方分类方法

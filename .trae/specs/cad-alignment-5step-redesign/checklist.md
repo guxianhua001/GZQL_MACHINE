@@ -1,0 +1,23 @@
+# Checklist
+
+- [ ] CorrespondencePoint 模型新增 RotatedX/Y/Z 三个属性（BindableBase）
+- [ ] AlignmentStepInfo.ShowConnector 改为 Number < 5
+- [ ] CadAlignmentViewModel 步骤导航扩展为 5 步（InitializeSteps/CurrentStepTitle/CanGoNext/UpdateStepStates）
+- [ ] 旧属性已清理（CenterX/Y/Z、Corrected*、Input/Output、Deviation、CalibrationStatus 等）
+- [ ] 旧命令已清理（EstimateRotationCenter/ComputeCalibration/CalibrateCoordinateSystem/ComputeDeviation）
+- [ ] 新增 FitPoint 集合用于四点拟合输入
+- [ ] FitRotationCenter() 最小二乘圆拟合算法实现正确
+- [ ] ComputeGlobalOffset() ΔX/ΔY 计算正确
+- [ ] ComputeCadRotationAngle() atan2 向量方向角 + θ = α_base - α_target 正确
+- [ ] ExecuteTransform() 先平移后旋转公式实现正确，支持单点和批量
+- [ ] ComputeGripperPosition() 夹爪定位公式 X_new+OffX / Y_new+OffY 正确
+- [ ] CadAlignmentView.xaml 包含 5 个 TabItem 对应 5 个步骤
+- [ ] Tab1：四点拟合 UI 完整（DataGrid + 按钮 + Mox/Moy/R 结果）
+- [ ] Tab2：全局偏移 UI 完整（P1机械/CAD 输入 + ΔX/ΔY 结果）
+- [ ] Tab3：旋转角度 UI 完整（点对选择器 + 方向角 + θ 结果）
+- [ ] Tab4：坐标变换 UI 完整（点位选择 + 中间变量 + X_new/Y_new + 批量按钮）
+- [ ] Tab5：夹爪定位 UI 完整（偏移输入 + 最终坐标 + 易错要点面板）
+- [ ] 底部状态栏 5 个进度圆点（StepDotColor1~5）绑定正确
+- [ ] StepIndicatorConverters 包含 StepDotColor4 和 StepDotColor5
+- [ ] 默认验证数据完整（6个CAD点 + 6个Actual点 + 4个拟合点 + 夹爪偏移）
+- [ ] dotnet build 通过（0 error, 0 XAML error）

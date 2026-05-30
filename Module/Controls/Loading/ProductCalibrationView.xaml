@@ -1,0 +1,212 @@
+<UserControl x:Class="Module.Views.ProductCalibrationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MinHeight="400">
+    <materialDesign:Card UniformCornerRadius="12"
+                         Padding="16"
+                         Margin="0,0,0,20">
+        <StackPanel>
+            <TextBlock Text="{lang:Lang ProductCalib_Title}"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Margin="0,0,0,16"
+                       Foreground="{DynamicResource PrimaryHueMidBrush}" />
+
+            <Border BorderBrush="{DynamicResource MaterialDesignDivider}"
+                    BorderThickness="0,0,0,1"
+                    Padding="0,0,0,8"
+                    Margin="0,0,0,8">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang ProductCalib_Fiducial1}"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               Margin="0,0,0,8" />
+
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang ProductCalib_PhotoPosition}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBox Text="{Binding Fiducial1.PhotoX, StringFormat=F2}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Dx"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial1.PhotoY, StringFormat=F2}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Dy"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial1.PhotoZ, StringFormat=F2}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Dz"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial1.PhotoRx, StringFormat=F3}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Rx"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial1.PhotoRz, StringFormat=F3}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Rz"
+                                 Margin="0,0,4,0" />
+                        <Button Content="{lang:Lang ProductCalib_Teach}"
+                                Command="{Binding Fiducial1.TeachPhotoPosCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,2"
+                                Margin="8,0,0,0" />
+                    </WrapPanel>
+
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang ProductCalib_Reference}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBox Text="{Binding Fiducial1.RefX, StringFormat=F2}"
+                                 Width="60"
+                                 materialDesign:HintAssist.Hint="X"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial1.RefY, StringFormat=F2}"
+                                 Width="60"
+                                 materialDesign:HintAssist.Hint="Y"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial1.RefAngle, StringFormat=F3}"
+                                 Width="60"
+                                 materialDesign:HintAssist.Hint="Angle"
+                                 Margin="0,0,4,0" />
+                    </WrapPanel>
+
+                    <TextBlock Text="{Binding Fiducial1.OffsetDisplay}"
+                               Margin="0,0,0,8"
+                               Foreground="Gray" />
+
+                    <WrapPanel>
+                        <Button Content="{lang:Lang ProductCalib_GoToPhoto}"
+                                Command="{Binding Fiducial1.GoToPhotoCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,2"
+                                Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang ProductCalib_Capture}"
+                                Command="{Binding Fiducial1.CaptureCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,2"
+                                Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang ProductCalib_Correct}"
+                                Command="{Binding Fiducial1.CorrectCommand}"
+                                Padding="8,2"
+                                Margin="0,0,8,0" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <Border BorderBrush="{DynamicResource MaterialDesignDivider}"
+                    BorderThickness="0,0,0,1"
+                    Padding="0,0,0,8"
+                    Margin="0,0,0,8">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang ProductCalib_Fiducial2}"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               Margin="0,0,0,8" />
+
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang ProductCalib_PhotoPosition}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBox Text="{Binding Fiducial2.PhotoX, StringFormat=F2}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Dx"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial2.PhotoY, StringFormat=F2}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Dy"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial2.PhotoZ, StringFormat=F2}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Dz"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial2.PhotoRx, StringFormat=F3}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Rx"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial2.PhotoRz, StringFormat=F3}"
+                                 Width="50"
+                                 materialDesign:HintAssist.Hint="Rz"
+                                 Margin="0,0,4,0" />
+                        <Button Content="{lang:Lang ProductCalib_Teach}"
+                                Command="{Binding Fiducial2.TeachPhotoPosCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,2"
+                                Margin="8,0,0,0" />
+                    </WrapPanel>
+
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang ProductCalib_Reference}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBox Text="{Binding Fiducial2.RefX, StringFormat=F2}"
+                                 Width="60"
+                                 materialDesign:HintAssist.Hint="X"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial2.RefY, StringFormat=F2}"
+                                 Width="60"
+                                 materialDesign:HintAssist.Hint="Y"
+                                 Margin="0,0,4,0" />
+                        <TextBox Text="{Binding Fiducial2.RefAngle, StringFormat=F3}"
+                                 Width="60"
+                                 materialDesign:HintAssist.Hint="Angle"
+                                 Margin="0,0,4,0" />
+                    </WrapPanel>
+
+                    <TextBlock Text="{Binding Fiducial2.OffsetDisplay}"
+                               Margin="0,0,0,8"
+                               Foreground="Gray" />
+
+                    <WrapPanel>
+                        <Button Content="{lang:Lang ProductCalib_GoToPhoto}"
+                                Command="{Binding Fiducial2.GoToPhotoCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,2"
+                                Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang ProductCalib_Capture}"
+                                Command="{Binding Fiducial2.CaptureCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,2"
+                                Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang ProductCalib_Correct}"
+                                Command="{Binding Fiducial2.CorrectCommand}"
+                                Padding="8,2"
+                                Margin="0,0,8,0" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <WrapPanel HorizontalAlignment="Right"
+                       Margin="0,8,0,0">
+                <Button Command="{Binding SaveCalibrationCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        ToolTip="{lang:Lang ProductCalib_SaveData}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{lang:Lang ProductCalib_SaveData}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding LoadCalibrationCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        ToolTip="{lang:Lang ProductCalib_LoadData}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{lang:Lang ProductCalib_LoadData}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Content="{lang:Lang ProductCalib_ApplyAll}"
+                        Command="{Binding ApplyAllCorrectionsCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Padding="16,6" />
+            </WrapPanel>
+        </StackPanel>
+    </materialDesign:Card>
+</UserControl>

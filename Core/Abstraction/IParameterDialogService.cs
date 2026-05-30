@@ -3,6 +3,6 @@ namespace Core.Abstraction
 {
     public interface IParameterDialogService
     {
-        Task<bool> ShowEditorDialog(string title, TaskParametersBase parameters, Action<TaskParametersBase> onSaved = null);
+        Task<bool> ShowEditorDialog(string title, TaskParametersBase parameters, Action<TaskParametersBase> onSaved = null, string stationIdentifier = null);
     }
 }

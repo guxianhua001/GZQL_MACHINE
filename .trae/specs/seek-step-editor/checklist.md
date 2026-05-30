@@ -1,0 +1,23 @@
+- [x] SeekChannelRow 数据模型包含所有必需字段（Sub, LinkedChannel, TargetForce, ForceMin, ForceMax, LinkedVariableName, Description, CurrentForce），CurrentForce 标记为 JsonIgnore
+- [x] SeekDetail 数据模型包含 ChannelRows 集合属性，支持 JSON 序列化
+- [x] ProcessStep 新增 SeekDetail 属性，标注 JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)
+- [x] IMotionService 新增 ReadAnalogChannelAsync 和 ReadAnalogChannelsAsync 方法签名
+- [x] MotionService 实现模拟量读取，通过 IDeviceService + IADValueConverter 完成 AD→物理量转换
+- [x] IADValueConverter（UniversalADValueConverter）已注册到 DI 容器为 Singleton
+- [x] IDeviceService 在 DI 中仅注册一次（无重复注册）
+- [x] SeekDetailViewModel 继承 BindableBase，实现 Step 属性和 InitializeFromStep
+- [x] SeekDetailViewModel 实现通道行添加/删除命令，Sub 自动重排
+- [x] SeekDetailViewModel 实现导入/导出命令（JSON 文件）
+- [x] SeekDetailViewModel 实现实时刷新（100ms 间隔）和停止刷新
+- [x] SeekDetailViewModel 实现全局变量绑定（下拉选择 + 链接图标显示）
+- [x] SeekDetailViewModel 实现 OnSave 回写 ProcessStep.SeekDetail
+- [x] 窗口关闭时自动停止实时刷新定时器，无资源泄漏
+- [x] SeekDetailView 采用 MaterialDesign DialogHost 弹窗模式，与现有 DetailView 风格一致
+- [x] DataGrid 表格列完整：Sub、链接通道、Target、Force(实时/颜色)、force_min、force_max、全局变量(链接图标)、Description
+- [x] Force 列根据 force_min/force_max 范围着色（范围内绿色，超限红色）
+- [x] 工具栏按钮完整：添加、删除、导入、导出、刷新实时数据、停止刷新
+- [x] 底部"确认继续"按钮功能正常
+- [x] ProcessSequenceEditorViewModel.NavigateToDetailView 包含 SEEK 路由
+- [x] SeekStepAction 实现 IProcessStepAction，执行时读取力值并同步到全局变量
+- [x] SeekStepAction 力值超限时根据 AlarmConfig 执行相应动作
+- [x] ProcessStepExecutor 中已注册 SeekStepAction

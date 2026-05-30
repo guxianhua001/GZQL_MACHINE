@@ -1,4 +1,5 @@
-﻿using Prism.Mvvm;
+using Core.Abstraction;
+using Prism.Mvvm;
 using Prism.Services.Dialogs;
 using System;
 
@@ -6,6 +7,7 @@ namespace ModuleCore.ViewModels
 {
     public class PasswordChangeViewModel : BindableBase, IDialogAware
     {
+        private readonly ILocalizationService _localizationService;
         private string _Name;
 
         public event Action<IDialogResult> RequestClose;
@@ -16,7 +18,19 @@ namespace ModuleCore.ViewModels
             set { SetProperty(ref _Name, value); }
         }
 
-        public string Title { get { return $" 正在修改用户: {Name} 的密码"; } }
+        public string Title
+        {
+            get
+            {
+                var template = _localizationService?.GetResourceOrDefault("PasswordChange_Title", "Change password for: {0}");
+                return string.Format(template ?? "Change password for: {0}", Name);
+            }
+        }
+
+        public PasswordChangeViewModel(ILocalizationService localizationService)
+        {
+            _localizationService = localizationService;
+        }
 
         public bool CanCloseDialog()
         {
@@ -35,7 +49,7 @@ namespace ModuleCore.ViewModels
         public void OnDialogOpened(IDialogParameters parameters)
         {
             Name = parameters.GetValue<string>("name");
+            RaisePropertyChanged(nameof(Title));
         }
-
     }
 }

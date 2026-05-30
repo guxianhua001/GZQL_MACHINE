@@ -1,0 +1,644 @@
+
+using AlarmModule.Interfaces;
+using AlarmModule.Models;
+using Core.Abstraction;
+using Core.Models;
+using Core.Utilities;
+using global::StationTasks.Services;
+using MotionControl.Events;
+using MotionControl.Exceptions;
+using MotionControl.Interfaces;
+using MotionControl.Models;
+using MotionControl.Services;
+using Prism.Events;
+using System.Diagnostics;
+using System.Linq;
+
+namespace StationTasks.Tasks
+{
+    /// <summary>
+    /// 基类，工艺步骤与信号交互
+    /// </summary>
+    public abstract class StationTaskBase : TaskBase, IStationMotionOperations
+    {
+        protected readonly IMotionService _motion;
+        private readonly IPositionProvider _positionProvider;
+        protected readonly IStationInteractionService _interaction;
+        private readonly ISystemStateService _systemState;
+        private readonly IStationRegistry _stationRegistry;
+        private readonly ISpeedOverrideService _speedOverride;
+        private readonly string _stationId;
+        /// <summary>
+        /// 工站标识，用于位置加载和信号交互
+        /// </summary>
+        public string StationId => _stationId;
+
+        /// <summary>
+        /// 工站标识值，用于匹配 hwcfg.xml 中 TaskConfig.Type
+        /// 子类必须返回与 hwcfg.xml 中 type 属性一致的字符串
+        /// </summary>
+        public abstract string StationIdentifierValue { get; }
+
+        /// <summary>
+        /// 缓存从硬件配置动态发现的轴ID数组
+        /// </summary>
+        private int[] _discoveredAxes;
+
+        /// <summary>
+        /// 从硬件配置中发现属于当前工站的所有轴ID
+        /// 基于 hwcfg.xml 中 AxisConfig.TaskId 和 TaskConfig.Type 的映射关系
+        /// </summary>
+        private int[] DiscoverAxes()
+        {
+            if (_discoveredAxes != null)
+                return _discoveredAxes;
+
+            var axisConfigs = Motion.GetAxisConfigurations();
+            var taskConfigs = Motion.GetTaskConfigurations();
+
+            // 通过 TaskConfig.Type 匹配当前工站的 StationIdentifierValue，找到 TaskId
+            int? myTaskId = null;
+            foreach (var tc in taskConfigs)
+            {
+                if (tc.Type == StationIdentifierValue)
+                {
+                    myTaskId = tc.TaskId;
+                    break;
+                }
+            }
+
+            if (myTaskId == null)
+            {
+                Logger.Warn($"[{TaskName}] 未在硬件配置中找到工站类型 '{StationIdentifierValue}'");
+                _discoveredAxes = Array.Empty<int>();
+                return _discoveredAxes;
+            }
+
+            _discoveredAxes = axisConfigs
+                .Where(a => a.TaskId == myTaskId.Value)
+                .OrderBy(a => a.LogicalId)
+                .Select(a => a.LogicalId)
+                .ToArray();
+
+            Logger.Info($"[{TaskName}] 从硬件配置发现 { _discoveredAxes.Length} 个轴: {string.Join(", ", _discoveredAxes.Select(id => $"{GetAxisNameById(id)}({id})"))}");
+            return _discoveredAxes;
+        }
+
+        /// <summary>
+        /// 获取当前任务管理的所有轴ID，通过硬件配置动态发现
+        /// </summary>
+        protected override int[] GetAllAxes() => DiscoverAxes();
+
+        /// <summary>
+        /// 根据轴名称解析逻辑轴ID，从当前工站的轴配置中查找
+        /// </summary>
+        protected int ResolveAxisId(string axisName)
+        {
+            foreach (var axisId in GetAllAxes())
+            {
+                var state = Motion.GetAxisState(axisId);
+                if (state != null && state.Name == axisName)
+                    return axisId;
+            }
+            Logger.Warn($"[{TaskName}] 未找到轴 '{axisName}' 的配置");
+            return -1;
+        }
+        /// <summary> 日志服务（公开给扩展方法和外部 Action 使用） </summary>
+        public ILoggerService TaskLogger => Logger;
+        /// <summary> 事件聚合器（公开给 ProcessStepExecutor 等外部类发布跨工站状态事件） </summary>
+        public new IEventAggregator Ea => base.Ea;
+        /// <summary> 工站注册表（公开给 ProcessStepExecutor 等外部类查找目标工站） </summary>
+        public IStationRegistry StationRegistry => _stationRegistry;
+        // 单步模式：每执行一步后暂停，等待 StepNext 信号才继续
+        private TaskCompletionSource<bool> _stepTcs = new TaskCompletionSource<bool>();
+        private volatile bool _singleStepMode;
+        // 记录当前正在运行的步骤名
+        public string CurrentStepName { get; private set; } = "Idle";
+
+        /// <summary> 最近一次触发报警的步骤名（供步骤编辑器标记红色行背景），任务停止时自动清空 </summary>
+        public string LastFaultStepName { get; set; }
+
+        protected StationTaskBase(
+                IMotionService motion,
+                IPositionProvider positionProvider,
+                IStationInteractionService interaction,
+                IEventAggregator ea,
+                ILoggerService logger,
+                IAlarmService alarmService,
+                ISystemStateService systemState,
+                IStationRegistry stationRegistry,
+                ISpeedOverrideService speedOverride,
+                int taskId,
+                string taskName,
+                string stationId)
+                : base(motion, ea, logger, alarmService, taskId, taskName)
+        {
+            _motion = motion;
+            _positionProvider = positionProvider;
+            _interaction = interaction;
+            _systemState = systemState;
+            _stationRegistry = stationRegistry;
+            _speedOverride = speedOverride;
+            _stationId = stationId;
+        }
+
+        /// <summary>
+        /// 任务循环入口：子类重写以实现具体工艺流程
+        /// 默认实现直接返回，不执行任何操作
+        /// </summary>
+        protected override Task ExecuteCycleAsync(CancellationToken token)
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 执行自定义序列，供外部调用者（如 ProcessSequenceService）使用
+        /// 复用 RunAsync 的状态管理和异常处理逻辑，但不进入循环
+        /// </summary>
+        public async Task RunCustomSequenceAsync(Func<CancellationToken, Task> sequence, CancellationToken token)
+        {
+            // 防止重复启动：任务已在运行时拒绝新序列
+            if (State == TaskState.Running)
+                throw new InvalidOperationException($"任务 [{TaskName}] 正在运行中，无法启动自定义序列");
+
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            State = TaskState.Running;
+            PublishTaskStatusChanged("Running", State);
+            Logger.Info($"[{TaskName}] 自定义序列启动");
+
+            try
+            {
+                await sequence(_cts.Token);
+                State = TaskState.Idle;
+                PublishTaskStatusChanged("Completed", State);
+                Logger.Info($"[{TaskName}] 自定义序列完成");
+            }
+            catch (OperationCanceledException)
+            {
+                State = TaskState.Stopped;
+                PublishTaskStatusChanged("Stopped", State);
+                Logger.Info($"[{TaskName}] 自定义序列已取消");
+            }
+            catch (StepFailureException sfe)
+            {
+                // 致命步骤故障：急停本任务并通知全局急停
+                Logger.Error($"致命故障，任务 [{TaskName}] 在 [{sfe.StepName}] 步骤崩溃。内部异常: {sfe.InnerException?.Message}");
+                State = TaskState.Error;
+                await EmergencyStopAsync();
+                Ea.GetEvent<EmergencyStopAllEvent>().Publish();
+            }
+            catch (Exception ex)
+            {
+                // 未知严重错误：急停本任务并通知全局急停
+                Logger.Error($"[{TaskName}] 自定义序列执行错误: {ex.Message}");
+                State = TaskState.Error;
+                await EmergencyStopAsync();
+                Ea.GetEvent<EmergencyStopAllEvent>().Publish();
+            }
+            finally
+            {
+                _cts?.Dispose();
+                _cts = null;
+            }
+        }
+
+        // ---------- 位置加载 ----------
+        protected async Task PreloadPositionsAsync()
+        {
+            await _positionProvider.PreloadAsync();
+        }
+
+        protected async Task<Dictionary<string, double>> LoadPositionsAsync()
+        {
+            return await _positionProvider.GetPositionsAsync(_stationId);
+        }
+
+        /// <summary> 根据位置名和轴名获取指定位置值 </summary>
+        protected async Task<double> GetPositionAsync(string positionName, string axisName)
+        {
+            var all = await LoadPositionsAsync();
+            var key = $"{positionName}.{axisName}";
+            return all.TryGetValue(key, out var v) ? v : 0;
+        }
+
+        /// <summary>
+        /// 公开的位置值查询方法，供 GotoStepAction 在格式化步骤标签时获取目标坐标
+        /// </summary>
+        public async Task<double> GetPositionValueAsync(string positionName, string axisName)
+        {
+            return await GetPositionAsync(positionName, axisName);
+        }
+
+        /// <summary>
+        /// 公开的回零执行方法，供 GotoStepAction 在 HOME 步骤时调用
+        /// 通过 RunStep 包装，享受暂停/急停/单步/可恢复异常保护
+        /// </summary>
+        public async Task ExecuteHomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20)
+        {
+            await RunStep($"Home Axis {axisId}", async () =>
+            {
+                await Motion.HomeAsync(axisId, mode, minVel, maxVel, CurrentToken);
+            }, publishStatus: false);
+        }
+
+        /// <summary>
+        /// 查询指定轴是否已完成回零
+        /// </summary>
+        /// <param name="axisId">逻辑轴ID</param>
+        /// <returns>true=已回零，false=未回零或异常</returns>
+        public async Task<bool> IsAxisHomedAsync(int axisId)
+        {
+            try
+            {
+                int result = await Motion.CheckHomeDoneAsync(axisId);
+                return result == 1;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        // ---------- 单步控制 ----------
+        public void EnableSingleStep() => _singleStepMode = true;
+        public void DisableSingleStep()
+        {
+            _singleStepMode = false;
+            _stepTcs.TrySetResult(true);
+        }
+        public void StepNext()
+        {
+            if (_singleStepMode)
+            {
+                _stepTcs.TrySetResult(true);
+            }
+        }
+
+        /// <summary> 在每一步操作后调用，若处于单步模式则阻塞直到 StepNext </summary>
+        protected async Task WaitForStepAsync(CancellationToken token)
+        {
+            if (!_singleStepMode) return;
+
+            _stepTcs = new TaskCompletionSource<bool>();
+            Logger.Info($"[{TaskName}] waiting for next step...");
+
+            try
+            {
+                var tcsTask = _stepTcs.Task;
+                if (await Task.WhenAny(tcsTask, Task.Delay(Timeout.Infinite, token)) == tcsTask)
+                {
+                    return;
+                }
+            }
+            catch (OperationCanceledException) { }
+        }
+
+        // ---------- 步骤执行器 ----------
+
+        /// <summary>
+        /// 根据步骤名称自动生成可读的报警代码
+        /// stepName 格式为 "[1] GOTO → Home"，提取步骤类型生成如 "GOTO_FAULT"
+        /// </summary>
+        private static string GenerateAlarmCode(string stepName)
+        {
+            if (string.IsNullOrEmpty(stepName))
+                return "STEP_FAULT";
+
+            // stepName 格式: "[1] GOTO → Home" 或 "[3] SEEK"
+            // 提取 ] 后面的步骤类型关键字
+            int bracketEnd = stepName.IndexOf(']');
+            if (bracketEnd < 0 || bracketEnd + 1 >= stepName.Length)
+                return "STEP_FAULT";
+
+            string afterBracket = stepName.Substring(bracketEnd + 1).Trim();
+            // 取第一个空格前的部分作为步骤类型
+            int spaceIdx = afterBracket.IndexOf(' ');
+            string stepType = spaceIdx > 0 ? afterBracket.Substring(0, spaceIdx) : afterBracket;
+
+            return $"{stepType}_FAULT";
+        }
+
+        /// <summary>
+        /// 步骤执行包装器，提供暂停/急停/单步/可恢复异常保护
+        /// alarmConfig：步骤级报警配置，启用时使用自定义报警代码和等级；为null时不触发报警
+        /// </summary>
+        protected internal async Task RunStep(string stepName, Func<Task> action, bool publishStatus = true, StepAlarmConfig alarmConfig = null)
+        {
+            CurrentStepName = stepName;
+            var token = CurrentToken;
+            if (publishStatus)
+                PublishTaskStatusChanged(stepName, State);
+            await CheckPauseAsync(token);
+            if (_singleStepMode)
+            {
+                Logger.Info($"[{TaskName}] 单步等待: {stepName}");
+                _stepTcs = new TaskCompletionSource<bool>();
+                await WhenAny(_stepTcs.Task, Task.Delay(Timeout.Infinite, token));
+            }
+            while (true) 
+            {
+                try
+                {
+                    Logger.Info($"[{TaskName}] 执行步骤: {stepName}");
+                    var sw = Stopwatch.StartNew();
+                    await action();
+                    sw.Stop();
+                    Logger.Info($"[{TaskName}] 完成步骤: {stepName} (耗时: {sw.ElapsedMilliseconds}ms)");
+                    LastFaultStepName = null;
+                    break;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (RecoverableException rex)
+                {
+                    Logger.Warn($"步骤 [{stepName}] 发生可恢复故障。原因: {rex.Message} | 建议: {rex.SuggestedAction}");
+
+                    LastFaultStepName = stepName;
+                    Logger.Info($"[StationTaskBase] LastFaultStepName 设置为: {stepName}, alarmConfig.IsEnabled: {alarmConfig?.IsEnabled}");
+
+                    if (alarmConfig?.IsEnabled == true)
+                    {
+                        Ea.GetEvent<MotionControl.Events.StepFaultedEvent>().Publish(stepName);
+                        Ea.GetEvent<MotionControl.Events.StepErrorEvent>().Publish(new MotionControl.Events.StepErrorPayload
+                        {
+                            StepName = stepName,
+                            ErrorMessage = $"{rex.Message} | 建议: {rex.SuggestedAction}",
+                            ErrorCode = !string.IsNullOrEmpty(alarmConfig.AlarmCode)
+                                ? alarmConfig.AlarmCode : GenerateAlarmCode(stepName)
+                        });
+
+                        var alarmCode = string.IsNullOrEmpty(alarmConfig.AlarmCode)
+                            ? GenerateAlarmCode(stepName)
+                            : alarmConfig.AlarmCode;
+                        var alarmLevel = (AlarmLevel)(alarmConfig.AlarmLevel > 0 ? alarmConfig.AlarmLevel : 3);
+
+                        _ = AlarmService.TriggerAlarmAsync(
+                            alarmCode,
+                            alarmLevel,
+                            $"步骤 [{stepName}] 异常: {rex.Message} | 建议: {rex.SuggestedAction}",
+                            source: $"{TaskName}.{stepName}",
+                            type: AlarmType.ProcessError);
+                    }
+
+                    PublishRecoverableFault(stepName, rex);
+                    _systemState.RequestPause();
+                    await PauseAsync();
+                    PublishTaskStatusChanged(stepName, State);
+                    try
+                    {
+                        await CheckPauseAsync(token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Logger.Info($"步骤 [{stepName}] 操作员选择停止任务");
+                        throw;
+                    }
+                    if (State != TaskState.Running)
+                    {
+                        Logger.Info($"步骤 [{stepName}] 任务未恢复运行，取消当前步骤");
+                        throw new OperationCanceledException(token);
+                    }
+                    PublishTaskStatusChanged(stepName, State);
+                    Logger.Info($"步骤 [{stepName}] 已恢复运行，将重新执行当前步骤...");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"[{TaskName}] 步骤 [{stepName}] 致命异常: {ex.Message}");
+
+                    // 致命异常也触发报警和步骤故障标记，确保操作员能看到具体错误
+                    LastFaultStepName = stepName;
+                    Ea.GetEvent<MotionControl.Events.StepFaultedEvent>().Publish(stepName);
+                    Ea.GetEvent<MotionControl.Events.StepErrorEvent>().Publish(new MotionControl.Events.StepErrorPayload
+                    {
+                        StepName = stepName,
+                        ErrorMessage = ex.InnerException?.Message ?? ex.Message,
+                        ErrorCode = "STEP_FATAL_ERROR"
+                    });
+
+                    _ = AlarmService.TriggerAlarmAsync(
+                        "STEP_FATAL_ERROR",
+                        AlarmLevel.Serious,
+                        $"步骤 [{stepName}] 致命异常: {ex.InnerException?.Message ?? ex.Message}",
+                        source: $"{TaskName}.{stepName}",
+                        type: AlarmType.ProcessError);
+
+                    throw new StepFailureException(stepName, ex);
+                }
+            }
+            if (_singleStepMode)
+            {
+                _stepTcs = new TaskCompletionSource<bool>();
+            }
+        }
+        /// <summary>
+        /// 辅助方法：等待 Tasks中的任意一个完成
+        /// </summary>
+        private async Task WhenAny(Task t1, Task t2)
+        {
+            try
+            {
+                await Task.WhenAny(t1, t2);
+            }
+            catch (OperationCanceledException) { }
+        }
+        // ---------- IO 快捷操作 ----------
+        public bool ReadDI(int logicalId) => _motion.ReadDi(logicalId);
+        public void WriteDO(int logicalId, bool value) => _motion.WriteDo(logicalId, value);
+
+        // ---------- 信号交互 ----------
+        /// <summary>
+        /// 向指定工位发送信号
+        /// </summary>
+        protected void SignalToStation(string stationName, string signalName, bool value)
+        {
+            _interaction.SetSignal($"{stationName}.{signalName}", value);
+        }
+        /// <summary>
+        /// 等待其他工位信号到达，超时则返回 false
+        /// </summary>
+        protected bool WaitForSignal(string stationName, string signalName, bool expectedValue, int timeoutMs = -1)
+        {
+            return _interaction.WaitForSignal($"{stationName}.{signalName}", expectedValue, timeoutMs);
+        }
+        /// <summary>
+        /// 异步等待信号到达，超时则抛出可恢复异常
+        /// </summary>
+        protected async Task WaitForSignalAsync(string stationName, string signalName, bool expectedValue, int timeoutMs = 5000)
+        {
+            var signalFullName = $"{stationName}.{signalName}";
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            while (_interaction.GetSignal(signalFullName) != expectedValue)
+            {
+                if (stopwatch.ElapsedMilliseconds > timeoutMs)
+                {
+                    throw new RecoverableException(
+                        message: $"等待信号 [{signalFullName}] 超时 ({timeoutMs}ms)，当前值为 {!expectedValue}",
+                        suggestedAction: $"请检查工位 [{stationName}] 的 [{signalName}] 传感器是否被遮挡或损坏，复位后点击恢复运行。"
+                    );
+                }
+                await Task.Delay(50, CurrentToken);
+            }
+        }
+
+        // ==========  高频动作糖衣语法 ==========
+        /// <summary> 延迟等待(自动携带取消令牌) </summary>
+        protected async Task WaitTime(int ms) => await Task.Delay(ms, CurrentToken);
+        /// <summary> 快速移动到配方中的指定点位 (单轴) </summary>
+        protected async Task MoveToAsync(int axisId, string positionName, double velocity)
+        {
+            string axisName = GetAxisNameById(axisId);
+            var pos = await GetPositionAsync(positionName, axisName);
+            var actualVelocity = velocity * (_speedOverride.SpeedPercent / 100.0);
+            await _motion.MoveAbsAsync(axisId, pos, actualVelocity, CurrentToken);
+        }
+        /// <summary>
+        /// 触发本地 DO 信号 (气缸/夹爪)，可选择是否检测 DI 反馈
+        /// </summary>
+        public async Task TriggerCylinderAsync(int doId, bool value, int diId = -1, int timeoutMs = 3000, int blindDelayMs = 300)
+        {
+            WriteDO(doId, value);
+            if (diId >= 0)
+            {
+                await WaitForDiAsync(diId, value, timeoutMs);
+            }
+            else
+            {
+                await WaitTime(blindDelayMs);
+            }
+        }
+        /// <summary>
+        /// 等待本地 DI 信号到达指定状态
+        /// </summary>
+        protected async Task WaitForDiAsync(int logicalId, bool expectedValue, int timeoutMs = 3000)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            while (ReadDI(logicalId) != expectedValue)
+            {
+                if (stopwatch.ElapsedMilliseconds > timeoutMs)
+                {
+                    throw new RecoverableException(
+                        message: $"等待本地 DI[{logicalId}] 变为 {expectedValue} 超时 ({timeoutMs}ms)",
+                        suggestedAction: $"请检查 DI[{logicalId}] 传感器是否异常或气缸动作是否卡滞，复位后重试。"
+                    );
+                }
+                await Task.Delay(20, CurrentToken);
+            }
+        }
+        /// <summary>
+        /// 根据逻辑轴号获取配置中的轴名称 (例如 9 -> "Y", 10 -> "U")
+        /// </summary>
+        public virtual string GetAxisNameById(int axisId)
+        {
+            var axisState = Motion.GetAxisState(axisId);
+            if (axisState != null && !string.IsNullOrEmpty(axisState.Name))
+            {
+                return axisState.Name;
+            }
+            Logger.Warn($"未找到轴 {axisId} 的名称配置，将使用 ID 作为配方 Key。");
+            return axisId.ToString();
+        }
+        // ========== 手动操作流程机制 ==========
+        private readonly SemaphoreSlim _manualLock = new(1, 1);
+        /// <summary>
+        /// 执行一段手动流程（供UI或外部调用），复用 RunStep 的安全保护
+        /// </summary>
+        public async Task ExecuteManualProcess(string processName, Func<Task> action)
+        {
+            if (State == TaskState.Running) return;
+            await _manualLock.WaitAsync();
+            try
+            {
+                State = TaskState.Running;
+                PublishTaskStatusChanged($"[手动]{processName}", State);
+                await RunStep($"[手动]{processName}", action);
+                State = TaskState.Idle;
+                PublishTaskStatusChanged("Completed", State);
+            }
+            catch (OperationCanceledException)
+            {
+                State = TaskState.Stopped;
+                PublishTaskStatusChanged("Stopped", State);
+            }
+            catch (Exception)
+            {
+                State = TaskState.Error;
+                PublishTaskStatusChanged("Error", State);
+                throw;
+            }
+            finally
+            {
+                _manualLock.Release();
+            }
+        }
+
+        // ========== 带偏移量的移动方法 ==========
+        /// <summary>
+        /// 带偏移量的移动方法（公开给 GotoStepAction 调用）
+        /// 解析配方位置名 -> 获取位置值 -> 叠加偏移 -> 执行绝对运动
+        /// </summary>
+        public async Task ExecuteMoveAsync(int axisId, string positionName, double velocity, double offset = 0)
+        {
+            string axisName = GetAxisNameById(axisId);
+            var pos = await GetPositionAsync(positionName, axisName);
+            pos += offset;
+            var actualVelocity = velocity * (_speedOverride.SpeedPercent / 100.0);
+            await _motion.MoveAbsAsync(axisId, pos, actualVelocity, CurrentToken);
+        }
+
+        /// <summary> 根据轴名称查找逻辑轴ID，未找到返回 -1 </summary>
+        public int FindAxisIdByName(string axisName)
+        {
+            if (string.IsNullOrEmpty(axisName)) return -1;
+
+            foreach (var axisId in GetAllAxes())
+            {
+                var state = Motion.GetAxisState(axisId);
+                if (state != null && state.Name == axisName)
+                {
+                    return axisId;
+                }
+            }
+
+            Logger.Warn($"未找到名称为 '{axisName}' 的轴配置");
+            return -1;
+        }
+
+        /// <summary>
+        /// 公开的步骤执行包装器，供 ProcessStepExecutor 等外部类调用
+        /// 内部委托给 RunStep，享受暂停/急停/单步/可恢复异常保护
+        /// alarmConfig：步骤级报警配置，启用时使用自定义报警代码和等级
+        /// </summary>
+        public async Task ExecuteStepSafeAsync(string stepName, Func<Task> action, bool publishStatus = true, StepAlarmConfig alarmConfig = null)
+        {
+            await RunStep(stepName, action, publishStatus, alarmConfig);
+        }
+
+        /// <summary>
+        /// 公开步骤状态发布方法，供 GotoStepAction 在跨工站执行时通知目标工站的监控栏
+        /// </summary>
+        /// <param name="stepName">步骤名称</param>
+        /// <param name="overrideState">覆盖状态：跨工站执行时传入源工站的运行状态，避免用目标工站自身的空闲状态覆盖</param>
+        public void PublishStepStatus(string stepName, TaskState? overrideState = null)
+        {
+            PublishTaskStatusChanged(stepName, overrideState ?? State);
+        }
+
+        /// <summary>
+        /// 标记当前步骤已完成，供 GotoStepAction 在 SubMove 执行完毕后通知目标工站监控栏
+        /// </summary>
+        /// <param name="overrideState">覆盖状态：跨工站执行时传入源工站的运行状态</param>
+        public void CompleteStepStatus(TaskState? overrideState = null)
+        {
+            Ea.GetEvent<TaskStatusChangedEvent>().Publish(new TaskStatusPayload
+            {
+                TaskId = TaskId,
+                TaskName = TaskName,
+                State = overrideState ?? State,
+                CurrentStepName = "",
+                IsStepCompleted = true
+            });
+        }
+    }
+}

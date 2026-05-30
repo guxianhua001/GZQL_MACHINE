@@ -1,0 +1,31 @@
+- [x] NeedleService 实现了 INeedleService 接口，包含使用计数递增、重置、最大次数查询
+- [x] NeedleService 和 NeedleCompensationManager 已在 PrimModel 中注册为 Singleton
+- [x] MaintenanceView 主视图包含 Header 和 TabControl，默认选中第一个 Tab
+- [x] MaintenanceViewModel 继承 BindableBase，支持 Tab 切换状态管理
+- [x] MaintenanceView 已在 PrimModel 中注册为导航视图
+- [x] NeedleCameraAlignmentView 支持双系统切换（系统1/系统2），切换时自动加载参数
+- [x] NeedleCameraAlignmentView 示教相机中心命令正确读取轴坐标并更新 UI
+- [x] NeedleCameraAlignmentView 示教针尖位置命令正确读取三轴坐标并计算 ΔX/ΔY
+- [x] NeedleCameraAlignmentView 示教针尖高度命令正确读取 Z 轴坐标
+- [x] NeedleCameraAlignmentView 计算针尖高度公式正确：NeedleTipZ - (TargetPlaneZ - BasePlaneZ) + CompensationZ
+- [x] NeedleCameraAlignmentView 参数保存/加载功能正常，按系统编号区分存储
+- [x] NeedleCameraAlignmentView 状态栏使用颜色区分成功/警告/错误/信息
+- [x] NeedleAlignerView 包含完整的搜索点参数设置区域（4点坐标+基准坐标+运动参数）
+- [x] NeedleAlignerView 校准流程支持开始/停止，校准期间按钮状态正确切换
+- [x] NeedleAlignerView 校准完成后正确使用 NeedleCompensationManager 计算增量补偿
+- [x] NeedleAlignerView 补偿突变检查功能正常（超过1mm发出警告）
+- [x] NeedleAlignerView 补偿管理功能完整：重置所有/重置基准/重置增量/查看历史
+- [x] NeedleAlignerView 重置操作弹出确认对话框
+- [x] NeedleAlignerView 日志使用 ConcurrentQueue + Timer 批量更新，限制100条
+- [x] NeedleAlignerView 参数保存/加载功能正常，包含补偿管理器状态
+- [x] NeedleCalibrationVerifyView 验证流程执行4点寻边和接触式测量
+- [x] NeedleCalibrationVerifyView 验证结果判定逻辑正确：≤0.05mm通过、≤0.15mm警告、>0.15mm失败
+- [x] NeedleCalibrationVerifyView 验证报告包含时间、操作员、系统编号、偏差值、判定结果
+- [x] 所有视图使用 {lang:Lang Key} 标记扩展实现多语言绑定
+- [x] 所有视图使用 MaterialDesign Card 布局和 PackIcon 图标，不使用 emoji
+- [x] 所有关键操作（重置补偿、应用补偿）提供确认对话框
+- [x] 运动控制安全性：水平移动前先抬升Z轴到安全高度
+- [x] PrimModel 导航列表中包含维护模块入口（WrenchOutline 图标，UserLevel=1）
+- [x] Strings.zh-CN.xaml 包含所有维护模块中文语言 Key
+- [x] Strings.en-US.xaml 包含所有维护模块英文语言 Key
+- [x] 项目编译通过，无编译错误（维护模块代码零错误，预存错误位于无关文件）

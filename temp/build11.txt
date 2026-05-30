@@ -1,0 +1,49 @@
+﻿  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.149
+  HalconWrapper -> c:\WorkFiles\GZQL_MACHINE\HalconWrapper\bin\Debug\net9.0-windows7.0\HalconWrapper.dll
+  Core -> c:\WorkFiles\GZQL_MACHINE\Core\bin\Debug\net9.0-windows7.0\Core.dll
+  Framework -> c:\WorkFiles\GZQL_MACHINE\Framework\bin\Debug\net9.0-windows7.0\Framework.dll
+  LogViewer -> c:\WorkFiles\GZQL_MACHINE\LogViewer\bin\Debug\net9.0-windows7.0\LogViewer.dll
+  Language -> c:\WorkFiles\GZQL_MACHINE\LanguageModule\bin\Debug\net9.0-windows7.0\Language.dll
+  Recipe -> c:\WorkFiles\GZQL_MACHINE\RecipeManagement\bin\Debug\net9.0-windows7.0\Recipe.dll
+  AlarmModule -> c:\WorkFiles\GZQL_MACHINE\AlarmModule\bin\Debug\net9.0-windows\AlarmModule.dll
+  TCPIPModule -> c:\WorkFiles\GZQL_MACHINE\TCPIPModule\bin\Debug\net9.0-windows7.0\TCPIPModule.dll
+  MotionControl -> c:\WorkFiles\GZQL_MACHINE\MotionControl\bin\Debug\net9.0-windows7.0\MotionControl.dll
+C:\Users\zhibin.sun\.nuget\packages\microsoft.build.tasks.git\1.0.0\build\Microsoft.Build.Tasks.Git.targets(24,5): warning : Repository 'c:\WorkFiles\GZQL_MACHINE' has no remote. [c:\WorkFiles\GZQL_MACHINE\StationTasks\StationTasks.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.github\1.0.0\build\Microsoft.SourceLink.GitHub.targets(36,5): warning : Unable to determine repository url, the source code won't be available via source link. [c:\WorkFiles\GZQL_MACHINE\StationTasks\StationTasks.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.common\1.0.0\build\Microsoft.SourceLink.Common.targets(52,5): warning : Source control information is not available - the generated source link is empty. [c:\WorkFiles\GZQL_MACHINE\StationTasks\StationTasks.csproj]
+  StationTasks -> c:\WorkFiles\GZQL_MACHINE\StationTasks\bin\Debug\net9.0-windows\StationTasks.dll
+C:\Users\zhibin.sun\.nuget\packages\microsoft.build.tasks.git\1.1.1\build\Microsoft.Build.Tasks.Git.targets(25,5): warning : Repository 'c:\WorkFiles\GZQL_MACHINE' has no remote. [c:\WorkFiles\GZQL_MACHINE\ModuleCore\ModuleCore.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.github\1.1.1\build\Microsoft.SourceLink.GitHub.targets(37,5): warning : Unable to determine repository url, the source code won't be available via source link. [c:\WorkFiles\GZQL_MACHINE\ModuleCore\ModuleCore.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.common\1.1.1\build\Microsoft.SourceLink.Common.targets(53,5): warning : Source control information is not available - the generated source link is empty. [c:\WorkFiles\GZQL_MACHINE\ModuleCore\ModuleCore.csproj]
+  ModuleCore -> c:\WorkFiles\GZQL_MACHINE\ModuleCore\bin\Debug\net9.0-windows7.0\ModuleCore.dll
+C:\Users\zhibin.sun\.nuget\packages\microsoft.build.tasks.git\1.0.0\build\Microsoft.Build.Tasks.Git.targets(24,5): warning : Repository 'c:\WorkFiles\GZQL_MACHINE' has no remote. [c:\WorkFiles\GZQL_MACHINE\Module\Module.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.github\1.0.0\build\Microsoft.SourceLink.GitHub.targets(36,5): warning : Unable to determine repository url, the source code won't be available via source link. [c:\WorkFiles\GZQL_MACHINE\Module\Module.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.common\1.0.0\build\Microsoft.SourceLink.Common.targets(52,5): warning : Source control information is not available - the generated source link is empty. [c:\WorkFiles\GZQL_MACHINE\Module\Module.csproj]
+  Module -> c:\WorkFiles\GZQL_MACHINE\Module\bin\Debug\net9.0-windows7.0\Module.dll
+
+Build succeeded.
+
+C:\Users\zhibin.sun\.nuget\packages\microsoft.build.tasks.git\1.0.0\build\Microsoft.Build.Tasks.Git.targets(24,5): warning : Repository 'c:\WorkFiles\GZQL_MACHINE' has no remote. [c:\WorkFiles\GZQL_MACHINE\StationTasks\StationTasks.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.github\1.0.0\build\Microsoft.SourceLink.GitHub.targets(36,5): warning : Unable to determine repository url, the source code won't be available via source link. [c:\WorkFiles\GZQL_MACHINE\StationTasks\StationTasks.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.common\1.0.0\build\Microsoft.SourceLink.Common.targets(52,5): warning : Source control information is not available - the generated source link is empty. [c:\WorkFiles\GZQL_MACHINE\StationTasks\StationTasks.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.build.tasks.git\1.1.1\build\Microsoft.Build.Tasks.Git.targets(25,5): warning : Repository 'c:\WorkFiles\GZQL_MACHINE' has no remote. [c:\WorkFiles\GZQL_MACHINE\ModuleCore\ModuleCore.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.github\1.1.1\build\Microsoft.SourceLink.GitHub.targets(37,5): warning : Unable to determine repository url, the source code won't be available via source link. [c:\WorkFiles\GZQL_MACHINE\ModuleCore\ModuleCore.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.common\1.1.1\build\Microsoft.SourceLink.Common.targets(53,5): warning : Source control information is not available - the generated source link is empty. [c:\WorkFiles\GZQL_MACHINE\ModuleCore\ModuleCore.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.build.tasks.git\1.0.0\build\Microsoft.Build.Tasks.Git.targets(24,5): warning : Repository 'c:\WorkFiles\GZQL_MACHINE' has no remote. [c:\WorkFiles\GZQL_MACHINE\Module\Module.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.github\1.0.0\build\Microsoft.SourceLink.GitHub.targets(36,5): warning : Unable to determine repository url, the source code won't be available via source link. [c:\WorkFiles\GZQL_MACHINE\Module\Module.csproj]
+C:\Users\zhibin.sun\.nuget\packages\microsoft.sourcelink.common\1.0.0\build\Microsoft.SourceLink.Common.targets(52,5): warning : Source control information is not available - the generated source link is empty. [c:\WorkFiles\GZQL_MACHINE\Module\Module.csproj]
+    9 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.69

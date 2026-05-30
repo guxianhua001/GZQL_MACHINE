@@ -1,0 +1,33 @@
+- [x] StationTaskBase 中 _pendingSteps 及相关方法（OnProcessStepSequenceRequested、OnProcessStepSequenceControlRequested、ClearPendingSteps、GetProcessStepActions、ExecutePendingStepsAsync）已全部移除
+- [x] StationTaskBase 不再订阅 ProcessStepSequenceEvent 和 ProcessStepSequenceControlEvent
+- [x] StationTaskBase.ExecuteCycleAsync 恢复为 virtual 方法，子类直接 override 实现硬编码流程
+- [x] ExecuteHardcodedCycleAsync 抽象方法已移除
+- [x] StationTaskBase.RunCustomSequenceAsync 方法已实现，复用 RunStep 安全保护机制
+- [x] RunCustomSequenceAsync 正确处理状态管理（Running/Completed/Stopped/Error）
+- [x] RunCustomSequenceAsync 在任务已运行时抛出 InvalidOperationException
+- [x] RunCustomSequenceAsync 正确处理 OperationCanceledException、StepFailureException、其他异常
+- [x] LoadingTask.ExecuteHardcodedCycleAsync 已合并到 ExecuteCycleAsync
+- [x] DispensingTask.ExecuteHardcodedCycleAsync 已合并到 ExecuteCycleAsync
+- [x] AssemblyTask.ExecuteHardcodedCycleAsync 已合并到 ExecuteCycleAsync
+- [x] RecipeStationBase 中 GetProcessStepActions 和 ExecutePendingStepsAsync 重写已移除
+- [x] TaskItem 新增 StationId 属性
+- [x] ProcessSequenceEditorView UI 添加工站选择下拉框
+- [x] ProcessSequenceService 注入 IStationRegistry
+- [x] ProcessSequenceService.FindStationTask 方法根据 StationId 查找目标 StationTaskBase
+- [x] ProcessSequenceService 实现单任务互斥机制（IsExecuting 标志）
+- [x] StartTask 通过 RunCustomSequenceAsync 执行步骤序列，不再发布事件
+- [x] StopTask 取消 CTS 并调用 StationTaskBase.StopAsync
+- [x] PauseTask 调用 StationTaskBase.PauseAsync
+- [x] ResumeTask 调用 StationTaskBase.ResumeAsync
+- [x] ProcessStepSequenceEvent 和 ProcessStepSequenceControlEvent 发布代码已移除
+- [x] ProcessStepSequenceRequested 事件已移除
+- [x] IProcessSequenceService 新增 IsExecuting 属性
+- [x] IProcessSequenceService 移除 ProcessStepSequenceRequested 事件声明
+- [x] Core、MotionControl、StationTasks、Module 项目编译 0 错误
+- [x] 硬编码流程（RunAsync → ExecuteCycleAsync）正常工作
+- [x] 步骤序列流程（StartTask → RunCustomSequenceAsync → ProcessStepExecutor）正常工作
+- [x] 单任务互斥：已有任务执行时拒绝启动新任务
+- [x] 暂停/恢复/停止生命周期正确工作
+- [x] 可恢复异常触发弹窗，恢复后重试当前步骤
+- [x] 致命异常触发急停，状态变为 Error
+- [x] 取消异常正确处理，状态变为 Stopped

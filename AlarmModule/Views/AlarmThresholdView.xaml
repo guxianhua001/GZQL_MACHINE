@@ -1,0 +1,122 @@
+<UserControl x:Class="AlarmModule.Views.AlarmThresholdView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:AlarmModule.Converters"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="600"
+             d:DesignWidth="900">
+    <UserControl.Resources>
+        <local:AlarmLevelToTextConverter x:Key="AlarmLevelToTextConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <DockPanel Grid.Row="0" Margin="16,16,16,8">
+            <TextBlock Text="{lang:Lang AlarmThresholdConfig}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MaterialDesignBody}" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="{lang:Lang Refresh}"
+                        Command="{Binding RefreshCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0" />
+                <Button Content="{lang:Lang Save}"
+                        Command="{Binding SaveCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}" />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- 分隔线 -->
+        <Separator Grid.Row="1" Margin="16,0" />
+
+        <!-- 阈值配置表格 -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding ThresholdConfigs}"
+                  SelectedItem="{Binding SelectedConfig}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  SelectionUnit="FullRow"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  materialDesign:DataGridAssist.CellPadding="8,4"
+                  Margin="16,8,16,8">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{lang:Lang AlarmCode}" Binding="{Binding AlarmCode}" Width="120" />
+                <DataGridTextColumn Header="{lang:Lang AlarmSource}" Binding="{Binding AlarmSource}" Width="140" />
+                <DataGridTextColumn Header="{lang:Lang Threshold}" Binding="{Binding ThresholdValue}" Width="100" />
+                <DataGridTemplateColumn Header="{lang:Lang AlarmLevel}" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToTextConverter}}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="{lang:Lang AlarmType}" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding AlarmType}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="{lang:Lang DebounceWindowSec}" Binding="{Binding SuppressionWindowSeconds}" Width="110" />
+                <DataGridTemplateColumn Header="{lang:Lang Enabled}" Width="60">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                      IsEnabled="False"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="{lang:Lang Operation}" Width="160">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="{lang:Lang Edit}"
+                                        Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        FontSize="12"
+                                        Padding="8,2"
+                                        Margin="0,0,4,0" />
+                                <Button Content="{lang:Lang Delete}"
+                                        Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        FontSize="12"
+                                        Padding="8,2" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- 底部操作栏 -->
+        <DockPanel Grid.Row="3" Margin="16,8,16,16">
+            <Button Content="{lang:Lang AddNewConfig}"
+                    Command="{Binding AddCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}" />
+        </DockPanel>
+    </Grid>
+</UserControl>

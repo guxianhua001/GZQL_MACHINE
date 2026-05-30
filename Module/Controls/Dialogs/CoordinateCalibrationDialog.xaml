@@ -1,0 +1,62 @@
+<UserControl x:Class="Module.Views.CoordinateCalibrationDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Width="800" Height="600">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="{lang:Lang CoordCalib_Title}"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="0,0,0,16"/>
+
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Points}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  materialDesign:DataGridAssist.CellPadding="4">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_Name}" Binding="{Binding Name}" Width="80"/>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_CameraDx}" Binding="{Binding CameraX}" Width="100"/>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_CameraDy}" Binding="{Binding CameraY}" Width="100"/>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_CameraDz1}" Binding="{Binding CameraZ}" Width="100"/>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_GripperX}" Binding="{Binding GripperX}" Width="100"/>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_GripperY}" Binding="{Binding GripperY}" Width="100"/>
+                <DataGridTextColumn Header="{lang:Lang CoordCalib_Column_GripperZ}" Binding="{Binding GripperZ}" Width="100"/>
+                <DataGridTemplateColumn Header="{lang:Lang CoordCalib_Column_Delete}" Width="60">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="{lang:Lang CoordCalib_Delete}"
+                                    Command="{Binding DataContext.DeletePointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}" Style="{StaticResource MaterialDesignFlatButton}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,8">
+            <Button Content="{lang:Lang CoordCalib_AddPoint}" Command="{Binding AddPointCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,0"/>
+            <Button Content="{lang:Lang CoordCalib_Compute}" Command="{Binding ComputeCommand}" Style="{StaticResource MaterialDesignRaisedButton}" Margin="0,0,8,0"/>
+        </StackPanel>
+
+        <GroupBox Grid.Row="3" Header="{lang:Lang CoordCalib_ResultHeader}" Margin="0,8,0,0">
+            <StackPanel>
+                <TextBlock Text="{Binding ResultMessage}" FontWeight="SemiBold" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                <WrapPanel HorizontalAlignment="Right">
+                    <Button Content="{lang:Lang Dialog_OK}" Command="{Binding OkCommand}" Style="{StaticResource MaterialDesignRaisedButton}" Width="80" Margin="0,0,8,0"/>
+                    <Button Content="{lang:Lang Dialog_Cancel}" Command="{Binding CancelCommand}" Style="{StaticResource MaterialDesignFlatButton}" Width="80"/>
+                </WrapPanel>
+            </StackPanel>
+        </GroupBox>
+    </Grid>
+</UserControl>

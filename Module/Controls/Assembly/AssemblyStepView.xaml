@@ -1,0 +1,444 @@
+<UserControl x:Class="Module.Views.AssemblyStepView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:converters="clr-namespace:Module.Converters"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="1200"
+             d:DesignWidth="1000">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="Deeppurple"
+                                             SecondaryColor="Lime" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:BoolToIconConverter x:Key="BoolToIconConverter" />
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24">
+
+            <!-- 标题 -->
+            <TextBlock Text="{lang:Lang AssemblyStep_Title}"
+                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                       Foreground="{DynamicResource PrimaryHueMidBrush}"
+                       Margin="0,0,0,20" />
+
+            <!-- 1. Move a site -->
+            <materialDesign:Card UniformCornerRadius="8"
+                                 Padding="16"
+                                 Margin="0,0,0,16"
+                                 Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang AssemblyStep_MoveSiteTitle}"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Foreground="{DynamicResource SecondaryHueMidBrush}"
+                               Margin="0,0,0,8" />
+                    <WrapPanel>
+                        <TextBlock Text="{lang:Lang AssemblyStep_AssemblyStationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Width="120"
+                                  ItemsSource="{Binding StationNumbers}"
+                                  SelectedItem="{Binding SelectedMoveSite}"
+                                  Margin="0,0,12,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_Move}"
+                                Command="{Binding MoveToSiteCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="12,4" />
+                    </WrapPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- 2. Vision -->
+            <materialDesign:Card UniformCornerRadius="8"
+                     Padding="16"
+                     Margin="0,0,0,16"
+                     Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang AssemblyStep_VisionTitle}"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Foreground="{DynamicResource SecondaryHueMidBrush}"
+                               Margin="0,0,0,12" />
+
+                    <!-- Mechanical Guide 实时位置 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_MechanicalGuide}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_RealTimePositionLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding RealTimePositions}" Foreground="Gray" />
+                    </WrapPanel>
+
+                    <!-- Move Camera to a feature positioning -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_MoveCameraFeature}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_SelectFeatureHint}" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="Gray" FontSize="11" />
+                    </WrapPanel>
+
+                    <!-- 各相机移动/拍照（目标位置与拍照分开） -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Top CCD Site Feature 1 -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang AssemblyStep_TopCCDSiteFeatLabel}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="0" Grid.Column="1" Width="120"
+                                  ItemsSource="{Binding TopCCDFeatures}"
+                                  SelectedItem="{Binding SelectedTopCCDFeature1}"
+                                  Margin="0,0,8,0" />
+                        <Button Grid.Row="0" Grid.Column="2" Content="{lang:Lang AssemblyStep_Button_Move}" Command="{Binding MoveTopCCD1Command}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Grid.Row="0" Grid.Column="3" Content="{lang:Lang AssemblyStep_Button_Capture}" Command="{Binding CaptureTopCCD1Command}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" />
+                        <TextBlock Grid.Row="0" Grid.Column="4" Text="{Binding TopCCD1TargetPosition, FallbackValue='Target: 0.00 0.00 0.00'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+
+                        <!-- Top CCD Site Feature 2 -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang AssemblyStep_TopCCDSiteFeatLabel}" VerticalAlignment="Center" Margin="0,8,0,8" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" Width="120"
+                                  ItemsSource="{Binding TopCCDFeatures}"
+                                  SelectedItem="{Binding SelectedTopCCDFeature2}"
+                                  Margin="0,8,0,8" />
+                        <Button Grid.Row="1" Grid.Column="2" Content="{lang:Lang AssemblyStep_Button_Move}" Command="{Binding MoveTopCCD2Command}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,8,4,8" />
+                        <Button Grid.Row="1" Grid.Column="3" Content="{lang:Lang AssemblyStep_Button_Capture}" Command="{Binding CaptureTopCCD2Command}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,8,0,8" />
+                        <TextBlock Grid.Row="1" Grid.Column="4" Text="{Binding TopCCD2TargetPosition, FallbackValue='Target: 0.00 0.00 0.00'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+
+                        <!-- Side CCD Comp Feature -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang AssemblyStep_SideCCDCompFeatLabel}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="2" Grid.Column="1" Width="120"
+                                  ItemsSource="{Binding SideCCDFeatures}"
+                                  SelectedItem="{Binding SelectedSideCCDFeature}"
+                                  Margin="0,0,8,0" />
+                        <Button Grid.Row="2" Grid.Column="2" Content="{lang:Lang AssemblyStep_Button_Move}" Command="{Binding MoveSideCCDCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Grid.Row="2" Grid.Column="3" Content="{lang:Lang AssemblyStep_Button_Capture}" Command="{Binding CaptureSideCCDCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" />
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding SideCCDTargetPosition, FallbackValue='Target: 0.00 0.00 0.00'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+
+                        <!-- Bottom CCD Comp Feature -->
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang AssemblyStep_BottomCCDCompFeatLabel}" VerticalAlignment="Center" Margin="0,8,0,0" />
+                        <ComboBox Grid.Row="3" Grid.Column="1" Width="120"
+                                  ItemsSource="{Binding BottomCCDFeatures}"
+                                  SelectedItem="{Binding SelectedBottomCCDFeature}"
+                                  Margin="0,8,0,0" />
+                        <Button Grid.Row="3" Grid.Column="2" Content="{lang:Lang AssemblyStep_Button_Move}" Command="{Binding MoveBottomCCDCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,8,4,0" />
+                        <Button Grid.Row="3" Grid.Column="3" Content="{lang:Lang AssemblyStep_Button_Capture}" Command="{Binding CaptureBottomCCDCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,8,0,0" />
+                        <TextBlock Grid.Row="3" Grid.Column="4" Text="{Binding BottomCCDTargetPosition, FallbackValue='Target: 0.00 0.00 0.00'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <Button Grid.Row="3" Grid.Column="5" Command="{Binding EditBottomCCDPositionCommand}" Padding="12,4" Margin="8,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,4,0" />
+                                <TextBlock Text="{lang:Lang AssemblyStep_Button_EditPosition}" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+            
+            <!-- 3. Alignment process -->
+            <materialDesign:Card UniformCornerRadius="8"
+                                 Padding="16"
+                                 Margin="0,0,0,16"
+                                 Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang AssemblyStep_AlignmentProcessTitle}"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Foreground="{DynamicResource SecondaryHueMidBrush}"
+                               Margin="0,0,0,12" />
+
+                    <!-- TAB 部分 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_AlignTab}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang AssemblyStep_StationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Width="100" ItemsSource="{Binding StationNumbers}" SelectedItem="{Binding SelectedTabSite}" Margin="0,0,12,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_TabDetect}" Command="{Binding TabDetectCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_PillarDetect}" Command="{Binding PillarDetectCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Step2_ViewData}" Command="{Binding ViewTabDataCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_RealTimeCompensationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding TabCompensation}" Foreground="Gray" />
+                    </WrapPanel>
+
+                    <!-- PIN 部分 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_AlignPin}" FontWeight="SemiBold" Margin="0,8,0,8" />
+                    <WrapPanel Margin="0,0,0,8">
+                        <Button Content="{lang:Lang AssemblyStep_Button_SlotRotary}" Command="{Binding SlotRotaryCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_PinAdj}" Command="{Binding PinAdjCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_SlotCheck}" Command="{Binding SlotCheckCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,4,0" />
+                        <Button Command="{Binding EditPinParametersCommand}" Padding="12,4" Margin="16,0,4,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,4,0" />
+                                <TextBlock Text="{lang:Lang AssemblyStep_Button_EditParameters}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Content="{lang:Lang AssemblyStep_Step2_ViewData}" Command="{Binding ViewPinDataCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2"/>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang AssemblyStep_RealTimeCompensationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding PinCompensation}" Foreground="Gray" />
+                    </WrapPanel>
+
+                    <!-- 失败重试逻辑（使用图标） -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang AssemblyStep_OnPass}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,0">
+                            <materialDesign:PackIcon Kind="{Binding PassActionContinue, Converter={StaticResource BoolToIconConverter}, ConverterParameter=Pass}"
+                                                     Width="16" Height="16"
+                                                     Foreground="{Binding PassActionContinue, Converter={StaticResource BoolToColorConverter}}" />
+                            <TextBlock Text="{lang:Lang AssemblyStep_PassContinue}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang AssemblyStep_OnFail}" VerticalAlignment="Center" Margin="0,0,8,4" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,4">
+                            <materialDesign:PackIcon Kind="CloseCircle" Width="16" Height="16" Foreground="Red" />
+                            <TextBlock Text="{lang:Lang AssemblyStep_FailRetry}" VerticalAlignment="Center" Margin="4,-10,0,0" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{lang:Lang AssemblyStep_MaxRetriesLabel}" VerticalAlignment="Center" Margin="0,0,8,4" />
+                        <TextBox Grid.Row="1" Grid.Column="3" Width="40" Text="{Binding MaxRetries}" VerticalAlignment="Center" Margin="0,0,12,4" />
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- 4. Execute Alignment -->
+            <materialDesign:Card UniformCornerRadius="8"
+                                 Padding="16"
+                                 Margin="0,0,0,16"
+                                 Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang AssemblyStep_ExecuteAlignmentTitle}"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Foreground="{DynamicResource SecondaryHueMidBrush}"
+                               Margin="0,0,0,12" />
+
+                    <!-- Axis 状态 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_AxisStatusLabel}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_RealTimePositionLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding AxisStatus}" Foreground="Gray" />
+                    </WrapPanel>
+
+                    <!-- 目标装配位置 -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{lang:Lang AssemblyStep_TargetAssemblyPositionLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Grid.Column="1" Width="100" ItemsSource="{Binding StationNumbers}" SelectedItem="{Binding SelectedAssemblySite}" Margin="0,0,8,0" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <TextBlock Text="{Binding TargetAssemblyPosition}" VerticalAlignment="Center" />
+                            <Button Command="{Binding EditAssemblyPositionCommand}" Padding="12,4" Margin="16,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,4,0" />
+                                    <TextBlock Text="{lang:Lang AssemblyStep_Button_EditPosition}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ALIGN (Slot->TAB) -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_AlignSlotTab}" FontWeight="SemiBold" Margin="0,8,0,4" />
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang AssemblyStep_StationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Width="100" ItemsSource="{Binding StationNumbers}" SelectedItem="{Binding SelectedAlignSite}" Margin="0,0,12,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_PlaceNoCompensation}" Command="{Binding PlaceNoCompCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_PlaceStart}" Command="{Binding PlaceStartCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_PlaceStop}" Command="{Binding PlaceStopCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="8,2" Margin="0,0,8,0" />
+                        <CheckBox Content="{lang:Lang AssemblyStep_Auto}" IsChecked="{Binding AutoMode}" Margin="0,0,8,0" />
+                        <CheckBox Content="{lang:Lang AssemblyStep_Step}" IsChecked="{Binding StepMode}" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="{lang:Lang AssemblyStep_CurrentStepLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding CurrentStepStatus}" Foreground="Gray" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_DeviationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding RealTimeDeviation}" Foreground="Gray" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_FinalPositionLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding FinalAssemblyPosition}" Foreground="Gray" />
+                    </WrapPanel>
+
+                    <!-- 力传感器数据 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_ForceSensors_Title}" FontWeight="SemiBold" Margin="0,12,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding ForceSensor1, StringFormat=FS1: {0:F2} N}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ForceSensor2, StringFormat=FS2: {0:F2} N}" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ForceSensor3, StringFormat=FS3: {0:F2} N}" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding ForceSensor4, StringFormat=FS4: {0:F2} N}" Margin="0,4,0,0" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ForceSensor5, StringFormat=FS5: {0:F2} N}" Margin="0,4,0,0" />
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding ForceSensor6, StringFormat=FS6: {0:F2} N}" Margin="0,4,0,0" />
+                    </Grid>
+                    <!-- 导出力的数据按钮 -->
+                    <WrapPanel HorizontalAlignment="Left" Margin="0,12,0,0">
+                        <Button Command="{Binding ExportForceDataCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="12,4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Export" Width="16" Height="16" Margin="0,0,4,0" />
+                                <TextBlock Text="{lang:Lang AssemblyStep_Button_ExportForceData}" />
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- 5. UV CURE -->
+            <materialDesign:Card UniformCornerRadius="8"
+                                 Padding="16"
+                                 Margin="0,0,0,16"
+                                 Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <TextBlock Text="{lang:Lang AssemblyStep_UVCureTitle}"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Foreground="{DynamicResource SecondaryHueMidBrush}"
+                               Margin="0,0,0,12" />
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_UVHeadLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Width="120" ItemsSource="{Binding UVHeads}" SelectedItem="{Binding SelectedUVHead}" Margin="0,0,16,0" />
+                        <TextBlock Text="{lang:Lang AssemblyStep_CureTimeLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox Width="60" Text="{Binding CureTime}" Margin="0,0,4,0" />
+                        <TextBlock Text="s" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <TextBlock Text="{lang:Lang AssemblyStep_CurrentIntensityLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox Width="80" Text="{Binding Intensity}" Margin="0,0,4,0" />
+                        <TextBlock Text="mW/cm²" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <Button Command="{Binding EditUVParametersCommand}" Padding="12,4" Margin="16,0,4,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,4,0" />
+                                <TextBlock Text="{lang:Lang AssemblyStep_Button_EditParameters}" />
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Intensity Profile 表格 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_IntensityProfile}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding IntensityProfile}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              materialDesign:DataGridAssist.CellPadding="4"
+                              Margin="0,0,0,12"
+                              MaxHeight="200">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{lang:Lang AssemblyStep_Column_Stage}" Binding="{Binding Stage}" Width="60" />
+                            <DataGridTemplateColumn Header="{lang:Lang AssemblyStep_Column_Duration}" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Duration, UpdateSourceTrigger=LostFocus}" Width="60" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="mW/cm²" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Power, UpdateSourceTrigger=LostFocus}" Width="80" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="{lang:Lang AssemblyStep_Column_Note}" Binding="{Binding Note}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <WrapPanel>
+                        <Button Content="{lang:Lang AssemblyStep_Button_StartCure}" Command="{Binding StartCureCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="12,4" Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang AssemblyStep_Button_StopCure}" Command="{Binding StopCureCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="12,4" />
+                    </WrapPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- 6. Inspection & measurement output -->
+            <materialDesign:Card UniformCornerRadius="8"
+                     Padding="16"
+                     Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <!-- 标题 -->
+                    <TextBlock Text="{lang:Lang AssemblyStep_InspectionTitle}"
+                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                   Foreground="{DynamicResource SecondaryHueMidBrush}"
+                   Margin="0,0,0,8" />
+
+                    <WrapPanel Margin="0,0,0,12">
+                        <TextBlock Text="{lang:Lang AssemblyStep_StationLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Width="100" ItemsSource="{Binding StationNumbers}" SelectedItem="{Binding SelectedAlignSite}" />
+                    </WrapPanel>
+
+                    <!-- 统计数据区域：三列布局，第二行右对齐按钮 -->
+                    <Grid Margin="0,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- 第一行：Total assy 和 Pass count -->
+                        <WrapPanel Grid.Row="0" Grid.Column="0" Margin="0,0,16,8">
+                            <TextBlock Text="{lang:Lang AssemblyStep_TotalAssemblyCountLabel}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding TotalAssemblyCount}" FontWeight="Bold" />
+                        </WrapPanel>
+                        <WrapPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
+                            <TextBlock Text="{lang:Lang AssemblyStep_PassCountLabel}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding PassCount}" Foreground="Green" FontWeight="Bold" />
+                        </WrapPanel>
+
+                        <!-- 第二行：Fail count、Last measurement time 和操作按钮 -->
+                        <WrapPanel Grid.Row="1" Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Text="{lang:Lang AssemblyStep_FailCountLabel}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding FailCount}" Foreground="Red" FontWeight="Bold" />
+                        </WrapPanel>
+                        <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,0,16,0">
+                            <TextBlock Text="{lang:Lang AssemblyStep_LastMeasureTimeLabel}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding LastMeasurementTime}" Foreground="Gray" />
+                        </WrapPanel>
+                        <WrapPanel Grid.Row="1" Grid.Column="2" HorizontalAlignment="Right">
+                            <Button Content="{lang:Lang AssemblyStep_Button_ViewDetailedData}" Command="{Binding ViewDetailedDataCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="12,4" Margin="0,0,8,0" />
+                            <Button Content="{lang:Lang AssemblyStep_Button_ExportCSV}" Command="{Binding ExportCSVCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="12,4" />
+                        </WrapPanel>
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

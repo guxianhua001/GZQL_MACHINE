@@ -1,9 +1,10 @@
-﻿<!-- Framework/Views/RecipeSelectionDialog.xaml -->
 <UserControl x:Class="Framework.Views.RecipeSelectionDialog"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:local="clr-namespace:Framework.Converters"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="400"
              Height="500">
@@ -11,39 +12,51 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-            <materialDesign:BundledTheme BaseTheme="Light"
-                                         PrimaryColor="DeepPurple"
-                                         SecondaryColor="Lime" />
-            <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
-            <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
-        </ResourceDictionary.MergedDictionaries>
-        <Style x:Key="RecipeItemStyle"
-               TargetType="ListBoxItem">
-            <Setter Property="materialDesign:RippleAssist.Feedback"
-                    Value="{DynamicResource PrimaryHueMidBrush}" />
-            <Setter Property="Margin"
-                    Value="8,4" />
-            <Setter Property="Padding"
-                    Value="16,8" />
-            <Setter Property="Background"
-                    Value="Transparent" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver"
-                         Value="True">
-                    <Setter Property="Background"
-                            Value="{DynamicResource PrimaryHueLightBrush}" />
-                    <Setter Property="Foreground"
-                            Value="{DynamicResource PrimaryHueLightForegroundBrush}" />
-                </Trigger>
-                <Trigger Property="IsSelected"
-                         Value="True">
-                    <Setter Property="Background"
-                            Value="{DynamicResource PrimaryHueMidBrush}" />
-                    <Setter Property="Foreground"
-                            Value="{DynamicResource PrimaryHueMidForegroundBrush}" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="DeepPurple"
+                                             SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- 序号加 1 的转换器 -->
+            <local:AddOneConverter x:Key="AddOneConverter" />
+
+            <!-- 列表项样式：增加背景色、圆角和阴影 -->
+            <Style x:Key="RecipeItemStyle"
+                   TargetType="ListBoxItem">
+                <Setter Property="materialDesign:RippleAssist.Feedback"
+                        Value="{DynamicResource PrimaryHueMidBrush}" />
+                <Setter Property="Margin"
+                        Value="8,4" />
+                <Setter Property="Padding"
+                        Value="16,8" />
+                <Setter Property="Background"
+                        Value="{DynamicResource MaterialDesignPaper}" />
+                <!-- 默认白色背景 -->
+                <Setter Property="BorderBrush"
+                        Value="{DynamicResource MaterialDesignDivider}" />
+                <Setter Property="BorderThickness"
+                        Value="0,0,0,1" />
+                <!-- 可选阴影 -->
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver"
+                             Value="True">
+                        <Setter Property="Background"
+                                Value="{DynamicResource PrimaryHueLightBrush}" />
+                        <Setter Property="Foreground"
+                                Value="{DynamicResource PrimaryHueLightForegroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsSelected"
+                             Value="True">
+                        <Setter Property="Background"
+                                Value="{DynamicResource PrimaryHueMidBrush}" />
+                        <Setter Property="Foreground"
+                                Value="{DynamicResource PrimaryHueMidForegroundBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -74,41 +87,34 @@
                        Style="{DynamicResource MaterialDesignBody1TextBlock}"
                        TextWrapping="Wrap"
                        Margin="0,0,0,8" />
-                       <!--Visibility="{Binding Message, Converter={x:Static materialDesign:ConverterHelper.NullOrEmptyToVisibilityConverter}}" />-->
 
-            <!-- 当前配方提示 -->
-            <Border Grid.Row="1"
-                    Background="{DynamicResource PrimaryHueLightBrush}"
-                    CornerRadius="4"
-                    Padding="12,8"
-                    Margin="0,0,0,8">
-                    <!--Visibility="{Binding CurrentRecipe, Converter={x:Static materialDesign:ConverterHelper.NullOrEmptyToVisibilityConverter}}">-->
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="InformationOutline"
-                                             Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"
-                                             Margin="0,0,8,0" />
-                    <TextBlock Text="{Binding CurrentRecipe, StringFormat='当前配方: {0}'}"
-                               Style="{DynamicResource MaterialDesignBody2TextBlock}"
-                               Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" />
-                </StackPanel>
-            </Border>
+            <!-- 当前配方提示（已注释隐藏） -->
+            <!--<Border Grid.Row="1" ...>...</Border>-->
 
-            <!-- 配方列表 -->
+            <!-- 配方列表：增加背景色，启用交替索引 -->
             <ListBox Grid.Row="2"
                      ItemsSource="{Binding Recipes}"
                      SelectedItem="{Binding SelectedRecipe}"
-                     Style="{StaticResource MaterialDesignListBox}"
+                     Style="{StaticResource MaterialDesignChoiceChipOutlineListBox}"
                      ItemContainerStyle="{StaticResource RecipeItemStyle}"
+                     Background="{DynamicResource MaterialDesignCardBackground}" 
+                     AlternationCount="10000"
                      MaxHeight="200"
-                     Margin="0,8,0,16">
+                     Margin="0,8,0,16"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal"
                                     Margin="4">
-                            <materialDesign:PackIcon Kind="BookmarkOutline"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     VerticalAlignment="Center"
-                                                     Margin="0,0,12,0" />
+                            <!-- 序号：AlternationIndex + 1 -->
+                            <TextBlock Text="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource AddOneConverter}, StringFormat='{}{0}. '}"
+                                       Style="{DynamicResource MaterialDesignBody2TextBlock}"
+                                       Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                       VerticalAlignment="Center"
+                                       Width="30" />
+                            <!-- 固定宽度对齐 -->
+                            <!-- 配方名称 -->
                             <TextBlock Text="{Binding}"
                                        Style="{DynamicResource MaterialDesignSubtitle1TextBlock}"
                                        VerticalAlignment="Center" />
@@ -122,20 +128,16 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="0,16,0,0">
-
-                <Button Content="取消"
+                <Button Content="{lang:Lang Cancel}"
                         Command="{Binding CancelCommand}"
                         Style="{DynamicResource MaterialDesignOutlinedButton}"
                         Margin="0,0,8,0" />
-
-                <Button Content="选择"
+                <Button Content="{lang:Lang RecipeSelection_Select}"
                         Command="{Binding SelectCommand}"
                         CommandParameter="{Binding SelectedRecipe}"
                         Style="{DynamicResource MaterialDesignRaisedButton}"
-                        Background="{DynamicResource PrimaryHueMidBrush}"
                         IsDefault="True" />
             </StackPanel>
         </Grid>
-            
     </Border>
 </UserControl>

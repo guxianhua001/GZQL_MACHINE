@@ -1,0 +1,186 @@
+<UserControl x:Class="AlarmModule.Views.AlarmHistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:AlarmModule.Converters"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="700"
+             d:DesignWidth="1000">
+    <UserControl.Resources>
+        <local:AlarmLevelToBrushConverter x:Key="AlarmLevelToBrushConverter" />
+        <local:AlarmLevelToTextConverter x:Key="AlarmLevelToTextConverter" />
+        <local:AlarmStatusToTextConverter x:Key="AlarmStatusToTextConverter" />
+        <local:AlarmTypeToTextConverter x:Key="AlarmTypeToTextConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <DockPanel Grid.Row="0" Margin="16,16,16,8">
+            <TextBlock Text="{lang:Lang AlarmHistoryQuery}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MaterialDesignBody}" />
+            <Button DockPanel.Dock="Right"
+                    Content="{lang:Lang ExportExcel}"
+                    Command="{Binding ExportCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    HorizontalAlignment="Right" />
+        </DockPanel>
+
+        <!-- 查询面板 -->
+        <materialDesign:Card Grid.Row="1" Margin="16,8" Padding="12">
+            <WrapPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang StartTime}" FontSize="12" Margin="0,0,0,4" />
+                    <DatePicker SelectedDate="{Binding StartTime}"
+                                Width="160"
+                                materialDesign:HintAssist.Hint="{lang:Lang SelectStartDate}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang EndTime}" FontSize="12" Margin="0,0,0,4" />
+                    <DatePicker SelectedDate="{Binding EndTime}"
+                                Width="160"
+                                materialDesign:HintAssist.Hint="{lang:Lang SelectEndDate}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang AlarmLevel}" FontSize="12" Margin="0,0,0,4" />
+                    <ComboBox ItemsSource="{Binding AlarmLevels}"
+                              SelectedItem="{Binding SelectedLevel}"
+                              Width="100"
+                              materialDesign:HintAssist.Hint="{lang:Lang All}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang AlarmSource}" FontSize="12" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding SourceFilter, UpdateSourceTrigger=PropertyChanged}"
+                             Width="120"
+                             materialDesign:HintAssist.Hint="{lang:Lang InputSource}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang AlarmStatus}" FontSize="12" Margin="0,0,0,4" />
+                    <ComboBox ItemsSource="{Binding AlarmStatuses}"
+                              SelectedItem="{Binding SelectedStatus}"
+                              Width="100"
+                              materialDesign:HintAssist.Hint="{lang:Lang All}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang AlarmType}" FontSize="12" Margin="0,0,0,4" />
+                    <ComboBox ItemsSource="{Binding AlarmTypes}"
+                              SelectedItem="{Binding SelectedType}"
+                              Width="100"
+                              materialDesign:HintAssist.Hint="{lang:Lang All}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,16,8">
+                    <TextBlock Text="{lang:Lang Keyword}" FontSize="12" Margin="0,0,0,4" />
+                    <TextBox Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                             Width="140"
+                             materialDesign:HintAssist.Hint="{lang:Lang SearchDescOrCode}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,0,8" VerticalAlignment="Bottom">
+                    <Button Content="{lang:Lang Query}"
+                            Command="{Binding QueryCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}" />
+                </StackPanel>
+            </WrapPanel>
+        </materialDesign:Card>
+
+        <!-- 数据表格 -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding QueryResult.Items}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  SelectionUnit="FullRow"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  materialDesign:DataGridAssist.CellPadding="8,4"
+                  Margin="16,8,16,8">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                    <Setter Property="Background" Value="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToBrushConverter}, ConverterParameter=0.15}" />
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{lang:Lang AlarmTime}" Binding="{Binding AlarmTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="140" />
+                <DataGridTemplateColumn Header="{lang:Lang AlarmLevel}" Width="70">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToTextConverter}}"
+                                       Foreground="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToBrushConverter}}"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="{lang:Lang AlarmCode}" Binding="{Binding AlarmCode}" Width="90" />
+                <DataGridTextColumn Header="{lang:Lang AlarmSource}" Binding="{Binding AlarmSource}" Width="100" />
+                <DataGridTemplateColumn Header="{lang:Lang AlarmType}" Width="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding AlarmType, Converter={StaticResource AlarmTypeToTextConverter}}"
+                                       VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="{lang:Lang Desc}" Binding="{Binding Description}" Width="*" />
+                <DataGridTextColumn Header="{lang:Lang TriggerValue}" Binding="{Binding TriggerValue}" Width="70" />
+                <DataGridTextColumn Header="{lang:Lang Threshold}" Binding="{Binding ThresholdValue}" Width="70" />
+                <DataGridTemplateColumn Header="{lang:Lang StatusShort}" Width="70">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Status, Converter={StaticResource AlarmStatusToTextConverter}}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="{lang:Lang ConfirmedBy}" Binding="{Binding ConfirmedBy}" Width="70" />
+                <DataGridTextColumn Header="{lang:Lang ConfirmedTime}" Binding="{Binding ConfirmedTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="140" />
+                <DataGridTextColumn Header="{lang:Lang ResetBy}" Binding="{Binding ResetBy}" Width="70" />
+                <DataGridTextColumn Header="{lang:Lang ResetTime}" Binding="{Binding ResetTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="140" />
+                <DataGridTextColumn Header="{lang:Lang ProcessingNotes}" Binding="{Binding ProcessingNotes}" Width="120" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- 分页控制 -->
+        <DockPanel Grid.Row="3" Margin="16,8,16,16">
+            <TextBlock DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontSize="13">
+                <Run Text="{lang:Lang TotalPrefix}" /><Run Text="{Binding QueryResult.TotalCount, Mode=OneWay, FallbackValue=0}" /><Run Text="{lang:Lang RecordsSuffix}" />
+            </TextBlock>
+            <StackPanel DockPanel.Dock="Right"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center">
+                <Button Content="{lang:Lang PreviousPage}"
+                        Command="{Binding PreviousPageCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0" />
+                <TextBlock VerticalAlignment="Center"
+                           FontSize="13"
+                           Margin="0,0,8,0">
+                    <Run Text="{lang:Lang PagePrefix}" /><Run Text="{Binding CurrentPage, Mode=OneWay}" /><Run Text="{lang:Lang PageSeparator}" /><Run Text="{Binding TotalPages, Mode=OneWay}" /><Run Text="{lang:Lang PageSuffix}" />
+                </TextBlock>
+                <Button Content="{lang:Lang NextPage}"
+                        Command="{Binding NextPageCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}" />
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</UserControl>

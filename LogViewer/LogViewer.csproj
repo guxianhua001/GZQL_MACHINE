@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0-windows7.0</TargetFramework>
@@ -12,9 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Core">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Core.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\Core\Core.csproj" />
     <Reference Include="Prism">
       <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Prism.dll</HintPath>
     </Reference>

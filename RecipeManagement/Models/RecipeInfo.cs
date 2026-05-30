@@ -1,5 +1,4 @@
-﻿// Recipe/Models/Recipe.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Text.Json;
@@ -17,13 +16,35 @@ namespace Recipe.Models
         public string Version { get; set; } = "1.0";
         public List<string> Tags { get; set; } = new List<string>();
         public string Author { get; set; } = string.Empty;
-        public int Rating { get; set; }
-        public int Difficulty { get; set; } // 1-5
-        public TimeSpan EstimatedTime { get; set; }
-        public List<Ingredient> Ingredients { get; set; } = new List<Ingredient>();
-        public List<RecipeStep> Steps { get; set; } = new List<RecipeStep>();
 
-        // 验证方法
+        public RecipeInfo() { }
+
+        public RecipeInfo(RecipeInfo other)
+        {
+            Id = Guid.NewGuid().ToString();
+            Name = other.Name;
+            Description = other.Description;
+            CreatedTime = DateTime.UtcNow;
+            ModifiedTime = DateTime.UtcNow;
+            Category = other.Category;
+            Version = other.Version;
+            Tags = new List<string>(other.Tags);
+            Author = other.Author;
+
+            Parameters = new Dictionary<string, object>();
+            foreach (var kvp in other.Parameters)
+            {
+                Parameters[kvp.Key] = CloneObject(kvp.Value);
+            }
+        }
+
+        private static object CloneObject(object source)
+        {
+            if (source == null) return null;
+            var json = JsonSerializer.Serialize(source);
+            return JsonSerializer.Deserialize<object>(json);
+        }
+
         public bool IsValid()
         {
             return !string.IsNullOrWhiteSpace(Name) && !string.IsNullOrWhiteSpace(Id);
@@ -47,20 +68,5 @@ namespace Recipe.Models
             Parameters[key] = value;
             ModifiedTime = DateTime.UtcNow;
         }
-    }
-    // 辅助类
-    public class Ingredient
-    {
-        public string Name { get; set; } = string.Empty;
-        public decimal Quantity { get; set; }
-        public string Unit { get; set; } = string.Empty;
-        public string Notes { get; set; } = string.Empty;
-    }
-    public class RecipeStep
-    {
-        public int Order { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public TimeSpan Duration { get; set; }
-        public string ImageUrl { get; set; } = string.Empty;
     }
 }

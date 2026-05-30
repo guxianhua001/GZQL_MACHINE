@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <MajorVersion>1</MajorVersion>
+    <MinorVersion>0</MinorVersion>
+  </PropertyGroup>
+
+  <Target Name="CalculateAutoVersion" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <_BuildNumber>$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::new(2026,1,1))).Days)</_BuildNumber>
+      <Version>$(MajorVersion).$(MinorVersion).$(_BuildNumber)</Version>
+      <AssemblyVersion>$(MajorVersion).$(MinorVersion).$(_BuildNumber).0</AssemblyVersion>
+      <FileVersion>$(MajorVersion).$(MinorVersion).$(_BuildNumber).0</FileVersion>
+      <InformationalVersion>$(MajorVersion).$(MinorVersion).$(_BuildNumber)</InformationalVersion>
+    </PropertyGroup>
+    <Message Importance="high" Text="自动生成版本号: $(Version)" />
+  </Target>
+</Project>

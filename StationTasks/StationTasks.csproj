@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetCore.Natasha.CSharp.All" Version="3.6.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Prism.DryIoc" Version="8.1.97" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AlarmModule\AlarmModule.csproj" />
+    <ProjectReference Include="..\MotionControl\MotionControl.csproj" />
+    <ProjectReference Include="..\RecipeManagement\Recipe.csproj" />
+    <ProjectReference Include="..\TCPIPModule\TCPIPModule.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="C:\WorkFiles\GZQL_MACHINE\StationTasks\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="C:\WorkFiles\GZQL_MACHINE\StationTasks\.editorconfig" />
+  </ItemGroup>
+
+</Project>

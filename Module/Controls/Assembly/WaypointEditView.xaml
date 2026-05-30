@@ -1,0 +1,171 @@
+<UserControl x:Class="Module.Views.WaypointEditView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             mc:Ignorable="d"
+             d:DesignHeight="600"
+             d:DesignWidth="1000">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <TextBlock Text="{lang:Lang WaypointEdit_Title}"
+                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                   Foreground="{DynamicResource PrimaryHueMidBrush}"
+                   Margin="0,0,0,16" />
+
+        <!-- DataGrid 表格，应用 MaterialDesign 样式 -->
+        <DataGrid Grid.Row="1"
+                  AutoGenerateColumns="False"
+                  HeadersVisibility="Column"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  ItemsSource="{Binding Waypoints}"
+                  SelectedItem="{Binding SelectedWaypoint}"
+                  materialDesign:DataGridAssist.CellPadding="8 4 8 4"
+                  materialDesign:DataGridAssist.ColumnHeaderPadding="8 4 8 4"
+                  RowHeight="40"
+                  FontSize="12"
+                  Margin="0,0,0,16">
+
+            <DataGrid.Columns>
+                <!-- 序号（自动生成） -->
+                <DataGridTextColumn Header="{lang:Lang WaypointEdit_Column_Index}"
+                                    Binding="{Binding Index, Mode=OneWay}"
+                                    Width="50" />
+
+                <!-- 组装X轴：复选框 + 位置输入 -->
+                <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_AxisX}"
+                                        Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding AxisXEnabled}"
+                                          VerticalAlignment="Center" />
+                                <TextBox Text="{Binding AxisXPosition, StringFormat=N2}"
+                                         Width="70"
+                                         Margin="4,0,0,0"
+                                         IsEnabled="{Binding AxisXEnabled}"
+                                         materialDesign:TextFieldAssist.HasClearButton="True" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 组装Y轴 -->
+                <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_AxisY}"
+                                        Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding AxisYEnabled}"
+                                          VerticalAlignment="Center" />
+                                <TextBox Text="{Binding AxisYPosition, StringFormat=N2}"
+                                         Width="70"
+                                         Margin="4,0,0,0"
+                                         IsEnabled="{Binding AxisYEnabled}"
+                                         materialDesign:TextFieldAssist.HasClearButton="True" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 组装U轴 -->
+                <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_AxisU}"
+                                        Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding AxisUEnabled}"
+                                          VerticalAlignment="Center" />
+                                <TextBox Text="{Binding AxisUPosition, StringFormat=N2}"
+                                         Width="70"
+                                         Margin="4,0,0,0"
+                                         IsEnabled="{Binding AxisUEnabled}"
+                                         materialDesign:TextFieldAssist.HasClearButton="True" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Z轴 -->
+                <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_AxisZ}"
+                                        Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding AxisZEnabled}"
+                                          VerticalAlignment="Center" />
+                                <TextBox Text="{Binding AxisZPosition, StringFormat=N2}"
+                                         Width="70"
+                                         Margin="4,0,0,0"
+                                         IsEnabled="{Binding AxisZEnabled}"
+                                         materialDesign:TextFieldAssist.HasClearButton="True" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 停留时间 -->
+                <DataGridTextColumn Header="{lang:Lang WaypointEdit_Column_DwellTime}"
+                                    Width="100">
+                    <DataGridTextColumn.Binding>
+                        <Binding Path="DwellTime"
+                                 StringFormat="N0"
+                                 TargetNullValue="" />
+                    </DataGridTextColumn.Binding>
+                </DataGridTextColumn>
+
+                <!-- 操作列：删除按钮 -->
+                <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_Actions}"
+                                        Width="70">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Width="52"
+                                    Height="30"
+                                    Command="{Binding DataContext.DeleteWaypointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}">
+                                <materialDesign:PackIcon Kind="Delete"
+                                                         Foreground="Red" />
+                            </Button>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- 底部按钮区域 -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center">
+            <Button Content="{lang:Lang WaypointEdit_Button_AddStep}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Padding="16,6"
+                    Command="{Binding AddWaypointCommand}"
+                    Margin="0,0,12,0" />
+            <Button Content="{lang:Lang WaypointEdit_Button_OK}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Background="{DynamicResource PrimaryHueMidBrush}"
+                    Padding="16,6"
+                    Command="{Binding SaveCommand}"
+                    Margin="0,0,12,0" />
+            <Button Content="{lang:Lang WaypointEdit_Button_Cancel}"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Padding="16,6"
+                    Command="{Binding CancelCommand}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

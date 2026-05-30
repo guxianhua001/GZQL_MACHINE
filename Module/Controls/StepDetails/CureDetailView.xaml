@@ -1,0 +1,280 @@
+<UserControl x:Class="Module.Views.CureDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:localConverters="clr-namespace:Module.Converters"
+             Width="800">
+    <UserControl.Resources>
+        <localConverters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+    <Border Padding="16"
+            Background="{DynamicResource MaterialDesignCardBackground}"
+            CornerRadius="4">
+        <StackPanel>
+            <DockPanel Margin="0,0,0,12">
+                <Button DockPanel.Dock="Right"
+                        Command="{Binding CloseCommand}"
+                        ToolTip="{lang:Lang Close}"
+                        Width="30" Height="30"
+                        Style="{StaticResource MaterialDesignIconButton}">
+                    <materialDesign:PackIcon Kind="Close" />
+                </Button>
+                <TextBlock FontWeight="Bold"
+                           FontSize="14"
+                           VerticalAlignment="Center"
+                           Text="{Binding StepDescription, StringFormat=CURE {0}}" />
+            </DockPanel>
+
+            <GroupBox Header="{lang:Lang CureDetail_UvConfig}" Margin="0,0,0,16">
+                <DockPanel>
+                <Grid Margin="8" DockPanel.Dock="Top">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang CureDetail_UvHeadSelect}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="4,2">
+                        <RadioButton Content="{lang:Lang CureDetail_Head1}"
+                                     IsChecked="{Binding IsHead1Selected}"
+                                     GroupName="UvHeadGroup"
+                                     Margin="0,0,12,0" />
+                        <RadioButton Content="{lang:Lang CureDetail_Head2}"
+                                     IsChecked="{Binding IsHead2Selected}"
+                                     GroupName="UvHeadGroup" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang CureDetail_CureTime}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1"
+                             Text="{Binding CureTimeMs}"
+                             Margin="4,2"
+                             Width="120"
+                             HorizontalAlignment="Left"
+                             materialDesign:HintAssist.Hint="milliseconds"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang CureDetail_Head1DoPort}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="2" Grid.Column="1"
+                             Text="{Binding UvHead1DoPort}"
+                             Margin="4,2"
+                             Width="120"
+                             HorizontalAlignment="Left"
+                             materialDesign:HintAssist.Hint="DO端口"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang CureDetail_Head2DoPort}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="3" Grid.Column="1"
+                             Text="{Binding UvHead2DoPort}"
+                             Margin="4,2"
+                             Width="120"
+                             HorizontalAlignment="Left"
+                             materialDesign:HintAssist.Hint="DO端口"/>
+
+                    <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Height="1" Background="{DynamicResource MaterialDesignDividerBrush}" Margin="0,8,0,8"/>
+                </Grid>
+
+                <Expander Header="{lang:Lang CureDetail_StageSettings}" IsExpanded="False" Margin="8,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang CureDetail_Stage1}" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Stage1DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang CureDetail_Intensity}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Stage1Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang CureDetail_Stage2}" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Stage2DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{lang:Lang CureDetail_Intensity}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding Stage2Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
+
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="{lang:Lang CureDetail_Stage3}" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="6" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding Stage3DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
+
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="{lang:Lang CureDetail_Intensity}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding Stage3Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
+
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="{lang:Lang CureDetail_Stage4}" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="9" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+
+                        <TextBlock Grid.Row="10" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding Stage4DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
+
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="{lang:Lang CureDetail_Intensity}" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding Stage4Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
+                    </Grid>
+                </Expander>
+                </DockPanel>
+            </GroupBox>
+
+            <GroupBox Header="{lang:Lang CureDetail_CureMotionSeq}" Margin="0,0,0,8">
+                <StackPanel>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <DataGrid ItemsSource="{Binding SubMoveRows}"
+                                  SelectedItem="{Binding SelectedSubMoveRow}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  materialDesign:DataGridAssist.CellPadding="4"
+                                  MaxHeight="300">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{lang:Lang CureDetail_Column_Sub}" Binding="{Binding SubSeq}" Width="SizeToCells" MinWidth="40" IsReadOnly="True"/>
+
+                                <DataGridTemplateColumn Header="Action" Width="SizeToCells" MinWidth="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Action}" VerticalAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailableActions}"
+                                                      SelectedItem="{Binding Action, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang CureDetail_Column_Station}" Width="SizeToCells" MinWidth="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding StationId}" VerticalAlignment="Center"
+                                                       Opacity="{Binding IsMotionEnabled, Converter={StaticResource BoolToOpacityConverter}}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.StationItems, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      SelectedValue="{Binding StationId, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="StationId"
+                                                      DisplayMemberPath="DisplayName"
+                                                      IsEditable="False"
+                                                      IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang CureDetail_Column_Axis}" Width="SizeToCells" MinWidth="60">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock VerticalAlignment="Center"
+                                                       Opacity="{Binding IsMotionEnabled, Converter={StaticResource BoolToOpacityConverter}}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0}.{1}">
+                                                        <Binding Path="StationId" />
+                                                        <Binding Path="Axis" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailableAxes}"
+                                                      SelectedItem="{Binding Axis, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False"
+                                                      IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang CureDetail_Column_Position}" Width="SizeToCells" MinWidth="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding PositionName}" VerticalAlignment="Center"
+                                                       Opacity="{Binding IsMotionEnabled, Converter={StaticResource BoolToOpacityConverter}}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                      SelectedItem="{Binding PositionName, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False"
+                                                      IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang CureDetail_Column_Offset}" Width="SizeToCells" MinWidth="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Offset, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang CureDetail_Column_Speed}" Width="SizeToCells" MinWidth="50">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding IsMotionEnabled}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="{lang:Lang CureDetail_Column_Description}" Width="SizeToCells" MinWidth="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Description}" VerticalAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </ScrollViewer>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,12,0,0">
+                        <Button Content="{lang:Lang PickDetail_Add}" Margin="0,0,4,0" Command="{Binding AddMoveCommand}" />
+                        <Button Content="{lang:Lang PickDetail_Delete}" Margin="0,0,4,0" Command="{Binding DeleteMoveCommand}" />
+                        <Button Content="↑" Margin="0,0,4,0" Command="{Binding MoveUpCommand}" />
+                        <Button Content="↓" Margin="0,0,4,0" Command="{Binding MoveDownCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="{lang:Lang Close}" Command="{Binding CloseCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,0" />
+                <Button Content="{lang:Lang Save}" Command="{Binding SaveCommand}" Style="{StaticResource MaterialDesignRaisedButton}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

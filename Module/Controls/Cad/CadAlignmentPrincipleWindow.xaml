@@ -1,0 +1,210 @@
+<Window x:Class="Module.Views.CadAlignmentPrincipleWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+        Title="CAD对位原理示意图"
+        Width="1000" Height="680"
+        WindowStyle="ToolWindow"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F7FA">
+    <DockPanel Margin="16,12,16,12">
+        <Border DockPanel.Dock="Bottom" Background="#263238" CornerRadius="6" Padding="12,8"
+                Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Click="OnExportDxfClick" Style="{StaticResource MaterialDesignRaisedButton}"
+                        Padding="14,6" materialDesign:ButtonAssist.CornerRadius="4"
+                        Background="#FF9800" Foreground="White" FontWeight="SemiBold">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FileExportOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+                        <TextBlock Text="{lang:Lang Principle_ExportBtn}" Margin="7,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+        <Viewbox>
+        <Canvas Width="960" Height="640">
+
+            <!-- ═══ 标题 ═══ -->
+            <TextBlock Canvas.Left="336" Canvas.Top="10" FontSize="18" FontWeight="Bold"
+                       Foreground="#1A2332" Text="{lang:Lang Principle_Title}"/>
+
+            <!-- ═══ 左侧面板：旋转前（CAD原始姿态）═══ -->
+            <Rectangle Canvas.Left="24" Canvas.Top="42" Width="420" Height="490"
+                       Fill="#FFFFFF" Stroke="#D0D5DD" StrokeThickness="1.2" RadiusX="8" RadiusY="8"/>
+            <Border Canvas.Left="24" Canvas.Top="42" Width="420" Height="36"
+                    Background="#1976D2"
+                    CornerRadius="8,8,0,0" ClipToBounds="True">
+                <TextBlock Text="{lang:Lang Principle_PanelLeft}" FontSize="13.5" FontWeight="SemiBold"
+                           Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- 产品圆弧轮廓：圆心(230,305) R=138 真圆弧 C形开口朝上 -->
+            <Path Data="M 92.3 293 A 138 138 0 1 1 367.7 293" Stroke="#90CAF9" StrokeThickness="2.5"
+                  Fill="Transparent" StrokeDashArray="8,4"/>
+
+            <!-- ===== 线段 P1-P2：红色基准（严格水平 Y=430.1） ===== -->
+            <Line X1="288.3" Y1="430.1" X2="171.7" Y2="430.1" Stroke="#E53935" StrokeThickness="2.8"/>
+            <Ellipse Canvas.Left="280.3" Canvas.Top="422.1" Width="16" Height="16" Fill="#E53935" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="163.7" Canvas.Top="422.1" Width="16" Height="16" Fill="#E53935" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="298" Canvas.Top="442" FontSize="13" FontWeight="Bold" Foreground="#E53935" Text="{lang:Lang Principle_P1}"/>
+            <TextBlock Canvas.Left="150" Canvas.Top="442" FontSize="13" FontWeight="Bold" Foreground="#E53935" Text="{lang:Lang Principle_P2}"/>
+            <TextBlock Canvas.Left="198" Canvas.Top="456" FontSize="10.5" FontStyle="Italic" Foreground="#999" Text="{lang:Lang Principle_BaselineNote}"/>
+
+            <!-- ===== 线段 P3-P4：绿色（右侧弦） ===== -->
+            <Line X1="355.1" Y1="246.7" X2="309.2" Y2="192.0" Stroke="#43A047" StrokeThickness="2.5"/>
+            <Ellipse Canvas.Left="348.1" Canvas.Top="239.7" Width="14" Height="14" Fill="#43A047" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="302.2" Canvas.Top="185.0" Width="14" Height="14" Fill="#43A047" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="364" Canvas.Top="240" FontSize="12" FontWeight="Bold" Foreground="#388E3C" Text="{lang:Lang Principle_P3}"/>
+            <TextBlock Canvas.Left="290" Canvas.Top="182" FontSize="12" FontWeight="Bold" Foreground="#388E3C" Text="{lang:Lang Principle_P4}"/>
+
+            <!-- ===== 线段 P5-P6：紫色（左上侧弦） ===== -->
+            <Line X1="150.8" Y1="192.0" X2="104.9" Y2="246.7" Stroke="#7B1FA2" StrokeThickness="2.5"/>
+            <Ellipse Canvas.Left="143.8" Canvas.Top="185.0" Width="14" Height="14" Fill="#7B1FA2" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="97.9" Canvas.Top="239.7" Width="14" Height="14" Fill="#7B1FA2" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="156" Canvas.Top="182" FontSize="12" FontWeight="Bold" Foreground="#7B1FA2" Text="{lang:Lang Principle_P5}"/>
+            <TextBlock Canvas.Left="82" Canvas.Top="254" FontSize="12" FontWeight="Bold" Foreground="#7B1FA2" Text="{lang:Lang Principle_P6}"/>
+
+            <!-- ===== 第6组配对点 Pa-Pb：橙色（左侧弦） ===== -->
+            <Line X1="92.3" Y1="293.0" X2="117.0" Y2="225.8" Stroke="#F57C00" StrokeThickness="2.3"/>
+            <Ellipse Canvas.Left="85.3" Canvas.Top="286.0" Width="14" Height="14" Fill="#F57C00" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="110.0" Canvas.Top="218.8" Width="14" Height="14" Fill="#F57C00" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="66" Canvas.Top="298" FontSize="11" FontWeight="Bold" Foreground="#E65100" Text="{lang:Lang Principle_Pa}"/>
+            <TextBlock Canvas.Left="122" Canvas.Top="218" FontSize="11" FontWeight="Bold" Foreground="#E65100" Text="{lang:Lang Principle_Pb}"/>
+
+            <!-- ===== Rz 回转中心 O（=圆弧圆心 230,305） ===== -->
+            <Line X1="216" Y1="305" X2="244" Y2="305" Stroke="#333" StrokeThickness="1.5"/>
+            <Line X1="230" Y1="291" X2="230" Y2="319" Stroke="#333" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="218" Canvas.Top="293" Width="24" Height="24" Stroke="#333" StrokeThickness="1.5" Fill="Transparent"/>
+            <Ellipse Canvas.Left="224" Canvas.Top="299" Width="12" Height="12" Fill="#333"/>
+            <TextBlock Canvas.Left="248" Canvas.Top="299" FontSize="12" FontWeight="Bold" Foreground="#333" Text="{lang:Lang Principle_CenterLabel}"/>
+            <TextBlock Canvas.Left="264" Canvas.Top="301" FontSize="10" Foreground="#666" Text="{lang:Lang Principle_CenterCoord}"/>
+            <TextBlock Canvas.Left="148" Canvas.Top="330" FontSize="10" FontStyle="Italic" Foreground="#888" Text="{lang:Lang Principle_CenterDesc}"/>
+
+            <!-- 角度 θ 标注弧线（P3-P4 与水平方向的夹角） -->
+            <Path Data="M 335 247 A 40 40 0 0 0 352 224" Stroke="#FF5722" StrokeThickness="1.8" Fill="Transparent"/>
+            <Polygon Points="350,222 357,228 355,218" Fill="#FF5722"/>
+            <TextBlock Canvas.Left="358" Canvas.Top="228" FontSize="13" FontWeight="Bold" Foreground="#FF5722" Text="{lang:Lang Principle_Theta}"/>
+
+            <!-- ═══ 中间过渡区：变换箭头 ═══ -->
+            <Line X1="458" Y1="285" X2="514" Y2="285" Stroke="#FF5722" StrokeThickness="3.5"/>
+            <Polygon Points="512,277 528,285 512,293" Fill="#FF5722"/>
+
+            <StackPanel Canvas.Left="468" Canvas.Top="254" Orientation="Vertical">
+                <TextBlock Text="{lang:Lang Principle_Step1}" FontSize="10" FontWeight="Medium" Foreground="#555" HorizontalAlignment="Center"/>
+                <TextBlock Text="{lang:Lang Principle_Step2}" FontSize="10" FontWeight="Medium" Foreground="#555" HorizontalAlignment="Center"/>
+                <TextBlock Text="{lang:Lang Principle_Step3}" FontSize="10" FontWeight="Medium" Foreground="#FF5722" HorizontalAlignment="Center"/>
+                <TextBlock Text="{lang:Lang Principle_Step4}" FontSize="10" FontWeight="Medium" Foreground="#FF5722" HorizontalAlignment="Center"/>
+                <TextBlock Text="{lang:Lang Principle_Step5}" FontSize="10" FontWeight="Medium" Foreground="#555" HorizontalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Canvas.Left="472" Canvas.Top="318" FontSize="10" FontStyle="Italic" Foreground="#AAA"
+                       Text="{lang:Lang Principle_TransitionSub}"/>
+
+            <!-- ═══ 右侧面板：旋转后（机械坐标对齐）═══ -->
+            <Rectangle Canvas.Left="534" Canvas.Top="42" Width="390" Height="490"
+                       Fill="#FFFFFF" Stroke="#D0D5DD" StrokeThickness="1.2" RadiusX="8" RadiusY="8"/>
+            <Border Canvas.Left="534" Canvas.Top="42" Width="390" Height="36"
+                    Background="#2E7D32"
+                    CornerRadius="8,8,0,0" ClipToBounds="True">
+                <TextBlock Text="{lang:Lang Principle_PanelRight}" FontSize="13.5" FontWeight="SemiBold"
+                           Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- 产品圆弧轮廓（旋转后，圆心 720,305 R=138） -->
+            <Path Data="M 582.3 293 A 138 138 0 1 1 857.7 293" Stroke="#A5D6A7" StrokeThickness="2.5"
+                  Fill="Transparent" StrokeDashArray="8,4"/>
+
+            <!-- ===== 旋转后 P1'-P2'：红色基准（不变，严格水平 Y=430.1） ===== -->
+            <Line X1="798.3" Y1="430.1" X2="681.7" Y2="430.1" Stroke="#E53935" StrokeThickness="2.8"/>
+            <Ellipse Canvas.Left="790.3" Canvas.Top="422.1" Width="16" Height="16" Fill="#E53935" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="673.7" Canvas.Top="422.1" Width="16" Height="16" Fill="#E53935" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="808" Canvas.Top="442" FontSize="13" FontWeight="Bold" Foreground="#E53935" Text="{lang:Lang Principle_P1p}"/>
+            <TextBlock Canvas.Left="660" Canvas.Top="442" FontSize="13" FontWeight="Bold" Foreground="#E53935" Text="{lang:Lang Principle_P2p}"/>
+            <TextBlock Canvas.Left="708" Canvas.Top="456" FontSize="10.5" FontStyle="Italic" Foreground="#999" Text="{lang:Lang Principle_BaselineRight}"/>
+
+            <!-- ===== 旋转后 P3'-P4'：绿色（已摆正为水平 Y=335） ===== -->
+            <Line X1="618" Y1="335" X2="826" Y2="335" Stroke="#43A047" StrokeThickness="2.5"/>
+            <Ellipse Canvas.Left="611" Canvas.Top="328" Width="14" Height="14" Fill="#43A047" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="819" Canvas.Top="328" Width="14" Height="14" Fill="#43A047" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="594" Canvas.Top="338" FontSize="12" FontWeight="Bold" Foreground="#388E3C" Text="{lang:Lang Principle_P4p}"/>
+            <TextBlock Canvas.Left="834" Canvas.Top="338" FontSize="12" FontWeight="Bold" Foreground="#388E3C" Text="{lang:Lang Principle_P3p}"/>
+            <TextBlock Canvas.Left="686" Canvas.Top="352" FontSize="9.5" Foreground="#43A047" FontStyle="Italic" Text="{lang:Lang Principle_Leveled}"/>
+
+            <!-- ===== 旋转后 P5'-P6'：紫色（已摆正为水平 Y=265） ===== -->
+            <Line X1="618" Y1="265" X2="800" Y2="265" Stroke="#7B1FA2" StrokeThickness="2.5"/>
+            <Ellipse Canvas.Left="611" Canvas.Top="258" Width="14" Height="14" Fill="#7B1FA2" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="793" Canvas.Top="258" Width="14" Height="14" Fill="#7B1FA2" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="594" Canvas.Top="268" FontSize="12" FontWeight="Bold" Foreground="#7B1FA2" Text="{lang:Lang Principle_P6p}"/>
+            <TextBlock Canvas.Left="808" Canvas.Top="268" FontSize="12" FontWeight="Bold" Foreground="#7B1FA2" Text="{lang:Lang Principle_P5p}"/>
+            <TextBlock Canvas.Left="668" Canvas.Top="282" FontSize="9.5" Foreground="#7B1FA2" FontStyle="Italic" Text="{lang:Lang Principle_Leveled}"/>
+
+            <!-- ===== 旋转后 Pa'-Pb'：橙色（已摆正为水平 Y=200） ===== -->
+            <Line X1="618" Y1="200" X2="776" Y2="200" Stroke="#F57C00" StrokeThickness="2.3"/>
+            <Ellipse Canvas.Left="611" Canvas.Top="193" Width="14" Height="14" Fill="#F57C00" Stroke="#FFF" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="769" Canvas.Top="193" Width="14" Height="14" Fill="#F57C00" Stroke="#FFF" StrokeThickness="1.5"/>
+            <TextBlock Canvas.Left="594" Canvas.Top="203" FontSize="11" FontWeight="Bold" Foreground="#E65100" Text="{lang:Lang Principle_Pap}"/>
+            <TextBlock Canvas.Left="784" Canvas.Top="203" FontSize="11" FontWeight="Bold" Foreground="#E65100" Text="{lang:Lang Principle_Pbp}"/>
+            <TextBlock Canvas.Left="654" Canvas.Top="217" FontSize="9.5" Foreground="#F57C00" FontStyle="Italic" Text="{lang:Lang Principle_Leveled}"/>
+
+            <!-- ===== 旋转后 Rz 回转中心 O'（=圆心 740,305） ===== -->
+            <Line X1="726" Y1="305" X2="754" Y2="305" Stroke="#333" StrokeThickness="1.5"/>
+            <Line X1="740" Y1="291" X2="740" Y2="319" Stroke="#333" StrokeThickness="1.5"/>
+            <Ellipse Canvas.Left="728" Canvas.Top="293" Width="24" Height="24" Stroke="#333" StrokeThickness="1.5" Fill="Transparent"/>
+            <Ellipse Canvas.Left="734" Canvas.Top="299" Width="12" Height="12" Fill="#333"/>
+            <TextBlock Canvas.Left="758" Canvas.Top="299" FontSize="12" FontWeight="Bold" Foreground="#333" Text="{lang:Lang Principle_CenterLabel}"/>
+            <TextBlock Canvas.Left="774" Canvas.Top="301" FontSize="10" Foreground="#666" Text="{lang:Lang Principle_CenterUnchanged}"/>
+
+            <!-- 旋转轨迹虚线×6（绕O点的圆弧轨迹，连接旋转前后对应点） -->
+            <Path Data="M 355.1 246.7 Q 570 220 826 335" Stroke="#BDBDBD" StrokeThickness="1.2"
+                  Fill="Transparent" StrokeDashArray="4,3"/>
+            <Path Data="M 309.2 192 Q 550 180 618 335" Stroke="#BDBDBD" StrokeThickness="1.2"
+                  Fill="Transparent" StrokeDashArray="4,3"/>
+            <Path Data="M 150.8 192 Q 400 170 800 265" Stroke="#BDBDBD" StrokeThickness="1.2"
+                  Fill="Transparent" StrokeDashArray="4,3"/>
+            <Path Data="M 104.9 246.7 Q 420 230 618 265" Stroke="#BDBDBD" StrokeThickness="1.2"
+                  Fill="Transparent" StrokeDashArray="4,3"/>
+            <Path Data="M 92.3 293 Q 380 240 776 200" Stroke="#BDBDBD" StrokeThickness="1.2"
+                  Fill="Transparent" StrokeDashArray="4,3"/>
+            <Path Data="M 117.0 225.8 Q 380 210 618 200" Stroke="#BDBDBD" StrokeThickness="1.2"
+                  Fill="Transparent" StrokeDashArray="4,3"/>
+
+            <!-- ═══ 底部步骤条 ═══ -->
+            <Border Canvas.Left="176" Canvas.Top="550" Width="608" Height="48"
+                    Background="#263238" CornerRadius="24" Padding="16,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="10" Height="10" Fill="#1976D2" Stroke="#FFF" StrokeThickness="1.5"/>
+                    <TextBlock Foreground="#CFD8DC" FontSize="10.5" Margin="8,0,16,0" VerticalAlignment="Center">
+                        <Run Text="① "/><Run Text="{lang:Lang Principle_Bar1}"/>
+                    </TextBlock>
+                    <Line X1="0" Y1="0" X2="30" Y2="0" Stroke="#455A64" StrokeThickness="1.5" VerticalAlignment="Center"/>
+                    <Ellipse Width="10" Height="10" Fill="#FF9800" Stroke="#FFF" StrokeThickness="1.5" Margin="16,0,0,0"/>
+                    <TextBlock Foreground="#CFD8DC" FontSize="10.5" Margin="8,0,16,0" VerticalAlignment="Center">
+                        <Run Text="② "/><Run Text="{lang:Lang Principle_Bar2}"/>
+                    </TextBlock>
+                    <Line X1="0" Y1="0" X2="30" Y2="0" Stroke="#455A64" StrokeThickness="1.5" VerticalAlignment="Center"/>
+                    <Ellipse Width="10" Height="10" Fill="#9C27B0" Stroke="#FFF" StrokeThickness="1.5" Margin="16,0,0,0"/>
+                    <TextBlock Foreground="#CFD8DC" FontSize="10.5" Margin="8,0,16,0" VerticalAlignment="Center">
+                        <Run Text="③ "/><Run Text="{lang:Lang Principle_Bar3}"/>
+                    </TextBlock>
+                    <Line X1="0" Y1="0" X2="30" Y2="0" Stroke="#455A64" StrokeThickness="1.5" VerticalAlignment="Center"/>
+                    <Ellipse Width="10" Height="10" Fill="#00897B" Stroke="#FFF" StrokeThickness="1.5" Margin="16,0,0,0"/>
+                    <TextBlock Foreground="#CFD8DC" FontSize="10.5" Margin="8,0,16,0" VerticalAlignment="Center">
+                        <Run Text="④ "/><Run Text="{lang:Lang Principle_Bar4}"/>
+                    </TextBlock>
+                    <Line X1="0" Y1="0" X2="30" Y2="0" Stroke="#455A64" StrokeThickness="1.5" VerticalAlignment="Center"/>
+                    <Ellipse Width="10" Height="10" Fill="#2E7D32" Stroke="#FFF" StrokeThickness="1.5" Margin="16,0,0,0"/>
+                    <TextBlock Foreground="#80CBC4" FontSize="10.5" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <Run Text="⑤ "/><Run Text="{lang:Lang Principle_Bar5}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- 底部公式提示（独立一行，不重叠） -->
+            <TextBlock Canvas.Left="248" Canvas.Top="600" FontSize="10.5" Foreground="#888" TextWrapping="NoWrap"
+                       Text="{lang:Lang Principle_Formula}"/>
+
+        </Canvas>
+    </Viewbox>
+    </DockPanel>
+</Window>

@@ -1,0 +1,650 @@
+<UserControl x:Class="MotionControl.Views.AxisSettingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <Style TargetType="TextBox"
+                   BasedOn="{StaticResource MaterialDesignFloatingHintTextBox}">
+                <Setter Property="Margin"
+                        Value="0,0,0,12" />
+                <Setter Property="FontSize"
+                        Value="14" />
+            </Style>
+            <Style TargetType="ComboBox"
+                   BasedOn="{StaticResource MaterialDesignComboBox}">
+                <Setter Property="Margin"
+                        Value="0,0,0,12" />
+                <Setter Property="FontSize"
+                        Value="14" />
+            </Style>
+            <Style TargetType="CheckBox"
+                   BasedOn="{StaticResource MaterialDesignCheckBox}">
+                <Setter Property="Margin"
+                        Value="0,0,0,8" />
+            </Style>
+            <Style TargetType="Button"
+                   BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="Margin"
+                        Value="4" />
+                <Setter Property="Padding"
+                        Value="8,4" />
+            </Style>
+            <Style TargetType="TextBlock">
+                <Setter Property="Margin"
+                        Value="0,0,0,4" />
+                <Setter Property="FontSize"
+                        Value="14" />
+                <Setter Property="VerticalAlignment"
+                        Value="Center" />
+            </Style>
+            <DataTemplate x:Key="AxisListItemTemplate">
+                <StackPanel Orientation="Horizontal"
+                            Margin="8,4">
+                    <materialDesign:PackIcon Kind="Axis"
+                                             Width="24"
+                                             Height="24"
+                                             Margin="0,0,8,0"
+                                             Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                    <TextBlock Text="{Binding Name}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{lang:Lang AxisSetting_BracketOpen}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ConfigId}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{lang:Lang AxisSetting_BracketClose}"
+                               FontWeight="SemiBold" />
+                </StackPanel>
+            </DataTemplate>
+            <DataTemplate x:Key="SystemListItemTemplate">
+                <StackPanel Orientation="Horizontal"
+                            Margin="8,4">
+                    <materialDesign:PackIcon Kind="ShapePolygonPlus"
+                                             Width="24"
+                                             Height="24"
+                                             Margin="0,0,8,0"
+                                             Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                    <TextBlock Text="{lang:Lang AxisSetting_InterpolationSystem}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding CoordId}"
+                               FontWeight="SemiBold"
+                               Margin="4,0,0,0" />
+                    <TextBlock Text="{Binding Axes.Count, StringFormat=' ({0} '}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{lang:Lang AxisSetting_AxisSuffix}"
+                               FontWeight="SemiBold" />
+                </StackPanel>
+            </DataTemplate>
+            <Style x:Key="GroupBoxBlueHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#1565C0"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,0,8,12"/>
+            </Style>
+            <Style x:Key="GroupBoxRedHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#C62828"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="8,0,0,12"/>
+            </Style>
+            <Style x:Key="GroupBoxTealHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#00838F"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <Style x:Key="GroupBoxAmberHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#F57C00"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="8,0,0,0"/>
+            </Style>
+            <Style x:Key="ParamLabel" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Foreground" Value="#FF607D8B"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Auto">
+        <materialDesign:Card UniformCornerRadius="8"
+                            MinHeight="600">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="260" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}"
+                        BorderThickness="0,0,1,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0"
+                                    Orientation="Horizontal"
+                                    Background="{DynamicResource PrimaryHueLightBrush}"
+                                    Height="40">
+                            <TextBlock Text="{lang:Lang AxisSetting_ManagementUnit}"
+                                       FontSize="16"
+                                       Margin="12,0"
+                                       Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                                       VerticalAlignment="Center" />
+                            <materialDesign:PackIcon Kind="ShapePolygonPlus"
+                                                     Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                                                     VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TabControl Grid.Row="1"
+                                    SelectedIndex="{Binding ViewModeIndex}"
+                                    BorderThickness="0"
+                                    Background="{DynamicResource MaterialDesignCardBackground}">
+                            <TabItem Header="{lang:Lang AxisSetting_SingleAxis}"
+                                     Width="120" />
+                            <TabItem Header="{lang:Lang AxisSetting_InterpolationSystem}"
+                                     Width="120" />
+                        </TabControl>
+
+                        <ListBox Grid.Row="2"
+                                 ItemsSource="{Binding Axes}"
+                                 SelectedItem="{Binding SelectedAxis}"
+                                 ItemTemplate="{StaticResource AxisListItemTemplate}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 materialDesign:ListBoxItemAssist.ShowSelection="True"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 Visibility="{Binding IsSingleAxisMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem"
+                                       BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                    <Setter Property="Padding"
+                                            Value="0" />
+                                    <Setter Property="Background"
+                                            Value="Transparent" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+
+                        <ListBox Grid.Row="2"
+                                 ItemsSource="{Binding InterpolationSystems}"
+                                 SelectedItem="{Binding SelectedSystem}"
+                                 ItemTemplate="{StaticResource SystemListItemTemplate}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 materialDesign:ListBoxItemAssist.ShowSelection="True"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 Visibility="{Binding IsSystemMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem"
+                                       BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                    <Setter Property="Padding"
+                                            Value="0" />
+                                    <Setter Property="Background"
+                                            Value="Transparent" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Column="1">
+                    <Grid Margin="16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Visibility="{Binding IsSingleAxisMode, Converter={StaticResource BoolToVisibilityConverter}}" Grid.Row="0" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Axis" Width="24" Height="24" Foreground="#1565C0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{lang:Lang AxisSetting_CurrentAxis}" FontSize="22" FontWeight="Medium"/>
+                                <TextBlock Text="{Binding SelectedAxis.Name}" FontSize="22" FontWeight="Medium" Margin="4,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding SelectedAxis.Description}" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="32,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="0" Visibility="{Binding IsSystemMode, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ShapePolygonPlus" Width="24" Height="24" Foreground="#00838F" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{lang:Lang AxisSetting_InterpolationSystem}" FontSize="22" FontWeight="Medium"/>
+                                <TextBlock Text="{Binding SelectedSystem.CoordId}" FontSize="22" FontWeight="Medium" Margin="4,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding SelectedSystem.AxesInfo}" Foreground="{DynamicResource MaterialDesignBodyLight}" Margin="32,0,0,0"/>
+                        </StackPanel>
+
+                        <Grid Grid.Row="1"
+                              Margin="0,10,0,0">
+                            <Grid>
+                                <Grid Visibility="{Binding IsSingleAxisMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="2*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <GroupBox Grid.Row="0" Grid.Column="0" Style="{StaticResource GroupBoxBlueHeader}">
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Pulse" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_PulseEquivSettings}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="{lang:Lang AxisSetting_PulsePerUnitHint}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.PulsePerUnit}"
+                                                ValueStep="0.001" Minimum="0.0001" Maximum="100000"
+                                                />
+                                            <TextBlock Text="{lang:Lang AxisSetting_SetCommand_PulseEquiv}"
+                                                       Style="{DynamicResource MaterialDesignCaptionTextBlock}"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                       Margin="0,8,0,16" />
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="0" Grid.Column="1" Style="{StaticResource GroupBoxRedHeader}">
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ShieldAlertOutline" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_EmergencyStopSettings}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <StackPanel>
+                                            <CheckBox Content="{lang:Lang AxisSetting_EnableEmergencyStop}"
+                                                      IsChecked="{Binding CurrentAxisParams.EmergencyStop.Enabled}" />
+                                            <ComboBox materialDesign:HintAssist.Hint="{lang:Lang AxisSetting_LogicLevel}"
+                                                      ItemsSource="{Binding LogicLevels}"
+                                                      SelectedItem="{Binding CurrentAxisParams.EmergencyStop.LogicLevel}"
+                                                      IsEnabled="{Binding CurrentAxisParams.EmergencyStop.Enabled}">
+                                                <ComboBox.ItemContainerStyle>
+                                                    <Style TargetType="ComboBoxItem">
+                                                        <Setter Property="HorizontalContentAlignment"
+                                                                Value="Stretch" />
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="ComboBoxItem">
+                                                                    <Grid Background="Transparent">
+                                                                        <ContentPresenter Content="{TemplateBinding Content}"
+                                                                                          Margin="8,4" />
+                                                                    </Grid>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </ComboBox.ItemContainerStyle>
+                                            </ComboBox>
+
+                                            <ComboBox materialDesign:HintAssist.Hint="{lang:Lang AxisSetting_EmergencyStopIOMapping}"
+                                                      ItemsSource="{Binding MappedIOs}"
+                                                      SelectedItem="{Binding CurrentAxisParams.EmergencyStop.MappedIO}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding PortName}" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{lang:Lang AxisSetting_MapIoIndex}" VerticalAlignment="Center" Margin="4,0,2,0"/>
+                                                            <TextBlock Text="{Binding MapIoIndex}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_SetCommand_EmergencyStop}"
+                                                       Style="{DynamicResource MaterialDesignCaptionTextBlock}"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="1" Grid.Column="0" Style="{StaticResource GroupBoxTealHeader}">
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="HomeMapMarker" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_HomingSettings}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="{lang:Lang AxisSetting_LowSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Homing.LowSpeed}"
+                                                ValueStep="0.1" Minimum="0.01" Maximum="100" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_HighSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Homing.HighSpeed}"
+                                                ValueStep="1" Minimum="0.1" Maximum="500" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_AccTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Homing.AccelerationTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_DecTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Homing.DecelerationTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_HomingMode}"
+                                                       Style="{DynamicResource MaterialDesignBody2TextBlock}"
+                                                       Margin="0,8,0,4"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                            <ComboBox materialDesign:HintAssist.Hint="{lang:Lang AxisSetting_HomingMode}"
+                                                      ItemsSource="{Binding HomingModes}"
+                                                      SelectedItem="{Binding CurrentAxisParams.Homing.Mode}" />
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_HomingOffset}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Homing.Offset}"
+                                                ValueStep="1" Minimum="-100000" Maximum="100000" />
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_SetCommand_Homing}"
+                                                       Style="{DynamicResource MaterialDesignCaptionTextBlock}"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Row="1" Grid.Column="1" Style="{StaticResource GroupBoxAmberHeader}">
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Speedometer" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang Motion_Parameters}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="{lang:Lang AxisSetting_StartSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.StartSpeed}"
+                                                ValueStep="0.1" Minimum="0" Maximum="200" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_MaxSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.MaxSpeed}"
+                                                ValueStep="1" Minimum="0.1" Maximum="500" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_AccTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.AccelerationTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_DecTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.DecelerationTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_StopSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.StopSpeed}"
+                                                ValueStep="0.1" Minimum="0" Maximum="100" />
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_SProfileTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.SProfileTime}"
+                                                ValueStep="0.01" Minimum="0" Maximum="2" />
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_DecStopTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding CurrentAxisParams.Motion.DecStopTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_SetCommand_MotionProfile}"
+                                                       Style="{DynamicResource MaterialDesignCaptionTextBlock}"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                </Grid>
+
+                                <Grid Visibility="{Binding IsSystemMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="2*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <GroupBox Grid.Column="0" Style="{StaticResource GroupBoxBlueHeader}">
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="CogOutline" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AssemblyStep_BasicSettingsTitle}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <GroupBox Grid.Row="0" Header="{lang:Lang AxisSetting_IncludedAxes}"
+                                                      Margin="0,10,0,0">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="*" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+
+                                                    <ListBox Grid.Row="0"
+                                                             ItemsSource="{Binding SelectedAxesInSystem}"
+                                                             SelectedItem="{Binding SelectedAxisInSystem}"
+                                                             MinHeight="120"
+                                                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                        <ListBox.ItemContainerStyle>
+                                                            <Style TargetType="ListBoxItem"
+                                                                   BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                                                <Setter Property="Padding" Value="0" />
+                                                                <Setter Property="Background" Value="Transparent" />
+                                                            </Style>
+                                                        </ListBox.ItemContainerStyle>
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" Margin="4">
+                                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center" MinWidth="120" />
+                                                                    <TextBlock Text="{lang:Lang AxisSetting_BracketOpen}" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{lang:Lang AxisSetting_Card}" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding SetCardId}" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                                                    <TextBlock Text="{lang:Lang AxisSetting_BracketSeparator}" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{lang:Lang AxisSetting_AxisId}" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding SetAxisId}" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                                                    <TextBlock Text="{lang:Lang AxisSetting_BracketClose}" VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+
+                                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                                        <Button Command="{Binding RemoveAxisFromSystemCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" ToolTip="{lang:Lang AxisSetting_RemoveAxisToolTip}" materialDesign:ButtonAssist.CornerRadius="4" BorderBrush="#C62828" Foreground="#C62828" Padding="8,4">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <materialDesign:PackIcon Kind="MinusCircleOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{lang:Lang AxisSetting_RemoveAxis}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </GroupBox>
+
+                                            <GroupBox Grid.Row="1" Header="{lang:Lang AxisSetting_AvailableAxes}" Margin="0,8,0,0">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="*" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+
+                                                    <ListBox Grid.Row="0"
+                                                             ItemsSource="{Binding AvailableAxesForSystem}"
+                                                             SelectedItem="{Binding SelectedAvailableAxis}"
+                                                             MinHeight="80"
+                                                             MaxHeight="120"
+                                                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                        <ListBox.ItemContainerStyle>
+                                                            <Style TargetType="ListBoxItem"
+                                                                   BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                                                <Setter Property="Padding" Value="0" />
+                                                                <Setter Property="Background" Value="Transparent" />
+                                                            </Style>
+                                                        </ListBox.ItemContainerStyle>
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" Margin="4">
+                                                                    <materialDesign:PackIcon Kind="Axis" Width="16" Height="16" Foreground="#1565C0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" MinWidth="100"/>
+                                                                    <TextBlock Text="{Binding ConfigId}" Foreground="#FF607D8B" VerticalAlignment="Center" FontSize="11"/>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+
+                                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                                        <Button Command="{Binding AddAxisToSystemCommand}" Style="{DynamicResource MaterialDesignRaisedLightButton}"  Foreground="White" ToolTip="{lang:Lang AxisSetting_AddAxisToolTip}" materialDesign:ButtonAssist.CornerRadius="4" Padding="8,4">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <materialDesign:PackIcon Kind="PlusCircleOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{lang:Lang AxisSetting_AddAxis}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </GroupBox>
+                                        </Grid>
+                                    </GroupBox>
+
+                                    <GroupBox Grid.Column="1" Style="{StaticResource GroupBoxAmberHeader}" Margin="8,0,0,0">
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Speedometer" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang Motion_Parameters}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="{lang:Lang AxisSetting_StartSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.StartVelocity}"
+                                                ValueStep="1" Minimum="0" Maximum="200" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_InterpolationSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.InterpolationVelocity}"
+                                                ValueStep="5" Minimum="0.1" Maximum="500" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_EndSpeed}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.EndVelocity}"
+                                                ValueStep="1" Minimum="0" Maximum="200" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_AccTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.AccelerationTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_DecTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.DecelerationTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_SProfileTimeInterp}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.SProfileTime}"
+                                                ValueStep="0.01" Minimum="0" Maximum="2" />
+                                            <TextBlock Text="{lang:Lang AxisSetting_DecStopTime}" Style="{StaticResource ParamLabel}"/>
+                                            <materialDesign:DecimalUpDown
+                                                Value="{Binding SelectedSystem.Params.DecelerationStopTime}"
+                                                ValueStep="0.01" Minimum="0.001" Maximum="10" />
+
+                                            <TextBlock Text="{lang:Lang AxisSetting_SetCommand_Interpolation}"
+                                                       Style="{DynamicResource MaterialDesignCaptionTextBlock}"
+                                                       Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                       Margin="0,10,0,0" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+
+                        <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource MaterialDesignDivider}" Padding="10,10,14,9">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Background="#F5F5F5" CornerRadius="4" Padding="12,6" Margin="0,0,10,0" Visibility="{Binding IsSingleAxisMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14" Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang AxisSetting_SingleAxisOperation}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="7,0,14,0" VerticalAlignment="Center"/>
+                                        <Button Command="{Binding UploadParamsCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" ToolTip="{lang:Lang AxisSetting_ReadFromCardToolTip}" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Upload" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_ReadFromCard}" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding DownloadParamsCommand}" Style="{DynamicResource MaterialDesignRaisedLightButton}" ToolTip="{lang:Lang AxisSetting_WriteToCardToolTip}" Margin="6,0,0,0" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Download" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_WriteToCard}" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Background="#F5F5F5" CornerRadius="4" Padding="12,6" Margin="0,0,10,0" Visibility="{Binding IsSingleAxisMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="LayersTripleOutline" Width="14" Height="14" Foreground="{DynamicResource MaterialDesignBodyMedium}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang AxisSetting_BatchOperation}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource MaterialDesignBodyMedium}" Margin="7,0,14,0" VerticalAlignment="Center"/>
+                                        <Button Command="{Binding ReadAllFromCardCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" Margin="6,0,0,0" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4">
+                                            <Button.ToolTip>
+                                                <TextBlock Text="{lang:Lang AxisSetting_ReadAllFromCardToolTip}"/>
+                                            </Button.ToolTip>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="PlaylistPlus" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_ReadAllFromCard}" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding DownloadAllParametersCommand}" Style="{DynamicResource MaterialDesignRaisedLightButton}" ToolTip="{lang:Lang AxisSetting_SetAllAxesToolTip}" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4" Margin="6,0,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="PlaylistPlay" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_SetAllAxes}" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="2" Background="#F5F5F5" CornerRadius="4" Padding="12,6" Margin="0,0,10,0" Visibility="{Binding IsSystemMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ShapePolygonPlus" Width="14" Height="14" Foreground="{DynamicResource SecondaryHueMidBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang AxisSetting_InterpolationOperation}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource SecondaryHueMidBrush}" Margin="7,0,14,0" VerticalAlignment="Center"/>
+                                        <Button Command="{Binding SaveSystemParamsCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" ToolTip="{lang:Lang AxisSetting_LoadInterpolationToolTip}" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="FolderOpen" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_LoadInterpolationSystem}" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding ApplySystemParamsCommand}" Style="{DynamicResource MaterialDesignRaisedLightButton}" ToolTip="{lang:Lang AxisSetting_ApplySystemSettingsToolTip}" Margin="6,0,0,0" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ShapePolygonPlus" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_ApplyInterpolationSystem}" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="3" Background="#F5F5F5" CornerRadius="4" Padding="12,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="DatabaseExport" Width="14" Height="14" Foreground="{DynamicResource MaterialDesignBodyMedium}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang AxisSetting_FileOperation}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource MaterialDesignBodyMedium}" Margin="7,0,14,0" VerticalAlignment="Center"/>
+                                        <Button Command="{Binding LoadParamsCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" Margin="6,0,0,0" ToolTip="{lang:Lang AxisSetting_LoadParamsToolTip}" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="FolderOpen" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_LoadParams}" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding SaveParamsCommand}" Style="{DynamicResource MaterialDesignRaisedLightButton}" ToolTip="{lang:Lang AxisSetting_SaveParamsToolTip}" materialDesign:ButtonAssist.CornerRadius="3" Padding="10,4" Margin="6,0,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ContentSave" Width="13" Height="13" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang AxisSetting_SaveParams}" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </materialDesign:Card>
+    </ScrollViewer>
+</UserControl>

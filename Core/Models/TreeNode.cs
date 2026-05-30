@@ -1,4 +1,4 @@
-﻿// Core.Models/TreeNode.cs
+// Core.Models/TreeNode.cs
 using Prism.Mvvm;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -67,18 +67,6 @@ namespace Core.Models
 
         // 使用 IList 接口，既支持 ObservableCollection 也支持 List
         public IList<TreeNode> Children { get; set; }
-        // 获取本地化显示名称
-        private string GetLocalizedDisplayName()
-        {
-            // 如果设置了本地化键，优先使用
-            if (!string.IsNullOrEmpty(LocalizationKey))
-            {
-                // 返回原名称
-                return Name;
-            }
-
-            return Name;
-        }
         // 通知 DisplayName 变化
         public void NotifyDisplayNameChanged()
         {

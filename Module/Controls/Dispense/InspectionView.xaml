@@ -1,0 +1,103 @@
+<UserControl x:Class="Module.Views.InspectionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:converters="clr-namespace:Module.Converters"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MinHeight="400">
+    <UserControl.Resources>
+        <converters:BoolToPassFailConverter x:Key="BoolToPassFailConverter" />
+        <converters:BoolToIconConverter x:Key="BoolToIconConverter" />
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+    </UserControl.Resources>
+
+    <materialDesign:Card UniformCornerRadius="12"
+                         Margin="0,0,0,16">
+        <StackPanel>
+            <!-- 标题 -->
+            <!--<TextBlock Text="INSPECTION"
+                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                       Foreground="{DynamicResource PrimaryHueMidBrush}"
+                       Padding="16,12,16,0" />-->
+
+            <!-- 内容 -->
+            <StackPanel Margin="16,0,16,16">
+
+                <!-- 8.1 Vision Inspection -->
+                <TextBlock Text="{lang:Lang Dispensing_VisionInspection_Title}"
+                           Style="{StaticResource MaterialDesignBodyMediumTextBlock}"
+                           Margin="0,8,0,4" />
+
+                <!-- 新增：Site 选择 + 编辑位置按钮 -->
+                <WrapPanel Margin="24,0,0,8">
+                    <TextBlock Text="Site:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox Width="120"
+                              ItemsSource="{Binding SiteList}"
+                              SelectedItem="{Binding SelectedSite}"
+                              Margin="0,0,12,0" />
+                    <Button Command="{Binding EditSitePositionCommand}"
+                            Padding="8,2">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,4,0" />
+                            <TextBlock Text="Edit Position" />
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+
+                <!-- 原有按钮组 -->
+                <WrapPanel Margin="24,0,0,8">
+                    <Button Content="{lang:Lang Dispensing_Button_MoveCameraToDotLine}"
+                            Command="{Binding MoveCameraCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Margin="0,0,8,4" />
+                    <Button Content="{lang:Lang Dispensing_Button_MeasureWidthContinuity}"
+                            Command="{Binding MeasureWidthCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Margin="0,0,8,4" />
+                </WrapPanel>
+
+                <!-- 检测结果表格 -->
+                <DataGrid ItemsSource="{Binding InspectionResults}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          materialDesign:DataGridAssist.CellPadding="4"
+                          Margin="24,8,0,12"
+                          MaxHeight="200">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Site" Binding="{Binding Site}" Width="*" />
+                        <DataGridTextColumn Header="{lang:Lang Type}" Binding="{Binding Type}" Width="*" />
+                        <DataGridTextColumn Header="Width (mm)" Binding="{Binding Width}" Width="*" />
+                        <DataGridTemplateColumn Header="Result" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="{Binding Result, Converter={StaticResource BoolToIconConverter}}"
+                                                                 Width="16" Height="16"
+                                                                 Foreground="{Binding Result, Converter={StaticResource BoolToColorConverter}}" />
+                                        <TextBlock Text="{Binding Result, Converter={StaticResource BoolToPassFailConverter}}"
+                                                   Margin="4,0,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 记录保存状态 + 导出 CSV 按钮 -->
+                <WrapPanel Margin="24,8,0,0">
+                    <TextBlock Text="{lang:Lang Dispensing_RecordSaved}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <CheckBox IsChecked="{Binding RecordSaved}" IsEnabled="False" VerticalAlignment="Center" />
+                    <Button Content="{lang:Lang ExportCSV}"
+                            Command="{Binding ExportCSVCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Padding="12,4"
+                            Margin="16,0,0,0" />
+                </WrapPanel>
+
+            </StackPanel>
+        </StackPanel>
+    </materialDesign:Card>
+</UserControl>

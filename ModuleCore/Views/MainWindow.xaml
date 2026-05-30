@@ -1,13 +1,16 @@
-﻿<Window x:Class="ModuleCore.Views.MainWindow"
+<Window x:Class="ModuleCore.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:ivc="clr-namespace:ModuleCore.Common.Converters"
         xmlns:local="clr-namespace:ModuleCore.Views"
+        xmlns:motion="clr-namespace:MotionControl.Views;assembly=MotionControl"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:prism="http://prismlibrary.com/"
         xmlns:viewmodels="clr-namespace:ModuleCore.ViewModels"
+        xmlns:system="http://schemas.microsoft.com/winfx/2009/xaml"
+        xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
         Width="1600"
         Height="1000"
         MinWidth="800"
@@ -56,7 +59,6 @@
                 </Setter>
             </Style>
             <!--  s  -->
-            <ivc:IUrlToBitmapConverter x:Key="itc" />
             <ivc:MenuWidthConverter x:Key="mwc" />
             <ivc:PackIconKindConverter x:Key="ikc" />
             <ivc:VisibilityConverter x:Key="isDisplay" />
@@ -90,7 +92,7 @@
 
     <materialDesign:DialogHost Identifier="MainDialogHost"
                                DialogTheme="Dark"
-                               CloseOnClickAway="True">
+                               CloseOnClickAway="False">
 
         <Grid Height="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}, AncestorLevel=1}, Path=ActualHeight}">
             <Grid.RowDefinitions>
@@ -118,12 +120,12 @@
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
-                <local:StationStateView StationId="1"
+                <motion:StationStateView 
                                         Margin="0"
                                         VerticalAlignment="Center"
                                         Width="400"
                                         Height="32">
-                </local:StationStateView>
+                </motion:StationStateView>
             </StackPanel>
             <!--  右上角功能区域  -->
             <Grid Width="160"
@@ -146,7 +148,7 @@
                         <!--<Button Command="{Binding Login}" Content="Login" />-->
                         <!--<Button Content="Help" />-->
                         <Button Command="{Binding AboutDialog}"
-                                Content="About" />
+                                Content="{DynamicResource MainWindow_ToolTip_About}" />
                     </StackPanel>
                 </materialDesign:PopupBox>
                 <!--  最小化  -->
@@ -157,7 +159,7 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Click="BtnMin"
-                        ToolTip="最小化">
+                        ToolTip="{DynamicResource MainWindow_ToolTip_Minimize}">
                     <materialDesign:PackIcon Kind="Minus" />
                 </Button>
                 <!--  最大化  -->
@@ -169,7 +171,7 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Click="BtnMaximize_Click"
-                        ToolTip="最大化"
+                        ToolTip="{DynamicResource MainWindow_ToolTip_Maximize}"
                         Visibility="Visible">
                     <materialDesign:PackIcon Kind="WindowMaximize" />
                 </Button>
@@ -182,7 +184,7 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Click="BtnNormal_Click"
-                        ToolTip="普通"
+                        ToolTip="{DynamicResource MainWindow_ToolTip_Restore}"
                         Visibility="Collapsed">
                     <materialDesign:PackIcon Kind="WindowRestore" />
                 </Button>
@@ -194,7 +196,7 @@
                         Background="Transparent"
                         BorderThickness="0"
                         Click="BtnClose"
-                        ToolTip="退出">
+                        ToolTip="{DynamicResource MainWindow_ToolTip_Exit}">
                     <materialDesign:PackIcon Kind="Close" />
                 </Button>
             </Grid>
@@ -323,170 +325,316 @@
                     </ListBox>
 
                 </Grid>
-                <!--  右侧边  -->
-                <StackPanel Grid.Column="2"
-                            Background="#FF3B3E41">
-                    <!--  Setting  -->
-                    <!--  Login  -->
-                    <!--  Setting  -->
-                    <Button Width="60"
-                            Height="60"
-                            Padding="0"
-                            Margin="5"
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Setting"
-                            Cursor="Hand"
-                            ToolTip="设置">
-                        <materialDesign:PackIcon Width="40"
-                                                 Height="40"
-                                                 HorizontalAlignment="Center"
-                                                 VerticalAlignment="Center"
-                                                 Kind="Cog" />
-                    </Button>
-                    <!--  Login  -->
-                    <Button Width="60"
-                            Height="60"
-                            Margin="5"
-                            Padding="0"
-                            Command="{Binding Login}"
-                            Cursor="Hand"
-                            ToolTip="登录">
-                        <materialDesign:PackIcon Width="40"
-                                                 Height="40"
-                                                 HorizontalAlignment="Center"
-                                                 VerticalAlignment="Center"
-                                                 Kind="Account" />
-                    </Button>
-                    <!--  状态监控  -->
-                    <Button Width="60"
-                            Height="60"
-                            Margin="5"
-                            Padding="0"
-                            Command="{Binding ShowTaskMonitorCommand}"
-                            Cursor="Hand"
-                            ToolTip="状态监控">
-                        <materialDesign:PackIcon Width="40"
-                                                 Height="40"
-                                                 HorizontalAlignment="Center"
-                                                 VerticalAlignment="Center"
-                                                 Kind="ClipboardListOutline" />
-                    </Button>
-                    <!-- 启动 -->
-                    <StackPanel Margin="0,370,0,0">
-                        <Button x:Name="btnStart"
+                <!-- 右侧边栏 -->
+                <Grid Grid.Column="2"
+                      Background="#FF3B3E41">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 上部按钮区（设置、登录、轴操作） -->
+                    <StackPanel Grid.Row="0"
+                                VerticalAlignment="Top"
+                                Margin="0,8,0,0">
+                        <StackPanel.Resources>
+                            <!-- 统一按钮样式：渐入渐出 + 圆角 + 阴影 -->
+                            <Style x:Key="SideBarButtonStyle" TargetType="ButtonBase">
+                                <Setter Property="Width" Value="50"/>
+                                <Setter Property="Height" Value="50"/>
+                                <Setter Property="Margin" Value="5,4"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Background" Value="#33FFFFFF"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ButtonBase">
+                                            <Border x:Name="BtnBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    CornerRadius="10"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <Border.Effect>
+                                                    <DropShadowEffect ShadowDepth="2"
+                                                                        BlurRadius="6"
+                                                                        Opacity="0.3"
+                                                                        Color="Black"/>
+                                                </Border.Effect>
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Background" Value="#55FFFFFF"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="BtnBorder"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                 To="1.1" Duration="0:0:0.15"/>
+                                                                <DoubleAnimation Storyboard.TargetName="BtnBorder"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                 To="1.1" Duration="0:0:0.15"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="False">
+                                                    <Setter TargetName="BtnBorder" Property="Background" Value="#33FFFFFF"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="BtnBorder"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                 To="1.0" Duration="0:0:0.2"/>
+                                                                <DoubleAnimation Storyboard.TargetName="BtnBorder"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                 To="1.0" Duration="0:0:0.2"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+
+                            <!-- 轴控制 ToggleButton 激活态样式 -->
+                            <Style x:Key="AxisToggleButtonStyle" TargetType="ToggleButton" BasedOn="{StaticResource SideBarButtonStyle}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter Property="Background" Value="#FF4FC3F7"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Resources>
+
+                        <!-- Setting 按钮 -->
+                        <Button Style="{StaticResource SideBarButtonStyle}"
                                 Width="60"
                                 Height="60"
-                                Padding="1"
-                                Command="{Binding Start}"
-                                Cursor="Hand"
-                                ToolTip="启动">
-                            <materialDesign:PackIcon Width="60"
-                                                     Height="60"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Kind="PlayOutline" />
+                                Command="{Binding NavigateCommand}"
+                                CommandParameter="Setting"
+                                ToolTip="{DynamicResource MainWindow_ToolTip_Settings}"
+                                ToolTipService.ShowDuration="2000">
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="White"
+                                                     Kind="Cog"/>
                         </Button>
-                        <TextBlock HorizontalAlignment="Center"
-                                   Foreground="White"
-                                   FontSize="12"
-                                   Margin="0,5,0,0"
-                                   Text="启动" />
+
+                        <!-- Login 按钮 -->
+                        <Button Style="{StaticResource SideBarButtonStyle}"
+                                Width="60"
+                                Height="60"
+                                Command="{Binding Login}"
+                                ToolTip="{DynamicResource MainWindow_ToolTip_Login}"
+                                ToolTipService.ShowDuration="2000">
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="White"
+                                                     Kind="Account"/>
+                        </Button>
+
+                        <!-- 轴控制 ToggleButton -->
+                        <ToggleButton Style="{StaticResource AxisToggleButtonStyle}"
+                                                Width="60"
+                                                Height="60"
+                                                IsChecked="{Binding IsAxisPanelOpen}"
+                                                ToolTip="{DynamicResource MainWindow_ToolTip_AxisOperation}"
+                                                ToolTipService.ShowDuration="2000">
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="White"
+                                                     Kind="AxisArrow"/>
+                        </ToggleButton>
                     </StackPanel>
 
-                    <!-- 暂停 -->
-                    <StackPanel>
-                        <Button x:Name="btnPause"
-                                Width="60"
-                                Height="60"
-                                Margin="0,6,0,0"
-                                Padding="0"
-                                Click="BtnPause_Click"
-                                Command="{Binding Pause}"
-                                Cursor="Hand"
-                                ToolTip="暂停"
-                                Visibility="Visible">
-                            <materialDesign:PackIcon Width="50"
-                                                     Height="50"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Kind="Pause" />
-                        </Button>
-                    </StackPanel>
+                    <!-- 下部按钮区（初始化、启动、暂停/恢复、停止）- 工业极简风格 -->
+                    <StackPanel Grid.Row="1"
+                                Margin="0,8,0,12">
+                        <StackPanel.Resources>
+                            <!-- 工业控制按钮统一样式：与上方SideBarButtonStyle保持一致的尺寸和动画 -->
+                            <Style x:Key="ControlButtonStyle" TargetType="Button">
+                                <Setter Property="Width" Value="50"/>
+                                <Setter Property="Height" Value="50"/>
+                                <Setter Property="Margin" Value="5,4"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Opacity" Value="0.75"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="BtnBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    CornerRadius="10"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <Border.Effect>
+                                                    <DropShadowEffect ShadowDepth="2"
+                                                                        BlurRadius="6"
+                                                                        Opacity="0.35"
+                                                                        Color="Black"/>
+                                                </Border.Effect>
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="1.0"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation To="1.0"
+                                                                                 Storyboard.TargetProperty="Opacity"
+                                                                                 Duration="0:0:0.15"/>
+                                                                <DoubleAnimation To="1.08"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                 Duration="0:0:0.15"/>
+                                                                <DoubleAnimation To="1.08"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                 Duration="0:0:0.15"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="False">
+                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.75"/>
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation To="0.75"
+                                                                                 Storyboard.TargetProperty="Opacity"
+                                                                                 Duration="0:0:0.2"/>
+                                                                <DoubleAnimation To="1.0"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                 Duration="0:0:0.2"/>
+                                                                <DoubleAnimation To="1.0"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                 Duration="0:0:0.2"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </StackPanel.Resources>
 
-                    <!-- 继续 -->
-                    <StackPanel>
-                        <Button x:Name="btnContinue"
-                                Width="60"
-                                Height="60"
-                                Margin="0,6,0,0"
-                                Padding="0"
-                                Click="BtnContinue_Click"
-                                Command="{Binding Continue}"
-                                Cursor="Hand"
-                                ToolTip="继续"
-                                Visibility="Collapsed">
-                            <materialDesign:PackIcon Width="50"
-                                                     Height="50"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Kind="PlayPause" />
+                        <!-- 初始化按钮（深琥珀色 #5D4E37） -->
+                        <Button Style="{StaticResource ControlButtonStyle}"
+                                 Width="60"
+                                 Height="60"
+                                 Background="#5D4E37"
+                                 Command="{Binding InitializeCommand}"
+                                 ToolTip="{DynamicResource MainWindow_Btn_Initialize}">
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="#D7CCC8"
+                                                     Kind="Restart"/>
                         </Button>
-                        <TextBlock x:Name="tbxPause"
-                                   HorizontalAlignment="Center"
-                                   Foreground="White"
-                                   FontSize="12"
-                                   Margin="0,5,0,0"
-                                   Text="暂停" />
-                    </StackPanel>
 
-                    <!-- 停止 -->
-                    <StackPanel>
-                        <Button x:Name="btnStop"
-                                Width="60"
-                                Height="60"
-                                Margin="0,6,0,0"
-                                Padding="0"
-                                Command="{Binding Stop}"
-                                Cursor="Hand"
-                                ToolTip="停止"
-                                Click="BtnStop_Click">
-                            <materialDesign:PackIcon Width="50"
-                                                     Height="50"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Kind="Stop" />
+                        <!-- 启动按钮（墨绿色 #2E7D32） -->
+                        <Button Style="{StaticResource ControlButtonStyle}"
+                                 Width="60"
+                                 Height="60"
+                                 Background="#2E7D32"
+                                 Command="{Binding StartCommand}"
+                                 ToolTip="{DynamicResource MainWindow_Btn_Start}">
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="White"
+                                                     Kind="Play"/>
                         </Button>
-                        <TextBlock HorizontalAlignment="Center"
-                                   Foreground="White"
-                                   FontSize="12"
-                                   Margin="0,5,0,0"
-                                   Text="停止" />
-                    </StackPanel>
 
-                    <!-- 初始化 -->
-                    <StackPanel>
-                        <Button x:Name="btnInitialize"
-                                Width="60"
-                                Height="60"
-                                Margin="0,6,0,0"
-                                Padding="0"
-                                Command="{Binding Initialize}"
-                                Cursor="Hand"
-                                ToolTip="初始化"
-                                Click="BtnInitialize_Click">
-                            <materialDesign:PackIcon Width="50"
-                                                     Height="50"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Kind="Restart" />
+                        <!-- 暂停/恢复 动态切换按钮（钢蓝灰 #37474F） -->
+                        <Button Background="#37474F"
+                                      Width="60"
+                                      Height="60">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ControlButtonStyle}">
+                                    <!-- 默认：暂停状态 -->
+                                    <Setter Property="ToolTip" Value="{DynamicResource MainWindow_Btn_Pause}"/>
+                                    <Setter Property="Command" Value="{Binding PauseCommand}"/>
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <materialDesign:PackIcon Width="42"
+                                                                     Height="42"
+                                                                     Foreground="White"
+                                                                     Kind="Pause"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <!-- 未运行时：切换为恢复状态 -->
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSystemRunning}" Value="False">
+                                            <Setter Property="ToolTip" Value="{DynamicResource MainWindow_Btn_Resume}"/>
+                                            <Setter Property="Command" Value="{Binding ResumeCommand}"/>
+                                            <Setter Property="Content">
+                                                <Setter.Value>
+                                                    <materialDesign:PackIcon Width="42"
+                                                                             Height="42"
+                                                                             Foreground="White"
+                                                                             Kind="PlayPause"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
                         </Button>
-                        <TextBlock HorizontalAlignment="Center"
-                                   Foreground="White"
-                                   FontSize="12"
-                                   Margin="0,5,0,0"
-                                   Text="初始化" />
+
+                        <!-- 停止按钮（与上方按钮一致的背景色 #33FFFFFF） -->
+                        <Button Style="{StaticResource ControlButtonStyle}"
+                                 Width="60"
+                                 Height="60"
+                                Background="#33FFFFFF"
+                                Command="{Binding StopCommand}"
+                                ToolTip="{DynamicResource MainWindow_Btn_Stop}">
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="White"
+                                                     Kind="Stop"/>
+                        </Button>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
+
+                <!-- 轴控制面板遮罩层（点击关闭），跨越所有列 -->
+                <Border x:Name="AxisPanelOverlay"
+                        Visibility="{Binding IsAxisPanelOpen, Converter={StaticResource isDisplay}, FallbackValue=Collapsed}"
+                        Grid.ColumnSpan="3"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Background="#66000000"
+                        MouseLeftButtonDown="AxisPanelOverlay_MouseLeftButtonDown"
+                        Panel.ZIndex="99"/>
+
+                <!-- 轴控制面板（Drawer 从右向左滑出），跨越所有列 -->
+                <Border x:Name="AxisControlDrawer"
+                        Visibility="{Binding IsAxisPanelOpen, Converter={StaticResource isDisplay}, FallbackValue=Collapsed}"
+                        Grid.ColumnSpan="3"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Stretch"
+                        Width="1100"
+                        Margin="0,0,80,0"
+                        Panel.ZIndex="100"
+                        Background="{DynamicResource MaterialDesignPaper}">
+                    <ContentControl x:Name="AxisPanelContent"/>
+                </Border>
             </Grid>
             <!-- 状态栏 -->
             <Border Grid.Row="2"
@@ -507,16 +655,24 @@
                                 Margin="0,-8,20,0">
                         <TextBlock FontSize="14"
                                    Foreground="Gray"
-                                   Text="{Binding Model.LoginUser.Name, StringFormat='当前登录用户: {0}'}"
-                                   ToolTip="当前登录用户"
+                                   Text="{lang:Lang MainWindow_Label_LoggedInUser}"
+                                   ToolTip="{DynamicResource MainWindow_Label_CurrentUser}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock FontSize="14"
+                                   Foreground="Gray"
+                                   Text="{Binding Model.LoginUser.Name}"
                                    VerticalAlignment="Center" />
 
                         <!-- 用户权限 -->
                         <TextBlock FontSize="14"
                                    Foreground="Gray"
                                    Margin="10,0,0,0"
-                                   Text="{Binding Model.LoginUser.Authority, StringFormat='用户权限: {0}'}"
-                                   ToolTip="用户权限等级"
+                                   Text="{lang:Lang MainWindow_Label_UserPermissions}"
+                                   ToolTip="{DynamicResource MainWindow_Label_UserAuthority}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock FontSize="14"
+                                   Foreground="Gray"
+                                   Text="{Binding Model.LoginUser.Authority}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
 
@@ -525,21 +681,21 @@
                                Foreground="Gray"
                                Margin="0,-8,20,0"
                                Text="{Binding RecipeName}"
-                               ToolTip="生产配方" />
+                               ToolTip="{DynamicResource MainWindow_Label_Recipe}" />
 
                     <!-- SECS/GEM状态 -->
                     <StackPanel Orientation="Horizontal">
                         <TextBlock FontSize="14"
                                    Foreground="Gray"
                                    Margin="0,-8,20,0"
-                                   Text="SECS/GEM: "
-                                   ToolTip="SECS/GEM通信状态" />
+                                   Text="{DynamicResource MainWindow_Text_SecsGEM}"
+                                   ToolTip="{DynamicResource MainWindow_ToolTip_SecsStatus}" />
                         <TextBlock x:Name="lblSecsStatus"
                                    FontSize="14"
                                    Margin="-15,-9,10,0"
                                    Foreground="{Binding SecsStatusColor}"
                                    Text="{Binding SecsStatusText}"
-                                   ToolTip="点击重新连接"
+                                   ToolTip="{DynamicResource MainWindow_ToolTip_Reconnect}"
                                    MouseLeftButtonDown="LblSecsStatus_MouseLeftButtonDown" />
                     </StackPanel>
                     <!-- 版本信息 -->
@@ -547,7 +703,7 @@
                                Foreground="Gray"
                                Margin="0,-10,20,0"
                                Text="{Binding AppVersion}"
-                               ToolTip="软件版本"
+                               ToolTip="{DynamicResource MainWindow_ToolTip_Version}"
                                VerticalAlignment="Center"
                                Opacity="0.8">
                         <TextBlock.LayoutTransform>
@@ -562,9 +718,9 @@
         </Grid>
 
         <!-- 对话框内容模板 -->
-        <materialDesign:DialogHost.DialogContent>
+        <!--<materialDesign:DialogHost.DialogContent>
             <local:ThresholdWarningNotificationView />
-        </materialDesign:DialogHost.DialogContent>
+        </materialDesign:DialogHost.DialogContent>-->
 
     </materialDesign:DialogHost>
 

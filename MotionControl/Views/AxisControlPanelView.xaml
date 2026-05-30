@@ -1,0 +1,122 @@
+<UserControl x:Class="MotionControl.Views.AxisControlPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:MotionControl.Converters"
+             xmlns:views="clr-namespace:MotionControl.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="800" 
+             d:DesignWidth="1100"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:StationIconConverter x:Key="StationIconConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <materialDesign:Card UniformCornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- 全局紧急停止栏 -->
+                <RowDefinition Height="*"/>     <!-- TabControl 主区域 -->
+            </Grid.RowDefinitions>
+
+            <!-- ========== 顶部：全局紧急停止按钮 ========== -->
+            <Border Grid.Row="0" 
+                    Background="#1A0000" 
+                    Padding="16,12" 
+                    BorderBrush="#FFFF5252"
+                    BorderThickness="0,0,0,2">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <materialDesign:PackIcon Kind="AlertOctagon" 
+                                             Foreground="#FFFF5252" 
+                                             Width="28" Height="28" 
+                                             VerticalAlignment="Center"/>
+                    
+                    <TextBlock Text="{lang:Lang GlobalEmergencyStop}" 
+                               FontSize="18" FontWeight="Bold" 
+                               Foreground="White" 
+                               VerticalAlignment="Center" 
+                               Margin="12,0,20,0"/>
+
+                    <Button Command="{Binding GlobalEmergencyStopCommand}" 
+                            Style="{DynamicResource MaterialDesignRaisedButton}"
+                            Background="#FFFF5252" Foreground="White"
+                            Padding="32,10" FontWeight="Bold"
+                            FontSize="14"
+                            materialDesign:ButtonAssist.CornerRadius="4"
+                            ToolTip="{lang:Lang StopAllAxesImmediately}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="StopCircle" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="{lang:Lang EStop}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Text="{lang:Lang PressToStopAllAxes}" 
+                               FontSize="11" FontStyle="Italic"
+                               Foreground="#AAAAAA" 
+                               VerticalAlignment="Center" 
+                               Margin="24,0,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ========== 主区域：NavigationRail TabControl ========== -->
+            <TabControl Grid.Row="1"
+                        Style="{DynamicResource MaterialDesignNavigationRailTabControl}"
+                        TabStripPlacement="Right"
+                        Background="{DynamicResource MaterialDesignPaper}">
+                
+                <!-- 动态生成工站 TabItem -->
+                <TabControl.ItemsSource>
+                    <Binding Path="Stations"/>
+                </TabControl.ItemsSource>
+
+                <TabControl.ItemContainerStyle>
+                    <Style TargetType="TabItem" BasedOn="{StaticResource MaterialDesignNavigationRailTabItem}">
+                        <Setter Property="Padding" Value="8,12"/>
+                        <Setter Property="MinWidth" Value="80"/>
+                        <Setter Property="Content" Value="{Binding View}"/>
+                    </Style>
+                </TabControl.ItemContainerStyle>
+
+                <!-- TabItem Header 模板：图标 + 工站名称 -->
+                <TabControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel HorizontalAlignment="Center">
+                            <materialDesign:PackIcon 
+                                Width="28" 
+                                Height="28" 
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Kind="{Binding StationName, Converter={StaticResource StationIconConverter}}"
+                                Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            
+                            <TextBlock Text="{Binding StationName}" 
+                                       HorizontalAlignment="Center"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       MaxWidth="80"
+                                       Margin="0,4,0,0"
+                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            
+                            <!-- 工站轴数量角标（移除不存在的 BadgeColorZone 属性） -->
+                            <Border CornerRadius="8" Background="{DynamicResource PrimaryHueDarkBrush}" 
+                                    Padding="4,0" Margin="0,2,0,0" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding Axes.Count}" FontSize="9" FontWeight="Bold" 
+                                           Foreground="White"/>
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+            </TabControl>
+        </Grid>
+    </materialDesign:Card>
+</UserControl>

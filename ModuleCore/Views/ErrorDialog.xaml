@@ -1,10 +1,11 @@
-﻿<!-- ErrorDialog.xaml -->
+<!-- ErrorDialog.xaml -->
 <UserControl x:Class="ModuleCore.Views.ErrorDialog"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:conv="clr-namespace:Framework.Converters;assembly=Framework"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="400">
     <UserControl.Resources>
@@ -56,7 +57,7 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="0,15,0,5">
-                <Button Content="确认"
+                <Button Content="{lang:Lang Confirm}"
                         Command="{Binding CloseDialogCommand}"
                         Style="{StaticResource MaterialDesignFlatButton}"
                         IsCancel="True"

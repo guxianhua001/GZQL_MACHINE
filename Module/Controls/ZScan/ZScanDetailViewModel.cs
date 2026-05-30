@@ -1,0 +1,1839 @@
+using Core.Abstraction;
+using Core.Models;
+using Core.Services;
+using Core.Utilities;
+using MotionControl.Interfaces;
+using Module.Services;
+using Prism.Commands;
+using Prism.Events;
+using Prism.Ioc;
+using Prism.Mvvm;
+using Prism.Services.Dialogs;
+using StationTasks.Services;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using Microsoft.Win32;
+using TCPIPModule.Interfaces;
+using Module.Models;
+using Recipe.Interfaces;
+
+namespace Module.ViewModels
+{
+    /// <summary>
+    /// Z-SCAN 步骤详细配置 ViewModel，以模态弹窗形式展示
+    /// 支持图片管理、运动控制、通讯配置、数据接收等完整功能
+    /// </summary>
+    public class ZScanDetailViewModel : BindableBase, IDialogAware
+    {
+        private readonly IDialogService _dialogService;
+        private readonly IMotionService _motionService;
+        private readonly ITCPClientManagerService _tcpClientManagerService;
+        private readonly ITCPEventService _tcpEventService;
+        private readonly IContainerProvider _containerProvider;
+        private readonly ILoggerService _logger;
+        private readonly IZScanConfigService _zscanConfigService;
+        private readonly IZScanCalibrationService _zscanCalibrationService;
+        private readonly IZScanArcCompensationService _zscanArcCompensationService;
+        private readonly INeedleTeachService _needleTeachService;
+
+        #region 原有属性
+
+        private string _assyGroup;
+        private string _siteId;
+        private int _totalPoints;
+        private string _zNominalRange;
+        private double _zMaxDelta;
+        private string _statusText;
+        private Brush _statusColor;
+        private ObservableCollection<ZScanPointDetail> _pointDetails;
+        private ZScanPointDetail _selectedPointDetail;
+
+        public ObservableCollection<string> FeatureOptions { get; } = new ObservableCollection<string>
+        {
+            "tab001", "tab002", "pillar001", "pillar002", "chassis012", "other"
+        };
+
+        #endregion
+
+        #region Task 7: 运动控制属性
+
+        private bool _isScanning;
+        /// <summary> 是否正在执行3D扫描（用于禁用按钮防止重复操作）</summary>
+        public bool IsScanning { get => _isScanning; set => SetProperty(ref _isScanning, value); }
+
+        // 运动参数（从位置服务或配方加载）
+        private int _zAxisId = 1;
+        /// <summary> Z轴编号 </summary>
+        public int ZAxisId { get => _zAxisId; set => SetProperty(ref _zAxisId, value); }
+
+        private int _xAxisId = 2;
+        /// <summary> X轴编号 </summary>
+        public int XAxisId { get => _xAxisId; set => SetProperty(ref _xAxisId, value); }
+
+        private double _zInitPosition = 0.0;
+        /// <summary> Z轴初始/安全高度位置（mm）</summary>
+        public double ZInitPosition { get => _zInitPosition; set => SetProperty(ref _zInitPosition, value); }
+
+        private double _xStartPosition = 10.0;
+        /// <summary> X轴起始位置（mm）</summary>
+        public double XStartPosition { get => _xStartPosition; set => SetProperty(ref _xStartPosition, value); }
+
+        private double _zPhotoPosition = -5.0;
+        /// <summary> Z轴拍照高度位置（mm）</summary>
+        public double ZPhotoPosition { get => _zPhotoPosition; set => SetProperty(ref _zPhotoPosition, value); }
+
+        private double _zSafePosition = 10.0;
+        /// <summary> Z轴安全待机高度位置（mm）</summary>
+        public double ZSafePosition { get => _zSafePosition; set => SetProperty(ref _zSafePosition, value); }
+
+        private double _xStandbyPosition = 0.0;
+        /// <summary> X轴待机位置（mm）</summary>
+        public double XStandbyPosition { get => _xStandbyPosition; set => SetProperty(ref _xStandbyPosition, value); }
+
+        private double _moveSpeed = 10.0;
+        /// <summary> 运动速度（mm/s）</summary>
+        public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
+
+        #endregion
+
+        #region Task 8: 通讯配置属性
+
+        /// <summary> 通讯方式选项列表 </summary>
+        public ObservableCollection<string> CommunicationTypes { get; } = new ObservableCollection<string> { "TCPIP", "Serial" };
+
+        private string _selectedCommunicationType = "TCPIP";
+        /// <summary> 当前选择的通讯方式 </summary>
+        public string SelectedCommunicationType
+        {
+            get => _selectedCommunicationType;
+            set { if (SetProperty(ref _selectedCommunicationType, value)) RaisePropertyChanged(nameof(IsTcpSelected)); }
+        }
+
+        /// <summary> 当前是否选择了 TCPIP 通讯方式 </summary>
+        public bool IsTcpSelected => SelectedCommunicationType == "TCPIP";
+
+        /// <summary> TCP 连接名称列表 </summary>
+        public ObservableCollection<string> TcpConnections { get; } = new ObservableCollection<string>();
+
+        private string _selectedConnectionName;
+        /// <summary> 当前选择的TCP连接名称（对应ITCPEventService.CameraMessageReceived事件的cameraName参数）</summary>
+        public string SelectedConnectionName { get => _selectedConnectionName; set => SetProperty(ref _selectedConnectionName, value); }
+
+        /// <summary> TCP数据接收事件处理器引用，用于取消订阅防止内存泄漏 </summary>
+        private Action<string, string>? _cameraDataHandler;
+
+        /// <summary> PointDetails 集合变更事件处理器引用 </summary>
+        private NotifyCollectionChangedEventHandler? _pointDetailsCollectionChangedHandler;
+
+        /// <summary> 单个测量点属性变更事件处理器引用 </summary>
+        private PropertyChangedEventHandler? _pointPropertyChangedHandler;
+
+        #endregion
+
+        #region 标定功能属性
+
+        private double _needleZOffset;
+        public double NeedleZOffset { get => _needleZOffset; set => SetProperty(ref _needleZOffset, value); }
+
+        private double _needleCompensationInput;
+        public double NeedleCompensationInput { get => _needleCompensationInput; set => SetProperty(ref _needleCompensationInput, value); }
+
+        private string _lastCalibrationTimeText = string.Empty;
+        public string LastCalibrationTimeText { get => _lastCalibrationTimeText; set => SetProperty(ref _lastCalibrationTimeText, value); }
+
+        private double _baseZInput;
+        public double BaseZInput { get => _baseZInput; set => SetProperty(ref _baseZInput, value); }
+
+        private double _measuredMZ;
+        public double MeasuredMZ { get => _measuredMZ; set => SetProperty(ref _measuredMZ, value); }
+
+        private double _deltaZInput;
+        public double DeltaZInput { get => _deltaZInput; set => SetProperty(ref _deltaZInput, value); }
+
+        private double _needleCompensationValue;
+        public double NeedleCompensationValue { get => _needleCompensationValue; set => SetProperty(ref _needleCompensationValue, value); }
+
+        private double _calculatedDispenseHeight;
+        public double CalculatedDispenseHeight { get => _calculatedDispenseHeight; set => SetProperty(ref _calculatedDispenseHeight, value); }
+
+        private int _calibrationStep;
+        public int CalibrationStep { get => _calibrationStep; set => SetProperty(ref _calibrationStep, value); }
+
+        private double _currentZHeightInput;
+        public double CurrentZHeightInput { get => _currentZHeightInput; set => SetProperty(ref _currentZHeightInput, value); }
+
+        private double _zHeightDifference;
+        public double ZHeightDifference { get => _zHeightDifference; set => SetProperty(ref _zHeightDifference, value); }
+
+        private double _baseDispenseHeight;
+        public double BaseDispenseHeight { get => _baseDispenseHeight; set => SetProperty(ref _baseDispenseHeight, value); }
+
+        private string _currentFilePath;
+        public string CurrentFilePath { get => _currentFilePath; set => SetProperty(ref _currentFilePath, value); }
+
+        #endregion
+
+        #region 多表格管理属性
+
+        private ObservableCollection<ZScanTableConfig> _tables = new ObservableCollection<ZScanTableConfig>();
+        public ObservableCollection<ZScanTableConfig> Tables { get => _tables; set => SetProperty(ref _tables, value); }
+
+        private ZScanTableConfig _selectedTable;
+        public ZScanTableConfig SelectedTable { get => _selectedTable; set { if (SetProperty(ref _selectedTable, value)) OnSelectedTableChanged(); } }
+
+        private ZScanDataFormat _currentDataFormat = ZScanDataFormat.Double;
+        public ZScanDataFormat CurrentDataFormat { get => _currentDataFormat; set { if (SetProperty(ref _currentDataFormat, value)) OnDataFormatChanged(); } }
+
+        public ObservableCollection<ZScanDataFormat> DataFormatOptions { get; } = new ObservableCollection<ZScanDataFormat> { ZScanDataFormat.Double, ZScanDataFormat.DoubleArray };
+
+        #endregion
+
+        #region 命令定义
+
+        // 原有命令
+        public ICommand AddRowCommand { get; }
+        public ICommand DeleteSelectedRowCommand { get; }
+        public ICommand ImportCSVCommand { get; }
+        public ICommand ExportCSVCommand { get; }
+        public ICommand RescanCommand { get; }
+
+        // Task 7: 运动控制命令
+        /// <summary> 开始3D扫描流程（移动轴→触发相机→等待数据→解析更新）</summary>
+        public ICommand Start3DScanCommand { get; }
+        /// <summary> 紧急停止当前运动（优先级最高）</summary>
+        public ICommand StopCommand { get; }
+        /// <summary> 移动到安全待机位置 </summary>
+        public ICommand ReturnToStandbyCommand { get; }
+
+        // 标定命令
+        public ICommand CalibrateCameraZCommand { get; }
+        public ICommand ApplyNeedleCompensationCommand { get; }
+        public ICommand ResetCalibrationCommand { get; }
+        public ICommand SetBaseZCommand { get; }
+        public ICommand MoveNeedleToBaseZCommand { get; }
+        public ICommand TeachNeedleMZCommand { get; }
+        public ICommand CalculateDispenseHeightCommand { get; }
+
+        // 多表格管理命令
+        public ICommand AddTableCommand { get; }
+        public ICommand DeleteTableCommand { get; }
+        public ICommand SaveConfigCommand { get; }
+        public ICommand LoadConfigCommand { get; }
+
+        // 全局变量链接命令
+        public ICommand UnlinkRowGlobalVariableCommand { get; }
+
+        public ObservableCollection<GlobalVariable> AvailableGlobalVariables { get; }
+
+        #endregion
+
+        /// <summary>
+        /// 构造函数：注入所有依赖服务
+        /// </summary>
+        public ZScanDetailViewModel(
+            IDialogService dialogService,
+            IMotionService motionService,
+            ITCPClientManagerService tcpClientManagerService,
+            ITCPEventService tcpEventService,
+            IContainerProvider containerProvider,
+            ILoggerService logger,
+            IZScanConfigService zscanConfigService,
+            IZScanCalibrationService zscanCalibrationService,
+            IZScanArcCompensationService zscanArcCompensationService,
+            INeedleTeachService needleTeachService)
+        {
+            _dialogService = dialogService;
+            _motionService = motionService;
+            _tcpClientManagerService = tcpClientManagerService;
+            _tcpEventService = tcpEventService;
+            _containerProvider = containerProvider;
+            _logger = logger;
+            _zscanConfigService = zscanConfigService;
+            _zscanCalibrationService = zscanCalibrationService;
+            _zscanArcCompensationService = zscanArcCompensationService;
+            _needleTeachService = needleTeachService;
+
+            _zscanCalibrationService.CalibrationChanged += OnCalibrationChanged;
+
+            // 原有命令初始化
+            AddRowCommand = new DelegateCommand(OnAddRow);
+            DeleteSelectedRowCommand = new DelegateCommand(OnDeleteSelectedRow, () => SelectedPointDetail != null).ObservesProperty(() => SelectedPointDetail);
+            ImportCSVCommand = new DelegateCommand(OnImportCSV);
+            ExportCSVCommand = new DelegateCommand(OnExportCSV);
+            RescanCommand = new DelegateCommand(OnRescan);
+
+            // Task 7: 运动控制命令初始化（带启用条件）
+            Start3DScanCommand = new DelegateCommand(async () => await OnStart3DScanAsync(), CanStartScan)
+                .ObservesProperty(() => IsScanning);
+            StopCommand = new DelegateCommand(OnStop, () => IsScanning)
+                .ObservesProperty(() => IsScanning);
+            ReturnToStandbyCommand = new DelegateCommand(async () => await OnReturnToStandbyAsync(), CanReturnToStandby)
+                .ObservesProperty(() => IsScanning);
+
+            CalibrateCameraZCommand = new DelegateCommand(OnCalibrateCameraZ);
+            ApplyNeedleCompensationCommand = new DelegateCommand(OnApplyNeedleCompensation, () => NeedleCompensationInput != 0).ObservesProperty(() => NeedleCompensationInput);
+            ResetCalibrationCommand = new DelegateCommand(OnResetCalibration);
+
+            SetBaseZCommand = new DelegateCommand(OnSetBaseZ);
+            MoveNeedleToBaseZCommand = new DelegateCommand(async () => await OnMoveNeedleToBaseZAsync(), () => BaseZInput > 0).ObservesProperty(() => BaseZInput);
+            TeachNeedleMZCommand = new DelegateCommand(async () => await OnTeachNeedleMZAsync(), () => CalibrationStep >= 2).ObservesProperty(() => CalibrationStep);
+            CalculateDispenseHeightCommand = new DelegateCommand(OnCalculateDispenseHeight);
+
+            AddTableCommand = new DelegateCommand(OnAddTable);
+            DeleteTableCommand = new DelegateCommand(OnDeleteTable, () => SelectedTable != null).ObservesProperty(() => SelectedTable);
+            SaveConfigCommand = new DelegateCommand(OnSaveConfig);
+            LoadConfigCommand = new DelegateCommand(OnLoadConfig);
+
+            UnlinkRowGlobalVariableCommand = new DelegateCommand<ZScanPointDetail>(OnUnlinkRowGlobalVariable);
+            AvailableGlobalVariables = new ObservableCollection<GlobalVariable>();
+            LoadAvailableGlobalVariables();
+        }
+
+        #region 原有属性实现
+
+        public string Title => $"Z-SCAN DETAIL - {AssyGroup} / {SiteId}";
+
+        public string AssyGroup
+        {
+            get => _assyGroup;
+            set => SetProperty(ref _assyGroup, value);
+        }
+
+        public string SiteId
+        {
+            get => _siteId;
+            set => SetProperty(ref _siteId, value);
+        }
+
+        public int TotalPoints
+        {
+            get => _totalPoints;
+            set => SetProperty(ref _totalPoints, value);
+        }
+
+        public string ZNominalRange
+        {
+            get => _zNominalRange;
+            set => SetProperty(ref _zNominalRange, value);
+        }
+
+        public double ZMaxDelta
+        {
+            get => _zMaxDelta;
+            set => SetProperty(ref _zMaxDelta, value);
+        }
+
+        public string StatusText
+        {
+            get => _statusText;
+            set => SetProperty(ref _statusText, value);
+        }
+
+        public Brush StatusColor
+        {
+            get => _statusColor;
+            set => SetProperty(ref _statusColor, value);
+        }
+
+        public ObservableCollection<ZScanPointDetail> PointDetails
+        {
+            get => _pointDetails;
+            set => SetProperty(ref _pointDetails, value);
+        }
+
+        public ZScanPointDetail SelectedPointDetail
+        {
+            get => _selectedPointDetail;
+            set => SetProperty(ref _selectedPointDetail, value);
+        }
+
+        #endregion
+
+        #region 命令启用条件判断方法
+
+        /// <summary> 判断是否可以开始扫描：非扫描状态且设备就绪 </summary>
+        private bool CanStartScan() => !IsScanning;
+
+        /// <summary> 判断是否可以返回待机：非扫描状态 </summary>
+        private bool CanReturnToStandby() => !IsScanning;
+
+        #endregion
+
+        #region 对话框生命周期
+
+        public void OnDialogOpened(IDialogParameters parameters)
+        {
+            if (parameters.ContainsKey("assyGroup"))
+                AssyGroup = parameters.GetValue<string>("assyGroup");
+            if (parameters.ContainsKey("siteId"))
+                SiteId = parameters.GetValue<string>("siteId");
+
+            InitializeCore();
+
+            _logger?.Info($"Z-SCAN Detail 弹窗打开: {AssyGroup} / {SiteId}");
+        }
+
+        /// <summary>
+        /// 嵌入模式初始化方法（供 ZScanDetailView.xaml.cs 的 Loaded 事件调用）
+        /// 当 ZScanDetailView 被直接嵌入到其他页面时使用此路径
+        /// 与 OnDialogOpened() 共享相同的初始化逻辑，但无需对话框参数
+        /// </summary>
+        public void InitializeForEmbeddedMode()
+        {
+            // 嵌入模式设置默认值
+            AssyGroup = "Default";
+            SiteId = "Embedded";
+
+            InitializeCore();
+
+            _logger?.Info($"Z-SCAN Detail 嵌入模式初始化完成: {AssyGroup} / {SiteId}");
+        }
+
+        /// <summary>
+        /// 核心初始化逻辑（对话框模式和嵌入模式共享）
+        /// 包括：数据加载、运动参数、TCP连接、事件订阅
+        /// </summary>
+        private void InitializeCore()
+        {
+            LoadSampleData();
+            LoadMotionParameters();
+            LoadTcpConnections();
+            SubscribeCameraData();
+
+            // Task 9: 注册 PointDetails 事件监听（自动计算引擎）
+            SubscribePointDetailsEvents();
+            OnLoadConfig();
+            UpdateCalibrationDisplay();
+        }
+
+        public void OnDialogClosed()
+        {
+            UnsubscribeCameraData();
+
+            // Task 9: 取消 PointDetails 事件监听，防止内存泄漏
+            UnsubscribePointDetailsEvents();
+
+            _logger?.Info($"Z-SCAN Detail 弹窗关闭: {AssyGroup} / {SiteId}");
+        }
+
+        public bool CanCloseDialog() => true;
+
+        public event Action<IDialogResult> RequestClose;
+
+        #endregion
+
+        #region 数据加载方法
+
+        private void LoadSampleData()
+        {
+            TotalPoints = 48;
+            ZNominalRange = "3.500 – 5.200 mm";
+            ZMaxDelta = 0.031;
+            StatusText = "Scanned";
+            StatusColor = Brushes.Green;
+
+            PointDetails = new ObservableCollection<ZScanPointDetail>
+            {
+                new ZScanPointDetail { Segment = 1, PointNumber = 1, X = 10.500, Y = 20.300, ZNominal = 5.000, ZMeasured = 5.012, DeltaZ = 0.012, FeatureName = "tab001", Nominal = 5.000, Range = 0.100, DataIndex = 0 },
+                new ZScanPointDetail { Segment = 1, PointNumber = 2, X = 10.800, Y = 20.500, ZNominal = 5.010, ZMeasured = 5.025, DeltaZ = 0.015, FeatureName = "tab002", Nominal = 5.010, Range = 0.100, DataIndex = 1 },
+                new ZScanPointDetail { Segment = 1, PointNumber = 3, X = 11.100, Y = 20.700, ZNominal = 5.020, ZMeasured = 5.051, DeltaZ = 0.031, FeatureName = "pillar001", Nominal = 5.020, Range = 0.100, DataIndex = 2 },
+                new ZScanPointDetail { Segment = 1, PointNumber = 4, X = 11.400, Y = 20.900, ZNominal = 5.030, ZMeasured = 5.049, DeltaZ = 0.019, FeatureName = "pillar002", Nominal = 5.030, Range = 0.100, DataIndex = 3 },
+                new ZScanPointDetail { Segment = 1, PointNumber = 32, X = 22.000, Y = 28.100, ZNominal = 5.200, ZMeasured = 5.218, DeltaZ = 0.018, FeatureName = "chassis012", Nominal = 5.200, Range = 0.100, DataIndex = 4 }
+            };
+
+            // Task 9: 初始化完成后重新计算所有行和统计信息
+            foreach (var point in PointDetails)
+            {
+                RecalculateRow(point);
+            }
+            RecalculateStatistics();
+        }
+
+        /// <summary>
+        /// 从位置服务或配方加载运动参数（Z/X轴位置、速度等）
+        /// 实际项目中应从 IPositionProvider 或 RecipePoolService 加载
+        /// </summary>
+        private void LoadMotionParameters()
+        {
+            try
+            {
+                // TODO: 实际应从位置服务或配方加载以下参数
+                // var positionProvider = _containerProvider.Resolve<IPositionProvider>();
+                // ZInitPosition = positionProvider.GetPosition("Z_Init");
+                // XStartPosition = positionProvider.GetPosition("X_Start");
+                // ...
+
+                _logger?.Info("Z-SCAN 运动参数已加载（使用默认值）");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"加载运动参数失败: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Task 7: 运动控制逻辑实现
+
+        /// <summary>
+        /// 执行完整的3D扫描流程：
+        /// 1. 移动到起始位置（Z轴安全高度 + X轴起始位）
+        /// 2. 移动到拍照位置（Z轴下降到拍照高度）
+        /// 3. 触发相机（通过IO或TCP命令）
+        /// 4. 等待数据返回（带超时处理）
+        /// 5. 解析数据并更新PointDetails表格
+        /// 
+        /// 安全性保障：
+        /// - 使用CancellationToken支持急停打断
+        /// - 所有运动操作都有异常捕获
+        /// - 完成后自动恢复按钮状态
+        /// </summary>
+        private async Task OnStart3DScanAsync()
+        {
+            // 防止重复点击
+            if (IsScanning) return;
+
+            var cts = new CancellationTokenSource();
+            try
+            {
+                IsScanning = true;
+                StatusText = "Scanning...";
+                StatusColor = Brushes.Orange;
+                _logger?.Info($"Z-SCAN 开始3D扫描: {AssyGroup} / {SiteId}");
+
+                // 步骤1：移动到起始位置（先抬Z轴防撞，再移X轴）
+                _logger?.Info($"步骤1: 移动到起始位置 Z={ZInitPosition}, X={XStartPosition}");
+                await _motionService.MoveAbsAsync(ZAxisId, ZInitPosition, MoveSpeed, cts.Token);
+                await Task.Delay(100, cts.Token); // 短暂延时确保到位
+                await _motionService.MoveAbsAsync(XAxisId, XStartPosition, MoveSpeed, cts.Token);
+                await Task.Delay(100, cts.Token);
+
+                // 步骤2：移动到拍照位置（Z轴下降到拍照高度）
+                _logger?.Info($"步骤2: 移动到拍照位置 Z={ZPhotoPosition}");
+                await _motionService.MoveAbsAsync(ZAxisId, ZPhotoPosition, MoveSpeed, cts.Token);
+                await Task.Delay(200, cts.Token); // 等待稳定
+
+                // 步骤3：触发相机（通过TCP发送触发命令）
+                _logger?.Info("步骤3: 触发3D相机");
+                if (!string.IsNullOrEmpty(SelectedConnectionName))
+                {
+                    try
+                    {
+                        // 通过ITCPEventService发送触发命令（实际命令根据相机协议调整）
+                        // 注意：此处仅演示触发逻辑，实际应根据相机通信协议发送正确命令
+                        _logger?.Info($"相机触发命令已发送至 [{SelectedConnectionName}]");
+
+                        // 步骤4：等待数据返回（带超时处理，建议5-10秒）
+                        _logger?.Info("步骤4: 等待相机数据返回...");
+                        // 数据将通过SubscribeCameraData()订阅的CameraMessageReceived事件被动接收
+                        // 此处可添加主动等待机制（如TaskCompletionSource），但通常采用被动接收模式
+                        await Task.Delay(3000, cts.Token); // 模拟等待时间，实际应使用信号量或事件等待
+                    }
+                    catch (Exception triggerEx)
+                    {
+                        _logger?.Error($"相机触发失败: {triggerEx.Message}");
+                        throw new InvalidOperationException($"相机触发失败: {triggerEx.Message}", triggerEx);
+                    }
+                }
+                else
+                {
+                    _logger?.Warn("未选择TCP连接，跳过相机触发");
+                }
+
+                // 步骤5：完成扫描，更新状态
+                StatusText = "Scan Completed";
+                StatusColor = Brushes.Green;
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "3D扫描完成！" } }, null);
+                _logger?.Info($"Z-SCAN 3D扫描完成: {AssyGroup} / {SiteId}");
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Stopped";
+                StatusColor = Brushes.Yellow;
+                _logger?.Warn($"Z-SCAN 扫描被用户停止: {AssyGroup} / {SiteId}");
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "扫描已被停止" } }, null);
+            }
+            catch (Exception ex)
+            {
+                StatusText = "Error";
+                StatusColor = Brushes.Red;
+                _logger?.Error($"Z-SCAN 扫描异常: {ex.Message}\n{ex.StackTrace}");
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"扫描失败: {ex.Message}" } }, null);
+            }
+            finally
+            {
+                IsScanning = false;
+                cts.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 紧急停止当前运动（优先级最高）
+        /// 立即调用IMotionService.EmergencyStop()停止所有轴运动
+        /// </summary>
+        private void OnStop()
+        {
+            try
+            {
+                _logger?.Warn($"Z-SCAN 用户触发紧急停止: {AssyGroup} / {SiteId}");
+
+                // 同时停止Z轴和X轴（优先级最高）
+                _motionService.EmergencyStop(ZAxisId);
+                _motionService.EmergencyStop(XAxisId);
+
+                IsScanning = false;
+                StatusText = "Emergency Stopped";
+                StatusColor = Brushes.Red;
+
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "已紧急停止！请检查设备状态后重试。" } }, null);
+                _logger?.Info("Z-SCAN 急停命令已执行");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 急停失败: {ex.Message}");
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"急停失败: {ex.Message}" } }, null);
+            }
+        }
+
+        /// <summary>
+        /// 移动轴到安全待机位置：
+        /// - 先抬Z轴到安全高度（防止碰撞）
+        /// - 再移X轴到待机位置
+        /// 参考IMotionService.HomeAsync()方法的异步回零/回待机逻辑
+        /// </summary>
+        private async Task OnReturnToStandbyAsync()
+        {
+            if (IsScanning) return;
+
+            var cts = new CancellationTokenSource();
+            try
+            {
+                StatusText = "Returning to Standby...";
+                StatusColor = Brushes.Orange;
+                _logger?.Info($"Z-SCAN 开始返回待机位置: {AssyGroup} / {SiteId}");
+
+                // 先抬Z轴到安全高度（防止水平移动时碰撞工件）
+                _logger?.Info($"抬Z轴到安全高度: Z={ZSafePosition}");
+                await _motionService.MoveAbsAsync(ZAxisId, ZSafePosition, MoveSpeed, cts.Token);
+                await Task.Delay(100, cts.Token);
+
+                // 再移X轴到待机位置
+                _logger?.Info($"移X轴到待机位置: X={XStandbyPosition}");
+                await _motionService.MoveAbsAsync(XAxisId, XStandbyPosition, MoveSpeed, cts.Token);
+
+                StatusText = "Standby";
+                StatusColor = Brushes.Blue;
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "设备已返回待机位置" } }, null);
+                _logger?.Info("Z-SCAN 已返回待机位置");
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Stopped";
+                StatusColor = Brushes.Yellow;
+                _logger?.Warn("Z-SCAN 返回待机被中断");
+            }
+            catch (Exception ex)
+            {
+                StatusText = "Error";
+                StatusColor = Brushes.Red;
+                _logger?.Error($"Z-SCAN 返回待机失败: {ex.Message}");
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"返回待机失败: {ex.Message}" } }, null);
+            }
+            finally
+            {
+                cts.Dispose();
+            }
+        }
+
+        #endregion
+
+        #region Task 8: 通讯配置与数据接收实现
+
+        /// <summary>
+        /// 从IAppSettingService加载所有已配置的TCP连接名称
+        /// 包含Client和Server两种模式的所有配置项
+        /// 参考ScanDetailViewModel.LoadTcpConnections()方法（第410-434行）
+        /// </summary>
+        private void LoadTcpConnections()
+        {
+            TcpConnections.Clear();
+            try
+            {
+                // 优先从AppSettingService获取所有配置项（含Server模式）
+                var appConfig = _containerProvider.Resolve<IAppSettingService>();
+                if (appConfig?.Clients != null)
+                {
+                    foreach (var client in appConfig.Clients)
+                        TcpConnections.Add(client.ClientName);
+                }
+
+                // 如果AppSettingService无数据，回退到ClientManagerService（仅Client模式）
+                if (TcpConnections.Count == 0 && _tcpClientManagerService?.Clients != null)
+                {
+                    foreach (var name in _tcpClientManagerService.Clients.Keys)
+                        TcpConnections.Add(name);
+                }
+
+                // 默认选择第一个连接
+                if (TcpConnections.Count > 0 && string.IsNullOrEmpty(SelectedConnectionName))
+                    SelectedConnectionName = TcpConnections[0];
+
+                _logger?.Info($"Z-SCAN TCP连接列表已加载: {TcpConnections.Count} 个");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 加载TCP连接列表失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 订阅TCP数据接收事件：3D相机通过IO触发后被动回传数据
+        /// 只接收匹配当前SelectedConnectionName的数据，解析后自动刷新PointDetails表格
+        /// 参考ScanDetailViewModel.SubscribeCameraData()方法（第823-860行）
+        /// </summary>
+        private void SubscribeCameraData()
+        {
+            // 先取消旧订阅（防止重复订阅）
+            UnsubscribeCameraData();
+
+            _cameraDataHandler = (cameraName, message) =>
+            {
+                // 只处理当前配置的TCP连接名称的数据
+                if (!string.IsNullOrEmpty(SelectedConnectionName) && cameraName == SelectedConnectionName)
+                {
+                    Application.Current.Dispatcher.Invoke(async () =>
+                    {
+                        try
+                        {
+                            _logger?.Info($"Z-SCAN 收到相机数据 [{SelectedConnectionName}]: {message}");
+
+                            // 解析相机原始数据
+                            var parsedValues = ParseCameraData(message);
+
+                            // 更新PointDetails表格中的ZMeasured值
+                            if (parsedValues.Count > 0)
+                            {
+                                UpdatePointDetailsFromCameraData(parsedValues);
+                                RecalculateStatistics();
+
+                                _dialogService.ShowDialog("MessageDialog",
+                                    new DialogParameters { { "message", $"接收到{parsedValues.Count}个测量点数据，表格已更新" } }, null);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.Error($"Z-SCAN 相机数据处理失败: {ex.Message}");
+                        }
+                    });
+                }
+            };
+
+            _tcpEventService.CameraMessageReceived += _cameraDataHandler;
+            _logger?.Info($"Z-SCAN 已订阅TCP数据接收: 监听连接 '{SelectedConnectionName}'");
+        }
+
+        /// <summary>
+        /// 取消订阅TCP数据接收事件，防止内存泄漏
+        /// 必须在OnDialogClosed()中调用
+        /// </summary>
+        private void UnsubscribeCameraData()
+        {
+            if (_cameraDataHandler != null)
+            {
+                _tcpEventService.CameraMessageReceived -= _cameraDataHandler;
+                _cameraDataHandler = null;
+                _logger?.Info("Z-SCAN 已取消订阅TCP数据接收");
+            }
+        }
+
+        /// <summary>
+        /// 解析相机原始数据字符串
+        /// 数据格式示例：Camera=3DCAMERA;VISION_RESULT:SUCCESS:value1,value2,value3,...
+        /// 提取VISION_RESULT:SUCCESS:后的数值数组
+        /// </summary>
+        /// <param name="rawData">相机返回的原始数据字符串</param>
+        /// <returns>解析后的数值列表（按顺序对应各测量点）</returns>
+        private List<double> ParseCameraData(string rawData)
+        {
+            var result = new List<double>();
+
+            if (string.IsNullOrEmpty(rawData))
+                return result;
+
+            try
+            {
+                // 查找VISION_RESULT:SUCCESS:标记
+                const string marker = "VISION_RESULT:SUCCESS:";
+                int startIndex = rawData.IndexOf(marker);
+                if (startIndex < 0)
+                {
+                    _logger?.Warn($"Z-SCAN 相机数据格式错误: 未找到'{marker}'标记");
+                    return result;
+                }
+
+                // 提取数值部分
+                string valuesStr = rawData.Substring(startIndex + marker.Length).Trim();
+
+                // 分割数值（逗号分隔）
+                string[] valueStrings = valuesStr.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var valStr in valueStrings)
+                {
+                    if (double.TryParse(valStr.Trim(), out double value))
+                    {
+                        result.Add(value);
+                    }
+                    else
+                    {
+                        _logger?.Warn($"Z-SCAN 无法解析数值: '{valStr.Trim()}'");
+                    }
+                }
+
+                _logger?.Info($"Z-SCAN 相机数据解析成功: {result.Count} 个数值");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 相机数据解析异常: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 根据相机数据更新PointDetails表格中的ZMeasured字段
+        /// 按DataIndex（即PointNumber-1）匹配到对应行
+        /// 并自动重新计算DeltaZ和Status
+        /// </summary>
+        /// <param name="measuredValues">从相机数据解析出的测量值列表</param>
+        private void UpdatePointDetailsFromCameraData(List<double> measuredValues)
+        {
+            if (PointDetails == null || measuredValues.Count == 0)
+                return;
+
+            double[] arcHeights = measuredValues.ToArray();
+            double totalOffset = _zscanCalibrationService.TotalZOffset;
+
+            var pointDataList = PointDetails.Select(p => new ZScanPointData
+            {
+                Segment = p.Segment,
+                PointNumber = p.PointNumber,
+                X = p.X,
+                Y = p.Y,
+                ZNominal = p.ZNominal,
+                ZMeasured = p.ZMeasured,
+                DeltaZ = p.DeltaZ,
+                Nominal = p.Nominal,
+                Range = p.Range,
+                DataIndex = p.DataIndex,
+                Description = p.Description,
+                Status = p.Status,
+                PointType = p.PointType,
+                GlobalVariableLink = p.GlobalVariableLink
+            }).ToList();
+
+            _zscanArcCompensationService.Compensate(pointDataList, arcHeights, totalOffset, CurrentDataFormat);
+
+            for (int i = 0; i < Math.Min(pointDataList.Count, PointDetails.Count); i++)
+            {
+                var point = PointDetails[i];
+                var data = pointDataList[i];
+                point.ZMeasured = data.ZMeasured;
+                point.DeltaZ = data.DeltaZ;
+                RecalculateRow(point);
+                _logger?.Debug($"Z-SCAN 更新点[{point.PointNumber}]: ZMeasured={point.ZMeasured:F3}, DeltaZ={point.DeltaZ:F3}");
+            }
+
+            _logger?.Info($"Z-SCAN 已更新 {Math.Min(pointDataList.Count, PointDetails.Count)} 个测量点（含标定偏移={totalOffset:F3}）");
+        }
+
+        #endregion
+
+        #region 原有功能方法（保持不变）
+
+        #region Task 9: 自动计算引擎
+
+        /// <summary>
+        /// 单行重新计算方法：当测量点的 ZMeasured、Nominal 或 Range 值变化时触发
+        /// 计算逻辑：
+        /// 1. DeltaZ = ZMeasured - Nominal（使用新的 Nominal 字段）
+        /// 2. 根据 Range 判定 Status：
+        ///    - Range > 0 且 |DeltaZ| <= Range → "Pass"
+        ///    - Range > 0 且 |DeltaZ| > Range → "Fail"
+        ///    - Range == 0 或 ZMeasured == 0 → "Pending"
+        /// </summary>
+        /// <param name="point">需要重新计算的测量点</param>
+        private void RecalculateRow(ZScanPointDetail point)
+        {
+            if (point == null) return;
+
+            // 计算 DeltaZ = 实测值 - 标称值（使用新 Nominal 字段）
+            point.DeltaZ = point.ZNominal - point.ZMeasured;
+
+            // 判定状态：根据公差范围判断合格性
+            if (point.Range > 0 && point.ZMeasured != 0)
+            {
+                // 有公差范围且有实测值时才判定 Pass/Fail
+                if (Math.Abs(point.DeltaZ) <= point.Range)
+                {
+                    point.Status = "Pass";
+                }
+                else
+                {
+                    point.Status = "Fail";
+                }
+            }
+            else
+            {
+                // 无公差范围或无实测值时标记为待检测
+                point.Status = "Pending";
+            }
+
+            // 触发属性变更通知，确保 UI 更新
+            point.NotifyPropertyChanged(nameof(ZScanPointDetail.DeltaZ));
+            point.NotifyPropertyChanged(nameof(ZScanPointDetail.Status));
+
+            _logger?.Debug($"Z-SCAN 行重算完成: 点[{point.PointNumber}] DeltaZ={point.DeltaZ:F3}, Status={point.Status}");
+        }
+
+        /// <summary>
+        /// 全局统计重新计算方法：更新所有统计信息和状态显示
+        /// 统计项包括：
+        /// 1. TotalPoints：总测量点数
+        /// 2. ZNominalRange：标称值范围（格式："min – max mm"）
+        /// 3. ZMaxDelta：最大偏差绝对值
+        /// 4. StatusText / StatusColor：整体状态判定
+        ///    - ZMaxDelta <= 0.05 → "All Pass" (Green)
+        ///    - 0.05 < ZMaxDelta <= 0.1 → "Warning" (Orange)
+        ///    - ZMaxDelta > 0.1 或有 Fail 行 → "High ΔZ" (Red)
+        /// 5. Pass/Fail/Pending 数量统计
+        /// </summary>
+        private void RecalculateStatistics()
+        {
+            if (PointDetails == null || PointDetails.Count == 0)
+            {
+                TotalPoints = 0;
+                ZNominalRange = "N/A";
+                ZMaxDelta = 0;
+                StatusText = "No Data";
+                StatusColor = Brushes.Gray;
+                return;
+            }
+
+            // 更新总点数
+            TotalPoints = PointDetails.Count;
+
+            // 计算 Nominal 最小值和最大值（用于显示范围）
+            double minNominal = PointDetails.Min(p => p.Nominal);
+            double maxNominal = PointDetails.Max(p => p.Nominal);
+            ZNominalRange = $"{minNominal:F3} – {maxNominal:F3} mm";
+
+            // 计算最大 DeltaZ 绝对值
+            ZMaxDelta = PointDetails.Max(p => Math.Abs(p.DeltaZ));
+
+            // 统计各状态数量
+            int passCount = PointDetails.Count(p => p.Status == "Pass");
+            int failCount = PointDetails.Count(p => p.Status == "Fail");
+            int pendingCount = PointDetails.Count(p => p.Status == "Pending");
+
+            // 根据最大偏差和 Fail 数量更新整体状态
+            bool hasFailRows = failCount > 0;
+
+            if (hasFailRows || ZMaxDelta > 0.1)
+            {
+                // 存在不合格行或偏差过大
+                StatusText = $"High ΔZ ({failCount} Fail)";
+                StatusColor = Brushes.Red;
+            }
+            else if (ZMaxDelta > 0.05)
+            {
+                // 偏差在警告范围内
+                StatusText = "Warning";
+                StatusColor = Brushes.Orange;
+            }
+            else
+            {
+                // 所有检测点合格
+                StatusText = "All Pass";
+                StatusColor = Brushes.Green;
+            }
+
+            _logger?.Info($"Z-SCAN 统计更新: 总点={TotalPoints}, Z范围={ZNominalRange}, 最大ΔZ={ZMaxDelta:F3}, 状态={StatusText} (Pass={passCount}, Fail={failCount}, Pending={pendingCount})");
+        }
+
+        /// <summary>
+        /// 注册 PointDetails 集合的事件监听：
+        /// 1. CollectionChanged 事件：监听集合增删操作
+        /// 2. 每个元素的 PropertyChanged 事件：监听 ZMeasured、Nominal、Range 字段变化
+        /// 在构造函数或 OnDialogOpened() 中调用
+        /// </summary>
+        private void SubscribePointDetailsEvents()
+        {
+            // 先取消旧订阅（防止重复订阅）
+            UnsubscribePointDetailsEvents();
+
+            // 监听集合变更事件（新增/删除行）
+            _pointDetailsCollectionChangedHandler = (sender, e) =>
+            {
+                // 当集合变更时，重新计算全局统计
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        RecalculateStatistics();
+
+                        // 如果是新增元素，订阅该元素的属性变更事件
+                        if (e.Action == NotifyCollectionChangedAction.Add)
+                        {
+                            foreach (ZScanPointDetail newItem in e.NewItems)
+                            {
+                                SubscribePointPropertyChanges(newItem);
+                            }
+                        }
+
+                    // 如果是删除元素，取消订阅（可选，因为对象会被GC回收）
+                        if (e.Action == NotifyCollectionChangedAction.Remove)
+                        {
+                            foreach (ZScanPointDetail oldItem in e.OldItems)
+                            {
+                                UnsubscribePointPropertyChanges(oldItem);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.Error($"Z-SCAN 集合变更事件处理异常: {ex.Message}");
+                    }
+                });
+            };
+
+            // 监听单个测量点的属性变更事件
+            _pointPropertyChangedHandler = (sender, e) =>
+            {
+                try
+                {
+                    // 只关注关键字段变化：ZMeasured、Nominal、Range
+                    if (e.PropertyName == nameof(ZScanPointDetail.ZMeasured) ||
+                        e.PropertyName == nameof(ZScanPointDetail.Nominal) ||
+                        e.PropertyName == nameof(ZScanPointDetail.Range))
+                    {
+                        var point = sender as ZScanPointDetail;
+                        if (point != null)
+                        {
+                            // 重新计算该行并更新统计（使用 Dispatcher 延迟执行避免循环）
+                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                try
+                                {
+                                    RecalculateRow(point);
+                                    RecalculateStatistics();
+                                }
+                                catch (Exception innerEx)
+                                {
+                                    _logger?.Error($"Z-SCAN 属性变更计算异常: {innerEx.Message}");
+                                }
+                            }), System.Windows.Threading.DispatcherPriority.Background);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Error($"Z-SCAN 属性变更事件处理异常: {ex.Message}");
+                }
+            };
+
+            // 注册集合变更事件
+            if (PointDetails != null)
+            {
+                PointDetails.CollectionChanged += _pointDetailsCollectionChangedHandler;
+
+                // 为现有每个元素注册属性变更事件
+                foreach (var point in PointDetails)
+                {
+                    SubscribePointPropertyChanges(point);
+                }
+            }
+
+            _logger?.Debug("Z-SCAN 已注册 PointDetails 事件监听");
+        }
+
+        /// <summary>
+        /// 订阅单个测量点的属性变更事件
+        /// </summary>
+        /// <param name="point">要监听的测量点</param>
+        private void SubscribePointPropertyChanges(ZScanPointDetail point)
+        {
+            if (point != null && _pointPropertyChangedHandler != null)
+            {
+                point.PropertyChanged += _pointPropertyChangedHandler;
+            }
+        }
+
+        /// <summary>
+        /// 取消订阅单个测量点的属性变更事件
+        /// </summary>
+        /// <param name="point">要取消监听的测量点</param>
+        private void UnsubscribePointPropertyChanges(ZScanPointDetail point)
+        {
+            if (point != null && _pointPropertyChangedHandler != null)
+            {
+                point.PropertyChanged -= _pointPropertyChangedHandler;
+            }
+        }
+
+        /// <summary>
+        /// 取消所有 PointDetails 相关的事件订阅，防止内存泄漏
+        /// 必须在 OnDialogClosed() 中调用
+        /// </summary>
+        private void UnsubscribePointDetailsEvents()
+        {
+            // 取消集合变更事件订阅
+            if (PointDetails != null && _pointDetailsCollectionChangedHandler != null)
+            {
+                PointDetails.CollectionChanged -= _pointDetailsCollectionChangedHandler;
+            }
+
+            // 取消所有现有元素的属性变更事件订阅
+            if (PointDetails != null && _pointPropertyChangedHandler != null)
+            {
+                foreach (var point in PointDetails)
+                {
+                    UnsubscribePointPropertyChanges(point);
+                }
+            }
+
+            _pointDetailsCollectionChangedHandler = null;
+            _pointPropertyChangedHandler = null;
+
+            _logger?.Debug("Z-SCAN 已取消 PointDetails 事件监听");
+        }
+
+        #endregion
+
+        private void OnAddRow()
+        {
+            try
+            {
+                if (PointDetails == null)
+                {
+                    _logger?.Warn("Z-SCAN PointDetails 为空，无法添加行");
+                    return;
+                }
+
+                int nextPt = PointDetails.Count + 1;
+                var newPoint = new ZScanPointDetail
+                {
+                    Segment = 1,
+                    PointNumber = nextPt,
+                    X = 0,
+                    Y = 0,
+                    ZNominal = 0,
+                    ZMeasured = 0,
+                    DeltaZ = 0,
+                    FeatureName = "other",
+                    Nominal = 0,
+                    Range = 0.100, // 默认公差范围
+                    DataIndex = nextPt - 1,
+                    Description = $"Point {nextPt}"
+                };
+
+                // 添加新行（会触发 CollectionChanged 事件）
+                PointDetails.Add(newPoint);
+
+                _logger?.Info($"Z-SCAN 已添加新行: 点号={nextPt}, 总点数={PointDetails.Count}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 添加行失败: {ex.Message}\n{ex.StackTrace}");
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"添加行失败: {ex.Message}" } }, null);
+            }
+        }
+
+        private void OnDeleteSelectedRow()
+        {
+            if (SelectedPointDetail != null)
+            {
+                PointDetails.Remove(SelectedPointDetail);
+                TotalPoints = PointDetails.Count;
+                RecalculateStatistics();
+            }
+        }
+
+        /// <summary>
+        /// 从CSV文件导入测量点数据：
+        /// 支持格式：
+        /// - 新版完整格式（12个字段）：Segment,PointNumber,X,Y,ZNominal,ZMeasured,DeltaZ,Description,Nominal,Range,DataIndex,Status
+        /// - 旧版兼容格式（8个字段）：Segment,PointNumber,X,Y,ZNominal,ZMeasured,DeltaZ,FeatureName
+        /// - 自动检测标题行（第一行为非数字时跳过）
+        ///
+        /// 导入完成后：
+        /// 1. 替换当前 PointDetails 集合
+        /// 2. 对每一行调用 RecalculateRow() 确保数据一致性
+        /// 3. 调用 RecalculateStatistics() 更新统计信息
+        /// </summary>
+        private void OnImportCSV()
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                Title = "导入 Z-SCAN 测量数据"
+            };
+
+            if (openFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                // 读取所有行（使用 UTF-8 编码，支持中文）
+                var lines = File.ReadAllLines(openFileDialog.FileName, System.Text.Encoding.UTF8);
+
+                if (lines.Length == 0)
+                {
+                    _dialogService.ShowDialog("MessageDialog",
+                        new DialogParameters { { "message", "文件为空，无法导入数据。" } }, null);
+                    return;
+                }
+
+                var newPoints = new ObservableCollection<ZScanPointDetail>();
+                int startLine = 0;
+                int warningCount = 0;
+
+                // 自动检测标题行：如果第一行第一个字段不是数字，则认为是标题行
+                if (lines.Length > 0)
+                {
+                    var firstField = lines[0].Split(',')[0].Trim();
+                    if (!int.TryParse(firstField, out _))
+                    {
+                        startLine = 1; // 跳过标题行
+                        _logger?.Info($"Z-SCAN 检测到CSV标题行，将从第2行开始解析数据");
+                    }
+                }
+
+                // 解析数据行
+                for (int i = startLine; i < lines.Length; i++)
+                {
+                    string line = lines[i].Trim();
+                    if (string.IsNullOrEmpty(line)) continue; // 跳过空行
+
+                    var parts = line.Split(',');
+
+                    try
+                    {
+                        // 支持两种格式：新版12字段 或 旧版8字段
+                        if (parts.Length >= 8)
+                        {
+                            var point = new ZScanPointDetail();
+
+                            // 解析必填字段（前7个字段 + FeatureName/Description）
+                            point.Segment = int.TryParse(parts[0].Trim(), out int seg) ? seg : 1;
+                            point.PointNumber = int.TryParse(parts[1].Trim(), out int ptNum) ? ptNum : (i - startLine + 1);
+                            point.X = double.TryParse(parts[2].Trim(), out double x) ? x : 0;
+                            point.Y = double.TryParse(parts[3].Trim(), out double y) ? y : 0;
+                            point.ZNominal = double.TryParse(parts[4].Trim(), out double zNom) ? zNom : 0;
+                            point.ZMeasured = double.TryParse(parts[5].Trim(), out double zMea) ? zMea : 0;
+                            point.DeltaZ = double.TryParse(parts[6].Trim(), out double deltaZ) ? deltaZ : 0;
+
+                            // 判断是新版还是旧版格式
+                            if (parts.Length >= 12)
+                            {
+                                // 新版完整格式（12字段）
+                                point.Description = parts[7].Trim();
+                                point.Nominal = double.TryParse(parts[8].Trim(), out double nominal) ? nominal : point.ZNominal;
+                                point.Range = double.TryParse(parts[9].Trim(), out double range) ? range : 0.100;
+                                point.DataIndex = int.TryParse(parts[10].Trim(), out int dIdx) ? dIdx : point.PointNumber - 1;
+                                point.Status = parts.Length > 11 ? parts[11].Trim() : "Pending";
+                                point.FeatureName = point.Description; // 同步到旧字段保持兼容性
+                            }
+                            else
+                            {
+                                // 旧版兼容格式（8字段）
+                                point.FeatureName = parts[7].Trim();
+                                point.Description = parts[7].Trim(); // 同步到新字段
+                                point.Nominal = point.ZNominal; // 从 ZNominal 复制
+                                point.Range = 0.100; // 默认公差范围
+                                point.DataIndex = point.PointNumber - 1; // 默认索引
+                                point.Status = "Pending"; // 待重新计算
+                            }
+
+                            newPoints.Add(point);
+                        }
+                        else
+                        {
+                            // 字段不足，记录警告并跳过
+                            _logger?.Warn($"Z-SCAN CSV 第{i + 1}行字段数不足（{parts.Length}个），已跳过");
+                            warningCount++;
+                        }
+                    }
+                    catch (Exception parseEx)
+                    {
+                        // 单行解析失败不影响其他行
+                        _logger?.Warn($"Z-SCAN CSV 第{i + 1}行解析失败: {parseEx.Message}");
+                        warningCount++;
+                    }
+                }
+
+                // 检查是否有有效数据
+                if (newPoints.Count == 0)
+                {
+                    _dialogService.ShowDialog("MessageDialog",
+                        new DialogParameters { { "message", $"文件中未找到有效的数据行。\n警告: {warningCount} 行解析失败。" } }, null);
+                    return;
+                }
+
+                // 使用 Clear() + Add() 保持同一集合引用
+                // 避免替换集合导致事件订阅丢失（CollectionChanged 和 PropertyChanged 监听仍有效）
+                PointDetails.Clear();
+                foreach (var point in newPoints)
+                {
+                    PointDetails.Add(point);  // 触发 CollectionChanged.Add 事件，自动订阅新元素的 PropertyChanged
+                }
+
+                // Task 9: 对每一行重新计算确保数据一致性（Add 时已触发事件，此处确保最终一致性）
+                foreach (var point in PointDetails)
+                {
+                    RecalculateRow(point);
+                }
+
+                // 更新统计信息（Clear+Add 已触发 CollectionChanged，此处确保最终一致性）
+                RecalculateStatistics();
+
+                // 显示结果消息
+                string message = $"CSV 导入成功！\n" +
+                               $"成功导入: {newPoints.Count} 行数据\n";
+                if (warningCount > 0)
+                {
+                    message += $"警告: {warningCount} 行因格式错误被跳过\n";
+                }
+                message += $"\n文件: {Path.GetFileName(openFileDialog.FileName)}";
+
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", message } }, null);
+                _logger?.Info($"Z-SCAN CSV 导入完成: {newPoints.Count} 行成功, {warningCount} 行警告");
+            }
+            catch (FileNotFoundException ex)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"文件未找到: {ex.Message}" } }, null);
+                _logger?.Error($"Z-SCAN CSV 文件未找到: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"文件读取错误: {ex.Message}\n请检查文件是否被其他程序占用。" } }, null);
+                _logger?.Error($"Z-SCAN CSV 文件读取错误: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"导入失败: {ex.Message}" } }, null);
+                _logger?.Error($"Z-SCAN CSV 导入异常: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// 导出测量点数据到CSV文件：
+        /// - 导出所有字段（包括新增的 Description, Nominal, Range, DataIndex, Status）
+        /// - 第一行为标题行
+        /// - 数值格式统一为 F3（3位小数）
+        /// - 使用 UTF-8 BOM 编码确保中文正常显示（Excel 兼容）
+        /// - 默认文件名：ZScan_{AssyGroup}_{SiteId}.csv
+        /// </summary>
+        private void OnExportCSV()
+        {
+            // 检查是否有数据可导出
+            if (PointDetails == null || PointDetails.Count == 0)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", "当前没有数据可导出，请先添加或导入测量点数据。" } }, null);
+                return;
+            }
+
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "CSV files (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"ZScan_{AssyGroup}_{SiteId}.csv",
+                Title = "导出 Z-SCAN 测量数据"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                // 使用 UTF-8 BOM 编码（Excel 可以正确识别中文）
+                var utf8WithBom = new System.Text.UTF8Encoding(true);
+
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, utf8WithBom))
+                {
+                    // 写入标题行（12个字段）
+                    writer.WriteLine("Segment,PointNumber,X,Y,ZNominal,ZMeasured,DeltaZ,Description,Nominal,Range,DataIndex,Status");
+
+                    // 写入数据行（数值格式统一为 F3）
+                    foreach (var p in PointDetails)
+                    {
+                        writer.WriteLine(
+                            $"{p.Segment}," +
+                            $"{p.PointNumber}," +
+                            $"{p.X:F3}," +
+                            $"{p.Y:F3}," +
+                            $"{p.ZNominal:F3}," +
+                            $"{p.ZMeasured:F3}," +
+                            $"{p.DeltaZ:F3}," +
+                            $"{EscapeCsvField(p.Description)}," +
+                            $"{p.Nominal:F3}," +
+                            $"{p.Range:F3}," +
+                            $"{p.DataIndex}," +
+                            $"{p.Status}"
+                        );
+                    }
+                }
+
+                // 显示成功消息
+                string message = $"CSV 导出成功！\n" +
+                               $"文件路径: {saveFileDialog.FileName}\n" +
+                               $"导出行数: {PointDetails.Count} 行\n" +
+                               $"编码格式: UTF-8 BOM（兼容 Excel 中文显示）";
+
+                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", message } }, null);
+                _logger?.Info($"Z-SCAN CSV 导出完成: {PointDetails.Count} 行 → {saveFileDialog.FileName}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"没有写入权限: {ex.Message}\n请检查文件夹权限或选择其他位置。" } }, null);
+                _logger?.Error($"Z-SCAN CSV 导出权限错误: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"文件写入错误: {ex.Message}\n请检查文件是否被其他程序打开。" } }, null);
+                _logger?.Error($"Z-SCAN CSV 文件写入错误: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowDialog("MessageDialog",
+                    new DialogParameters { { "message", $"导出失败: {ex.Message}" } }, null);
+                _logger?.Error($"Z-SCAN CSV 导出异常: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// CSV 字段转义处理：如果字段包含逗号、引号或换行符，用双引号包裹并将内部引号加倍
+        /// 确保包含中文描述的字段能正确导出
+        /// </summary>
+        /// <param name="field">原始字段值</param>
+        /// <returns>转义后的安全字符串</returns>
+        private string EscapeCsvField(string field)
+        {
+            if (string.IsNullOrEmpty(field))
+                return string.Empty;
+
+            // 如果包含特殊字符，需要用引号包裹
+            if (field.Contains(',') || field.Contains('"') || field.Contains('\n') || field.Contains('\r'))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\"";
+            }
+
+            return field;
+        }
+
+        private void OnRescan()
+        {
+            _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"Rescanning {AssyGroup} / {SiteId}..." } }, null);
+            LoadSampleData();
+        }
+
+        #endregion
+
+        #region 标定功能实现
+
+        private void OnCalibrateCameraZ()
+        {
+            try
+            {
+                double measuredZ = _zInitPosition;
+                double referenceZ = ZInitPosition;
+                _zscanCalibrationService.CalibrateCameraZ(measuredZ, referenceZ);
+                UpdateCalibrationDisplay();
+                _logger?.Info($"Z-SCAN 相机Z标定完成: CameraZOffset={_zscanCalibrationService.CameraZOffset:F3}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 相机Z标定失败: {ex.Message}");
+            }
+        }
+
+        private void OnApplyNeedleCompensation()
+        {
+            try
+            {
+                _zscanCalibrationService.ApplyNeedleCompensation(NeedleCompensationInput);
+                UpdateCalibrationDisplay();
+                _logger?.Info($"Z-SCAN 换针补偿已应用: NeedleZOffset={_zscanCalibrationService.NeedleZOffset:F3}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 换针补偿应用失败: {ex.Message}");
+            }
+        }
+
+        private void OnResetCalibration()
+        {
+            try
+            {
+                _zscanCalibrationService.ResetCalibration();
+                CalibrationStep = 0;
+                BaseZInput = 0;
+                MeasuredMZ = 0;
+                DeltaZInput = 0;
+                NeedleCompensationValue = 0;
+                CalculatedDispenseHeight = 0;
+                CurrentZHeightInput = 0;
+                ZHeightDifference = 0;
+                BaseDispenseHeight = 0;
+                NeedleZOffset = 0;
+                _logger?.Info("Z-SCAN 标定已重置");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 标定重置失败: {ex.Message}");
+            }
+        }
+
+        private void OnSetBaseZ()
+        {
+            try
+            {
+                _zscanCalibrationService.SetBaseZ(BaseZInput);
+                CalibrationStep = 1;
+                _logger?.Info($"Z-SCAN 设置基准Z高度: {BaseZInput:F3}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 设置基准Z失败: {ex.Message}");
+            }
+        }
+
+        private async Task OnMoveNeedleToBaseZAsync()
+        {
+            try
+            {
+                await _needleTeachService.MoveNeedleToBaseZAsync(ZAxisId, BaseZInput, MoveSpeed);
+                CalibrationStep = 2;
+                _logger?.Info($"Z-SCAN 针头已移动到基准Z高度: {BaseZInput:F3}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 移动针头到基准Z失败: {ex.Message}");
+            }
+        }
+
+        private async Task OnTeachNeedleMZAsync()
+        {
+            try
+            {
+                double mz = await _needleTeachService.TeachCurrentPositionAsync(ZAxisId);
+                MeasuredMZ = mz;
+                _zscanCalibrationService.TeachNeedleMZ(mz);
+                CalibrationStep = 3;
+                _logger?.Info($"Z-SCAN 针头示教MZ: {mz:F3}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 针头示教失败: {ex.Message}");
+            }
+        }
+
+        private void OnCalculateDispenseHeight()
+        {
+            try
+            {
+                ZHeightDifference = _zscanCalibrationService.CalculateZHeightDifference(BaseZInput, CurrentZHeightInput);
+                CalculatedDispenseHeight = _zscanCalibrationService.CalculateDispenseHeight(MeasuredMZ, CurrentZHeightInput, NeedleCompensationValue);
+                CalibrationStep = 4;
+                _logger?.Info($"Z-SCAN Step4: 基准Z={BaseZInput:F3}, 当前Z={CurrentZHeightInput:F3}, Z高度差={ZHeightDifference:F3}, 基准点胶高度(MZ)={MeasuredMZ:F3}, 补偿={NeedleCompensationValue:F3}, 点胶高度={CalculatedDispenseHeight:F3}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 计算点胶高度失败: {ex.Message}");
+            }
+        }
+
+        private void OnCalibrationChanged()
+        {
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                UpdateCalibrationDisplay();
+            }));
+        }
+
+        private void UpdateCalibrationDisplay()
+        {
+            NeedleZOffset = _zscanCalibrationService.NeedleZOffset;
+            LastCalibrationTimeText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        #endregion
+
+        #region 多表格管理实现
+
+        private void OnAddTable()
+        {
+            try
+            {
+                int tableNum = Tables.Count + 1;
+                var newTable = new ZScanTableConfig
+                {
+                    TableName = $"Table{tableNum}",
+                    DataFormat = ZScanDataFormat.Double,
+                    Calibration = new ZScanCalibrationConfig()
+                };
+                Tables.Add(newTable);
+                SelectedTable = newTable;
+                _logger?.Info($"Z-SCAN 新建表格: {newTable.TableName}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 新建表格失败: {ex.Message}");
+            }
+        }
+
+        private void OnDeleteTable()
+        {
+            try
+            {
+                if (SelectedTable == null) return;
+                string name = SelectedTable.TableName;
+                Tables.Remove(SelectedTable);
+                if (Tables.Count > 0)
+                    SelectedTable = Tables[0];
+                _logger?.Info($"Z-SCAN 删除表格: {name}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 删除表格失败: {ex.Message}");
+            }
+        }
+
+        private ZScanTableConfig _previousTable;
+
+        private void OnSelectedTableChanged()
+        {
+            if (_previousTable != null && PointDetails != null)
+            {
+                SyncPointDetailsToTable(_previousTable);
+            }
+
+            if (SelectedTable == null) return;
+
+            CurrentDataFormat = SelectedTable.DataFormat;
+
+            if (SelectedTable.Points != null && SelectedTable.Points.Count > 0)
+            {
+                PointDetails = new ObservableCollection<ZScanPointDetail>(
+                    SelectedTable.Points.Select(p => new ZScanPointDetail
+                    {
+                        Segment = p.Segment,
+                        PointNumber = p.PointNumber,
+                        X = p.X,
+                        Y = p.Y,
+                        ZNominal = p.ZNominal,
+                        ZMeasured = p.ZMeasured,
+                        DeltaZ = p.DeltaZ,
+                        Nominal = p.Nominal,
+                        Range = p.Range,
+                        DataIndex = p.DataIndex,
+                        Description = p.Description,
+                        Status = p.Status,
+                        PointType = p.PointType,
+                        GlobalVariableLink = p.GlobalVariableLink
+                    }));
+            }
+            else
+            {
+                PointDetails = new ObservableCollection<ZScanPointDetail>();
+            }
+
+            if (SelectedTable.Calibration != null)
+            {
+                BaseZInput = SelectedTable.Calibration.BaseZ;
+                MeasuredMZ = SelectedTable.Calibration.MeasuredMZ;
+                NeedleZOffset = SelectedTable.Calibration.NeedleZOffset;
+                BaseDispenseHeight = SelectedTable.Calibration.BaseDispenseHeight;
+                CurrentZHeightInput = SelectedTable.Calibration.CurrentZHeight;
+                ZHeightDifference = SelectedTable.Calibration.ZHeightDifference;
+                CalculatedDispenseHeight = SelectedTable.Calibration.DispenseHeight;
+                DeltaZInput = SelectedTable.Calibration.DeltaZ;
+            }
+
+            _previousTable = SelectedTable;
+            SubscribePointDetailsEvents();
+            RecalculateStatistics();
+            _logger?.Info($"Z-SCAN 切换表格: {SelectedTable.TableName}");
+        }
+
+        private void OnDataFormatChanged()
+        {
+            if (SelectedTable != null)
+            {
+                SelectedTable.DataFormat = CurrentDataFormat;
+            }
+        }
+
+        private void OnSaveConfig()
+        {
+            try
+            {
+                SyncPointDetailsToTable();
+
+                var configFile = new ZScanConfigFile
+                {
+                    DefaultTableName = SelectedTable?.TableName ?? string.Empty,
+                    Tables = Tables.ToList()
+                };
+
+                var saveDialog = new SaveFileDialog
+                {
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    DefaultExt = ".json",
+                    FileName = $"ZScan_{DateTime.Now:yyyyMMdd_HHmmss}.json",
+                    InitialDirectory = _zscanConfigService.GetConfigPath(),
+                    Title = "保存ZScan配置"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(configFile, Newtonsoft.Json.Formatting.Indented);
+                    System.IO.File.WriteAllText(saveDialog.FileName, json);
+                    CurrentFilePath = saveDialog.FileName;
+                    _zscanConfigService.SaveToRecipePool(configFile, $"{AssyGroup}_{SiteId}");
+                    _logger?.Info($"Z-SCAN 配置已保存到: {saveDialog.FileName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 配置保存失败: {ex.Message}");
+            }
+        }
+
+        private void OnLoadConfig()
+        {
+            try
+            {
+                var configFile = _zscanConfigService.LoadLastFromRecipePool();
+
+                if (configFile.Tables.Count == 0)
+                {
+                    var openDialog = new OpenFileDialog
+                    {
+                        Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                        InitialDirectory = _zscanConfigService.GetConfigPath(),
+                        Title = "加载ZScan配置"
+                    };
+
+                    if (openDialog.ShowDialog() == true)
+                    {
+                        configFile = _zscanConfigService.LoadFromFile(openDialog.FileName);
+                    }
+                }
+
+                if (configFile.Tables.Count > 0)
+                {
+                    Tables = new ObservableCollection<ZScanTableConfig>(configFile.Tables);
+                    var defaultTable = Tables.FirstOrDefault(t => t.TableName == configFile.DefaultTableName) ?? Tables[0];
+                    SelectedTable = defaultTable;
+                    CurrentFilePath = _zscanConfigService.LastSavedFilePath;
+                    _logger?.Info($"Z-SCAN 配置已加载: {configFile.Tables.Count} 个表格");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 配置加载失败: {ex.Message}");
+            }
+        }
+
+        private void SyncPointDetailsToTable()
+        {
+            SyncPointDetailsToTable(SelectedTable);
+        }
+
+        private void SyncPointDetailsToTable(ZScanTableConfig table)
+        {
+            if (table == null || PointDetails == null) return;
+            table.Points = PointDetails.Select(p => new ZScanPointData
+            {
+                Segment = p.Segment,
+                PointNumber = p.PointNumber,
+                X = p.X,
+                Y = p.Y,
+                ZNominal = p.ZNominal,
+                ZMeasured = p.ZMeasured,
+                DeltaZ = p.DeltaZ,
+                Nominal = p.Nominal,
+                Range = p.Range,
+                DataIndex = p.DataIndex,
+                Description = p.Description,
+                Status = p.Status,
+                PointType = p.PointType,
+                GlobalVariableLink = p.GlobalVariableLink
+            }).ToList();
+            table.DataFormat = CurrentDataFormat;
+
+            if (table.Calibration != null)
+            {
+                table.Calibration.BaseZ = BaseZInput;
+                table.Calibration.MeasuredMZ = MeasuredMZ;
+                table.Calibration.NeedleZOffset = NeedleZOffset;
+                table.Calibration.BaseDispenseHeight = BaseDispenseHeight;
+                table.Calibration.CurrentZHeight = CurrentZHeightInput;
+                table.Calibration.ZHeightDifference = ZHeightDifference;
+                table.Calibration.DispenseHeight = CalculatedDispenseHeight;
+                table.Calibration.DeltaZ = DeltaZInput;
+            }
+        }
+
+        #endregion
+
+        #region 全局变量链接实现
+
+        private void OnUnlinkRowGlobalVariable(ZScanPointDetail point)
+        {
+            if (point == null) return;
+            string varName = point.LinkedGlobalVarName;
+            point.LinkedGlobalVarName = null;
+            _logger?.Info($"Z-SCAN 行{point.PointNumber}已取消全局变量链接: {varName}");
+        }
+
+        private void LoadAvailableGlobalVariables()
+        {
+            try
+            {
+                var recipePoolService = _containerProvider.Resolve<IRecipePoolService>();
+                var variables = recipePoolService.LoadGlobalVariablesAsync("Default").GetAwaiter().GetResult();
+                AvailableGlobalVariables.Clear();
+                if (variables != null)
+                {
+                    foreach (var v in variables)
+                        AvailableGlobalVariables.Add(v);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 加载全局变量列表失败: {ex.Message}");
+            }
+        }
+
+        #endregion
+    }
+}

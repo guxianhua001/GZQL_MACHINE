@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net9.0-windows7.0</TargetFramework>
 		<UseWPF>true</UseWPF>
@@ -7,6 +7,12 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<PlatformTarget>x64</PlatformTarget>
 	</PropertyGroup>
+	<ItemGroup>
+	  <Compile Remove="Extension\**" />
+	  <EmbeddedResource Remove="Extension\**" />
+	  <None Remove="Extension\**" />
+	  <Page Remove="Extension\**" />
+	</ItemGroup>
 	<ItemGroup>
 		<None Remove="Images\alter.png" />
 		<None Remove="Images\button.png" />
@@ -25,8 +31,6 @@
 	<ItemGroup>
 		<PackageReference Include="HandyControl" Version="3.5.1" />
 		<PackageReference Include="LiveCharts.Wpf.Core" Version="0.9.8" />
-		<PackageReference Include="MaterialDesignColors" Version="5.2.1" />
-		<PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -34,40 +38,22 @@
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="NLog" Version="4.7.12" />
 		<PackageReference Include="Prism.Wpf" Version="8.1.97" />
-		<PackageReference Include="SkiaSharp" Version="3.119.0" />
-		<PackageReference Include="SkiaSharp.NativeAssets.NanoServer" Version="3.119.0" />
+		<PackageReference Include="SkiaSharp" Version="3.119.2" />
+		<PackageReference Include="SkiaSharp.NativeAssets.NanoServer" Version="3.119.2" />
 		<PackageReference Include="System.Management" Version="6.0.0" />
+		<PackageReference Include="MaterialDesignThemes" Version="5.3.2" />
+		<PackageReference Include="MaterialDesignColors" Version="5.3.2" />
 	</ItemGroup>
 	<ItemGroup>
+	  <ProjectReference Include="..\AlarmModule\AlarmModule.csproj" />
 	  <ProjectReference Include="..\Framework\Framework.csproj" />
+	  <ProjectReference Include="..\LanguageModule\Language.csproj" />
+	  <ProjectReference Include="..\MotionControl\MotionControl.csproj" />
 	  <ProjectReference Include="..\RecipeManagement\Recipe.csproj" />
-	  <ProjectReference Include="..\TCPLib\TCPLib.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<Reference Include="Core">
-		  <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Core.dll</HintPath>
-		</Reference>
-		<Reference Include="HSMS">
-		  <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\HSMS.dll</HintPath>
-		</Reference>
-		<Reference Include="Interfaces">
-		  <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Interfaces.dll</HintPath>
-		</Reference>
-		<Reference Include="LogViewer">
-		  <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\LogViewer.dll</HintPath>
-		</Reference>
-		<Reference Include="NLog">
-			<HintPath>bin\Debug\net5.0-windows\NLog.dll</HintPath>
-		</Reference>
-		<Reference Include="NlogViewer">
-			<HintPath>..\NlogViewer\obj\Debug\net5.0-windows\NlogViewer.dll</HintPath>
-		</Reference>
-		<Reference Include="SmarterMotion">
-		  <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\SmarterMotion.dll</HintPath>
-		</Reference>
-		<Reference Include="Stations">
-		  <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Stations.dll</HintPath>
-		</Reference>
+	  <ProjectReference Include="..\Core\Core.csproj" />
+	  <ProjectReference Include="..\LogViewer\LogViewer.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Resource Include="Images\alter.png">
@@ -100,14 +86,6 @@
 		</None>
 	</ItemGroup>
 	<ItemGroup>
-		<Page Update="UserControls\ImageEdit.xaml">
-			<XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-		</Page>
-		<Page Update="UserControls\MaskView.xaml">
-			<XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-		</Page>
-		<Page Update="UserControls\RotateRectROI.xaml">
-			<XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-		</Page>
+	  <Folder Include="Services\" />
 	</ItemGroup>
 </Project>

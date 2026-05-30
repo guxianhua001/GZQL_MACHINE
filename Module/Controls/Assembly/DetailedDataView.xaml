@@ -1,0 +1,178 @@
+<UserControl x:Class="Module.Views.DetailedDataView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             mc:Ignorable="d"
+             d:DesignHeight="600"
+             d:DesignWidth="1000">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <TextBlock Text="{lang:Lang DetailedData_Title}"
+                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                   Foreground="{DynamicResource PrimaryHueMidBrush}"
+                   Margin="0,0,0,16" />
+
+        <!-- DataGrid 表格，支持水平滚动 -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+            <DataGrid AutoGenerateColumns="False"
+                      HeadersVisibility="Column"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      IsReadOnly="True"
+                      ItemsSource="{Binding MeasurementRecords}"
+                      materialDesign:DataGridAssist.CellPadding="8 4 8 4"
+                      materialDesign:DataGridAssist.ColumnHeaderPadding="8 4 8 4"
+                      RowHeight="32"
+                      FontSize="12">
+
+                <DataGrid.Columns>
+                    <!-- 时间戳列 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Timestamp}"
+                                        Binding="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}"
+                                        Width="150" />
+
+                    <!-- 装配ID -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_AssemblyId}"
+                                        Binding="{Binding OutgoingSubAssemblyId}"
+                                        Width="120" />
+
+                    <!-- 设备状态 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Status}"
+                                        Binding="{Binding MachineStatus}"
+                                        Width="80">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground"
+                                        Value="Black" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding MachineStatus}"
+                                                 Value="PASS">
+                                        <Setter Property="Foreground"
+                                                Value="Green" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding MachineStatus}"
+                                                 Value="FAIL">
+                                        <Setter Property="Foreground"
+                                                Value="Red" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- 操作员 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Operator}"
+                                        Binding="{Binding OperatorId}"
+                                        Width="80" />
+
+                    <!-- 配方名称 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Recipe}"
+                                        Binding="{Binding RecipeName}"
+                                        Width="120" />
+
+                    <!-- 总周期时间 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_OverallCycleTime}"
+                                        Binding="{Binding OverallCycleTime, StringFormat='F1'}"
+                                        Width="80" />
+
+                    <!-- 执行器编号 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_ActuatorNumber}"
+                                        Binding="{Binding ActuatorInstance}"
+                                        Width="70" />
+
+                    <!-- 执行器唯一ID -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_ActuatorId}"
+                                        Binding="{Binding ActuatorUniqueId}"
+                                        Width="120" />
+
+                    <!-- 执行器周期时间 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_ActuatorCycleTime}"
+                                        Binding="{Binding ActuatorCycleTime, StringFormat='F1'}"
+                                        Width="90" />
+
+                    <!-- 报警代码 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Alarms}"
+                                        Binding="{Binding Alarms}"
+                                        Width="80" />
+
+                    <!-- 警告代码 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Warnings}"
+                                        Binding="{Binding Warnings}"
+                                        Width="80" />
+
+                    <!-- IPQC Pillar1 XY -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Pillar1Xy}"
+                                        Binding="{Binding IpqcPillar1Xy, StringFormat='F1'}"
+                                        Width="100" />
+
+                    <!-- IPQC Pillar2 XY -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Pillar2Xy}"
+                                        Binding="{Binding IpqcPillar2Xy, StringFormat='F1'}"
+                                        Width="100" />
+
+                    <!-- IPQC Z位置 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_ZPosition}"
+                                        Binding="{Binding IpqcZPosition, StringFormat='F1'}"
+                                        Width="90" />
+
+                    <!-- 平行度 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Parallelism}"
+                                        Binding="{Binding IpqcParallelism, StringFormat='F3'}"
+                                        Width="80" />
+
+                    <!-- 啮合状态 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_Engagement}"
+                                        Binding="{Binding EngagementStatus}"
+                                        Width="70" />
+
+                    <!-- Z轴峰值力 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_PeakForceZ}"
+                                        Binding="{Binding PeakForceZ, StringFormat='F2'}"
+                                        Width="80" />
+
+                    <!-- 径向力左 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_PeakForceRadialLeft}"
+                                        Binding="{Binding PeakForceRadialLeft, StringFormat='F2'}"
+                                        Width="80" />
+
+                    <!-- 径向力右 -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_PeakForceRadialRight}"
+                                        Binding="{Binding PeakForceRadialRight, StringFormat='F2'}"
+                                        Width="80" />
+
+                    <!-- 其他CTQ（备用） -->
+                    <DataGridTextColumn Header="{lang:Lang DetailedData_Column_OtherCq}"
+                                        Binding="{Binding OtherCq}"
+                                        Width="100" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </ScrollViewer>
+
+        <!-- 底部关闭按钮 -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="{lang:Lang DetailedData_Button_Export}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Padding="16,6"
+                    Margin="0,0,12,0" />
+            <Button Content="{lang:Lang DetailedData_Button_Close}"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Padding="16,6"
+                    Command="{Binding CloseCommand}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,401 @@
+<UserControl x:Class="Module.Views.DispenseDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:localConverters="clr-namespace:Module.Converters"
+             Width="900">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <localConverters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
+                                                  TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
+        <Style x:Key="ParamLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#FF607D8B"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+    <Border Padding="16"
+            Background="{DynamicResource MaterialDesignCardBackground}"
+            CornerRadius="4">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <!-- Header -->
+                <DockPanel Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Right"
+                            Command="{Binding CloseCommand}"
+                            ToolTip="{lang:Lang Close}"
+                            Width="30" Height="30"
+                            Style="{StaticResource MaterialDesignIconButton}">
+                        <materialDesign:PackIcon Kind="Close" />
+                    </Button>
+                    <TextBlock FontWeight="Bold"
+                               FontSize="14"
+                               VerticalAlignment="Center"
+                               Text="{Binding StepDescription, StringFormat=DISPENSE {0}}" />
+                </DockPanel>
+
+                <!-- Dispense Mode Section -->
+                <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" Width="4" Background="#1565C0" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
+                        <StackPanel>
+                            <TextBlock Text="{lang:Lang DispenseDetail_DispenseMode}" FontWeight="Bold" FontSize="13"
+                                       Foreground="#1565C0" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <RadioButton Content="{lang:Lang DispenseDetail_DotMode}"
+                                             IsChecked="{Binding IsDotMode}"
+                                             GroupName="DispenseModeGroup"
+                                             Margin="0,0,16,0" Foreground="#212121"/>
+                                <RadioButton Content="{lang:Lang DispenseDetail_ArcMode}"
+                                             IsChecked="{Binding IsArcMode}"
+                                             GroupName="DispenseModeGroup" Foreground="#212121"/>
+                            </StackPanel>
+                            <CheckBox Content="{lang:Lang DispenseDetail_EnableZCalibration}"
+                                      IsChecked="{Binding EnableZCalibration}"
+                                      Margin="0,4,0,0" Foreground="#212121"/>
+                            <StackPanel Margin="24,4,0,0">
+                                <!-- Z向补偿（来自3D相机）+ 全局变量链接 -->
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_ZCompensation3D}"
+                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBox Grid.Column="1" IsReadOnly="True"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding ZCompensation3D, StringFormat=F3}"
+                                             Padding="4,2" FontSize="11" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="Gray" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="3" Command="{Binding UnlinkZCompensation3DCommand}"
+                                            Style="{StaticResource MaterialDesignIconButton}"
+                                            Padding="0" Width="22" Height="22"
+                                            ToolTip="{lang:Lang DispenseDetail_UnlinkGlobalVariable}">
+                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
+                                                                 Foreground="{Binding IsZCompensation3DLinked, Converter={StaticResource LinkedToBrushConverter}}"
+                                                                 VerticalAlignment="Center"/>
+                                    </Button>
+                                    <ComboBox Grid.Column="4" ItemsSource="{Binding AvailableGlobalVariables}"
+                                              SelectedValuePath="Name"
+                                              DisplayMemberPath="Name"
+                                              SelectedValue="{Binding ZCompensation3DLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                              Width="120" FontSize="10"
+                                              materialDesign:HintAssist.Hint="{lang:Lang DispenseDetail_LinkGlobalVariable}"/>
+                                </Grid>
+                                <!-- Z补偿（来自校准器）+ 全局变量链接 -->
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_ZCompensationCalibrator}"
+                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBox Grid.Column="1" IsReadOnly="True"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding ZCompensationCalibrator, StringFormat=F3}"
+                                             Padding="4,2" FontSize="11" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="Gray" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="3" Command="{Binding UnlinkZCompensationCalibratorCommand}"
+                                            Style="{StaticResource MaterialDesignIconButton}"
+                                            Padding="0" Width="22" Height="22"
+                                            ToolTip="{lang:Lang DispenseDetail_UnlinkGlobalVariable}">
+                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
+                                                                 Foreground="{Binding IsZCompensationCalibratorLinked, Converter={StaticResource LinkedToBrushConverter}}"
+                                                                 VerticalAlignment="Center"/>
+                                    </Button>
+                                    <ComboBox Grid.Column="4" ItemsSource="{Binding AvailableGlobalVariables}"
+                                              SelectedValuePath="Name"
+                                              DisplayMemberPath="Name"
+                                              SelectedValue="{Binding ZCompensationCalibratorLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                              Width="120" FontSize="10"
+                                              materialDesign:HintAssist.Hint="{lang:Lang DispenseDetail_LinkGlobalVariable}"/>
+                                </Grid>
+                                <!-- 手动Z补偿（人工输入，DecimalUpDown） -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_ManualZCompensation}"
+                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <materialDesign:DecimalUpDown Grid.Column="1"
+                                                             Value="{Binding ManualZCompensation, UpdateSourceTrigger=PropertyChanged}"
+                                                             ValueStep="0.52"
+                                                             Minimum="-2.55"
+                                                             Maximum="2.55"
+                                                             FontSize="11" Margin="0,0,4,0" Width="100"/>
+                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="Gray"/>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
+                </materialDesign:Card>
+
+                <!-- Segment Import Section -->
+                <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="{lang:Lang DispenseDetail_SegmentImport}" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
+
+                        <!-- Toolbar -->
+                        <WrapPanel Margin="0,0,0,6">
+                            <Button Command="{Binding ImportLinesCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileImport" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang DispenseDetail_ImportLines}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ImportArcsCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileImport" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang DispenseDetail_ImportArcs}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding RemoveSelectedCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Delete" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang DispenseDetail_RemoveSelected}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding SelectAllCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="CheckAll" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang DispenseDetail_SelectAll}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding InvertSelectionCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="SwapHorizontal" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang DispenseDetail_InvertSelection}"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+
+                        <!-- DataGrid -->
+                        <DataGrid ItemsSource="{Binding SegmentRefs}"
+                                  SelectedItem="{Binding SelectedSegmentRef}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  IsReadOnly="True"
+                                  SelectionMode="Extended"
+                                  materialDesign:DataGridAssist.CellPadding="4"
+                                  MaxHeight="100">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="{lang:Lang Step3_Header_Enabled}" Width="Auto" MinWidth="36">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                      HorizontalAlignment="Center" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="{lang:Lang DispenseDetail_Header_ID}"
+                                                    Binding="{Binding SourceSegmentId}" Width="*"/>
+
+                                <DataGridTextColumn Header="{lang:Lang DispenseDetail_Header_Type}"
+                                                    Binding="{Binding SourceEntityType}" Width="*"/>
+
+                                <DataGridTextColumn Header="{lang:Lang DispenseDetail_Header_Layer}"
+                                                    Binding="{Binding SourceLayerName}" Width="*"/>
+
+                                <DataGridTextColumn Header="{lang:Lang DispenseDetail_Header_Length}"
+                                                    Binding="{Binding SourceLength, StringFormat=F2}" Width="*"/>
+
+                                <DataGridTextColumn Header="{lang:Lang DispenseDetail_Header_PointCount}"
+                                                    Binding="{Binding SourcePointCount}" Width="*"/>
+
+
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Process Parameters Section -->
+                <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ProcessParamsTitle}" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
+
+                        <!-- Default Params — Three-column color-grouped layout -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Group 1: Motion Params (Blue) -->
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#1565C0"
+                                           Text="{lang:Lang DispenseDetail_Group_MotionParams}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_JumpSpeed}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveJumpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_MoveSpeed}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveMoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_SafeHeight}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveSafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_ApproachHeight}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_CornerDecel}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveCornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <Border Grid.Column="1" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                            <!-- Group 2: Dispense Control (Amber) -->
+                            <StackPanel Grid.Column="2" Margin="12,0,12,0">
+                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#F57C00"
+                                           Text="{lang:Lang DispenseDetail_Group_DispenseControl}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_DispenseAmount}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveDispenseAmount, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_PreDelay}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectivePreDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_PostDelay}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectivePostDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_DispensingPressure}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveDispensingPressure, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MPa"/>
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_SuckBackTime}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveSuckBackTime, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_GlueTriggerOffset}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveGlueTriggerOffsetMm, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <Border Grid.Column="3" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                            <!-- Group 3: Height Params (Cyan) -->
+                            <StackPanel Grid.Column="4" Margin="12,0,0,0">
+                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#00838F"
+                                           Text="{lang:Lang DispenseDetail_Group_HeightParams}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_TeachHeight}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveTeachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_HeightCompensation}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveHeightCompensation, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Execution Control Section -->
+                <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" Width="4" Background="#F57C00" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
+                        <StackPanel>
+                            <TextBlock Text="{lang:Lang DispenseDetail_ExecutionControl}" FontWeight="Bold" FontSize="13"
+                                       Foreground="#F57C00" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <CheckBox Content="{lang:Lang DispenseDetail_DryRunMode}"
+                                          IsChecked="{Binding IsDryRunMode}"
+                                          Margin="0,0,20,0" Foreground="#212121"/>
+                                <CheckBox Content="{lang:Lang DispenseDetail_RealDispenseMode}"
+                                          IsChecked="{Binding IsRealDispenseMode}"
+                                          Foreground="#212121"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
+                </materialDesign:Card>
+
+                <!-- Footer -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                    <Button Content="{lang:Lang Close}" Command="{Binding CloseCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,0" />
+                    <Button Content="{lang:Lang Save}" Command="{Binding SaveCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}" />
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>
