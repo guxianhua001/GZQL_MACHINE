@@ -239,13 +239,13 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0"
-                                           Text="{lang:Lang NeedleCamera_DispX}" Style="{StaticResource ParamLabelStyle}"
+                                           Text="{lang:Lang NeedleCamera_Axis_Dx}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#E53935" />
                                 <TextBlock Grid.Row="0" Grid.Column="1"
-                                           Text="{lang:Lang NeedleCamera_DispY}" Style="{StaticResource ParamLabelStyle}"
+                                           Text="{lang:Lang NeedleCamera_Axis_Dy}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#43A047" />
                                 <TextBlock Grid.Row="0" Grid.Column="2"
-                                           Text="{lang:Lang NeedleCamera_DispZ}" Style="{StaticResource ParamLabelStyle}"
+                                           Text="{Binding NeedleTipZAxisLabel}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#7E57C2" />
                                 <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding NeedleTipX, StringFormat=F3}"
                                          Style="{StaticResource ReadOnlyTextBoxStyle}" MinWidth="0" />

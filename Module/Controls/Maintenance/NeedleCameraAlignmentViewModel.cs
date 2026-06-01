@@ -100,6 +100,7 @@ namespace Module.ViewModels
             {
                 if (SetProperty(ref _selectedSystemNumber, value))
                 {
+                    RaisePropertyChanged(nameof(NeedleTipZAxisLabel));
                     _ = TryAutoLoadConfigAsync().ConfigureAwait(false);
                     UpdateStatus(
                         _localization.GetResource("NeedleCamera_Status_SystemSwitched", _selectedSystemNumber),
@@ -108,16 +109,30 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>当前系统针尖 Z 轴显示名：系统1=Dz₂，系统2=Dz₃</summary>
+        public string NeedleTipZAxisLabel =>
+            _selectedSystemNumber == 1
+                ? _localization.GetResource("NeedleCamera_Axis_Dz2")
+                : _localization.GetResource("NeedleCamera_Axis_Dz3");
+
         public double CameraCenterX
         {
             get => _cameraCenterX;
-            set => SetProperty(ref _cameraCenterX, value);
+            set
+            {
+                if (SetProperty(ref _cameraCenterX, value))
+                    CalculateCalibrationDelta();
+            }
         }
 
         public double CameraCenterY
         {
             get => _cameraCenterY;
-            set => SetProperty(ref _cameraCenterY, value);
+            set
+            {
+                if (SetProperty(ref _cameraCenterY, value))
+                    CalculateCalibrationDelta();
+            }
         }
 
         public double NeedleTipX
@@ -298,7 +313,7 @@ namespace Module.ViewModels
 
         #region 命令实现
 
-        /// <summary>示教相机中心：读取DispX和GantryY轴位置</summary>
+        /// <summary>示教相机中心：读取 Dx 和 Dy 轴位置</summary>
         private async void ExecuteTeachCameraCenter()
         {
             try
@@ -325,24 +340,36 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>示教针尖位置：读取DispX、GantryY和DispZ轴位置</summary>
+        /// <summary>示教针尖位置：系统1读取 Dx/Dy/Dz₂，系统2读取 Dx/Dy/Dz₃</summary>
         private async void ExecuteTeachNeedleTip()
         {
             try
             {
                 var positions = await _motionController.TeachAsync(StationIdentifier);
 
-                if (positions.TryGetValue("DispX", out double dispX))
-                    NeedleTipX = dispX;
-                if (positions.TryGetValue("GantryY", out double gantryY))
-                    NeedleTipY = gantryY;
-                if (positions.TryGetValue("DispZ", out double dispZ))
-                    NeedleTipZ = dispZ;
+                if (TryGetAxisPosition(positions, out double dx, "Dx", "DispX"))
+                    NeedleTipX = dx;
+                if (TryGetAxisPosition(positions, out double dy, "Dy", "GantryY"))
+                    NeedleTipY = dy;
+
+                var zAxisNames = GetNeedleTipZAxisNames(_selectedSystemNumber);
+                if (TryGetAxisPosition(positions, out double dz, zAxisNames))
+                    NeedleTipZ = dz;
+                else
+                {
+                    _logger.Warn($"[NeedleCamera] 系统{_selectedSystemNumber}未读取到针尖Z轴 ({string.Join("/", zAxisNames)})");
+                }
 
                 CalculateCalibrationDelta();
 
                 UpdateStatus(
-                    _localization.GetResource("NeedleCamera_Status_NeedleTipTaught", NeedleTipX, NeedleTipY, NeedleTipZ),
+                    _localization.GetResource(
+                        "NeedleCamera_Status_NeedleTipTaught",
+                        _selectedSystemNumber,
+                        NeedleTipX,
+                        NeedleTipY,
+                        NeedleTipZ,
+                        NeedleTipZAxisLabel),
                     Brushes.LightGreen);
             }
             catch (Exception ex)
@@ -437,22 +464,51 @@ namespace Module.ViewModels
 
         #region 私有方法
 
-        /// <summary>计算相机与针尖的校准差值</summary>
+        /// <summary>
+        /// 计算相机中心与针尖的 XY 校准差值。
+        /// 针尖 Z 按系统分别示教（Dz₂/Dz₃），不参与 XY 差值计算。
+        /// </summary>
         private void CalculateCalibrationDelta()
         {
             try
             {
-                if (Math.Abs(CameraCenterX) > 0.001 || Math.Abs(CameraCenterY) > 0.001 ||
-                    Math.Abs(NeedleTipX) > 0.001 || Math.Abs(NeedleTipY) > 0.001)
+                bool hasCamera = Math.Abs(CameraCenterX) > 0.001 || Math.Abs(CameraCenterY) > 0.001;
+                bool hasNeedle = Math.Abs(NeedleTipX) > 0.001 || Math.Abs(NeedleTipY) > 0.001;
+
+                if (hasCamera && hasNeedle)
                 {
                     CalibrationDeltaX = NeedleTipX - CameraCenterX;
                     CalibrationDeltaY = NeedleTipY - CameraCenterY;
+                }
+                else if (!hasCamera && !hasNeedle)
+                {
+                    CalibrationDeltaX = 0;
+                    CalibrationDeltaY = 0;
                 }
             }
             catch (Exception ex)
             {
                 _logger.Error($"CalculateCalibrationDelta异常: {ex.Message}");
             }
+        }
+
+        /// <summary>获取当前系统针尖 Z 轴名称候选（兼容 Unicode/ASCII 命名）</summary>
+        private static string[] GetNeedleTipZAxisNames(int systemNumber) =>
+            systemNumber == 1
+                ? new[] { "Dz₂", "Dz2" }
+                : new[] { "Dz₃", "Dz3" };
+
+        /// <summary>从示教结果中按候选轴名顺序读取位置</summary>
+        private static bool TryGetAxisPosition(IReadOnlyDictionary<string, double> positions, out double value, params string[] axisNames)
+        {
+            foreach (var name in axisNames)
+            {
+                if (positions.TryGetValue(name, out value))
+                    return true;
+            }
+
+            value = 0;
+            return false;
         }
 
         /// <summary>安全计算数学表达式，如 "0.1+0.2+0.3"，失败返回0</summary>
