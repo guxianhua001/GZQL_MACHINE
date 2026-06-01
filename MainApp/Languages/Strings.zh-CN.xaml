@@ -1644,7 +1644,7 @@
     <sys:String x:Key="Maintenance_CompensationNote">当校针器校准后仍然存在误差时使用此进行人工补偿。</sys:String>
     <sys:String x:Key="NeedleCamera_Status_SystemSwitched">切换到对针系统{0}，已从文件加载参数</sys:String>
     <sys:String x:Key="NeedleCamera_Status_CameraCenterTaught">示教相机中心: DispX={0:F3}, GantryY={1:F3}</sys:String>
-    <sys:String x:Key="NeedleCamera_Status_NeedleTipTaught">示教针尖: DispX={0:F3}, GantryY={1:F3}, DispZ={2:F3}</sys:String>
+    <sys:String x:Key="NeedleCamera_Status_NeedleTipTaught">系统{0}针尖示教: Dx={1:F3}, Dy={2:F3}, {4}={3:F3}</sys:String>
     <sys:String x:Key="NeedleCamera_Status_NeedleHeightTaught">示教针尖高度: {0:F3}mm</sys:String>
     <sys:String x:Key="NeedleCamera_Status_SetPlaneHeightFirst">请先设置基准面高度和目标平面高度</sys:String>
     <sys:String x:Key="NeedleCamera_Status_HeightCalculated">计算完成: 当前针头高度 = {0:F3}mm</sys:String>
@@ -1657,7 +1657,7 @@
     <sys:String x:Key="NeedleCamera_Status_SaveFailed">保存参数异常: {0}</sys:String>
     <sys:String x:Key="NeedleCamera_Status_ParametersReset">参数已重置</sys:String>
     <sys:String x:Key="NeedleCamera_CameraCenterStep">将相机十字线对准针尖位置，点击示教按钮读取当前轴坐标</sys:String>
-    <sys:String x:Key="NeedleCamera_NeedleTipStep">将针尖对准参考标记位置，点击示教按钮读取当前轴坐标</sys:String>
+    <sys:String x:Key="NeedleCamera_NeedleTipStep">将针尖对准参考标记，点击示教读取 Dx、Dy 及当前系统 Z 轴（系统1=Dz₂，系统2=Dz₃）</sys:String>
     <sys:String x:Key="NeedleCamera_TeachCameraCenter">示教相机中心</sys:String>
     <sys:String x:Key="NeedleCamera_TeachNeedlePosition">示教针尖位置</sys:String>
     <sys:String x:Key="AxisOffset">轴偏移(ΔX,ΔY):</sys:String>
@@ -1683,9 +1683,13 @@
     <sys:String x:Key="NeedleCamera_CalculatedResult">计算结果</sys:String>
     <sys:String x:Key="NeedleCamera_OffsetCompensation">偏移补偿</sys:String>
     <sys:String x:Key="NeedleCamera_CompensationValue">补偿值</sys:String>
-    <sys:String x:Key="NeedleCamera_DispX">X轴</sys:String>
-    <sys:String x:Key="NeedleCamera_DispY">Y轴</sys:String>
-    <sys:String x:Key="NeedleCamera_DispZ">Z轴</sys:String>
+    <sys:String x:Key="NeedleCamera_DispX">Dx</sys:String>
+    <sys:String x:Key="NeedleCamera_DispY">Dy</sys:String>
+    <sys:String x:Key="NeedleCamera_DispZ">Z</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dx">Dx</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dy">Dy</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dz2">Dz₂</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dz3">Dz₃</sys:String>
     <sys:String x:Key="NeedleCamera_CurrentFile">当前参数文件</sys:String>
     <sys:String x:Key="Nav_Maintenance">设备维护</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">搜索点设置</sys:String>

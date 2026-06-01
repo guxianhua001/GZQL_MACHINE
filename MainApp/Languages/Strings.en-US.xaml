@@ -1659,7 +1659,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Maintenance_CompensationNote">Use this for manual compensation when calibration still has residual error.</sys:String>
     <sys:String x:Key="NeedleCamera_Status_SystemSwitched">Switched to needle system {0}, parameters loaded from file</sys:String>
     <sys:String x:Key="NeedleCamera_Status_CameraCenterTaught">Camera center taught: DispX={0:F3}, GantryY={1:F3}</sys:String>
-    <sys:String x:Key="NeedleCamera_Status_NeedleTipTaught">Needle tip taught: DispX={0:F3}, GantryY={1:F3}, DispZ={2:F3}</sys:String>
+    <sys:String x:Key="NeedleCamera_Status_NeedleTipTaught">System {0} needle taught: Dx={1:F3}, Dy={2:F3}, {4}={3:F3}</sys:String>
     <sys:String x:Key="NeedleCamera_Status_NeedleHeightTaught">Needle height taught: {0:F3}mm</sys:String>
     <sys:String x:Key="NeedleCamera_Status_SetPlaneHeightFirst">Please set base plane height and target plane height first</sys:String>
     <sys:String x:Key="NeedleCamera_Status_HeightCalculated">Calculated: Current needle height = {0:F3}mm</sys:String>
@@ -1672,7 +1672,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleCamera_Status_SaveFailed">Save parameters failed: {0}</sys:String>
     <sys:String x:Key="NeedleCamera_Status_ParametersReset">Parameters reset</sys:String>
     <sys:String x:Key="NeedleCamera_CameraCenterStep">Align camera crosshair to needle tip, then click teach to read axis positions</sys:String>
-    <sys:String x:Key="NeedleCamera_NeedleTipStep">Align needle tip to reference mark, then click teach to read axis positions</sys:String>
+    <sys:String x:Key="NeedleCamera_NeedleTipStep">Align needle tip to the reference mark, then teach Dx, Dy, and the system Z axis (System 1=Dz₂, System 2=Dz₃)</sys:String>
     <sys:String x:Key="NeedleCamera_TeachCameraCenter">Teach Camera Center</sys:String>
     <sys:String x:Key="NeedleCamera_TeachNeedlePosition">Teach Needle Position</sys:String>
     <sys:String x:Key="NeedleCamera_TeachNeedleHeight">Teach Needle Height</sys:String>
@@ -1683,9 +1683,13 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleCamera_CalculatedResult">Calculated</sys:String>
     <sys:String x:Key="NeedleCamera_OffsetCompensation">Offset Compensation</sys:String>
     <sys:String x:Key="NeedleCamera_CompensationValue">Value</sys:String>
-    <sys:String x:Key="NeedleCamera_DispX">X Axis</sys:String>
-    <sys:String x:Key="NeedleCamera_DispY">Y Axis</sys:String>
-    <sys:String x:Key="NeedleCamera_DispZ">Z Axis</sys:String>
+    <sys:String x:Key="NeedleCamera_DispX">Dx</sys:String>
+    <sys:String x:Key="NeedleCamera_DispY">Dy</sys:String>
+    <sys:String x:Key="NeedleCamera_DispZ">Z</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dx">Dx</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dy">Dy</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dz2">Dz₂</sys:String>
+    <sys:String x:Key="NeedleCamera_Axis_Dz3">Dz₃</sys:String>
     <sys:String x:Key="NeedleCamera_CurrentFile">Current Parameter File</sys:String>
     <sys:String x:Key="Nav_Maintenance">Maintenance</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">Search Point Settings</sys:String>

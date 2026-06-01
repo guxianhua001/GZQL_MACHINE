@@ -27,7 +27,19 @@
 
             <Style x:Key="CardHeaderStyle" TargetType="StackPanel">
                 <Setter Property="Orientation" Value="Horizontal" />
-                <Setter Property="Margin" Value="0,0,0,12" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+
+            <!-- 左右侧卡片标题：多行换行，随列宽自适应 -->
+            <Style x:Key="SideCardHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignHeadline6TextBlock}">
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- 左右侧按钮文字：过长时换行，不撑破列宽 -->
+            <Style x:Key="SideActionButtonContentStyle" TargetType="TextBlock">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="TextAlignment" Value="Left" />
+                <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 
             <Style x:Key="StatusPill" TargetType="Border">
@@ -37,20 +49,22 @@
             </Style>
 
             <Style x:Key="ParamRowStyle" TargetType="Grid">
-                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Margin" Value="0,0,0,4" />
             </Style>
 
             <Style x:Key="ParamLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="Foreground" Value="#616161" />
                 <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Margin" Value="0,0,6,0" />
+                <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
             <Style x:Key="ParamTextBoxStyle" TargetType="TextBox">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="materialDesign:HintAssist.IsFloating" Value="False" />
-                <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="Margin" Value="0,0,0,0" />
+                <Setter Property="MinWidth" Value="0" />
             </Style>
 
             <Style x:Key="ResultValueStyle" TargetType="TextBlock">
@@ -75,31 +89,41 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="280" MinWidth="260" />
-            <ColumnDefinition Width="*" MinWidth="400" />
-            <ColumnDefinition Width="240" MinWidth="200" />
+            <ColumnDefinition Width="*" MinWidth="240" MaxWidth="380" />
+            <ColumnDefinition Width="1.5*" MinWidth="380" />
+            <ColumnDefinition Width="*" MinWidth="200" MaxWidth="320" />
         </Grid.ColumnDefinitions>
 
         <!-- ============================================================ -->
         <!-- LEFT COLUMN: 参数设置                                          -->
         <!-- ============================================================ -->
         <ScrollViewer Grid.Column="0" Grid.RowSpan="2" Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      CanContentScroll="False"
                       IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}"
-                      Margin="0,0,10,0">
-            <StackPanel>
+                      Margin="0,0,6,0">
+            <!-- 绑定视口宽度，防止子控件撑出横向滚动 -->
+            <StackPanel HorizontalAlignment="Stretch"
+                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
 
                 <!-- 搜索点设置卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Kind="CrosshairsGps" Width="18" Height="18"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{lang:Lang NeedleAligner_SearchPointSettings}"
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_SearchPointSettings}"
+                                       Style="{StaticResource SideCardHeaderTextStyle}"
                                        Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </StackPanel>
+                        </Grid>
 
                         <!-- 搜索点1 -->
                         <Grid Style="{StaticResource ParamRowStyle}">
@@ -112,9 +136,9 @@
                             <TextBlock Grid.Column="0" Text="P1" Style="{StaticResource ParamLabelStyle}"
                                        FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint1.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint1.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center"/>
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="1"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
@@ -135,9 +159,9 @@
                             <TextBlock Grid.Column="0" Text="P2" Style="{StaticResource ParamLabelStyle}"
                                        FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint2.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center"/>
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint2.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center"/>
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="2"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
@@ -158,9 +182,9 @@
                             <TextBlock Grid.Column="0" Text="P3" Style="{StaticResource ParamLabelStyle}"
                                        FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint3.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint3.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="3"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
@@ -181,9 +205,9 @@
                             <TextBlock Grid.Column="0" Text="P4" Style="{StaticResource ParamLabelStyle}"
                                        FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint4.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center"/>
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint4.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="4"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
@@ -196,17 +220,22 @@
                 </materialDesign:Card>
 
                 <!-- 参考坐标卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Kind="MapMarker" Width="18" Height="18"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{lang:Lang NeedleAligner_ReferenceCoordinates}"
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_ReferenceCoordinates}"
+                                       Style="{StaticResource SideCardHeaderTextStyle}"
                                        Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </StackPanel>
+                        </Grid>
 
                         <Grid Style="{StaticResource ParamRowStyle}">
                             <Grid.ColumnDefinitions>
@@ -242,111 +271,141 @@
                 </materialDesign:Card>
 
                 <!-- 运动参数卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,0"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Kind="Tune" Width="18" Height="18"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{lang:Lang NeedleAligner_MotionParameters}"
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_MotionParameters}"
+                                       Style="{StaticResource SideCardHeaderTextStyle}"
                                        Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </StackPanel>
+                        </Grid>
 
                         <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="Radius" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_SearchRange}"
-                                       Style="{StaticResource ParamLabelStyle}" Margin="0,0,6,0" />
-                            <TextBox Grid.Column="2"
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Radius" Width="16" Height="16"
+                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_SearchRange}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_SearchRangeTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                      Text="{Binding Parameters.SearchRange, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}"
-                                     ToolTip="{lang:Lang NeedleAligner_SearchRangeTip}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
                         <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="Repeat" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_ZSearchCount}"
-                                       Style="{StaticResource ParamLabelStyle}" Margin="0,0,6,0" />
-                            <TextBox Grid.Column="2"
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Repeat" Width="16" Height="16"
+                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_ZSearchCount}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_ZSearchCountTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                      Text="{Binding Parameters.ZSearchCount}"
-                                     Style="{StaticResource ParamTextBoxStyle}"
-                                     ToolTip="{lang:Lang NeedleAligner_ZSearchCountTip}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
                         <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="Speedometer" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_SearchSpeed}"
-                                       Style="{StaticResource ParamLabelStyle}" Margin="0,0,6,0" />
-                            <TextBox Grid.Column="2"
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Speedometer" Width="16" Height="16"
+                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_SearchSpeed}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_SearchSpeedTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                      Text="{Binding Parameters.SearchSpeed, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}"
-                                     ToolTip="{lang:Lang NeedleAligner_SearchSpeedTip}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
                         <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="SpeedometerSlow" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_FineSearchSpeed}"
-                                       Style="{StaticResource ParamLabelStyle}" Margin="0,0,6,0" />
-                            <TextBox Grid.Column="2"
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="SpeedometerSlow" Width="16" Height="16"
+                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_FineSearchSpeed}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_FineSearchSpeedTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                      Text="{Binding Parameters.FineSearchSpeed, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}"
-                                     ToolTip="{lang:Lang NeedleAligner_FineSearchSpeedTip}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
                         <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="Ruler" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_NeedleBaseHeight}"
-                                       Style="{StaticResource ParamLabelStyle}" Margin="0,0,6,0" />
-                            <TextBox Grid.Column="2"
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Ruler" Width="16" Height="16"
+                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_NeedleBaseHeight}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_NeedleBaseHeightTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                      Text="{Binding Parameters.NeedleBaseHeight, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}"
-                                     ToolTip="{lang:Lang NeedleAligner_NeedleBaseHeightTip}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
                     </StackPanel>
                 </materialDesign:Card>
 
-                <!-- 当前文件路径信息 -->
-                <Border Background="#EDE7F6" CornerRadius="6" Padding="10,6" Margin="0,16,0,0"
+                <!-- 当前文件路径：长路径多行显示 -->
+                <Border Background="#EDE7F6" CornerRadius="6" Padding="8,5" Margin="0,8,0,0"
                         Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
-                                                     Foreground="#5E35B1" Margin="0,0,6,0"
-                                                     VerticalAlignment="Center" />
-                            <TextBlock Text="{lang:Lang NeedleAligner_CurrentFile}"
+                                                     Foreground="#5E35B1" Margin="0,2,6,0"
+                                                     VerticalAlignment="Top" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_CurrentFile}"
                                        Foreground="#5E35B1" FontSize="10" FontWeight="Medium"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
+                                       TextWrapping="Wrap" />
+                        </Grid>
                         <TextBlock Text="{Binding CurrentFilePath}"
-                                   Foreground="#7E57C2" FontSize="9" FontFamily="Consolas"
-                                   TextWrapping="Wrap" Margin="0,2,0,0"
+                                   Foreground="#7E57C2" FontSize="10" FontFamily="Consolas"
+                                   TextWrapping="Wrap" Margin="0,4,0,0"
                                    ToolTip="{Binding CurrentFilePath}" />
                     </StackPanel>
                 </Border>
@@ -357,11 +416,14 @@
         <!-- ============================================================ -->
         <!-- CENTER COLUMN: 校准控制 + 结果                                 -->
         <!-- ============================================================ -->
-        <ScrollViewer Grid.Column="1" Grid.Row="0" Style="{StaticResource AlwaysVisibleScrollViewerStyle}" Margin="0,0,10,0">
-            <StackPanel>
+        <ScrollViewer Grid.Column="1" Grid.Row="0" Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      CanContentScroll="False"
+                      Margin="0,0,6,0">
+            <StackPanel Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
 
                 <!-- 校准控制卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -417,7 +479,7 @@
                 </materialDesign:Card>
 
                 <!-- 校准结果卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,0"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -578,16 +640,21 @@
                                 </Grid>
 
                                 <!-- 补偿说明 -->
-                                <Border Background="#FFF8E1" CornerRadius="6" Padding="10,8" Margin="0,6,0,0">
-                                    <StackPanel Orientation="Horizontal">
+                                <Border Background="#FFF8E1" CornerRadius="6" Padding="8,6" Margin="0,4,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
                                         <materialDesign:PackIcon Kind="InformationOutline" Width="16" Height="16"
-                                                                 Foreground="#F9A825" Margin="0,0,8,0"
-                                                                 VerticalAlignment="Center" />
-                                        <TextBlock Text="{lang:Lang Maintenance_CompensationNote}"
+                                                                 Foreground="#F9A825" Margin="0,2,8,0"
+                                                                 VerticalAlignment="Top" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{lang:Lang Maintenance_CompensationNote}"
                                                    Foreground="#795548" FontSize="12"
-                                                   FontStyle="Italic" VerticalAlignment="Center"
+                                                   FontStyle="Italic"
                                                    TextWrapping="Wrap" />
-                                    </StackPanel>
+                                    </Grid>
                                 </Border>
                             </StackPanel>
                         </Border>
@@ -600,96 +667,151 @@
 
         <!-- RIGHT COLUMN: 补偿管理 -->
         <ScrollViewer Grid.Column="2" Grid.Row="0"
-                      Style="{StaticResource AlwaysVisibleScrollViewerStyle}">
-            <StackPanel>
+                      Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      CanContentScroll="False">
+            <StackPanel HorizontalAlignment="Stretch"
+                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
 
             <!-- 参数操作卡片 -->
-            <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+            <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                  Background="{DynamicResource MaterialDesignCardBackground}">
                 <StackPanel IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <materialDesign:PackIcon Kind="ContentSave" Width="18" Height="18"
                                                  Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                 Margin="0,0,8,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{lang:Lang NeedleAligner_ParameterOperations}"
-                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                                 Margin="0,0,8,0" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{lang:Lang NeedleAligner_ParameterOperations}"
+                                   Style="{StaticResource SideCardHeaderTextStyle}"
                                    Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                    </StackPanel>
+                    </Grid>
 
-                    <WrapPanel>
-                        <Button Command="{Binding SaveParametersCommand}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Padding="10,4" Margin="0,0,6,6"
-                                ToolTip="{lang:Lang NeedleAligner_SaveParameters}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="ContentSave" Width="14" Height="14" Margin="0,0,5,0" />
-                                <TextBlock Text="{lang:Lang NeedleAligner_SaveParameters}" />
-                            </StackPanel>
-                        </Button>
+                    <Button Command="{Binding SaveParametersCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Padding="8,5" Margin="0,0,0,4"
+                            ToolTip="{lang:Lang NeedleAligner_SaveParameters}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <materialDesign:PackIcon Kind="ContentSave" Width="14" Height="14"
+                                                     VerticalAlignment="Top" Margin="0,2,6,0" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_SaveParameters}"
+                                       Style="{StaticResource SideActionButtonContentStyle}" />
+                        </Grid>
+                    </Button>
 
-                        <Button Command="{Binding LoadParametersCommand}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Padding="10,4" Margin="0,0,6,6"
-                                ToolTip="{lang:Lang NeedleAligner_LoadParameters}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="FolderOpen" Width="14" Height="14" Margin="0,0,5,0" />
-                                <TextBlock Text="{lang:Lang NeedleAligner_LoadParameters}" />
-                            </StackPanel>
-                        </Button>
-                    </WrapPanel>
+                    <Button Command="{Binding LoadParametersCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Padding="8,5" Margin="0,0,0,0"
+                            ToolTip="{lang:Lang NeedleAligner_LoadParameters}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <materialDesign:PackIcon Kind="FolderOpen" Width="14" Height="14"
+                                                     VerticalAlignment="Top" Margin="0,2,6,0" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_LoadParameters}"
+                                       Style="{StaticResource SideActionButtonContentStyle}" />
+                        </Grid>
+                    </Button>
                 </StackPanel>
             </materialDesign:Card>
 
             <!-- 补偿管理卡片 -->
-            <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+            <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,0"
                                  Background="{DynamicResource MaterialDesignCardBackground}">
                 <StackPanel IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <materialDesign:PackIcon Kind="MathCompass" Width="18" Height="18"
                                                  Foreground="{DynamicResource SecondaryHueMidBrush}"
-                                                 Margin="0,0,8,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{lang:Lang NeedleAligner_CompensationManagement}"
-                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                                 Margin="0,0,8,0" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{lang:Lang NeedleAligner_CompensationManagement}"
+                                   Style="{StaticResource SideCardHeaderTextStyle}"
                                    Foreground="{DynamicResource SecondaryHueMidBrush}" />
-                    </StackPanel>
+                    </Grid>
 
                     <StackPanel>
                         <Button Command="{Binding ResetCompensationCommand}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Padding="10,4" Margin="0,0,0,6"
-                                BorderBrush="#FF9800" Foreground="#E65100"
                                 HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="8,5" Margin="0,0,0,4"
+                                BorderBrush="#FF9800" Foreground="#E65100"
                                 materialDesign:ButtonAssist.CornerRadius="4"
                                 ToolTip="{lang:Lang NeedleAligner_ResetCompensation}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14" Margin="0,0,5,0" />
-                                <TextBlock Text="{lang:Lang NeedleAligner_ResetCompensation}" />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14"
+                                                         VerticalAlignment="Top" Margin="0,2,6,0" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleAligner_ResetCompensation}"
+                                           Style="{StaticResource SideActionButtonContentStyle}" />
+                            </Grid>
                         </Button>
 
                         <Button Command="{Binding ShowCompensationHistoryCommand}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Padding="10,4" Margin="0,0,0,6"
                                 HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="8,5" Margin="0,0,0,4"
                                 materialDesign:ButtonAssist.CornerRadius="4"
                                 ToolTip="{lang:Lang NeedleAligner_ShowCompensationHistory}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="History" Width="14" Height="14" Margin="0,0,5,0" />
-                                <TextBlock Text="{lang:Lang NeedleAligner_ShowCompensationHistory}" />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="History" Width="14" Height="14"
+                                                         VerticalAlignment="Top" Margin="0,2,6,0" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleAligner_ShowCompensationHistory}"
+                                           Style="{StaticResource SideActionButtonContentStyle}" />
+                            </Grid>
                         </Button>
 
                         <Button Command="{Binding ApplyCompensationCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                 Background="#4CAF50" Foreground="White"
-                                Padding="10,6" Margin="0,6,0,0"
                                 HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="8,6" Margin="0,4,0,0"
                                 materialDesign:ButtonAssist.CornerRadius="4"
                                 ToolTip="{lang:Lang NeedleAligner_ApplyCompensation}">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <materialDesign:PackIcon Kind="CheckCircle" Width="16" Height="16" Margin="0,0,6,0" />
-                                <TextBlock Text="{lang:Lang NeedleAligner_ApplyCompensation}" />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="CheckCircle" Width="16" Height="16"
+                                                         VerticalAlignment="Top" Margin="0,2,6,0" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleAligner_ApplyCompensation}"
+                                           Style="{StaticResource SideActionButtonContentStyle}"
+                                           FontWeight="SemiBold" />
+                            </Grid>
                         </Button>
                     </StackPanel>
                 </StackPanel>
@@ -702,7 +824,7 @@
         <!-- BOTTOM ROW: 校准日志 (跨第2列和第3列)                             -->
         <!-- ============================================================ -->
         <materialDesign:Card Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                             UniformCornerRadius="8" Padding="16" Margin="0,10,0,0"
+                             UniformCornerRadius="8" Padding="12" Margin="0,6,0,0"
                              Background="{DynamicResource MaterialDesignCardBackground}">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
