@@ -3,6 +3,8 @@ using Core.Constants;
 using Core.Models;
 using Core.Services;
 using Core.Utilities;
+using Module.Services;
+using MotionControl.Interfaces;
 using Newtonsoft.Json;
 using Prism.Commands;
 using Prism.Events;
@@ -26,7 +28,7 @@ namespace Module.ViewModels
 {
     public class NeedleAlignerViewModel : BindableBase
     {
-        private readonly IPositionMotionController _motionController;
+        private readonly INeedleAlignerMotionService _needleMotion;
         private readonly IParameterStorage _parameterStorage;
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localization;
@@ -38,7 +40,6 @@ namespace Module.ViewModels
         private readonly Timer _logTimer;
         private readonly object _logLock = new();
         private CancellationTokenSource _calibrationCts;
-        private const double SafeHeightOffset = 50.0;
         /// <summary>配置文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
 
@@ -307,12 +308,15 @@ namespace Module.ViewModels
         public DelegateCommand LoadParametersCommand { get; }
         public DelegateCommand ClearLogCommand { get; }
         public DelegateCommand<string> TeachSearchPointCommand { get; }
+        public DelegateCommand<string> TeachAlignPositionCommand { get; }
+        public DelegateCommand System1Command { get; }
+        public DelegateCommand System2Command { get; }
         public DelegateCommand UnlinkCompensationXCommand { get; }
         public DelegateCommand UnlinkCompensationYCommand { get; }
         public DelegateCommand UnlinkCompensationZCommand { get; }
 
         public NeedleAlignerViewModel(
-            IPositionMotionController motionController,
+            INeedleAlignerMotionService needleMotion,
             IParameterStorage parameterStorage,
             ILoggerService logger,
             ILocalizationService localization,
@@ -321,7 +325,7 @@ namespace Module.ViewModels
             NeedleCompensationManager compensationManager,
             IRecipePoolService recipePoolService)
         {
-            _motionController = motionController;
+            _needleMotion = needleMotion;
             _parameterStorage = parameterStorage;
             _logger = logger;
             _localization = localization;
@@ -372,6 +376,14 @@ namespace Module.ViewModels
                 _ => !IsCalibrating)
                 .ObservesProperty(() => IsCalibrating);
 
+            TeachAlignPositionCommand = new DelegateCommand<string>(
+                async sys => await TeachAlignPositionAsync(int.Parse(sys ?? "1")),
+                _ => !IsCalibrating)
+                .ObservesProperty(() => IsCalibrating);
+
+            System1Command = new DelegateCommand(() => SystemNumber = 1);
+            System2Command = new DelegateCommand(() => SystemNumber = 2);
+
             UnlinkCompensationXCommand = new DelegateCommand(() => CompensationXLinkedVar = null);
             UnlinkCompensationYCommand = new DelegateCommand(() => CompensationYLinkedVar = null);
             UnlinkCompensationZCommand = new DelegateCommand(() => CompensationZLinkedVar = null);
@@ -390,7 +402,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 执行四点搜索校准流程
+        /// 执行四点寻针校准：抬安全高度 → 对针位 → 寻边 → Z 寻高 → 计算补偿（参考 ExecuteNeedleCalibrationAsync）
         /// </summary>
         private async Task StartCalibrationAsync()
         {
@@ -402,41 +414,37 @@ namespace Module.ViewModels
                 _calibrationCts = new CancellationTokenSource();
                 var token = _calibrationCts.Token;
 
-                var stationId = $"NeedleCalibration_System{SystemNumber}";
-                for (int step = 1; step <= 4; step++)
+                var progress = new Progress<(string Status, double Progress)>(p =>
                 {
-                    token.ThrowIfCancellationRequested();
-                    CalibrationStatus = string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Status_SearchPoint", "搜索点{0}..."),
-                        step);
-                    CalibrationProgress = step * 20.0;
+                    CalibrationStatus = p.Status;
+                    CalibrationProgress = p.Progress;
+                });
 
-                    var (targetX, targetY) = GetSearchPointCoordinates(step);
-                    await MoveToPositionSafelyAsync(stationId, targetX, targetY, Parameters.ReferenceXYZ.Z, Parameters.SearchSpeed);
-                    await Task.Delay(200, token);
+                var result = await _needleMotion.ExecuteNeedleCalibrationAsync(
+                    Parameters, SystemNumber, progress, token);
 
-                    AddLog(string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Log_SearchPointCompleted", "搜索点{0}完成"),
-                        step));
-                }
-
-                token.ThrowIfCancellationRequested();
-                CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_FineSearch", "精细搜索...");
-                CalibrationProgress = 80;
-
-                var teachResult = await _motionController.TeachAsync(stationId);
-                if (teachResult != null && teachResult.Count > 0)
+                if (result.Success)
                 {
-                    ApplyTeachResultToCurrentXYZ(teachResult);
+                    Parameters.CurrentXYZ = new PointF(
+                        result.MeasuredCenter.X,
+                        result.MeasuredCenter.Y,
+                        (float)result.MeasuredHeight);
+                    Parameters.CompensationXYZ = result.Compensation;
 
                     CalibrationProgress = 100;
                     OnCalibrationCompleted();
-                    // 校准完成后自动保存到默认路径（时间戳命名）
                     await SaveParametersAsync(syncGlobalVariables: false);
-                }
 
-                CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_Completed", "校准完成");
-                AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CalibrationSuccess", "针头校准成功完成"));
+                    CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_Completed", "校准完成");
+                    AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CalibrationSuccess", "针头校准成功完成"));
+                }
+                else
+                {
+                    CalibrationStatus = string.Format(
+                        _localization.GetResourceOrDefault("NeedleAligner_Status_Error", "校准异常: {0}"),
+                        result.ErrorMessage ?? "未知错误");
+                    AddLog(CalibrationStatus);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -462,37 +470,6 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 安全移动到目标位置：先抬升Z轴到安全高度，再水平移动，最后下降Z轴
-        /// 防止针头在水平移动过程中碰撞工件或夹具
-        /// </summary>
-        private async Task MoveToPositionSafelyAsync(string stationId, double targetX, double targetY, double targetZ, double velocity)
-        {
-            var safeZPositions = new Dictionary<string, double> { { "DispZ", targetZ + SafeHeightOffset } };
-            await _motionController.GotoAsync(stationId, safeZPositions, velocity);
-
-            var horizontalPositions = new Dictionary<string, double> { { "DispX", targetX }, { "GantryY", targetY } };
-            await _motionController.GotoAsync(stationId, horizontalPositions, velocity);
-
-            var targetZPositions = new Dictionary<string, double> { { "DispZ", targetZ } };
-            await _motionController.GotoAsync(stationId, targetZPositions, velocity * 0.5);
-        }
-
-        /// <summary>
-        /// 根据步骤编号获取搜索点坐标
-        /// </summary>
-        private (double X, double Y) GetSearchPointCoordinates(int step)
-        {
-            return step switch
-            {
-                1 => (Parameters.SearchPoint1.X, Parameters.SearchPoint1.Y),
-                2 => (Parameters.SearchPoint2.X, Parameters.SearchPoint2.Y),
-                3 => (Parameters.SearchPoint3.X, Parameters.SearchPoint3.Y),
-                4 => (Parameters.SearchPoint4.X, Parameters.SearchPoint4.Y),
-                _ => (0, 0)
-            };
-        }
-
-        /// <summary>
         /// 停止校准运动
         /// </summary>
         private void StopCalibration()
@@ -500,8 +477,7 @@ namespace Module.ViewModels
             try
             {
                 _calibrationCts?.Cancel();
-                var stationId = $"NeedleCalibration_System{SystemNumber}";
-                _motionController.Stop(stationId);
+                _needleMotion.StopMotion(SystemNumber);
                 CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_Stopped", "校准已停止");
                 AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CalibrationStopped", "针头校准已手动停止"));
             }
@@ -641,23 +617,6 @@ namespace Module.ViewModels
 
             AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_ReferenceUpdated",
                 "基准已更新为当前测量值，偏差与表达式已清零"));
-        }
-
-        /// <summary>从 Teach 结果解析并写入 CurrentXYZ（兼容多种轴名）</summary>
-        private void ApplyTeachResultToCurrentXYZ(IReadOnlyDictionary<string, double> teachResult)
-        {
-            double x = Parameters.CurrentXYZ?.X ?? 0;
-            double y = Parameters.CurrentXYZ?.Y ?? 0;
-            double z = Parameters.CurrentXYZ?.Z ?? 0;
-
-            if (teachResult.TryGetValue("X", out var tx) || teachResult.TryGetValue("Rx", out tx) || teachResult.TryGetValue("DispX", out tx))
-                x = tx;
-            if (teachResult.TryGetValue("Y", out var ty) || teachResult.TryGetValue("GantryY", out ty))
-                y = ty;
-            if (teachResult.TryGetValue("Z", out var tz) || teachResult.TryGetValue("DispZ", out tz))
-                z = tz;
-
-            Parameters.CurrentXYZ = new PointF((float)x, (float)y, (float)z);
         }
 
         /// <summary>更新或添加全局变量（默认 Double 类型）</summary>
@@ -898,44 +857,32 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>
-        /// 示教搜索点：读取当前运动位置并写入对应搜索点
-        /// </summary>
-        private async Task TeachSearchPointAsync(int step)
+        /// <summary>示教搜索点：读取当前 Dx/Dy 并写入对应搜索点</summary>
+        private Task TeachSearchPointAsync(int step)
         {
             try
             {
-                var stationId = $"NeedleCalibration_System{SystemNumber}";
-                var result = await _motionController.TeachAsync(stationId);
-
-                if (result != null && result.Count > 0)
+                var positions = _needleMotion.ReadCurrentPositions(SystemNumber);
+                if (!TryGetPosition(positions, out double x, "Dx") ||
+                    !TryGetPosition(positions, out double y, "Dy"))
                 {
-                    double x = 0, y = 0;
-                    if (result.TryGetValue("X", out double rx) || result.TryGetValue("Rx", out rx))
-                        x = rx;
-                    if (result.TryGetValue("Y", out double ry) || result.TryGetValue("GantryY", out ry))
-                        y = ry;
-
-                    switch (step)
-                    {
-                        case 1:
-                            Parameters.SearchPoint1 = new PointF((float)x, (float)y);
-                            break;
-                        case 2:
-                            Parameters.SearchPoint2 = new PointF((float)x, (float)y);
-                            break;
-                        case 3:
-                            Parameters.SearchPoint3 = new PointF((float)x, (float)y);
-                            break;
-                        case 4:
-                            Parameters.SearchPoint4 = new PointF((float)x, (float)y);
-                            break;
-                    }
-
                     AddLog(string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchPoint", "搜索点{0}示教完成: X={1:F3}, Y={2:F3}"),
-                        step, x, y));
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchPointError", "搜索点示教失败: {0}"),
+                        "未读取到 Dx/Dy 轴位置"));
+                    return Task.CompletedTask;
                 }
+
+                switch (step)
+                {
+                    case 1: Parameters.SearchPoint1 = new PointF((float)x, (float)y); break;
+                    case 2: Parameters.SearchPoint2 = new PointF((float)x, (float)y); break;
+                    case 3: Parameters.SearchPoint3 = new PointF((float)x, (float)y); break;
+                    case 4: Parameters.SearchPoint4 = new PointF((float)x, (float)y); break;
+                }
+
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchPoint", "搜索点{0}示教完成: X={1:F3}, Y={2:F3}"),
+                    step, x, y));
             }
             catch (Exception ex)
             {
@@ -943,6 +890,64 @@ namespace Module.ViewModels
                     _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchPointError", "搜索点示教失败: {0}"),
                     ex.Message));
             }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>示教对针位置：系统1(Dx Dy Dz₂)，系统2(Dx Dy Dz₃)</summary>
+        private Task TeachAlignPositionAsync(int systemNumber)
+        {
+            try
+            {
+                var positions = _needleMotion.ReadCurrentPositions(systemNumber);
+                if (!TryGetPosition(positions, out double x, "Dx") ||
+                    !TryGetPosition(positions, out double y, "Dy") ||
+                    !TryGetNeedleZ(positions, systemNumber, out double z))
+                {
+                    AddLog(string.Format(
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignError", "对针位置示教失败: 系统{0}"),
+                        systemNumber));
+                    return Task.CompletedTask;
+                }
+
+                var point = new PointF((float)x, (float)y, (float)z);
+                if (systemNumber == 1)
+                    Parameters.AlignPositionSystem1 = point;
+                else
+                    Parameters.AlignPositionSystem2 = point;
+
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlign", "系统{0}对针位置示教: X={1:F3}, Y={2:F3}, Z={3:F3}"),
+                    systemNumber, x, y, z));
+            }
+            catch (Exception ex)
+            {
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignError", "对针位置示教失败: {0}"),
+                    ex.Message));
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private static bool TryGetPosition(IReadOnlyDictionary<string, double> positions, out double value, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (positions.TryGetValue(name, out value))
+                    return true;
+            }
+
+            value = 0;
+            return false;
+        }
+
+        private static bool TryGetNeedleZ(IReadOnlyDictionary<string, double> positions, int systemNumber, out double z)
+        {
+            var names = systemNumber == 1
+                ? new[] { "Dz₂", "Dz2" }
+                : new[] { "Dz₃", "Dz3" };
+            return TryGetPosition(positions, out z, names);
         }
 
         /// <summary>

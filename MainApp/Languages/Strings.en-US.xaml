@@ -1699,7 +1699,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCount">Z Search Count</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeed">Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">Fine Search Speed (mm/s)</sys:String>
-    <sys:String x:Key="NeedleAligner_NeedleBaseHeight">Needle Base Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_SafeHeight">Safe Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignPositionSettings">Align Position</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignSystem1">System 1 (Dx Dy Dz₂)</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignSystem2">System 2 (Dx Dy Dz₃)</sys:String>
+    <sys:String x:Key="NeedleAligner_TeachAlignPosition">Teach Align Position</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationControl">Calibration Control</sys:String>
     <sys:String x:Key="NeedleAligner_StartCalibration">Start Calibration</sys:String>
     <sys:String x:Key="NeedleAligner_StopCalibration">Stop Calibration</sys:String>
@@ -1735,7 +1739,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCountTip">Number of Z-direction search contacts</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeedTip">Coarse search speed in mm/s</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeedTip">Fine search speed in mm/s</sys:String>
-    <sys:String x:Key="NeedleAligner_NeedleBaseHeightTip">Needle base height at zero position in mm</sys:String>
+    <sys:String x:Key="NeedleAligner_SafeHeightTip">Z lift height before XY travel to avoid collision, in mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachAlign">System {0} align position taught: X={1:F3}, Y={2:F3}, Z={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachAlignError">Teach align position failed: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">Write the following compensation values to global variables:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;And save parameters. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">Compensation values written to global variables and parameters saved</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPoint">Search point {0} taught: X={1:F3}, Y={2:F3}</sys:String>

@@ -1699,7 +1699,11 @@
     <sys:String x:Key="NeedleAligner_ZSearchCount">Z搜索次数</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeed">搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">精细搜索速度 (mm/s)</sys:String>
-    <sys:String x:Key="NeedleAligner_NeedleBaseHeight">针头基准高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_SafeHeight">安全高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignPositionSettings">对针位置</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignSystem1">系统1 (Dx Dy Dz₂)</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignSystem2">系统2 (Dx Dy Dz₃)</sys:String>
+    <sys:String x:Key="NeedleAligner_TeachAlignPosition">示教对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationControl">校准控制</sys:String>
     <sys:String x:Key="NeedleAligner_StartCalibration">开始校准</sys:String>
     <sys:String x:Key="NeedleAligner_StopCalibration">停止校准</sys:String>
@@ -1735,7 +1739,9 @@
     <sys:String x:Key="NeedleAligner_ZSearchCountTip">Z方向搜索接触的次数</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeedTip">粗搜索移动速度，单位mm/s</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeedTip">精细搜索移动速度，单位mm/s</sys:String>
-    <sys:String x:Key="NeedleAligner_NeedleBaseHeightTip">针头在零位时的基准高度，单位mm</sys:String>
+    <sys:String x:Key="NeedleAligner_SafeHeightTip">水平移动前 Z 轴抬升高度，防止碰撞，单位mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachAlign">系统{0}对针位置示教: X={1:F3}, Y={2:F3}, Z={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachAlignError">对针位置示教失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">将以下补偿值写入全局变量：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;并保存参数，确定继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">补偿值已写入全局变量并保存参数</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPoint">搜索点{0}示教完成: X={1:F3}, Y={2:F3}</sys:String>

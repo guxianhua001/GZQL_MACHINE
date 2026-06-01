@@ -113,6 +113,7 @@ namespace Module
             // === Module 服务（项目特有）===
             containerRegistry.Register<Module.Services.IDispenseExecuteService, Module.Services.DispenseExecuteService>();
             containerRegistry.Register<Module.Services.IDotDispenseService, Module.Services.DotDispenseService>();
+            containerRegistry.Register<Module.Services.INeedleAlignerMotionService, Module.Services.NeedleAlignerMotionService>();
 
             // 看板弹窗服务：订阅 ShowDashboardEvent 并显示 DialogHost
             containerRegistry.RegisterSingleton<Module.Services.DashboardDialogService>();

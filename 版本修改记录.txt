@@ -1,6 +1,16 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.01 — NeedleAligner 运动接口 IMotionService + 四点寻针流程
+-------------------------------------------------------------------------------
+
+1. NeedleAlignerViewModel 运动改由 INeedleAlignerMotionService（IMotionService），IPositionMotionController 仅位置编辑器使用
+2. 运动参数：新增安全高度 SafeHeight，移除 Needle Base Height
+3. 对针轴：系统1 Dx/Dy/Dz₂，系统2 Dx/Dy/Dz₃；UI 显示两系统对针位置及示教按钮
+4. 寻针流程：抬安全高度 → 对针位 XY → 对针高度 → 四点寻边(Halcon) → Z 寻高 → 补偿（参考 ExecuteNeedleCalibrationAsync）
+
+-------------------------------------------------------------------------------
+
 v2026.06.01 — NeedleAligner 补偿链接去重，默认 NeedleAligner_CompX/Y/Z_LinkedVar
 -------------------------------------------------------------------------------
 
