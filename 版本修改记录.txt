@@ -1,6 +1,16 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.01 — NeedleCalibrationVerifyView 验证逻辑完善（实测+TCP vs Reference）
+-------------------------------------------------------------------------------
+
+1. 验证公式：偏差 = |ReferenceXYZ − (实测坐标 + 硬件已生效 TCP 总补偿)|
+2. 运动改由 INeedleAlignerMotionService 四点寻边+Z接触（与 NeedleTcp 一致），不再使用 IPositionMotionController
+3. 校准参数从 NeedleTcp 同款 JSON 加载；已生效 TCP 从配方池全局变量（CompensationX/Y/ZLinkedVar）读取
+4. UI 显示实测 / 已生效TCP / 有效坐标 / 固定基准；验证记录 JSON 保存完整坐标明细
+
+-------------------------------------------------------------------------------
+
 v2026.06.01 — NeedleAlignerView 清零法改增量法 + 页面标题 NeedleTcp
 -------------------------------------------------------------------------------
 

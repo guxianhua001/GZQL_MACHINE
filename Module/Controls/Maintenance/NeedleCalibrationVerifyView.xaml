@@ -163,7 +163,7 @@
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <materialDesign:PackIcon Kind="ClipboardCheckOutline" Width="18" Height="18"
                                                          Foreground="{DynamicResource SecondaryHueMidBrush}"
                                                          Margin="0,0,8,0" VerticalAlignment="Center" />
@@ -172,7 +172,85 @@
                                            Foreground="{DynamicResource SecondaryHueMidBrush}" />
                             </StackPanel>
 
-                            <!-- Axis Results Grid -->
+                            <Border Background="#E3F2FD" CornerRadius="4" Padding="8,6" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FunctionVariant" Width="14" Height="14"
+                                                             Foreground="#1565C0" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Text="{lang:Lang NeedleVerify_CompareFormulaTip}"
+                                               FontSize="11" Foreground="#1565C0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 坐标明细：实测 / 已生效TCP / 有效坐标 / 固定基准 -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="72" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang NeedleVerify_Axis}"
+                                           FontSize="10" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{lang:Lang NeedleVerify_Measured}"
+                                           FontSize="10" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,4" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{lang:Lang NeedleVerify_ActiveTcp}"
+                                           FontSize="10" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,4" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="3" Text="{lang:Lang NeedleVerify_Effective}"
+                                           FontSize="10" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,4" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="4" Text="{lang:Lang NeedleVerify_Reference}"
+                                           FontSize="10" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,4" HorizontalAlignment="Center" />
+
+                                <!-- X -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="X" FontWeight="Bold" FontSize="13"
+                                           Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MeasuredX, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding ActiveTcpX, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding EffectiveX, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="1" Grid.Column="4" Text="{Binding ReferenceX, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+
+                                <!-- Y -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Y" FontWeight="Bold" FontSize="13"
+                                           Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding MeasuredY, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding ActiveTcpY, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding EffectiveY, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                                <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding ReferenceY, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+
+                                <!-- Z -->
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Z" FontWeight="Bold" FontSize="13"
+                                           Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MeasuredZ, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding ActiveTcpZ, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding EffectiveZ, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="3" Grid.Column="4" Text="{Binding ReferenceZ, StringFormat=F4, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="#E0E0E0" Margin="0,0,0,8" />
+
+                            <!-- Axis Deviation Grid -->
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="50" />

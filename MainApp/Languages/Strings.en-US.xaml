@@ -1821,6 +1821,44 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleVerify_Warning">Warning</sys:String>
     <sys:String x:Key="NeedleVerify_Fail">Fail</sys:String>
     <sys:String x:Key="NeedleVerify_OverallResult">Overall Result</sys:String>
+    <sys:String x:Key="NeedleVerify_CompareFormulaTip">Deviation = |ReferenceXYZ − (Measured + Active TCP Total Compensation)|</sys:String>
+    <sys:String x:Key="NeedleVerify_Measured">Measured</sys:String>
+    <sys:String x:Key="NeedleVerify_ActiveTcp">Active TCP</sys:String>
+    <sys:String x:Key="NeedleVerify_Effective">Effective</sys:String>
+    <sys:String x:Key="NeedleVerify_Reference">Reference</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Preparing">Preparing...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_LoadingParams">Loading calibration parameters...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_ReadingActiveTcp">Reading active TCP compensation...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_NoCalibrationConfig">Calibration config not found</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_EdgeSearch">4-point edge search...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Comparing">Comparing with reference...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Completed">Verification completed</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Error">Verification error</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Cancelled">Verification cancelled</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Start">Verification started - System {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_NoCalibrationConfig">No calibration JSON for system {0}. Configure on NeedleTcp page first.</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_ActiveTcp">Active TCP: X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Reference">Reference XYZ: X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_EdgeSearch">Executing 4-point edge search and Z contact (same as NeedleTcp)...</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_MeasureFailed">Needle search failed: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Measured">Measured: X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Effective">Effective (Measured+TCP): X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Completed">Completed - Dev X:{0:F4}({1}) Y:{2:F4}({3}) Z:{4:F4}({5}) Overall:{6}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Cancelled">Verification cancelled</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Error">Verification error: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_ReportSaved">Report saved: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_ReportError">Report save error: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_LoadError">Load error: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_LoadNotFound">File not found: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_LoadSuccess">Loaded: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Result_Pass">Pass</sys:String>
+    <sys:String x:Key="NeedleVerify_Result_Warning">Warning</sys:String>
+    <sys:String x:Key="NeedleVerify_Result_Fail">Fail</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Title">Needle Calibration Verification Report</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Time">Time</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_System">System</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Deviation">Deviation</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Overall">Overall</sys:String>
     <sys:String x:Key="DispenseDetail_Title">Dispense Step Configuration</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseMode">Dispense Mode</sys:String>
     <sys:String x:Key="DispenseDetail_ModeDot">Dot Dispense</sys:String>

@@ -1,37 +1,39 @@
 using Core.Abstraction;
+using Core.Constants;
 using Core.Models;
 using Core.Services;
 using Core.Utilities;
+using Module.Services;
 using Newtonsoft.Json;
 using Prism.Commands;
-using Prism.Events;
 using Prism.Mvvm;
-using Prism.Services.Dialogs;
 using Recipe.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 
 namespace Module.ViewModels
 {
+    /// <summary>
+    /// 针头校准验证：四点寻针实测 + 硬件已生效 TCP 总补偿，与固定基准 ReferenceXYZ 对比偏差
+    /// </summary>
     public class NeedleCalibrationVerifyViewModel : BindableBase
     {
-        private readonly IPositionMotionController _motionController;
-        private readonly IParameterStorage _parameterStorage;
+        private readonly INeedleAlignerMotionService _needleMotion;
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localization;
-        private readonly IDialogService _dialogService;
-        private readonly IEventAggregator _eventAggregator;
-        private readonly NeedleCompensationManager _compensationManager;
         private readonly IRecipePoolService _recipePoolService;
 
-        private const double SafeHeightOffset = 50.0;
         /// <summary>验证记录文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
+
+        private CancellationTokenSource _verificationCts;
 
         private int _selectedSystemNumber = 1;
         /// <summary>当前选择的系统编号（1或2）</summary>
@@ -41,7 +43,10 @@ namespace Module.ViewModels
             set
             {
                 if (SetProperty(ref _selectedSystemNumber, value))
+                {
                     _ = TryAutoLoadConfigAsync();
+                    _ = RefreshCalibrationReferenceAsync();
+                }
             }
         }
 
@@ -70,7 +75,96 @@ namespace Module.ViewModels
             set => SetProperty(ref _verificationStatus, value);
         }
 
+        private double _measuredX;
+        /// <summary>本次四点寻针实测 X</summary>
+        public double MeasuredX
+        {
+            get => _measuredX;
+            set => SetProperty(ref _measuredX, value);
+        }
+
+        private double _measuredY;
+        public double MeasuredY
+        {
+            get => _measuredY;
+            set => SetProperty(ref _measuredY, value);
+        }
+
+        private double _measuredZ;
+        public double MeasuredZ
+        {
+            get => _measuredZ;
+            set => SetProperty(ref _measuredZ, value);
+        }
+
+        private double _activeTcpX;
+        /// <summary>当前硬件已生效 TCP 总补偿 X（来自全局变量）</summary>
+        public double ActiveTcpX
+        {
+            get => _activeTcpX;
+            set => SetProperty(ref _activeTcpX, value);
+        }
+
+        private double _activeTcpY;
+        public double ActiveTcpY
+        {
+            get => _activeTcpY;
+            set => SetProperty(ref _activeTcpY, value);
+        }
+
+        private double _activeTcpZ;
+        public double ActiveTcpZ
+        {
+            get => _activeTcpZ;
+            set => SetProperty(ref _activeTcpZ, value);
+        }
+
+        private double _effectiveX;
+        /// <summary>有效坐标 X = 实测 + 已生效 TCP</summary>
+        public double EffectiveX
+        {
+            get => _effectiveX;
+            set => SetProperty(ref _effectiveX, value);
+        }
+
+        private double _effectiveY;
+        public double EffectiveY
+        {
+            get => _effectiveY;
+            set => SetProperty(ref _effectiveY, value);
+        }
+
+        private double _effectiveZ;
+        public double EffectiveZ
+        {
+            get => _effectiveZ;
+            set => SetProperty(ref _effectiveZ, value);
+        }
+
+        private double _referenceX;
+        /// <summary>固定示教基准 ReferenceXYZ.X</summary>
+        public double ReferenceX
+        {
+            get => _referenceX;
+            set => SetProperty(ref _referenceX, value);
+        }
+
+        private double _referenceY;
+        public double ReferenceY
+        {
+            get => _referenceY;
+            set => SetProperty(ref _referenceY, value);
+        }
+
+        private double _referenceZ;
+        public double ReferenceZ
+        {
+            get => _referenceZ;
+            set => SetProperty(ref _referenceZ, value);
+        }
+
         private double _deviationX;
+        /// <summary>偏差 |Reference - Effective|</summary>
         public double DeviationX
         {
             get => _deviationX;
@@ -183,22 +277,14 @@ namespace Module.ViewModels
         }
 
         public NeedleCalibrationVerifyViewModel(
-            IPositionMotionController motionController,
-            IParameterStorage parameterStorage,
+            INeedleAlignerMotionService needleMotion,
             ILoggerService logger,
             ILocalizationService localization,
-            IDialogService dialogService,
-            IEventAggregator eventAggregator,
-            NeedleCompensationManager compensationManager,
             IRecipePoolService recipePoolService)
         {
-            _motionController = motionController;
-            _parameterStorage = parameterStorage;
+            _needleMotion = needleMotion;
             _logger = logger;
             _localization = localization;
-            _dialogService = dialogService;
-            _eventAggregator = eventAggregator;
-            _compensationManager = compensationManager;
             _recipePoolService = recipePoolService;
 
             ExecuteVerificationCommand = new DelegateCommand(async () => await ExecuteVerificationAsync(), () => CanVerify)
@@ -213,72 +299,105 @@ namespace Module.ViewModels
             _ = InitializeAsync();
         }
 
-        /// <summary>初始化：自动加载最近验证记录</summary>
+        /// <summary>初始化：加载基准参考值与最近验证记录</summary>
         private async Task InitializeAsync()
         {
+            await RefreshCalibrationReferenceAsync();
             await TryAutoLoadConfigAsync();
         }
 
         /// <summary>
-        /// 执行校准验证流程：移动到校准器位置，4点寻边获取XY中心，接触测量Z高度，与参考值比较计算偏差
+        /// 执行验证：INeedleAlignerMotionService 四点寻针 → 读取硬件 TCP → 与 ReferenceXYZ 对比
+        /// 公式：Deviation = |ReferenceXYZ - (Measured + ActiveTcp)|
         /// </summary>
         private async Task ExecuteVerificationAsync()
         {
             IsVerifying = true;
             VerificationProgress = 0;
-            VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_Preparing", "Preparing...");
+            VerificationStatus = L("NeedleVerify_Status_Preparing", "准备验证...");
             ResetResults();
+
+            _verificationCts?.Dispose();
+            _verificationCts = new CancellationTokenSource();
+            var token = _verificationCts.Token;
 
             var verificationSucceeded = false;
             try
             {
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_Start", "Verification started - System {0}"), SelectedSystemNumber.ToString());
+                AddLog(L("NeedleVerify_Log_Start", "开始验证 - 系统 {0}"), SelectedSystemNumber.ToString());
 
-                var stationId = $"NeedleCalibration_System{SelectedSystemNumber}";
-                if (!_motionController.CanExecuteMotion(stationId))
+                VerificationStatus = L("NeedleVerify_Status_LoadingParams", "加载校准参数...");
+                var parameters = await LoadLatestCalibrationParamsAsync();
+                if (parameters?.ReferenceXYZ == null)
                 {
-                    VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_CannotMove", "Cannot execute motion");
-                    AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_CannotMove", "Motion not available for station: {0}"), stationId);
+                    VerificationStatus = L("NeedleVerify_Status_NoCalibrationConfig", "未找到校准配置");
+                    AddLog(L("NeedleVerify_Log_NoCalibrationConfig", "未找到系统 {0} 的校准 JSON，请先在 NeedleTcp 页完成配置"), SelectedSystemNumber.ToString());
                     return;
                 }
 
-                VerificationProgress = 10;
-                VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_MovingToCalibrator", "Moving to calibrator...");
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_MovingToCalibrator", "Moving to calibrator position..."));
+                ReferenceX = parameters.ReferenceXYZ.X;
+                ReferenceY = parameters.ReferenceXYZ.Y;
+                ReferenceZ = parameters.ReferenceXYZ.Z;
 
-                var parameters = _parameterStorage.Load<NeedleCalibrationParams>($"NeedleCalibration_System{SelectedSystemNumber}");
-                double targetX = parameters?.ReferenceXYZ?.X ?? 0;
-                double targetY = parameters?.ReferenceXYZ?.Y ?? 0;
-                double targetZ = parameters?.ReferenceXYZ?.Z ?? 0;
-                await MoveToPositionSafelyAsync(stationId, targetX, targetY, targetZ, 10.0);
+                VerificationProgress = 5;
+                VerificationStatus = L("NeedleVerify_Status_ReadingActiveTcp", "读取硬件已生效 TCP...");
+                var activeTcp = await ReadActiveTcpCompensationAsync(parameters);
+                ActiveTcpX = activeTcp.x;
+                ActiveTcpY = activeTcp.y;
+                ActiveTcpZ = activeTcp.z;
+                AddLog(L("NeedleVerify_Log_ActiveTcp", "硬件已生效 TCP: X={0:F4}, Y={1:F4}, Z={2:F4}"),
+                    ActiveTcpX.ToString("F4"), ActiveTcpY.ToString("F4"), ActiveTcpZ.ToString("F4"));
+                AddLog(L("NeedleVerify_Log_Reference", "固定基准 Reference: X={0:F4}, Y={1:F4}, Z={2:F4}"),
+                    ReferenceX.ToString("F4"), ReferenceY.ToString("F4"), ReferenceZ.ToString("F4"));
 
-                VerificationProgress = 30;
-                VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_EdgeSearch", "4-point edge search...");
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_EdgeSearch", "Executing 4-point edge search for XY center..."));
+                var parametersSnapshot = parameters.Clone();
+                var systemNumber = SelectedSystemNumber;
 
-                var teachResult = await _motionController.TeachAsync(stationId);
-                double currentX = teachResult.TryGetValue("X", out var tx) ? tx : 0;
-                double currentY = teachResult.TryGetValue("Y", out var ty) ? ty : 0;
+                var progress = new Progress<(string Status, double Progress)>(p =>
+                {
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        VerificationStatus = p.Status;
+                        VerificationProgress = Math.Min(85, 10 + p.Progress * 0.75);
+                    });
+                });
 
-                VerificationProgress = 50;
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_XYCenter", "XY center measured: X={0:F4}, Y={1:F4}"), currentX.ToString("F4"), currentY.ToString("F4"));
+                VerificationStatus = L("NeedleVerify_Status_EdgeSearch", "四点寻边测量...");
+                AddLog(L("NeedleVerify_Log_EdgeSearch", "执行四点寻边与 Z 接触测量（与 NeedleTcp 校准流程一致）..."));
 
-                VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_ZContact", "Z contact measurement...");
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_ZContact", "Executing Z contact measurement..."));
+                var result = await Task.Run(async () =>
+                    await _needleMotion.ExecuteNeedleCalibrationAsync(
+                        parametersSnapshot, systemNumber, progress, token), token);
 
-                double currentZ = teachResult.TryGetValue("Z", out var tz) ? tz : 0;
+                if (!result.Success)
+                {
+                    VerificationStatus = L("NeedleVerify_Status_Error", "验证异常");
+                    AddLog(L("NeedleVerify_Log_MeasureFailed", "寻针测量失败: {0}"), result.ErrorMessage ?? "-");
+                    return;
+                }
 
-                VerificationProgress = 70;
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_ZMeasured", "Z height measured: Z={0:F4}"), currentZ.ToString("F4"));
+                MeasuredX = result.MeasuredCenter.X;
+                MeasuredY = result.MeasuredCenter.Y;
+                MeasuredZ = result.MeasuredHeight;
 
-                VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_Comparing", "Comparing with reference...");
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_Comparing", "Comparing with reference values..."));
+                AddLog(L("NeedleVerify_Log_Measured", "实测坐标: X={0:F4}, Y={1:F4}, Z={2:F4}"),
+                    MeasuredX.ToString("F4"), MeasuredY.ToString("F4"), MeasuredZ.ToString("F4"));
 
-                DeviationX = Math.Abs(currentX - targetX);
-                DeviationY = Math.Abs(currentY - targetY);
-                DeviationZ = Math.Abs(currentZ - targetZ);
+                // 有效坐标 = 实测 + 硬件已生效总补偿
+                EffectiveX = MeasuredX + ActiveTcpX;
+                EffectiveY = MeasuredY + ActiveTcpY;
+                EffectiveZ = MeasuredZ + ActiveTcpZ;
 
-                VerificationProgress = 85;
+                VerificationStatus = L("NeedleVerify_Status_Comparing", "与固定基准对比...");
+                AddLog(L("NeedleVerify_Log_Effective", "有效坐标 (实测+TCP): X={0:F4}, Y={1:F4}, Z={2:F4}"),
+                    EffectiveX.ToString("F4"), EffectiveY.ToString("F4"), EffectiveZ.ToString("F4"));
+
+                // 偏差 = |ReferenceXYZ - Effective|
+                DeviationX = Math.Abs(ReferenceX - EffectiveX);
+                DeviationY = Math.Abs(ReferenceY - EffectiveY);
+                DeviationZ = Math.Abs(ReferenceZ - EffectiveZ);
+
+                VerificationProgress = 90;
 
                 var (xResult, xColor) = EvaluateDeviation(DeviationX);
                 var (yResult, yColor) = EvaluateDeviation(DeviationY);
@@ -297,34 +416,126 @@ namespace Module.ViewModels
                 OverallResultColor = worst.Item2;
 
                 VerificationProgress = 100;
-                VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_Completed", "Verification completed");
+                VerificationStatus = L("NeedleVerify_Status_Completed", "验证完成");
 
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_Completed",
-                    "Verification completed - X:{0:F4}({1}) Y:{2:F4}({3}) Z:{4:F4}({5}) Overall:{6}"),
+                AddLog(L("NeedleVerify_Log_Completed",
+                    "验证完成 - 偏差 X:{0:F4}({1}) Y:{2:F4}({3}) Z:{4:F4}({5}) 综合:{6}"),
                     DeviationX.ToString("F4"), ResultX,
                     DeviationY.ToString("F4"), ResultY,
                     DeviationZ.ToString("F4"), ResultZ,
                     OverallResult);
 
-                _logger?.Info($"Needle calibration verification completed - System{SelectedSystemNumber}: " +
-                              $"dX={DeviationX:F4}({ResultX}) dY={DeviationY:F4}({ResultY}) dZ={DeviationZ:F4}({ResultZ}) Overall={OverallResult}");
+                _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber}验证完成: " +
+                              $"Measured=({MeasuredX:F4},{MeasuredY:F4},{MeasuredZ:F4}) " +
+                              $"ActiveTcp=({ActiveTcpX:F4},{ActiveTcpY:F4},{ActiveTcpZ:F4}) " +
+                              $"Effective=({EffectiveX:F4},{EffectiveY:F4},{EffectiveZ:F4}) " +
+                              $"Ref=({ReferenceX:F4},{ReferenceY:F4},{ReferenceZ:F4}) " +
+                              $"Dev=({DeviationX:F4},{DeviationY:F4},{DeviationZ:F4}) Overall={OverallResult}");
 
                 verificationSucceeded = true;
             }
+            catch (OperationCanceledException)
+            {
+                VerificationStatus = L("NeedleVerify_Status_Cancelled", "验证已取消");
+                AddLog(L("NeedleVerify_Log_Cancelled", "验证已取消"));
+            }
             catch (Exception ex)
             {
-                VerificationStatus = _localization.GetResourceOrDefault("NeedleVerify_Status_Error", "Error");
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_Error", "Verification error: {0}"), ex.Message);
-                _logger?.Error($"Needle calibration verification failed: {ex.Message}");
+                VerificationStatus = L("NeedleVerify_Status_Error", "验证异常");
+                AddLog(L("NeedleVerify_Log_Error", "验证异常: {0}"), ex.Message);
+                _logger?.Error($"[NeedleVerify] 验证失败: {ex.Message}");
             }
             finally
             {
                 IsVerifying = false;
+                _verificationCts?.Dispose();
+                _verificationCts = null;
             }
 
-            // 验证完成后自动保存到默认路径（时间戳命名）
             if (verificationSucceeded)
                 await SaveVerificationRecordAsync();
+        }
+
+        /// <summary>从 NeedleTcp 同款路径加载最新校准 JSON</summary>
+        private async Task<NeedleCalibrationParams> LoadLatestCalibrationParamsAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService?.CurrentPoolName ?? "Default";
+                var extKey = $"NeedleAligner_CurrentFile_System{SelectedSystemNumber}";
+                var extData = await _recipePoolService.GetExtensionDataAsync<NeedleAlignerFileRecord>(poolName, extKey);
+
+                if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                    return await LoadCalibrationParamsFromFileAsync(extData.FilePath);
+
+                var calibrationDir = GetCalibrationDirectory(SelectedSystemNumber);
+                var latest = Directory
+                    .EnumerateFiles(calibrationDir, $"NeedleCalibration_System{SelectedSystemNumber}_*.json")
+                    .OrderByDescending(File.GetLastWriteTime)
+                    .FirstOrDefault();
+
+                if (latest != null)
+                    return await LoadCalibrationParamsFromFileAsync(latest);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"[NeedleVerify] 加载校准参数失败: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        private static async Task<NeedleCalibrationParams> LoadCalibrationParamsFromFileAsync(string filePath)
+        {
+            var json = await File.ReadAllTextAsync(filePath);
+            return JsonConvert.DeserializeObject<NeedleCalibrationParams>(json);
+        }
+
+        /// <summary>切换系统时刷新界面上的固定基准显示</summary>
+        private async Task RefreshCalibrationReferenceAsync()
+        {
+            var parameters = await LoadLatestCalibrationParamsAsync();
+            if (parameters?.ReferenceXYZ == null) return;
+
+            ReferenceX = parameters.ReferenceXYZ.X;
+            ReferenceY = parameters.ReferenceXYZ.Y;
+            ReferenceZ = parameters.ReferenceXYZ.Z;
+
+            var activeTcp = await ReadActiveTcpCompensationAsync(parameters);
+            ActiveTcpX = activeTcp.x;
+            ActiveTcpY = activeTcp.y;
+            ActiveTcpZ = activeTcp.z;
+        }
+
+        /// <summary>从配方池全局变量读取当前硬件已生效 TCP 总补偿</summary>
+        private async Task<(double x, double y, double z)> ReadActiveTcpCompensationAsync(NeedleCalibrationParams parameters)
+        {
+            if (_recipePoolService == null || parameters == null)
+                return (0, 0, 0);
+
+            var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+            var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+
+            var xName = ResolveLinkedVarName(parameters.CompensationXLinkedVar, NeedleAlignerGlobalVariableNames.DefaultCompXLinkedVar);
+            var yName = ResolveLinkedVarName(parameters.CompensationYLinkedVar, NeedleAlignerGlobalVariableNames.DefaultCompYLinkedVar);
+            var zName = ResolveLinkedVarName(parameters.CompensationZLinkedVar, NeedleAlignerGlobalVariableNames.DefaultCompZLinkedVar);
+
+            return (
+                GetDoubleGlobalVariableValue(variables, xName),
+                GetDoubleGlobalVariableValue(variables, yName),
+                GetDoubleGlobalVariableValue(variables, zName));
+        }
+
+        private static string ResolveLinkedVarName(string linkedVar, string defaultName)
+            => string.IsNullOrWhiteSpace(linkedVar) ? defaultName : linkedVar;
+
+        private static double GetDoubleGlobalVariableValue(IEnumerable<GlobalVariable> variables, string name)
+        {
+            var variable = variables?.FirstOrDefault(v =>
+                string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (variable == null) return 0;
+
+            return double.TryParse(variable.Value, out var value) ? value : 0;
         }
 
         /// <summary>保存验证记录到默认目录，文件名带时间戳，并清理过期文件</summary>
@@ -346,13 +557,13 @@ namespace Module.ViewModels
                 await SaveCurrentFileToRecipePoolAsync();
                 QueueCleanupOldConfigFiles(configDir, filePath, SelectedSystemNumber);
 
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_ReportSaved", "Report saved: {0}"), fileName);
+                AddLog(L("NeedleVerify_Log_ReportSaved", "报告已保存: {0}"), fileName);
                 _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber}验证记录已保存: {filePath}");
             }
             catch (Exception ex)
             {
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_ReportError", "Report save error: {0}"), ex.Message);
-                _logger?.Error($"Needle verification record save failed: {ex.Message}");
+                AddLog(L("NeedleVerify_Log_ReportError", "报告保存失败: {0}"), ex.Message);
+                _logger?.Error($"[NeedleVerify] 验证记录保存失败: {ex.Message}");
             }
         }
 
@@ -373,7 +584,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_LoadError", "Load error: {0}"), ex.Message);
+                AddLog(L("NeedleVerify_Log_LoadError", "加载失败: {0}"), ex.Message);
                 _logger?.Error($"[NeedleVerify] 加载验证记录失败: {ex.Message}");
             }
         }
@@ -383,7 +594,7 @@ namespace Module.ViewModels
         {
             if (!File.Exists(filePath))
             {
-                AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_LoadNotFound", "File not found: {0}"), filePath);
+                AddLog(L("NeedleVerify_Log_LoadNotFound", "文件不存在: {0}"), filePath);
                 return;
             }
 
@@ -394,7 +605,7 @@ namespace Module.ViewModels
             ApplyRecord(record);
             CurrentFilePath = filePath;
             CurrentFileName = Path.GetFileName(filePath);
-            AddLog(_localization.GetResourceOrDefault("NeedleVerify_Log_LoadSuccess", "Loaded: {0}"), CurrentFileName);
+            AddLog(L("NeedleVerify_Log_LoadSuccess", "已加载: {0}"), CurrentFileName);
             _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber}验证记录已加载: {filePath}");
         }
 
@@ -417,7 +628,7 @@ namespace Module.ViewModels
                 var configDir = GetVerificationDirectory(SelectedSystemNumber);
                 var latest = Directory
                     .EnumerateFiles(configDir, $"NeedleVerify_System{SelectedSystemNumber}_*.json")
-                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .OrderByDescending(File.GetLastWriteTime)
                     .FirstOrDefault();
 
                 if (latest != null)
@@ -438,6 +649,18 @@ namespace Module.ViewModels
             {
                 SystemNumber = SelectedSystemNumber,
                 SavedAt = DateTime.Now,
+                MeasuredX = MeasuredX,
+                MeasuredY = MeasuredY,
+                MeasuredZ = MeasuredZ,
+                ActiveTcpX = ActiveTcpX,
+                ActiveTcpY = ActiveTcpY,
+                ActiveTcpZ = ActiveTcpZ,
+                EffectiveX = EffectiveX,
+                EffectiveY = EffectiveY,
+                EffectiveZ = EffectiveZ,
+                ReferenceX = ReferenceX,
+                ReferenceY = ReferenceY,
+                ReferenceZ = ReferenceZ,
                 DeviationX = DeviationX,
                 DeviationY = DeviationY,
                 DeviationZ = DeviationZ,
@@ -452,6 +675,19 @@ namespace Module.ViewModels
 
         private void ApplyRecord(NeedleVerifyRecord record)
         {
+            MeasuredX = record.MeasuredX;
+            MeasuredY = record.MeasuredY;
+            MeasuredZ = record.MeasuredZ;
+            ActiveTcpX = record.ActiveTcpX;
+            ActiveTcpY = record.ActiveTcpY;
+            ActiveTcpZ = record.ActiveTcpZ;
+            EffectiveX = record.EffectiveX;
+            EffectiveY = record.EffectiveY;
+            EffectiveZ = record.EffectiveZ;
+            ReferenceX = record.ReferenceX;
+            ReferenceY = record.ReferenceY;
+            ReferenceZ = record.ReferenceZ;
+
             DeviationX = record.DeviationX;
             DeviationY = record.DeviationY;
             DeviationZ = record.DeviationZ;
@@ -484,15 +720,21 @@ namespace Module.ViewModels
 
         private string BuildReportSummary(DateTime timestamp)
         {
-            return $"===== {_localization.GetResourceOrDefault("NeedleVerify_Report_Title", "Needle Calibration Verification Report")} =====\n" +
-                   $"{_localization.GetResourceOrDefault("NeedleVerify_Report_Time", "Time")}: {timestamp:yyyy-MM-dd HH:mm:ss}\n" +
-                   $"{_localization.GetResourceOrDefault("NeedleVerify_Report_System", "System")}: {SelectedSystemNumber}\n" +
+            var measuredLabel = L("NeedleVerify_Measured", "实测");
+            var tcpLabel = L("NeedleVerify_ActiveTcp", "已生效TCP");
+            var effectiveLabel = L("NeedleVerify_Effective", "有效坐标");
+            var refLabel = L("NeedleVerify_Reference", "固定基准");
+            var devLabel = L("NeedleVerify_Report_Deviation", "偏差");
+
+            return $"===== {L("NeedleVerify_Report_Title", "针头校准验证报告")} =====\n" +
+                   $"{L("NeedleVerify_Report_Time", "时间")}: {timestamp:yyyy-MM-dd HH:mm:ss}\n" +
+                   $"{L("NeedleVerify_Report_System", "系统")}: {SelectedSystemNumber}\n" +
                    $"----------------------------------------\n" +
-                   $"X: {_localization.GetResourceOrDefault("NeedleVerify_Report_Deviation", "Deviation")} = {DeviationX:F4}mm  [{ResultX}]\n" +
-                   $"Y: {_localization.GetResourceOrDefault("NeedleVerify_Report_Deviation", "Deviation")} = {DeviationY:F4}mm  [{ResultY}]\n" +
-                   $"Z: {_localization.GetResourceOrDefault("NeedleVerify_Report_Deviation", "Deviation")} = {DeviationZ:F4}mm  [{ResultZ}]\n" +
+                   $"X: {measuredLabel}={MeasuredX:F4}  {tcpLabel}={ActiveTcpX:F4}  {effectiveLabel}={EffectiveX:F4}  {refLabel}={ReferenceX:F4}  {devLabel}={DeviationX:F4}mm [{ResultX}]\n" +
+                   $"Y: {measuredLabel}={MeasuredY:F4}  {tcpLabel}={ActiveTcpY:F4}  {effectiveLabel}={EffectiveY:F4}  {refLabel}={ReferenceY:F4}  {devLabel}={DeviationY:F4}mm [{ResultY}]\n" +
+                   $"Z: {measuredLabel}={MeasuredZ:F4}  {tcpLabel}={ActiveTcpZ:F4}  {effectiveLabel}={EffectiveZ:F4}  {refLabel}={ReferenceZ:F4}  {devLabel}={DeviationZ:F4}mm [{ResultZ}]\n" +
                    $"----------------------------------------\n" +
-                   $"{_localization.GetResourceOrDefault("NeedleVerify_Report_Overall", "Overall")}: {OverallResult}\n" +
+                   $"{L("NeedleVerify_Report_Overall", "综合结果")}: {OverallResult}\n" +
                    $"========================================\n";
         }
 
@@ -509,6 +751,16 @@ namespace Module.ViewModels
             {
                 _logger?.Warn($"[NeedleVerify] 保存文件记录到配方池失败: {ex.Message}");
             }
+        }
+
+        /// <summary>获取 NeedleTcp 校准参数目录：Config/Calibration/System{N}</summary>
+        private static string GetCalibrationDirectory(int systemNumber)
+        {
+            var dir = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Config", "Calibration", $"System{systemNumber}");
+            Directory.CreateDirectory(dir);
+            return dir;
         }
 
         /// <summary>获取验证记录目录：Config/Calibration/Verification/System{N}</summary>
@@ -561,25 +813,13 @@ namespace Module.ViewModels
             });
         }
 
-        private async Task MoveToPositionSafelyAsync(string stationId, double targetX, double targetY, double targetZ, double velocity)
-        {
-            var safeZPositions = new Dictionary<string, double> { { "DispZ", targetZ + SafeHeightOffset } };
-            await _motionController.GotoAsync(stationId, safeZPositions, velocity);
-
-            var horizontalPositions = new Dictionary<string, double> { { "DispX", targetX }, { "GantryY", targetY } };
-            await _motionController.GotoAsync(stationId, horizontalPositions, velocity);
-
-            var targetZPositions = new Dictionary<string, double> { { "DispZ", targetZ } };
-            await _motionController.GotoAsync(stationId, targetZPositions, velocity * 0.5);
-        }
-
         private (string result, Brush color) EvaluateDeviation(double deviation)
         {
             if (deviation <= 0.05)
-                return (_localization.GetResourceOrDefault("NeedleVerify_Result_Pass", "Pass"), new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)));
+                return (L("NeedleVerify_Result_Pass", "通过"), new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)));
             if (deviation <= 0.15)
-                return (_localization.GetResourceOrDefault("NeedleVerify_Result_Warning", "Warning"), new SolidColorBrush(Color.FromRgb(0xFF, 0x98, 0x00)));
-            return (_localization.GetResourceOrDefault("NeedleVerify_Result_Fail", "Fail"), new SolidColorBrush(Color.FromRgb(0xF4, 0x43, 0x36)));
+                return (L("NeedleVerify_Result_Warning", "警告"), new SolidColorBrush(Color.FromRgb(0xFF, 0x98, 0x00)));
+            return (L("NeedleVerify_Result_Fail", "失败"), new SolidColorBrush(Color.FromRgb(0xF4, 0x43, 0x36)));
         }
 
         private void ClearLog()
@@ -593,7 +833,7 @@ namespace Module.ViewModels
             {
                 var message = args.Length > 0 ? string.Format(format, args) : format;
                 var timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
-                System.Windows.Application.Current?.Dispatcher.Invoke(() => VerificationLogs.Add(timestamped));
+                Application.Current?.Dispatcher.Invoke(() => VerificationLogs.Add(timestamped));
             }
             catch
             {
@@ -602,18 +842,18 @@ namespace Module.ViewModels
 
         private void ResetResults()
         {
-            DeviationX = 0;
-            DeviationY = 0;
-            DeviationZ = 0;
-            ResultX = "-";
-            ResultY = "-";
-            ResultZ = "-";
+            MeasuredX = MeasuredY = MeasuredZ = 0;
+            EffectiveX = EffectiveY = EffectiveZ = 0;
+            DeviationX = DeviationY = DeviationZ = 0;
+            ResultX = ResultY = ResultZ = "-";
             ResultXColor = Brushes.Gray;
             ResultYColor = Brushes.Gray;
             ResultZColor = Brushes.Gray;
             OverallResult = "-";
             OverallResultColor = Brushes.Gray;
         }
+
+        private string L(string key, string fallback) => _localization.GetResourceOrDefault(key, fallback);
     }
 
     /// <summary>验证记录 JSON 模型</summary>
@@ -621,6 +861,18 @@ namespace Module.ViewModels
     {
         public int SystemNumber { get; set; }
         public DateTime SavedAt { get; set; }
+        public double MeasuredX { get; set; }
+        public double MeasuredY { get; set; }
+        public double MeasuredZ { get; set; }
+        public double ActiveTcpX { get; set; }
+        public double ActiveTcpY { get; set; }
+        public double ActiveTcpZ { get; set; }
+        public double EffectiveX { get; set; }
+        public double EffectiveY { get; set; }
+        public double EffectiveZ { get; set; }
+        public double ReferenceX { get; set; }
+        public double ReferenceY { get; set; }
+        public double ReferenceZ { get; set; }
         public double DeviationX { get; set; }
         public double DeviationY { get; set; }
         public double DeviationZ { get; set; }

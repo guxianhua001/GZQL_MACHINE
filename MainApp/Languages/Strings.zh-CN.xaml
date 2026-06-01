@@ -1821,6 +1821,44 @@
     <sys:String x:Key="NeedleVerify_Warning">警告</sys:String>
     <sys:String x:Key="NeedleVerify_Fail">失败</sys:String>
     <sys:String x:Key="NeedleVerify_OverallResult">综合结果</sys:String>
+    <sys:String x:Key="NeedleVerify_CompareFormulaTip">偏差 = |固定基准 ReferenceXYZ − (实测坐标 + 硬件已生效 TCP 总补偿)|</sys:String>
+    <sys:String x:Key="NeedleVerify_Measured">实测</sys:String>
+    <sys:String x:Key="NeedleVerify_ActiveTcp">已生效TCP</sys:String>
+    <sys:String x:Key="NeedleVerify_Effective">有效坐标</sys:String>
+    <sys:String x:Key="NeedleVerify_Reference">固定基准</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Preparing">准备验证...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_LoadingParams">加载校准参数...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_ReadingActiveTcp">读取硬件已生效 TCP...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_NoCalibrationConfig">未找到校准配置</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_EdgeSearch">四点寻边测量...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Comparing">与固定基准对比...</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Completed">验证完成</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Error">验证异常</sys:String>
+    <sys:String x:Key="NeedleVerify_Status_Cancelled">验证已取消</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Start">开始验证 - 系统 {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_NoCalibrationConfig">未找到系统 {0} 的校准 JSON，请先在 NeedleTcp 页完成配置</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_ActiveTcp">硬件已生效 TCP: X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Reference">固定基准 Reference: X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_EdgeSearch">执行四点寻边与 Z 接触测量（与 NeedleTcp 校准流程一致）...</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_MeasureFailed">寻针测量失败: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Measured">实测坐标: X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Effective">有效坐标 (实测+TCP): X={0:F4}, Y={1:F4}, Z={2:F4}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Completed">验证完成 - 偏差 X:{0:F4}({1}) Y:{2:F4}({3}) Z:{4:F4}({5}) 综合:{6}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Cancelled">验证已取消</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_Error">验证异常: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_ReportSaved">报告已保存: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_ReportError">报告保存失败: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_LoadError">加载失败: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_LoadNotFound">文件不存在: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_LoadSuccess">已加载: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Result_Pass">通过</sys:String>
+    <sys:String x:Key="NeedleVerify_Result_Warning">警告</sys:String>
+    <sys:String x:Key="NeedleVerify_Result_Fail">失败</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Title">针头校准验证报告</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Time">时间</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_System">系统</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Deviation">偏差</sys:String>
+    <sys:String x:Key="NeedleVerify_Report_Overall">综合结果</sys:String>
     <sys:String x:Key="DispenseDetail_Title">点胶步骤配置</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseMode">点胶模式</sys:String>
     <sys:String x:Key="DispenseDetail_ModeDot">单点点胶(Dot)</sys:String>
