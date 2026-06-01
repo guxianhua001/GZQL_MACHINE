@@ -1,4 +1,5 @@
 using Core.Abstraction;
+using Core.Constants;
 using Core.Models;
 using Core.Services;
 using Core.Utilities;
@@ -380,9 +381,10 @@ namespace Module.ViewModels
             _ = InitializeAsync().ConfigureAwait(false);
         }
 
-        /// <summary>初始化：先加载全局变量，再自动加载最近配置文件</summary>
+        /// <summary>初始化：创建默认全局变量，加载变量列表，再自动加载 JSON 配置</summary>
         private async Task InitializeAsync()
         {
+            await EnsureDefaultCompGlobalVariablesAsync();
             await LoadGlobalVariablesAsync();
             await TryAutoLoadConfigAsync();
         }
@@ -594,30 +596,21 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 将 CalculatedComp 写入全局变量（链接变量或默认变量名），单向写入不回读
+        /// 将 CalculatedComp 写入用户链接的 Double 全局变量（链接名仅保存在 JSON）
         /// </summary>
         private async Task WriteCompensationToGlobalVariablesAsync()
         {
             var poolId = _recipePoolService?.CurrentPoolName ?? "Default";
             var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
 
-            // 链接目标与默认变量均写入 CalculatedComp（偏差Δ + 表达式）
+            RemoveLegacyCompGlobalVariableEntries(variables);
+
             if (!string.IsNullOrEmpty(CompensationXLinkedVar))
                 UpdateOrAddGlobalVariable(variables, CompensationXLinkedVar, CalculatedCompX.ToString("F6"), "针头校准X补偿", GlobalVariableType.Double);
             if (!string.IsNullOrEmpty(CompensationYLinkedVar))
                 UpdateOrAddGlobalVariable(variables, CompensationYLinkedVar, CalculatedCompY.ToString("F6"), "针头校准Y补偿", GlobalVariableType.Double);
             if (!string.IsNullOrEmpty(CompensationZLinkedVar))
                 UpdateOrAddGlobalVariable(variables, CompensationZLinkedVar, CalculatedCompZ.ToString("F6"), "针头校准Z补偿", GlobalVariableType.Double);
-
-            // 默认变量名也写入计算结果
-            UpdateOrAddGlobalVariable(variables, "NeedleAligner_CompX", CalculatedCompX.ToString("F6"), "针头校准X补偿", GlobalVariableType.Double);
-            UpdateOrAddGlobalVariable(variables, "NeedleAligner_CompY", CalculatedCompY.ToString("F6"), "针头校准Y补偿", GlobalVariableType.Double);
-            UpdateOrAddGlobalVariable(variables, "NeedleAligner_CompZ", CalculatedCompZ.ToString("F6"), "针头校准Z补偿", GlobalVariableType.Double);
-
-            // 链接关系名称持久化为 String 类型，避免被数值型下拉框扫描到
-            UpdateOrAddGlobalVariable(variables, "NeedleAligner_CompX_LinkedVar", CompensationXLinkedVar ?? "", "针头X补偿链接的全局变量名", GlobalVariableType.String);
-            UpdateOrAddGlobalVariable(variables, "NeedleAligner_CompY_LinkedVar", CompensationYLinkedVar ?? "", "针头Y补偿链接的全局变量名", GlobalVariableType.String);
-            UpdateOrAddGlobalVariable(variables, "NeedleAligner_CompZ_LinkedVar", CompensationZLinkedVar ?? "", "针头Z补偿链接的全局变量名", GlobalVariableType.String);
 
             for (int i = 0; i < variables.Count; i++)
                 variables[i].Index = i + 1;
@@ -690,6 +683,132 @@ namespace Module.ViewModels
                     Comment = comment
                 });
             }
+        }
+
+        private static string ResolveCompXLinkedVar(string linkedVarFromJson) =>
+            string.IsNullOrWhiteSpace(linkedVarFromJson)
+                ? NeedleAlignerGlobalVariableNames.DefaultCompXLinkedVar
+                : linkedVarFromJson;
+
+        private static string ResolveCompYLinkedVar(string linkedVarFromJson) =>
+            string.IsNullOrWhiteSpace(linkedVarFromJson)
+                ? NeedleAlignerGlobalVariableNames.DefaultCompYLinkedVar
+                : linkedVarFromJson;
+
+        private static string ResolveCompZLinkedVar(string linkedVarFromJson) =>
+            string.IsNullOrWhiteSpace(linkedVarFromJson)
+                ? NeedleAlignerGlobalVariableNames.DefaultCompZLinkedVar
+                : linkedVarFromJson;
+
+        /// <summary>无 JSON 配置时应用默认补偿链接，并同步到 Parameters</summary>
+        private async Task ApplyDefaultLinkedVariablesAsync()
+        {
+            await EnsureDefaultCompGlobalVariablesAsync();
+            await LoadGlobalVariablesAsync();
+
+            CompensationXLinkedVar = NeedleAlignerGlobalVariableNames.DefaultCompXLinkedVar;
+            CompensationYLinkedVar = NeedleAlignerGlobalVariableNames.DefaultCompYLinkedVar;
+            CompensationZLinkedVar = NeedleAlignerGlobalVariableNames.DefaultCompZLinkedVar;
+            Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
+            Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
+            Parameters.CompensationZLinkedVar = CompensationZLinkedVar;
+        }
+
+        /// <summary>在配方池创建默认 Double 补偿变量（若不存在）</summary>
+        private async Task EnsureDefaultCompGlobalVariablesAsync()
+        {
+            if (_recipePoolService == null) return;
+
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
+                var changed = false;
+
+                RemoveLegacyCompGlobalVariableEntries(variables);
+
+                changed |= EnsureDoubleGlobalVariable(variables,
+                    NeedleAlignerGlobalVariableNames.DefaultCompXLinkedVar, "针头对针X补偿（默认）");
+                changed |= EnsureDoubleGlobalVariable(variables,
+                    NeedleAlignerGlobalVariableNames.DefaultCompYLinkedVar, "针头对针Y补偿（默认）");
+                changed |= EnsureDoubleGlobalVariable(variables,
+                    NeedleAlignerGlobalVariableNames.DefaultCompZLinkedVar, "针头对针Z补偿（默认）");
+
+                if (!changed) return;
+
+                for (int i = 0; i < variables.Count; i++)
+                    variables[i].Index = i + 1;
+
+                await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+                _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>()?.Publish(poolId);
+                _logger.Info("[NeedleAligner] 已创建默认补偿全局变量");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleAligner] 创建默认补偿全局变量失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>确保 JSON 指定的链接目标在全局变量池中存在</summary>
+        private async Task EnsureLinkedCompVariablesExistAsync(params string[] linkedVarNames)
+        {
+            if (_recipePoolService == null) return;
+
+            var names = linkedVarNames?.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToArray();
+            if (names == null || names.Length == 0) return;
+
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
+                var changed = false;
+
+                foreach (var name in names)
+                    changed |= EnsureDoubleGlobalVariable(variables, name, "针头对针补偿链接变量");
+
+                if (!changed) return;
+
+                for (int i = 0; i < variables.Count; i++)
+                    variables[i].Index = i + 1;
+
+                await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+                _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>()?.Publish(poolId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleAligner] 确保链接变量存在失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>全局变量池不存在时添加 Double 变量，初始值 0</summary>
+        private static bool EnsureDoubleGlobalVariable(List<GlobalVariable> variables, string name, string comment)
+        {
+            if (variables.Any(v => v.Name == name))
+                return false;
+
+            variables.Add(new GlobalVariable
+            {
+                Name = name,
+                Type = GlobalVariableType.Double,
+                Value = "0",
+                Comment = comment
+            });
+            return true;
+        }
+
+        /// <summary>
+        /// 清理旧版重复项：String 类型链接元数据、无 LinkedVar 后缀的重复 Double 变量
+        /// </summary>
+        private static void RemoveLegacyCompGlobalVariableEntries(List<GlobalVariable> variables)
+        {
+            variables.RemoveAll(v =>
+                (v.Type == GlobalVariableType.String &&
+                 (v.Name == NeedleAlignerGlobalVariableNames.DefaultCompXLinkedVar ||
+                  v.Name == NeedleAlignerGlobalVariableNames.DefaultCompYLinkedVar ||
+                  v.Name == NeedleAlignerGlobalVariableNames.DefaultCompZLinkedVar)) ||
+                (v.Name == NeedleAlignerGlobalVariableNames.LegacyCompXKey ||
+                 v.Name == NeedleAlignerGlobalVariableNames.LegacyCompYKey ||
+                 v.Name == NeedleAlignerGlobalVariableNames.LegacyCompZKey));
         }
 
         /// <summary>
@@ -938,12 +1057,19 @@ namespace Module.ViewModels
 
                     CompensationManager.LoadFromParameters(Parameters);
 
-                    CompensationXLinkedVar = Parameters.CompensationXLinkedVar;
-                    CompensationYLinkedVar = Parameters.CompensationYLinkedVar;
-                    CompensationZLinkedVar = Parameters.CompensationZLinkedVar;
+                    CompensationXLinkedVar = ResolveCompXLinkedVar(Parameters.CompensationXLinkedVar);
+                    CompensationYLinkedVar = ResolveCompYLinkedVar(Parameters.CompensationYLinkedVar);
+                    CompensationZLinkedVar = ResolveCompZLinkedVar(Parameters.CompensationZLinkedVar);
+                    Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
+                    Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
+                    Parameters.CompensationZLinkedVar = CompensationZLinkedVar;
                     CompensationXExpression = Parameters.CompensationXExpression;
                     CompensationYExpression = Parameters.CompensationYExpression;
                     CompensationZExpression = Parameters.CompensationZExpression;
+
+                    await EnsureLinkedCompVariablesExistAsync(
+                        CompensationXLinkedVar, CompensationYLinkedVar, CompensationZLinkedVar);
+                    await LoadGlobalVariablesAsync();
 
                     CurrentFilePath = filePath;
                     CurrentFileName = Path.GetFileName(filePath);
@@ -972,7 +1098,7 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>从配方池加载全局变量列表，刷新可链接列表并恢复链接关系</summary>
+        /// <summary>从配方池加载全局变量列表并刷新可链接集合（链接关系仅从 JSON 恢复）</summary>
         private async Task LoadGlobalVariablesAsync()
         {
             try
@@ -983,21 +1109,7 @@ namespace Module.ViewModels
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
 
                 AvailableGlobalVariables = new ObservableCollection<GlobalVariable>(variables);
-
-                // 仅保留 Double 类型供 GlobalVariableLinkControl 使用
                 RefreshLinkableGlobalVariables();
-
-                // 从全局变量池恢复链接关系（读取 String 类型的链接名记录）
-                var cxLink = variables.FirstOrDefault(v => v.Name == "NeedleAligner_CompX_LinkedVar");
-                var cyLink = variables.FirstOrDefault(v => v.Name == "NeedleAligner_CompY_LinkedVar");
-                var czLink = variables.FirstOrDefault(v => v.Name == "NeedleAligner_CompZ_LinkedVar");
-
-                if (cxLink != null && !string.IsNullOrEmpty(cxLink.Value))
-                    CompensationXLinkedVar = cxLink.Value;
-                if (cyLink != null && !string.IsNullOrEmpty(cyLink.Value))
-                    CompensationYLinkedVar = cyLink.Value;
-                if (czLink != null && !string.IsNullOrEmpty(czLink.Value))
-                    CompensationZLinkedVar = czLink.Value;
 
                 RaisePropertyChanged(nameof(IsCompensationXLinked));
                 RaisePropertyChanged(nameof(IsCompensationYLinked));
@@ -1300,7 +1412,8 @@ namespace Module.ViewModels
                     return;
                 }
 
-                _logger.Info($"[NeedleAligner] 系统{SystemNumber}无可加载的校准配置文件");
+                await ApplyDefaultLinkedVariablesAsync();
+                _logger.Info($"[NeedleAligner] 系统{SystemNumber}无可加载的校准配置文件，已应用默认补偿链接");
             }
             catch (Exception ex)
             {

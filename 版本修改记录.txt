@@ -1,6 +1,16 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.01 — NeedleAligner 补偿链接去重，默认 NeedleAligner_CompX/Y/Z_LinkedVar
+-------------------------------------------------------------------------------
+
+1. 启动时自动创建 Double 默认变量：NeedleAligner_CompX/Y/Z_LinkedVar
+2. 链接关系仅保存在 JSON（CompensationX/Y/ZLinkedVar），移除全局变量池 String 元数据
+3. 停止重复写入 NeedleAligner_CompX/Y/Z；保存时清理旧版重复项
+4. 新增 Core.Constants.NeedleAlignerGlobalVariableNames
+
+-------------------------------------------------------------------------------
+
 v2026.06.01 — NeedleCamera 默认补偿全局变量自动创建 + 链接 JSON 去重
 -------------------------------------------------------------------------------
 
