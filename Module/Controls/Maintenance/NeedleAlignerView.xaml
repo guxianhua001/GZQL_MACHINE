@@ -293,6 +293,7 @@
                                                      Margin="0,0,8,0" VerticalAlignment="Top" />
                             <TextBlock Grid.Column="1"
                                        Text="{lang:Lang NeedleAligner_ReferenceCoordinates}"
+                                       ToolTip="{lang:Lang NeedleAligner_ReferenceCoordinatesTip}"
                                        Style="{StaticResource SideCardHeaderTextStyle}"
                                        Foreground="{DynamicResource PrimaryHueMidBrush}" />
                         </Grid>

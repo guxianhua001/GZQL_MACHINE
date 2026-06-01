@@ -1728,25 +1728,25 @@
     <sys:String x:Key="NeedleAligner_ParameterOperations">参数操作</sys:String>
     <sys:String x:Key="NeedleAligner_SaveParameters">保存参数</sys:String>
     <sys:String x:Key="NeedleAligner_LoadParameters">加载参数</sys:String>
-    <sys:String x:Key="NeedleAligner_CompensationManagement">补偿管理</sys:String>
-    <sys:String x:Key="NeedleAligner_ResetCompensation">重置补偿</sys:String>
-    <sys:String x:Key="NeedleAligner_ShowCompensationHistory">查看补偿历史</sys:String>
-    <sys:String x:Key="NeedleAligner_ApplyCompensation">应用补偿</sys:String>
+    <sys:String x:Key="NeedleAligner_CompensationManagement">TCP 补偿管理</sys:String>
+    <sys:String x:Key="NeedleAligner_ResetCompensation">重置 TCP 偏移</sys:String>
+    <sys:String x:Key="NeedleAligner_ShowCompensationHistory">查看 TCP 历史</sys:String>
+    <sys:String x:Key="NeedleAligner_ApplyCompensation">应用 TCP</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationLog">校准日志</sys:String>
     <sys:String x:Key="NeedleAligner_ClearLog">清空日志</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">补偿值</sys:String>
-    <sys:String x:Key="NeedleAligner_CalibrationDelta">偏差</sys:String>
+    <sys:String x:Key="NeedleAligner_CalibrationDelta">本次增量</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalculatedComp">应用后TCP总计: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">将以下 TCP 总计写入全局变量：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;（累计偏移 + 本次增量 + 表达式）&#10;固定基准不变，确定继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">TCP 总计已写入全局变量并保存参数</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">此操作将重置累计 TCP 偏移与待应用增量到零。&#10;固定基准 ReferenceXYZ 不会改变。&#10;此操作不可逆，确定要继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationReset">累计 TCP 偏移已重置为零</sys:String>
     <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | 增量 X={1:F3}, Y={2:F3}, Z={3:F3} | 累计TCP X={4:F3}, Y={5:F3}, Z={6:F3} | 操作员: {7}</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">确认应用补偿</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">确认应用 TCP</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">将应用以下 TCP 总计到运动控制器：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;固定基准不变，确定继续吗？</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">警告 - 重置补偿</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">警告 - 重置 TCP 偏移</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Compensation">累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_ResetError">重置补偿失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ResetError">重置 TCP 偏移失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_LinkGlobalVariable">链接全局变量</sys:String>
     <sys:String x:Key="NeedleAligner_UnlinkGlobalVariable">取消链接</sys:String>
     <sys:String x:Key="NeedleAligner_TeachSearchPoint">示教</sys:String>
@@ -1769,7 +1769,7 @@
     <sys:String x:Key="NeedleAligner_Status_RaiseSafeHeight">抬升到安全高度</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchCenterXY">搜索中心点XY</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchNeedleHeight">搜索针尖高度</sys:String>
-    <sys:String x:Key="NeedleAligner_Status_CalcCompensation">计算补偿值</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_CalcCompensation">计算 TCP 偏移</sys:String>
     <sys:String x:Key="NeedleAligner_Status_CalibrationDoneMotion">针头校准完成</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointX">在点{0}进行X方向搜索</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointY">在点{0}进行Y方向搜索</sys:String>
@@ -1782,10 +1782,10 @@
     <sys:String x:Key="NeedleAligner_Log_CalibrationResult">校准完成 - 当前: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Delta">本次增量: ΔX={0:F3}, ΔY={1:F3}, ΔZ={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ProcessResultError">处理校准结果失败: {0}</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_ApplyCompensationError">应用补偿值失败: {0}</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_HistoryHeader">=== 补偿历史记录（系统{0}）===</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_NoHistory">无补偿历史记录</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">显示补偿历史失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ApplyCompensationError">应用 TCP 失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryHeader">=== TCP 补偿历史（系统{0}）===</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_NoHistory">无 TCP 补偿历史</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">显示 TCP 历史失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ParametersSaved">对针系统{0}参数保存成功</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SaveError">保存参数失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_LoadError">加载参数失败: {0}</sys:String>

@@ -1728,14 +1728,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_ParameterOperations">Parameter Operations</sys:String>
     <sys:String x:Key="NeedleAligner_SaveParameters">Save Parameters</sys:String>
     <sys:String x:Key="NeedleAligner_LoadParameters">Load Parameters</sys:String>
-    <sys:String x:Key="NeedleAligner_CompensationManagement">Compensation Management</sys:String>
-    <sys:String x:Key="NeedleAligner_ResetCompensation">Reset Compensation</sys:String>
-    <sys:String x:Key="NeedleAligner_ShowCompensationHistory">Show Compensation History</sys:String>
-    <sys:String x:Key="NeedleAligner_ApplyCompensation">Apply Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_CompensationManagement">TCP Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_ResetCompensation">Reset TCP Offset</sys:String>
+    <sys:String x:Key="NeedleAligner_ShowCompensationHistory">Show TCP History</sys:String>
+    <sys:String x:Key="NeedleAligner_ApplyCompensation">Apply TCP</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationLog">Calibration Log</sys:String>
     <sys:String x:Key="NeedleAligner_ClearLog">Clear Log</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">Compensation</sys:String>
-    <sys:String x:Key="NeedleAligner_CalibrationDelta">Deviation</sys:String>
+    <sys:String x:Key="NeedleAligner_CalibrationDelta">Pending Increment</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalculatedComp">TCP total after apply: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">Write the following TCP total to global variables:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;(accumulated + pending increment + expression)&#10;Fixed reference unchanged. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">TCP total written to global variables and parameters saved</sys:String>
