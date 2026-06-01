@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -26,14 +27,32 @@ namespace MotionControl.Services
 
             var config = new MotionSystemConfig();
 
+            // 解析 <!-->轴卡配置文件<--> 节点下的 <Config path="..."/> 默认配置文件
+            foreach (var el in root.Elements("Config"))
+            {
+                var defaultPath = (string)el.Attribute("path");
+                if (!string.IsNullOrWhiteSpace(defaultPath))
+                    config.DefaultCardConfigPaths.Add(ResolveCardConfigPath(defaultPath));
+            }
+
+            var cardOrdinal = 0;
             foreach (var el in root.Elements("MotionCard"))
+            {
+                var cardPath = (string)el.Attribute("path");
+                var cardIndex = el.Attribute("index") != null
+                    ? (ushort)(int)el.Attribute("index")
+                    : (ushort)cardOrdinal;
+
                 config.Cards.Add(new CardConfig
                 {
+                    Index = cardIndex,
                     Id = (int)el.Attribute("actCardId"),
                     Name = (string)el.Attribute("name"),
                     Type = (string)el.Attribute("XCommandCard"),
-                    ConfigPath = (string)el.Attribute("path")
+                    ConfigPath = ResolveCardConfigPath(cardPath, cardIndex, config.DefaultCardConfigPaths)
                 });
+                cardOrdinal++;
+            }
 
             foreach (var el in root.Descendants("Axes").Elements("Axis"))
                 config.Axes.Add(new AxisConfig
@@ -126,6 +145,35 @@ namespace MotionControl.Services
         {
             if (string.IsNullOrWhiteSpace(s)) return null;
             return int.TryParse(s, out int val) ? val : null;
+        }
+
+        /// <summary>
+        /// 解析轴卡配置文件路径；MotionCard.path 为空时按卡序号回退到 DefaultCardConfigPaths
+        /// </summary>
+        private static string ResolveCardConfigPath(string path, int cardIndex, IList<string> defaultPaths)
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                return ResolveCardConfigPath(path);
+
+            if (defaultPaths != null && cardIndex >= 0 && cardIndex < defaultPaths.Count)
+                return defaultPaths[cardIndex];
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 将 hwcfg 中的相对路径（如 \Devices\config1.ini）解析为绝对路径
+        /// </summary>
+        private static string ResolveCardConfigPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+
+            if (Path.IsPathRooted(path) && path.Length > 1 && path[1] == ':')
+                return Path.GetFullPath(path);
+
+            var relativePath = path.TrimStart('\\', '/');
+            return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativePath));
         }
     }
 }

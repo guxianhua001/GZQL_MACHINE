@@ -1025,7 +1025,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Maintenance_Status_Ready">Ready</sys:String>
     <sys:String x:Key="Maintenance_Subtitle">Equipment Maintenance</sys:String>
     <sys:String x:Key="Maintenance_Tab_CameraAlignment">Camera Alignment</sys:String>
-    <sys:String x:Key="Maintenance_Tab_NeedleAligner">Needle Aligner</sys:String>
+    <sys:String x:Key="Maintenance_Tab_NeedleAligner">NeedleTcp</sys:String>
     <sys:String x:Key="Maintenance_Tab_CalibrationVerify">Calibration Verify</sys:String>
     <sys:String x:Key="Maintenance_StatusLabel">Status:</sys:String>
     <sys:String x:Key="Maintenance_Title">5. MAINTENANCE</sys:String>
@@ -1693,7 +1693,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleCamera_CurrentFile">Current Parameter File</sys:String>
     <sys:String x:Key="Nav_Maintenance">Maintenance</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">Search Point Settings</sys:String>
-    <sys:String x:Key="NeedleAligner_ReferenceCoordinates">Reference Coordinates</sys:String>
+    <sys:String x:Key="NeedleAligner_ReferenceCoordinates">Fixed Reference (ReferenceXYZ)</sys:String>
+    <sys:String x:Key="NeedleAligner_ReferenceCoordinatesTip">Incremental mode: this reference never auto-updates; all motions return to the same teach plane</sys:String>
+    <sys:String x:Key="NeedleAligner_TcpTotalOffset">Accumulated TCP Offset</sys:String>
+    <sys:String x:Key="NeedleAligner_PendingIncrement">Pending Increment</sys:String>
+    <sys:String x:Key="NeedleAligner_TcpTotalAfterApply">TCP Total After Apply</sys:String>
+    <sys:String x:Key="NeedleAligner_TcpCompensationNote">Incremental mode: fixed reference unchanged; each calibration adds deviation to accumulated TCP offset. For frequent needle changes and wear compensation.</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TcpTotalOffset">Accumulated TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TcpTotalAccumulated">Pending increment accumulated into TCP total; fixed reference unchanged</sys:String>
     <sys:String x:Key="NeedleAligner_MotionParameters">Motion Parameters</sys:String>
     <sys:String x:Key="NeedleAligner_SearchRange">Search Range (mm)</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCount">Z Search Count</sys:String>
@@ -1729,14 +1736,16 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_ClearLog">Clear Log</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">Compensation</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationDelta">Deviation</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">Calculated: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_ReferenceUpdated">Reference updated to current measurement; deviation and expressions cleared</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">TCP total after apply: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">Write the following TCP total to global variables:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;(accumulated + pending increment + expression)&#10;Fixed reference unchanged. Continue?</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">TCP total written to global variables and parameters saved</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">This will reset accumulated TCP offset and pending increment to zero.&#10;Fixed reference ReferenceXYZ will NOT change.&#10;This cannot be undone. Continue?</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationReset">Accumulated TCP offset reset to zero</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | Increment X={1:F3}, Y={2:F3}, Z={3:F3} | TCP X={4:F3}, Y={5:F3}, Z={6:F3} | Operator: {7}</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">Confirm Apply Compensation</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">Apply the following compensation values to the motion controller:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;Compensation will be reset to zero after applying. Continue?</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">Apply the following TCP total to the motion controller:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;Fixed reference unchanged. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">Warning - Reset Compensation</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">This operation will reset all compensation values to zero.&#10;This action is irreversible. Are you sure?</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CompensationReset">Compensation values have been reset to zero</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_Compensation">Compensation: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_Compensation">Accumulated TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ResetError">Reset compensation failed: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_LinkGlobalVariable">Link Global Variable</sys:String>
     <sys:String x:Key="NeedleAligner_UnlinkGlobalVariable">Unlink</sys:String>
@@ -1748,8 +1757,6 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeightTip">Z lift height before XY travel to avoid collision, in mm</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlign">System {0} align position taught: X={1:F3}, Y={2:F3}, Z={3:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignError">Teach align position failed: {0}</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">Write the following compensation values to global variables:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;And save parameters. Continue?</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">Compensation values written to global variables and parameters saved</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPoint">Search point {0} taught: X={1:F3}, Y={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPointError">Search point teach failed: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationLinked">Linked</sys:String>
@@ -1777,7 +1784,6 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ProcessResultError">Failed to process calibration result: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ApplyCompensationError">Failed to apply compensation: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_HistoryHeader">=== Compensation History (System {0}) ===</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | Comp X={1:F3}, Y={2:F3}, Z={3:F3} | Operator: {4}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_NoHistory">No compensation history</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">Failed to show compensation history: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ParametersSaved">System {0} parameters saved</sys:String>

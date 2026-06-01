@@ -150,10 +150,22 @@ namespace MotionControl.Services
                     }
                 }
 
-                // 步骤2：总线正常后下载配置文件
+                // 步骤2：总线正常后下载配置文件（path 为空时已在 HardwareConfigParser 中回退到轴卡配置文件节点）
+                var configPath = cardCfg.ConfigPath;
+                if (string.IsNullOrWhiteSpace(configPath))
+                {
+                    _logger.Warn($"Card {cardCfg.Index} ConfigPath is empty and no default config found in hwcfg.xml. Skipping config load.");
+                    _cards.Add(card);
+                    continue;
+                }
+
                 await Task.Run(() =>
                 {
-                    card.LoadConfig(cardCfg.ConfigPath);
+                    int loadResult = card.LoadConfig(configPath);
+                    if (loadResult != 0)
+                        _logger.Error($"Card {cardCfg.Index} failed to load config '{configPath}', error code: {loadResult}");
+                    else
+                        _logger.Info($"Card {cardCfg.Index} loaded config '{configPath}'");
                 });
                 _cards.Add(card);
             }

@@ -143,6 +143,9 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(CompensationX));
                     RaisePropertyChanged(nameof(CompensationY));
                     RaisePropertyChanged(nameof(CompensationZ));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetX));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetY));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                     RaiseCalibrationDeltaAndCalculatedChanged();
                 }
             }
@@ -279,71 +282,125 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>校准增量 ΔX = 基准X - 当前X</summary>
+        /// <summary>本次待应用增量 ΔX = 基准X - 当前X（仅校准后有效，应用后清零）</summary>
+        private double _pendingIncrementX;
+        private double _pendingIncrementY;
+        private double _pendingIncrementZ;
+
+        /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaX =>
             (Parameters?.ReferenceXYZ.X ?? 0) - (Parameters?.CurrentXYZ.X ?? 0);
 
-        /// <summary>校准增量 ΔY = 基准Y - 当前Y</summary>
+        /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaY =>
             (Parameters?.ReferenceXYZ.Y ?? 0) - (Parameters?.CurrentXYZ.Y ?? 0);
 
-        /// <summary>校准增量 ΔZ = 基准Z - 当前Z</summary>
+        /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaZ =>
             (Parameters?.ReferenceXYZ.Z ?? 0) - (Parameters?.CurrentXYZ.Z ?? 0);
 
-        /// <summary>X轴补偿值（绑定 CompensationManager）</summary>
+        /// <summary>本次待应用增量 X</summary>
+        public double PendingIncrementX
+        {
+            get => _pendingIncrementX;
+            private set
+            {
+                if (Math.Abs(_pendingIncrementX - value) < 0.0001) return;
+                _pendingIncrementX = value;
+                RaisePropertyChanged(nameof(PendingIncrementX));
+                RaisePropertyChanged(nameof(CalculatedCompX));
+            }
+        }
+
+        public double PendingIncrementY
+        {
+            get => _pendingIncrementY;
+            private set
+            {
+                if (Math.Abs(_pendingIncrementY - value) < 0.0001) return;
+                _pendingIncrementY = value;
+                RaisePropertyChanged(nameof(PendingIncrementY));
+                RaisePropertyChanged(nameof(CalculatedCompY));
+            }
+        }
+
+        public double PendingIncrementZ
+        {
+            get => _pendingIncrementZ;
+            private set
+            {
+                if (Math.Abs(_pendingIncrementZ - value) < 0.0001) return;
+                _pendingIncrementZ = value;
+                RaisePropertyChanged(nameof(PendingIncrementZ));
+                RaisePropertyChanged(nameof(CalculatedCompZ));
+            }
+        }
+
+        /// <summary>累计 TCP 补偿 X</summary>
+        public double TcpTotalOffsetX => CompensationManager?.TcpTotalOffsetX ?? 0;
+
+        /// <summary>累计 TCP 补偿 Y</summary>
+        public double TcpTotalOffsetY => CompensationManager?.TcpTotalOffsetY ?? 0;
+
+        /// <summary>累计 TCP 补偿 Z</summary>
+        public double TcpTotalOffsetZ => CompensationManager?.TcpTotalOffsetZ ?? 0;
+
+        /// <summary>X轴累计 TCP 补偿（可手动微调）</summary>
         public double CompensationX
         {
-            get => CompensationManager?.CompensationX ?? 0;
+            get => CompensationManager?.TcpTotalOffsetX ?? 0;
             set
             {
-                if (CompensationManager != null && Math.Abs(CompensationManager.CompensationX - value) > 0.0001)
+                if (CompensationManager != null && Math.Abs(CompensationManager.TcpTotalOffsetX - value) > 0.0001)
                 {
-                    CompensationManager.CompensationX = value;
+                    CompensationManager.TcpTotalOffsetX = value;
+                    RaisePropertyChanged(nameof(TcpTotalOffsetX));
                     RaisePropertyChanged(nameof(CalculatedCompX));
                 }
             }
         }
 
-        /// <summary>Y轴补偿值（绑定 CompensationManager）</summary>
+        /// <summary>Y轴累计 TCP 补偿</summary>
         public double CompensationY
         {
-            get => CompensationManager?.CompensationY ?? 0;
+            get => CompensationManager?.TcpTotalOffsetY ?? 0;
             set
             {
-                if (CompensationManager != null && Math.Abs(CompensationManager.CompensationY - value) > 0.0001)
+                if (CompensationManager != null && Math.Abs(CompensationManager.TcpTotalOffsetY - value) > 0.0001)
                 {
-                    CompensationManager.CompensationY = value;
+                    CompensationManager.TcpTotalOffsetY = value;
+                    RaisePropertyChanged(nameof(TcpTotalOffsetY));
                     RaisePropertyChanged(nameof(CalculatedCompY));
                 }
             }
         }
 
-        /// <summary>Z轴补偿值（绑定 CompensationManager）</summary>
+        /// <summary>Z轴累计 TCP 补偿</summary>
         public double CompensationZ
         {
-            get => CompensationManager?.CompensationZ ?? 0;
+            get => CompensationManager?.TcpTotalOffsetZ ?? 0;
             set
             {
-                if (CompensationManager != null && Math.Abs(CompensationManager.CompensationZ - value) > 0.0001)
+                if (CompensationManager != null && Math.Abs(CompensationManager.TcpTotalOffsetZ - value) > 0.0001)
                 {
-                    CompensationManager.CompensationZ = value;
+                    CompensationManager.TcpTotalOffsetZ = value;
+                    RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                     RaisePropertyChanged(nameof(CalculatedCompZ));
                 }
             }
         }
 
-        /// <summary>计算后的X补偿 = 偏差ΔX + 表达式结果</summary>
+        /// <summary>应用后 TCP 总计 = 累计偏移 + 本次增量 + 表达式</summary>
         public double CalculatedCompX =>
-            CalibrationDeltaX + EvaluateExpression(CompensationXExpression);
+            TcpTotalOffsetX + PendingIncrementX + EvaluateExpression(CompensationXExpression);
 
-        /// <summary>计算后的Y补偿 = 偏差ΔY + 表达式结果</summary>
+        /// <summary>应用后 TCP 总计 Y</summary>
         public double CalculatedCompY =>
-            CalibrationDeltaY + EvaluateExpression(CompensationYExpression);
+            TcpTotalOffsetY + PendingIncrementY + EvaluateExpression(CompensationYExpression);
 
-        /// <summary>计算后的Z补偿 = 偏差ΔZ + 表达式结果</summary>
+        /// <summary>应用后 TCP 总计 Z</summary>
         public double CalculatedCompZ =>
-            CalibrationDeltaZ + EvaluateExpression(CompensationZExpression);
+            TcpTotalOffsetZ + PendingIncrementZ + EvaluateExpression(CompensationZExpression);
 
         /// <summary>X轴补偿是否已链接全局变量</summary>
         public bool IsCompensationXLinked => !string.IsNullOrEmpty(CompensationXLinkedVar);
@@ -556,20 +613,18 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 校准完成：记录偏差Δ，CalculatedComp = Δ + 表达式（应用前不清零基准）
+        /// 校准完成：计算相对固定基准的本次增量，累加预览 = TcpTotal + 增量 + 表达式
         /// </summary>
         private void OnCalibrationCompleted()
         {
             try
             {
-                double deltaX = CalibrationDeltaX;
-                double deltaY = CalibrationDeltaY;
-                double deltaZ = CalibrationDeltaZ;
+                PendingIncrementX = CalibrationDeltaX;
+                PendingIncrementY = CalibrationDeltaY;
+                PendingIncrementZ = CalibrationDeltaZ;
 
-                SaveCompensationHistory(deltaX, deltaY, deltaZ);
-
-                CheckCompensationChange(deltaX, deltaY, deltaZ);
-
+                SaveCompensationHistory(PendingIncrementX, PendingIncrementY, PendingIncrementZ, recordPendingOnly: true);
+                CheckCompensationChange(PendingIncrementX, PendingIncrementY, PendingIncrementZ);
                 RaiseCalibrationDeltaAndCalculatedChanged();
 
                 AddLog(string.Format(
@@ -579,10 +634,14 @@ namespace Module.ViewModels
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_Delta",
                         "本次增量: ΔX={0:F3}, ΔY={1:F3}, ΔZ={2:F3}"),
-                    deltaX, deltaY, deltaZ));
+                    PendingIncrementX, PendingIncrementY, PendingIncrementZ));
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalOffset",
+                        "累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                    TcpTotalOffsetX, TcpTotalOffsetY, TcpTotalOffsetZ));
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_CalculatedComp",
-                        "计算结果: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                        "应用后TCP总计: X={0:F3}, Y={1:F3}, Z={2:F3}"),
                     CalculatedCompX, CalculatedCompY, CalculatedCompZ));
             }
             catch (Exception ex)
@@ -594,7 +653,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 应用补偿：CalculatedComp 写入全局变量 → 基准跟进当前 → 表达式清零 → 保存参数
+        /// 应用补偿：TCP总计写入全局变量 → 累加到 TcpTotalOffset → 清空待应用增量与表达式（基准不变）
         /// </summary>
         private async Task ApplyCompensationAsync()
         {
@@ -605,7 +664,7 @@ namespace Module.ViewModels
                     { "title", _localization.GetResourceOrDefault("NeedleAligner_Dialog_ApplyTitle", "确认应用补偿") },
                     { "message", string.Format(
                         _localization.GetResourceOrDefault("NeedleAligner_Dialog_ApplyToGlobalMessage",
-                            "将以下补偿值写入全局变量：\nX={0:F3}, Y={1:F3}, Z={2:F3}\n并保存参数，确定继续吗？"),
+                            "将以下 TCP 总计写入全局变量：\nX={0:F3}, Y={1:F3}, Z={2:F3}\n（累计偏移 + 本次增量 + 表达式）\n固定基准不变，确定继续吗？"),
                         CalculatedCompX, CalculatedCompY, CalculatedCompZ) },
                     { "icon", MaterialDesignThemes.Wpf.PackIconKind.HelpCircle }
                 }, async result =>
@@ -617,10 +676,10 @@ namespace Module.ViewModels
                         var appliedZ = CalculatedCompZ;
 
                         await WriteCompensationToGlobalVariablesAsync();
-                        CommitZeroClearAfterApply();
+                        CommitIncrementalAfterApply();
                         await SaveParametersAsync(syncGlobalVariables: false);
 
-                        AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CompensationAppliedToGlobal", "补偿值已写入全局变量并保存参数"));
+                        AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CompensationAppliedToGlobal", "TCP 总计已写入全局变量并保存参数"));
                         AddLog(string.Format(
                             _localization.GetResourceOrDefault("NeedleAligner_Log_CalculatedComp",
                                 "计算结果: X={0:F3}, Y={1:F3}, Z={2:F3}"),
@@ -663,15 +722,21 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 清零法：应用后基准跟进当前测量值，表达式与补偿清零
+        /// 增量法：本次增量 + 表达式累加到 TcpTotalOffset，基准 ReferenceXYZ 保持不变
         /// </summary>
-        private void CommitZeroClearAfterApply()
+        private void CommitIncrementalAfterApply()
         {
-            var current = Parameters.CurrentXYZ ?? new PointF();
-            Parameters.ReferenceXYZ = new PointF(current.X, current.Y, current.Z);
+            var appliedIncrementX = PendingIncrementX + EvaluateExpression(CompensationXExpression);
+            var appliedIncrementY = PendingIncrementY + EvaluateExpression(CompensationYExpression);
+            var appliedIncrementZ = PendingIncrementZ + EvaluateExpression(CompensationZExpression);
 
-            CompensationManager.ResetCompensation();
-            Parameters.CompensationXYZ = new PointF(0, 0, 0);
+            CompensationManager.SetTcpTotalOffset(CalculatedCompX, CalculatedCompY, CalculatedCompZ);
+            Parameters.CompensationXYZ = new PointF(
+                (float)CompensationManager.TcpTotalOffsetX,
+                (float)CompensationManager.TcpTotalOffsetY,
+                (float)CompensationManager.TcpTotalOffsetZ);
+
+            ClearPendingIncrement();
             CompensationXExpression = null;
             CompensationYExpression = null;
             CompensationZExpression = null;
@@ -679,10 +744,23 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(CompensationX));
             RaisePropertyChanged(nameof(CompensationY));
             RaisePropertyChanged(nameof(CompensationZ));
+            RaisePropertyChanged(nameof(TcpTotalOffsetX));
+            RaisePropertyChanged(nameof(TcpTotalOffsetY));
+            RaisePropertyChanged(nameof(TcpTotalOffsetZ));
             RaiseCalibrationDeltaAndCalculatedChanged();
 
-            AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_ReferenceUpdated",
-                "基准已更新为当前测量值，偏差与表达式已清零"));
+            SaveCompensationHistory(appliedIncrementX, appliedIncrementY, appliedIncrementZ, recordPendingOnly: false);
+
+            AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalAccumulated",
+                "本次增量已累加到 TCP 总偏移，固定基准保持不变"));
+        }
+
+        /// <summary>清空待应用增量（应用或重置后调用）</summary>
+        private void ClearPendingIncrement()
+        {
+            PendingIncrementX = 0;
+            PendingIncrementY = 0;
+            PendingIncrementZ = 0;
         }
 
         /// <summary>更新或添加全局变量（默认 Double 类型）</summary>
@@ -847,14 +925,15 @@ namespace Module.ViewModels
                 {
                     { "title", _localization.GetResourceOrDefault("NeedleAligner_Dialog_ResetTitle", "警告 - 重置补偿") },
                     { "message", _localization.GetResourceOrDefault("NeedleAligner_Dialog_ResetMessage",
-                        "此操作将重置所有补偿值到零。\n此操作不可逆，确定要继续吗？") },
+                        "此操作将重置累计 TCP 偏移与待应用增量到零。\n固定基准 ReferenceXYZ 不会改变。\n此操作不可逆，确定要继续吗？") },
                     { "icon", MaterialDesignThemes.Wpf.PackIconKind.AlertCircle }
                 }, result =>
                 {
                     if (result.Result == ButtonResult.OK || result.Result == ButtonResult.Yes)
                     {
-                        CompensationManager.ResetCompensation();
+                        CompensationManager.ResetTcpTotalOffset();
                         Parameters.CompensationXYZ = new PointF(0, 0, 0);
+                        ClearPendingIncrement();
                         CompensationXExpression = null;
                         CompensationYExpression = null;
                         CompensationZExpression = null;
@@ -862,15 +941,16 @@ namespace Module.ViewModels
                         RaisePropertyChanged(nameof(CompensationX));
                         RaisePropertyChanged(nameof(CompensationY));
                         RaisePropertyChanged(nameof(CompensationZ));
+                        RaisePropertyChanged(nameof(TcpTotalOffsetX));
+                        RaisePropertyChanged(nameof(TcpTotalOffsetY));
+                        RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                         RaiseCalibrationDeltaAndCalculatedChanged();
 
-                        AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CompensationReset", "补偿值已重置为零"));
+                        AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CompensationReset", "累计 TCP 偏移已重置为零"));
                         AddLog(string.Format(
-                            _localization.GetResourceOrDefault("NeedleAligner_Log_Compensation",
-                                "补偿值: X={0:F3}, Y={1:F3}, Z={2:F3}"),
-                            CompensationManager.CompensationX,
-                            CompensationManager.CompensationY,
-                            CompensationManager.CompensationZ));
+                            _localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalOffset",
+                                "累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                            TcpTotalOffsetX, TcpTotalOffsetY, TcpTotalOffsetZ));
                     }
                 });
             }
@@ -898,17 +978,18 @@ namespace Module.ViewModels
                         SystemNumber));
                     foreach (var record in history)
                     {
-                        AddLog(string.Format(
-                            _localization.GetResourceOrDefault("NeedleAligner_Log_HistoryRecord",
-                                "{0:yyyy-MM-dd HH:mm:ss} | 补偿X={1:F3}, Y={2:F3}, Z={3:F3} | 操作员: {4}"),
-                            record.Timestamp, record.CompensationX, record.CompensationY, record.CompensationZ, record.Operator));
+                    AddLog(string.Format(
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_HistoryRecord",
+                            "{0:yyyy-MM-dd HH:mm:ss} | 增量 X={1:F3}, Y={2:F3}, Z={3:F3} | 累计TCP X={4:F3}, Y={5:F3}, Z={6:F3} | 操作员: {7}"),
+                        record.Timestamp,
+                        record.CompensationX, record.CompensationY, record.CompensationZ,
+                        record.TcpTotalOffsetX, record.TcpTotalOffsetY, record.TcpTotalOffsetZ,
+                        record.Operator));
                     }
                     AddLog(string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Log_Compensation",
-                            "补偿值: X={0:F3}, Y={1:F3}, Z={2:F3}"),
-                        CompensationManager.CompensationX,
-                        CompensationManager.CompensationY,
-                        CompensationManager.CompensationZ));
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalOffset",
+                            "累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                        TcpTotalOffsetX, TcpTotalOffsetY, TcpTotalOffsetZ));
                 }
                 else
                 {
@@ -1048,6 +1129,7 @@ namespace Module.ViewModels
             loaded.SystemNumber = systemNumber;
             Parameters = loaded;
             CompensationManager.LoadFromParameters(Parameters);
+            ClearPendingIncrement();
 
             CompensationXLinkedVar = ResolveCompXLinkedVar(Parameters.CompensationXLinkedVar);
             CompensationYLinkedVar = ResolveCompYLinkedVar(Parameters.CompensationYLinkedVar);
@@ -1071,6 +1153,12 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(CompensationX));
             RaisePropertyChanged(nameof(CompensationY));
             RaisePropertyChanged(nameof(CompensationZ));
+            RaisePropertyChanged(nameof(TcpTotalOffsetX));
+            RaisePropertyChanged(nameof(TcpTotalOffsetY));
+            RaisePropertyChanged(nameof(TcpTotalOffsetZ));
+            RaisePropertyChanged(nameof(PendingIncrementX));
+            RaisePropertyChanged(nameof(PendingIncrementY));
+            RaisePropertyChanged(nameof(PendingIncrementZ));
             RaiseCalibrationDeltaAndCalculatedChanged();
         }
 
@@ -1223,11 +1311,9 @@ namespace Module.ViewModels
 
                     AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_ParametersLoaded", "针头校准参数加载成功"));
                     AddLog(string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Log_Compensation",
-                            "补偿值: X={0:F3}, Y={1:F3}, Z={2:F3}"),
-                        CalculatedCompX,
-                        CalculatedCompY,
-                        CalculatedCompZ));
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalOffset",
+                            "累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                        TcpTotalOffsetX, TcpTotalOffsetY, TcpTotalOffsetZ));
                 }
             }
             catch (Exception ex)
@@ -1332,16 +1418,34 @@ namespace Module.ViewModels
         {
             switch (e.PropertyName)
             {
+                case nameof(NeedleCompensationManager.TcpTotalOffsetX):
+                    RaisePropertyChanged(nameof(CompensationX));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetX));
+                    RaisePropertyChanged(nameof(CalculatedCompX));
+                    break;
+                case nameof(NeedleCompensationManager.TcpTotalOffsetY):
+                    RaisePropertyChanged(nameof(CompensationY));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetY));
+                    RaisePropertyChanged(nameof(CalculatedCompY));
+                    break;
+                case nameof(NeedleCompensationManager.TcpTotalOffsetZ):
+                    RaisePropertyChanged(nameof(CompensationZ));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetZ));
+                    RaisePropertyChanged(nameof(CalculatedCompZ));
+                    break;
                 case nameof(NeedleCompensationManager.CompensationX):
                     RaisePropertyChanged(nameof(CompensationX));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetX));
                     RaisePropertyChanged(nameof(CalculatedCompX));
                     break;
                 case nameof(NeedleCompensationManager.CompensationY):
                     RaisePropertyChanged(nameof(CompensationY));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetY));
                     RaisePropertyChanged(nameof(CalculatedCompY));
                     break;
                 case nameof(NeedleCompensationManager.CompensationZ):
                     RaisePropertyChanged(nameof(CompensationZ));
+                    RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                     RaisePropertyChanged(nameof(CalculatedCompZ));
                     break;
             }
@@ -1353,6 +1457,12 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(CalibrationDeltaX));
             RaisePropertyChanged(nameof(CalibrationDeltaY));
             RaisePropertyChanged(nameof(CalibrationDeltaZ));
+            RaisePropertyChanged(nameof(PendingIncrementX));
+            RaisePropertyChanged(nameof(PendingIncrementY));
+            RaisePropertyChanged(nameof(PendingIncrementZ));
+            RaisePropertyChanged(nameof(TcpTotalOffsetX));
+            RaisePropertyChanged(nameof(TcpTotalOffsetY));
+            RaisePropertyChanged(nameof(TcpTotalOffsetZ));
             RaisePropertyChanged(nameof(CalculatedCompX));
             RaisePropertyChanged(nameof(CalculatedCompY));
             RaisePropertyChanged(nameof(CalculatedCompZ));
@@ -1439,9 +1549,9 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 保存补偿历史记录（记录偏差Δ）
+        /// 保存补偿历史记录（校准记录待应用增量；应用后记录增量与累计 TCP）
         /// </summary>
-        private void SaveCompensationHistory(double deltaX, double deltaY, double deltaZ)
+        private void SaveCompensationHistory(double deltaX, double deltaY, double deltaZ, bool recordPendingOnly)
         {
             try
             {
@@ -1452,13 +1562,17 @@ namespace Module.ViewModels
                     CompensationX = deltaX,
                     CompensationY = deltaY,
                     CompensationZ = deltaZ,
+                    TcpTotalOffsetX = recordPendingOnly ? TcpTotalOffsetX : CompensationManager.TcpTotalOffsetX,
+                    TcpTotalOffsetY = recordPendingOnly ? TcpTotalOffsetY : CompensationManager.TcpTotalOffsetY,
+                    TcpTotalOffsetZ = recordPendingOnly ? TcpTotalOffsetZ : CompensationManager.TcpTotalOffsetZ,
                     CurrentX = Parameters.CurrentXYZ?.X ?? 0,
                     CurrentY = Parameters.CurrentXYZ?.Y ?? 0,
                     CurrentZ = Parameters.CurrentXYZ?.Z ?? 0,
                     ReferenceX = Parameters.ReferenceXYZ?.X ?? 0,
                     ReferenceY = Parameters.ReferenceXYZ?.Y ?? 0,
                     ReferenceZ = Parameters.ReferenceXYZ?.Z ?? 0,
-                    Operator = Parameters.Operator
+                    Operator = Parameters.Operator,
+                    Comments = recordPendingOnly ? "CalibrationPending" : "Applied"
                 };
 
                 var historyDir = Path.Combine(

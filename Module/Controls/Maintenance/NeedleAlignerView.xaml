@@ -609,7 +609,37 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 补偿详情 - 偏差Δ + 表达式 + CalculatedComp + 全局变量链接（单向写入） -->
+                        <!-- 累计 TCP 偏移 -->
+                        <Border Background="#E8F5E9" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{lang:Lang NeedleAligner_TcpTotalOffset}"
+                                           FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32" Margin="0,0,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                        <TextBlock Text="X=" Style="{StaticResource ResultLabelStyle}" />
+                                        <TextBlock Text="{Binding TcpTotalOffsetX, StringFormat=F3}"
+                                                   Style="{StaticResource ResultValueStyle}" Foreground="#E53935" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <TextBlock Text="Y=" Style="{StaticResource ResultLabelStyle}" />
+                                        <TextBlock Text="{Binding TcpTotalOffsetY, StringFormat=F3}"
+                                                   Style="{StaticResource ResultValueStyle}" Foreground="#43A047" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <TextBlock Text="Z=" Style="{StaticResource ResultLabelStyle}" />
+                                        <TextBlock Text="{Binding TcpTotalOffsetZ, StringFormat=F3}"
+                                                   Style="{StaticResource ResultValueStyle}" Foreground="#1E88E5" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 补偿详情 - 本次增量 + 表达式 + TCP总计 + 全局变量链接 -->
                         <Border Background="#FAFAFA" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
                             <StackPanel>
                                 <TextBlock Text="{lang:Lang NeedleAligner_CompensationDetails}"
@@ -625,11 +655,11 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="" Width="22" />
-                                    <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_CalibrationDelta}"
+                                    <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_PendingIncrement}"
                                                FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
                                     <TextBlock Grid.Column="2" Text="{lang:Lang NeedleCamera_CompensationExpression}"
                                                FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
-                                    <TextBlock Grid.Column="3" Text="{lang:Lang NeedleCamera_CalculatedResult}"
+                                    <TextBlock Grid.Column="3" Text="{lang:Lang NeedleAligner_TcpTotalAfterApply}"
                                                FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
                                     <TextBlock Grid.Column="4" Text="" FontSize="11" />
                                 </Grid>
@@ -645,7 +675,7 @@
                                     </Grid.ColumnDefinitions>
                                     <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="16" Height="16"
                                                              Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaX, StringFormat=F3}"
+                                    <TextBlock Grid.Column="1" Text="{Binding PendingIncrementX, StringFormat=F3}"
                                                FontSize="11" FontWeight="SemiBold" Foreground="#E53935"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" />
                                     <TextBox Grid.Column="2" Text="{Binding CompensationXExpression, UpdateSourceTrigger=PropertyChanged}"
@@ -676,7 +706,7 @@
                                     </Grid.ColumnDefinitions>
                                     <materialDesign:PackIcon Grid.Column="0" Kind="AxisYArrow" Width="16" Height="16"
                                                              Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaY, StringFormat=F3}"
+                                    <TextBlock Grid.Column="1" Text="{Binding PendingIncrementY, StringFormat=F3}"
                                                FontSize="11" FontWeight="SemiBold" Foreground="#43A047"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" />
                                     <TextBox Grid.Column="2" Text="{Binding CompensationYExpression, UpdateSourceTrigger=PropertyChanged}"
@@ -707,7 +737,7 @@
                                     </Grid.ColumnDefinitions>
                                     <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
                                                              Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaZ, StringFormat=F3}"
+                                    <TextBlock Grid.Column="1" Text="{Binding PendingIncrementZ, StringFormat=F3}"
                                                FontSize="11" FontWeight="SemiBold" Foreground="#1E88E5"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" />
                                     <TextBox Grid.Column="2" Text="{Binding CompensationZExpression, UpdateSourceTrigger=PropertyChanged}"
@@ -738,7 +768,7 @@
                                                                  Foreground="#F9A825" Margin="0,2,8,0"
                                                                  VerticalAlignment="Top" />
                                         <TextBlock Grid.Column="1"
-                                                   Text="{lang:Lang Maintenance_CompensationNote}"
+                                                   Text="{lang:Lang NeedleAligner_TcpCompensationNote}"
                                                    Foreground="#795548" FontSize="12"
                                                    FontStyle="Italic"
                                                    TextWrapping="Wrap" />

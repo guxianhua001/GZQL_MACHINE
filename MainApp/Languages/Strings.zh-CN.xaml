@@ -1019,7 +1019,7 @@
     <sys:String x:Key="Maintenance_Status_Ready">就绪</sys:String>
     <sys:String x:Key="Maintenance_Subtitle">设备维护</sys:String>
     <sys:String x:Key="Maintenance_Tab_CameraAlignment">相机对针</sys:String>
-    <sys:String x:Key="Maintenance_Tab_NeedleAligner">针头校准</sys:String>
+    <sys:String x:Key="Maintenance_Tab_NeedleAligner">NeedleTcp</sys:String>
     <sys:String x:Key="Maintenance_Tab_CalibrationVerify">校准验证</sys:String>
     <sys:String x:Key="Maintenance_StatusLabel">状态：</sys:String>
     <sys:String x:Key="Maintenance_Title">5. 维护</sys:String>
@@ -1693,7 +1693,14 @@
     <sys:String x:Key="NeedleCamera_CurrentFile">当前参数文件</sys:String>
     <sys:String x:Key="Nav_Maintenance">设备维护</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">搜索点设置</sys:String>
-    <sys:String x:Key="NeedleAligner_ReferenceCoordinates">基准坐标</sys:String>
+    <sys:String x:Key="NeedleAligner_ReferenceCoordinates">固定基准 (ReferenceXYZ)</sys:String>
+    <sys:String x:Key="NeedleAligner_ReferenceCoordinatesTip">增量法下此基准永不自动变更，所有动作回归同一示教面</sys:String>
+    <sys:String x:Key="NeedleAligner_TcpTotalOffset">累计 TCP 偏移</sys:String>
+    <sys:String x:Key="NeedleAligner_PendingIncrement">本次增量</sys:String>
+    <sys:String x:Key="NeedleAligner_TcpTotalAfterApply">应用后 TCP 总计</sys:String>
+    <sys:String x:Key="NeedleAligner_TcpCompensationNote">增量法：固定基准不变；每次校准计算相对基准的偏差，应用后累加到 TCP 总偏移。适用于频繁换针与磨损补偿。</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TcpTotalOffset">累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TcpTotalAccumulated">本次增量已累加到 TCP 总偏移，固定基准保持不变</sys:String>
     <sys:String x:Key="NeedleAligner_MotionParameters">运动参数</sys:String>
     <sys:String x:Key="NeedleAligner_SearchRange">搜索范围 (mm)</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCount">Z搜索次数</sys:String>
@@ -1729,14 +1736,16 @@
     <sys:String x:Key="NeedleAligner_ClearLog">清空日志</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">补偿值</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationDelta">偏差</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">计算结果: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_ReferenceUpdated">基准已更新为当前测量值，偏差与表达式已清零</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">应用后TCP总计: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">将以下 TCP 总计写入全局变量：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;（累计偏移 + 本次增量 + 表达式）&#10;固定基准不变，确定继续吗？</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">TCP 总计已写入全局变量并保存参数</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">此操作将重置累计 TCP 偏移与待应用增量到零。&#10;固定基准 ReferenceXYZ 不会改变。&#10;此操作不可逆，确定要继续吗？</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationReset">累计 TCP 偏移已重置为零</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | 增量 X={1:F3}, Y={2:F3}, Z={3:F3} | 累计TCP X={4:F3}, Y={5:F3}, Z={6:F3} | 操作员: {7}</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">确认应用补偿</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">将应用以下补偿值到运动控制器：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;应用后补偿值将清零，确定继续吗？</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">将应用以下 TCP 总计到运动控制器：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;固定基准不变，确定继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">警告 - 重置补偿</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">此操作将重置所有补偿值到零。&#10;此操作不可逆，确定要继续吗？</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CompensationReset">补偿值已重置为零</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_Compensation">补偿值: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_Compensation">累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ResetError">重置补偿失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_LinkGlobalVariable">链接全局变量</sys:String>
     <sys:String x:Key="NeedleAligner_UnlinkGlobalVariable">取消链接</sys:String>
@@ -1748,8 +1757,6 @@
     <sys:String x:Key="NeedleAligner_SafeHeightTip">水平移动前 Z 轴抬升高度，防止碰撞，单位mm</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlign">系统{0}对针位置示教: X={1:F3}, Y={2:F3}, Z={3:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignError">对针位置示教失败: {0}</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">将以下补偿值写入全局变量：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;并保存参数，确定继续吗？</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">补偿值已写入全局变量并保存参数</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPoint">搜索点{0}示教完成: X={1:F3}, Y={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPointError">搜索点示教失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationLinked">已链接</sys:String>
@@ -1777,7 +1784,6 @@
     <sys:String x:Key="NeedleAligner_Log_ProcessResultError">处理校准结果失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ApplyCompensationError">应用补偿值失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_HistoryHeader">=== 补偿历史记录（系统{0}）===</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | 补偿X={1:F3}, Y={2:F3}, Z={3:F3} | 操作员: {4}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_NoHistory">无补偿历史记录</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">显示补偿历史失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ParametersSaved">对针系统{0}参数保存成功</sys:String>

@@ -4,6 +4,8 @@ namespace MotionControl.Models
 {
     public class MotionSystemConfig
     {
+        /// <summary> 轴卡配置文件节点下的默认配置文件路径列表（按卡序号 0、1… 对应） </summary>
+        public List<string> DefaultCardConfigPaths { get; set; } = new List<string>();
         public List<CardConfig> Cards { get; set; } = new List<CardConfig>();
         public List<AxisConfig> Axes { get; set; } = new List<AxisConfig>();
         public List<IoConfig> Inputs { get; set; } = new List<IoConfig>();

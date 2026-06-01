@@ -110,7 +110,7 @@ namespace Core.Models
         #region 坐标参数
         [Category("坐标参数")]
         [DisplayName("基准XYZ坐标")]
-        [Description("基准点的XYZ坐标")]
+        [Description("固定示教基准（增量法下永不自动变更）")]
         public PointF ReferenceXYZ
         {
             get => _referenceXYZ;
@@ -224,7 +224,14 @@ namespace Core.Models
             set => SetProperty(ref _sensorDiY, value);
         }
 
-        // 补偿管理器参数（清零法简化版）
+        /// <summary>累计 TCP 补偿偏移 X（增量法，相对固定基准累加）</summary>
+        public double? TcpTotalOffsetX { get; set; }
+        /// <summary>累计 TCP 补偿偏移 Y</summary>
+        public double? TcpTotalOffsetY { get; set; }
+        /// <summary>累计 TCP 补偿偏移 Z</summary>
+        public double? TcpTotalOffsetZ { get; set; }
+
+        // 兼容旧版 JSON 字段
         public double? CompensationStorageX { get; set; }
         public double? CompensationStorageY { get; set; }
         public double? CompensationStorageZ { get; set; }
@@ -272,10 +279,12 @@ namespace Core.Models
                 SensorDiX = this.SensorDiX,
                 SensorDiY = this.SensorDiY,
 
-                // 复制补偿管理器参数
-                CompensationStorageX = this.CompensationStorageX,
-                CompensationStorageY = this.CompensationStorageY,
-                CompensationStorageZ = this.CompensationStorageZ,
+                TcpTotalOffsetX = this.TcpTotalOffsetX ?? this.CompensationStorageX,
+                TcpTotalOffsetY = this.TcpTotalOffsetY ?? this.CompensationStorageY,
+                TcpTotalOffsetZ = this.TcpTotalOffsetZ ?? this.CompensationStorageZ,
+                CompensationStorageX = this.TcpTotalOffsetX ?? this.CompensationStorageX,
+                CompensationStorageY = this.TcpTotalOffsetY ?? this.CompensationStorageY,
+                CompensationStorageZ = this.TcpTotalOffsetZ ?? this.CompensationStorageZ,
 
                 // 复制全局变量链接名称
                 CompensationXLinkedVar = this.CompensationXLinkedVar,
