@@ -305,7 +305,7 @@ namespace Module.Services
                 if ((DateTime.UtcNow - startTime).TotalMilliseconds > SensorTimeoutMs)
                     return double.NaN;
 
-                if (CheckNeedleSensor(sensorDirection, parameters))
+                if (IsNeedleSensorTriggered(sensorDirection, parameters))
                     return _motion.GetAxisPosition(axisId);
 
                 await Task.Delay(SensorPollMs, token);
@@ -315,6 +315,9 @@ namespace Module.Services
             return double.NaN;
         }
 
+        /// <summary>
+        /// 针尖 Z：仅使用对针位置高度（无 Z 向 DI），移至中心后下降到对针位 Z 并读取编码器。
+        /// </summary>
         private async Task<double> SearchNeedleHeightAsync(
             PointF centerPoint,
             NeedleCalibrationParams parameters,
@@ -326,63 +329,34 @@ namespace Module.Services
             var dxId = ResolveAxisId(map, "Dx");
             var dyId = ResolveAxisId(map, "Dy");
             var zId = ResolveZAxisId(systemNumber);
+            var alignZ = GetAlignPosition(parameters, systemNumber).Z;
 
             await _motion.MoveAbsAsync(dxId, centerPoint.X, parameters.SearchSpeed, token);
             await _motion.MoveAbsAsync(dyId, centerPoint.Y, parameters.SearchSpeed, token);
             await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
 
             double totalHeight = 0;
-            int successCount = 0;
+            int count = Math.Max(1, parameters.ZSearchCount);
 
-            for (int i = 0; i < parameters.ZSearchCount; i++)
+            for (int i = 0; i < count; i++)
             {
                 token.ThrowIfCancellationRequested();
-                progress?.Report((L("NeedleAligner_Status_ZHeightSearch", "第 {0}/{1} 次高度搜索", i + 1, parameters.ZSearchCount), 60 + i * 10));
+                progress?.Report((L("NeedleAligner_Status_ZHeightSearch", "第 {0}/{1} 次高度定位", i + 1, count), 60 + i * 10));
 
-                double height = await SearchSingleNeedleHeightAsync(zId, parameters, token);
-                if (!double.IsNaN(height))
-                {
-                    totalHeight += height;
-                    successCount++;
-                }
+                await MoveToSafeHeightAsync(parameters, systemNumber, token);
+                await _motion.MoveAbsAsync(dxId, centerPoint.X, parameters.SearchSpeed, token);
+                await _motion.MoveAbsAsync(dyId, centerPoint.Y, parameters.SearchSpeed, token);
+                await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
 
+                await _motion.MoveAbsAsync(zId, alignZ, parameters.FineSearchSpeed, token);
                 await WaitAxisDoneAsync(zId, token);
+
+                totalHeight += _motion.GetAxisPosition(zId);
             }
 
-            if (successCount == 0) return double.NaN;
-
-            double average = totalHeight / successCount;
-            _logger.Info($"[NeedleAligner] 针尖平均高度: {average:F3}mm, 成功={successCount}");
+            double average = totalHeight / count;
+            _logger.Info($"[NeedleAligner] 针尖 Z(对针高度): {average:F3}mm, 次数={count}");
             return average;
-        }
-
-        private async Task<double> SearchSingleNeedleHeightAsync(int zAxisId, NeedleCalibrationParams parameters, CancellationToken token)
-        {
-            const double liftMm = 5.0;
-            await _motion.MoveRelAsync(zAxisId, liftMm, parameters.SearchSpeed, token);
-            await WaitAxisDoneAsync(zAxisId, token);
-            await Task.Delay(100, token);
-
-            await _motion.MoveRelAsync(zAxisId, -liftMm, parameters.FineSearchSpeed, token);
-
-            var startTime = DateTime.UtcNow;
-            while (!token.IsCancellationRequested)
-            {
-                if ((DateTime.UtcNow - startTime).TotalSeconds > 60)
-                    return double.NaN;
-
-                if (CheckZNeedleSensor(parameters))
-                {
-                    double h = _motion.GetAxisPosition(zAxisId);
-                    _logger.Info($"[NeedleAligner] 针尖高度: {h:F3}");
-                    return h;
-                }
-
-                await Task.Delay(10, token);
-            }
-
-            token.ThrowIfCancellationRequested();
-            return double.NaN;
         }
 
         private static PointF CalculateCompensation(PointF measured, double measuredHeight, NeedleCalibrationParams parameters)
@@ -423,35 +397,30 @@ namespace Module.Services
 
         #region 传感器与轴解析
 
-        /// <summary>检查 XY 寻针传感器（低电平有效）</summary>
-        private bool CheckNeedleSensor(SearchDirection direction, NeedleCalibrationParams parameters)
+        /// <summary>
+        /// 检查 XY 寻针传感器是否触发。
+        /// 硬件约定：DI 读数为 0（低电平）表示触发，与参考 NeedleCalibrating.CheckNeedleSensor 一致。
+        /// </summary>
+        private bool IsNeedleSensorTriggered(SearchDirection sensorAxis, NeedleCalibrationParams parameters)
         {
-            int port = direction is SearchDirection.X or SearchDirection.XPositive or SearchDirection.XNegative
+            int port = sensorAxis is SearchDirection.X or SearchDirection.XPositive or SearchDirection.XNegative
                 ? parameters.SensorDiX
                 : parameters.SensorDiY;
+
+            if (port < 0)
+            {
+                _logger.Warn($"[NeedleAligner] 传感器 DI 端口号无效: {port}");
+                return false;
+            }
+
             try
             {
+                // ReadDi=true 为高电平；触发时为低电平 → ReadDi 为 false
                 return !_motion.ReadDi(port);
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 读取DI{port}失败: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>检查 Z 寻针传感器（双通道均为低电平有效）</summary>
-        private bool CheckZNeedleSensor(NeedleCalibrationParams parameters)
-        {
-            try
-            {
-                bool s1 = !_motion.ReadDi(parameters.SensorDiZ1);
-                bool s2 = !_motion.ReadDi(parameters.SensorDiZ2);
-                return s1 && s2;
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"[NeedleAligner] 读取Z传感器失败: {ex.Message}");
+                _logger.Warn($"[NeedleAligner] 读取 DI{port} 失败: {ex.Message}");
                 return false;
             }
         }

@@ -220,7 +220,7 @@
                     </StackPanel>
                 </materialDesign:Card>
 
-                <!-- 对针位置：系统1 / 系统2 -->
+                <!-- 对针位置：随系统1/2切换显示一套 XYZ -->
                 <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
@@ -233,15 +233,11 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}"
                                                      Margin="0,0,8,0" VerticalAlignment="Top" />
                             <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_AlignPositionSettings}"
+                                       Text="{Binding CurrentAlignPositionTitle}"
                                        Style="{StaticResource SideCardHeaderTextStyle}"
                                        Foreground="{DynamicResource PrimaryHueMidBrush}" />
                         </Grid>
 
-                        <!-- 系统1: Dx Dy Dz₂ -->
-                        <TextBlock Text="{lang:Lang NeedleAligner_AlignSystem1}"
-                                   Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,0,4" />
                         <Grid Style="{StaticResource ParamRowStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -250,44 +246,29 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="14" Height="14"
-                                                     Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.AlignPositionSystem1.X, StringFormat=F3}"
+                            <TextBlock Grid.Column="0" Text="{lang:Lang NeedleAligner_Axis_X}"
+                                       Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
+                                       Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox Grid.Column="1" Text="{Binding CurrentAlignX, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <TextBox Grid.Column="2" Text="{Binding Parameters.AlignPositionSystem1.Y, StringFormat=F3}"
+                            <TextBlock Grid.Column="2" Text="{lang:Lang NeedleAligner_Axis_Y}"
+                                       Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
+                                       Foreground="#43A047" VerticalAlignment="Center" Margin="4,0,4,0" />
+                            <TextBox Grid.Column="3" Text="{Binding CurrentAlignY, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <TextBox Grid.Column="3" Text="{Binding Parameters.AlignPositionSystem1.Z, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <Button Grid.Column="4" Command="{Binding TeachAlignPositionCommand}" CommandParameter="1"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Padding="6,2" Margin="4,0,0,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_TeachAlignPosition}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
-                            </Button>
                         </Grid>
-
-                        <!-- 系统2: Dx Dy Dz₃ -->
-                        <TextBlock Text="{lang:Lang NeedleAligner_AlignSystem2}"
-                                   Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,8,0,4" />
                         <Grid Style="{StaticResource ParamRowStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="14" Height="14"
-                                                     Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.AlignPositionSystem2.X, StringFormat=F3}"
+                            <TextBlock Grid.Column="0" Text="{lang:Lang NeedleAligner_Axis_Z}"
+                                       Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
+                                       Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox Grid.Column="1" Text="{Binding CurrentAlignZ, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <TextBox Grid.Column="2" Text="{Binding Parameters.AlignPositionSystem2.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <TextBox Grid.Column="3" Text="{Binding Parameters.AlignPositionSystem2.Z, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <Button Grid.Column="4" Command="{Binding TeachAlignPositionCommand}" CommandParameter="2"
+                            <Button Grid.Column="2" Command="{Binding TeachAlignPositionCommand}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
                                     materialDesign:ButtonAssist.CornerRadius="4"
@@ -460,6 +441,46 @@
                                        ToolTip="{lang:Lang NeedleAligner_SafeHeightTip}" />
                             <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                                      Text="{Binding Parameters.SafeHeight, StringFormat=F3}"
+                                     Style="{StaticResource ParamTextBoxStyle}" />
+                        </Grid>
+                        <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="ElectricSwitch"
+                                                     Width="16" Height="16" Foreground="#9E9E9E"
+                                                     VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_SensorDiX}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_SensorDiXTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                     Text="{Binding SensorDiX, UpdateSourceTrigger=LostFocus}"
+                                     Style="{StaticResource ParamTextBoxStyle}" />
+                        </Grid>
+                        <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="ElectricSwitch"
+                                                     Width="16" Height="16" Foreground="#9E9E9E"
+                                                     VerticalAlignment="Top" Margin="0,2,4,0" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{lang:Lang NeedleAligner_SensorDiY}"
+                                       Style="{StaticResource ParamLabelStyle}"
+                                       ToolTip="{lang:Lang NeedleAligner_SensorDiYTip}" />
+                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                     Text="{Binding SensorDiY, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
                     </StackPanel>

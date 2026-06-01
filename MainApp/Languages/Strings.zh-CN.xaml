@@ -1701,8 +1701,14 @@
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">精细搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">安全高度 (mm)</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">对针位置</sys:String>
-    <sys:String x:Key="NeedleAligner_AlignSystem1">系统1 (Dx Dy Dz₂)</sys:String>
-    <sys:String x:Key="NeedleAligner_AlignSystem2">系统2 (Dx Dy Dz₃)</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignPositionForSystem">系统{0} 对针位置</sys:String>
+    <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
+    <sys:String x:Key="NeedleAligner_Axis_Y">Y</sys:String>
+    <sys:String x:Key="NeedleAligner_Axis_Z">Z</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiX">X 传感器 DI 通道</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiY">Y 传感器 DI 通道</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiXTip">X 方向寻针传感器输入端口号，低电平触发</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiYTip">Y 方向寻针传感器输入端口号，低电平触发</sys:String>
     <sys:String x:Key="NeedleAligner_TeachAlignPosition">示教对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationControl">校准控制</sys:String>
     <sys:String x:Key="NeedleAligner_StartCalibration">开始校准</sys:String>

@@ -43,14 +43,69 @@ namespace Module.ViewModels
         /// <summary>配置文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
 
+        /// <summary>各系统参数内存缓存，切换系统时保留未保存的编辑</summary>
+        private readonly Dictionary<int, NeedleCalibrationParams> _systemParamsCache = new();
+
         private int _systemNumber = 1;
+        /// <summary>当前对针系统（1 或 2），切换时加载对应参数集</summary>
         public int SystemNumber
         {
             get => _systemNumber;
             set
             {
+                if (_systemNumber == value) return;
+                var previous = _systemNumber;
                 if (SetProperty(ref _systemNumber, value))
-                    _ = TryAutoLoadConfigAsync();
+                    _ = SwitchSystemAsync(previous, value);
+            }
+        }
+
+        /// <summary>当前系统对针位置标题（随 SystemNumber 变化）</summary>
+        public string CurrentAlignPositionTitle =>
+            string.Format(
+                _localization.GetResourceOrDefault("NeedleAligner_AlignPositionForSystem", "系统{0} 对针位置"),
+                SystemNumber);
+
+        /// <summary>当前系统对针位置 X（绑定 Parameters 中对应系统）</summary>
+        public double CurrentAlignX
+        {
+            get => GetCurrentAlignPosition().X;
+            set => SetCurrentAlignComponent(v => v.X = (float)value, nameof(CurrentAlignX));
+        }
+
+        public double CurrentAlignY
+        {
+            get => GetCurrentAlignPosition().Y;
+            set => SetCurrentAlignComponent(v => v.Y = (float)value, nameof(CurrentAlignY));
+        }
+
+        public double CurrentAlignZ
+        {
+            get => GetCurrentAlignPosition().Z;
+            set => SetCurrentAlignComponent(v => v.Z = (float)value, nameof(CurrentAlignZ));
+        }
+
+        /// <summary>X 寻针传感器 DI（随当前系统参数文件）</summary>
+        public int SensorDiX
+        {
+            get => Parameters?.SensorDiX ?? 38;
+            set
+            {
+                if (Parameters == null || Parameters.SensorDiX == value) return;
+                Parameters.SensorDiX = value;
+                RaisePropertyChanged(nameof(SensorDiX));
+            }
+        }
+
+        /// <summary>Y 寻针传感器 DI</summary>
+        public int SensorDiY
+        {
+            get => Parameters?.SensorDiY ?? 37;
+            set
+            {
+                if (Parameters == null || Parameters.SensorDiY == value) return;
+                Parameters.SensorDiY = value;
+                RaisePropertyChanged(nameof(SensorDiY));
             }
         }
 
@@ -308,7 +363,7 @@ namespace Module.ViewModels
         public DelegateCommand LoadParametersCommand { get; }
         public DelegateCommand ClearLogCommand { get; }
         public DelegateCommand<string> TeachSearchPointCommand { get; }
-        public DelegateCommand<string> TeachAlignPositionCommand { get; }
+        public DelegateCommand TeachAlignPositionCommand { get; }
         public DelegateCommand System1Command { get; }
         public DelegateCommand System2Command { get; }
         public DelegateCommand UnlinkCompensationXCommand { get; }
@@ -376,9 +431,9 @@ namespace Module.ViewModels
                 _ => !IsCalibrating)
                 .ObservesProperty(() => IsCalibrating);
 
-            TeachAlignPositionCommand = new DelegateCommand<string>(
-                async sys => await TeachAlignPositionAsync(int.Parse(sys ?? "1")),
-                _ => !IsCalibrating)
+            TeachAlignPositionCommand = new DelegateCommand(
+                () => TeachAlignPosition(),
+                () => !IsCalibrating)
                 .ObservesProperty(() => IsCalibrating);
 
             System1Command = new DelegateCommand(() => SystemNumber = 1);
@@ -399,29 +454,39 @@ namespace Module.ViewModels
             await EnsureDefaultCompGlobalVariablesAsync();
             await LoadGlobalVariablesAsync();
             await TryAutoLoadConfigAsync();
+            StashParametersToCache(SystemNumber);
+            RaiseSystemUiProperties();
         }
 
         /// <summary>
-        /// 执行四点寻针校准：抬安全高度 → 对针位 → 寻边 → Z 寻高 → 计算补偿（参考 ExecuteNeedleCalibrationAsync）
+        /// 执行四点寻针校准（后台线程，避免阻塞 UI）
         /// </summary>
         private async Task StartCalibrationAsync()
         {
-            try
-            {
-                IsCalibrating = true;
-                CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_Starting", "开始校准...");
-                CalibrationProgress = 0;
-                _calibrationCts = new CancellationTokenSource();
-                var token = _calibrationCts.Token;
+            IsCalibrating = true;
+            CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_Starting", "开始校准...");
+            CalibrationProgress = 0;
+            _calibrationCts = new CancellationTokenSource();
+            var token = _calibrationCts.Token;
 
-                var progress = new Progress<(string Status, double Progress)>(p =>
+            // 捕获当前系统参数快照，防止校准过程中 UI 编辑与系统切换干扰
+            var systemNumber = SystemNumber;
+            var parametersSnapshot = Parameters?.Clone() ?? new NeedleCalibrationParams();
+
+            var progress = new Progress<(string Status, double Progress)>(p =>
+            {
+                Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
                     CalibrationStatus = p.Status;
                     CalibrationProgress = p.Progress;
                 });
+            });
 
-                var result = await _needleMotion.ExecuteNeedleCalibrationAsync(
-                    Parameters, SystemNumber, progress, token);
+            try
+            {
+                var result = await Task.Run(async () =>
+                    await _needleMotion.ExecuteNeedleCalibrationAsync(
+                        parametersSnapshot, systemNumber, progress, token), token).ConfigureAwait(true);
 
                 if (result.Success)
                 {
@@ -430,6 +495,7 @@ namespace Module.ViewModels
                         result.MeasuredCenter.Y,
                         (float)result.MeasuredHeight);
                     Parameters.CompensationXYZ = result.Compensation;
+                    StashParametersToCache(systemNumber);
 
                     CalibrationProgress = 100;
                     OnCalibrationCompleted();
@@ -894,31 +960,28 @@ namespace Module.ViewModels
             return Task.CompletedTask;
         }
 
-        /// <summary>示教对针位置：系统1(Dx Dy Dz₂)，系统2(Dx Dy Dz₃)</summary>
-        private Task TeachAlignPositionAsync(int systemNumber)
+        /// <summary>示教当前系统对针位置（内部仍读 Dx/Dy/针尖 Z 轴）</summary>
+        private void TeachAlignPosition()
         {
             try
             {
-                var positions = _needleMotion.ReadCurrentPositions(systemNumber);
+                var positions = _needleMotion.ReadCurrentPositions(SystemNumber);
                 if (!TryGetPosition(positions, out double x, "Dx") ||
                     !TryGetPosition(positions, out double y, "Dy") ||
-                    !TryGetNeedleZ(positions, systemNumber, out double z))
+                    !TryGetNeedleZ(positions, SystemNumber, out double z))
                 {
                     AddLog(string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignNoAxis", "对针位置示教失败: 系统{0}未读取到 Dx/Dy/针尖Z轴"),
-                        systemNumber));
-                    return Task.CompletedTask;
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignNoAxis", "对针位置示教失败: 系统{0}未读取到运动轴"),
+                        SystemNumber));
+                    return;
                 }
 
-                var point = new PointF((float)x, (float)y, (float)z);
-                if (systemNumber == 1)
-                    Parameters.AlignPositionSystem1 = point;
-                else
-                    Parameters.AlignPositionSystem2 = point;
+                SetCurrentAlignPosition(new PointF((float)x, (float)y, (float)z));
+                StashParametersToCache(SystemNumber);
 
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlign", "系统{0}对针位置示教: X={1:F3}, Y={2:F3}, Z={3:F3}"),
-                    systemNumber, x, y, z));
+                    SystemNumber, x, y, z));
             }
             catch (Exception ex)
             {
@@ -926,8 +989,89 @@ namespace Module.ViewModels
                     _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignError", "对针位置示教失败: {0}"),
                     ex.Message));
             }
+        }
 
-            return Task.CompletedTask;
+        private PointF GetCurrentAlignPosition() =>
+            SystemNumber == 1 ? Parameters.AlignPositionSystem1 : Parameters.AlignPositionSystem2;
+
+        private void SetCurrentAlignPosition(PointF point)
+        {
+            if (SystemNumber == 1)
+                Parameters.AlignPositionSystem1 = point;
+            else
+                Parameters.AlignPositionSystem2 = point;
+
+            RaisePropertyChanged(nameof(CurrentAlignX));
+            RaisePropertyChanged(nameof(CurrentAlignY));
+            RaisePropertyChanged(nameof(CurrentAlignZ));
+        }
+
+        private void SetCurrentAlignComponent(Action<PointF> update, string propertyName)
+        {
+            var p = GetCurrentAlignPosition();
+            update(p);
+            SetCurrentAlignPosition(p);
+            RaisePropertyChanged(propertyName);
+        }
+
+        /// <summary>切换系统：缓存旧系统参数，加载新系统缓存或配置文件</summary>
+        private async Task SwitchSystemAsync(int previousSystem, int newSystem)
+        {
+            try
+            {
+                StashParametersToCache(previousSystem);
+
+                if (_systemParamsCache.TryGetValue(newSystem, out var cached))
+                {
+                    ApplyParametersFromSystem(cached, newSystem);
+                    RaiseSystemUiProperties();
+                    return;
+                }
+
+                await TryAutoLoadConfigAsync();
+                RaiseSystemUiProperties();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleAligner] 切换系统失败: {ex.Message}");
+            }
+        }
+
+        private void StashParametersToCache(int systemNumber)
+        {
+            if (Parameters == null) return;
+            _systemParamsCache[systemNumber] = Parameters.Clone();
+        }
+
+        private void ApplyParametersFromSystem(NeedleCalibrationParams loaded, int systemNumber)
+        {
+            loaded.SystemNumber = systemNumber;
+            Parameters = loaded;
+            CompensationManager.LoadFromParameters(Parameters);
+
+            CompensationXLinkedVar = ResolveCompXLinkedVar(Parameters.CompensationXLinkedVar);
+            CompensationYLinkedVar = ResolveCompYLinkedVar(Parameters.CompensationYLinkedVar);
+            CompensationZLinkedVar = ResolveCompZLinkedVar(Parameters.CompensationZLinkedVar);
+            Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
+            Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
+            Parameters.CompensationZLinkedVar = CompensationZLinkedVar;
+            CompensationXExpression = Parameters.CompensationXExpression;
+            CompensationYExpression = Parameters.CompensationYExpression;
+            CompensationZExpression = Parameters.CompensationZExpression;
+        }
+
+        private void RaiseSystemUiProperties()
+        {
+            RaisePropertyChanged(nameof(CurrentAlignPositionTitle));
+            RaisePropertyChanged(nameof(CurrentAlignX));
+            RaisePropertyChanged(nameof(CurrentAlignY));
+            RaisePropertyChanged(nameof(CurrentAlignZ));
+            RaisePropertyChanged(nameof(SensorDiX));
+            RaisePropertyChanged(nameof(SensorDiY));
+            RaisePropertyChanged(nameof(CompensationX));
+            RaisePropertyChanged(nameof(CompensationY));
+            RaisePropertyChanged(nameof(CompensationZ));
+            RaiseCalibrationDeltaAndCalculatedChanged();
         }
 
         private static bool TryGetPosition(IReadOnlyDictionary<string, double> positions, out double value, params string[] names)
@@ -959,6 +1103,7 @@ namespace Module.ViewModels
             {
                 CompensationManager.SaveToParameters(Parameters);
                 Parameters.SystemNumber = SystemNumber;
+                StashParametersToCache(SystemNumber);
                 Parameters.LastCalibrationTime = DateTime.Now;
                 Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
                 Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
@@ -1056,21 +1201,15 @@ namespace Module.ViewModels
 
                 if (loaded != null)
                 {
-                    Parameters = loaded;
-                    if (loaded.SystemNumber > 0)
-                        SystemNumber = loaded.SystemNumber;
+                    var sn = loaded.SystemNumber > 0 ? loaded.SystemNumber : SystemNumber;
+                    ApplyParametersFromSystem(loaded, sn);
+                    if (_systemNumber != sn)
+                    {
+                        _systemNumber = sn;
+                        RaisePropertyChanged(nameof(SystemNumber));
+                    }
 
-                    CompensationManager.LoadFromParameters(Parameters);
-
-                    CompensationXLinkedVar = ResolveCompXLinkedVar(Parameters.CompensationXLinkedVar);
-                    CompensationYLinkedVar = ResolveCompYLinkedVar(Parameters.CompensationYLinkedVar);
-                    CompensationZLinkedVar = ResolveCompZLinkedVar(Parameters.CompensationZLinkedVar);
-                    Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
-                    Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
-                    Parameters.CompensationZLinkedVar = CompensationZLinkedVar;
-                    CompensationXExpression = Parameters.CompensationXExpression;
-                    CompensationYExpression = Parameters.CompensationYExpression;
-                    CompensationZExpression = Parameters.CompensationZExpression;
+                    StashParametersToCache(sn);
 
                     await EnsureLinkedCompVariablesExistAsync(
                         CompensationXLinkedVar, CompensationYLinkedVar, CompensationZLinkedVar);
@@ -1079,10 +1218,8 @@ namespace Module.ViewModels
                     CurrentFilePath = filePath;
                     CurrentFileName = Path.GetFileName(filePath);
 
-                    RaisePropertyChanged(nameof(CompensationX));
-                    RaisePropertyChanged(nameof(CompensationY));
-                    RaisePropertyChanged(nameof(CompensationZ));
-                    RaiseCalibrationDeltaAndCalculatedChanged();
+                    RaiseSystemUiProperties();
+                    RaisePropertyChanged(nameof(CompensationManager));
 
                     AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_ParametersLoaded", "针头校准参数加载成功"));
                     AddLog(string.Format(
@@ -1091,8 +1228,6 @@ namespace Module.ViewModels
                         CalculatedCompX,
                         CalculatedCompY,
                         CalculatedCompZ));
-
-                    RaisePropertyChanged(nameof(CompensationManager));
                 }
             }
             catch (Exception ex)
@@ -1177,6 +1312,19 @@ namespace Module.ViewModels
             {
                 RaiseCalibrationDeltaAndCalculatedChanged();
             }
+
+            if ((e.PropertyName == nameof(NeedleCalibrationParams.AlignPositionSystem1) && SystemNumber == 1)
+                || (e.PropertyName == nameof(NeedleCalibrationParams.AlignPositionSystem2) && SystemNumber == 2))
+            {
+                RaisePropertyChanged(nameof(CurrentAlignX));
+                RaisePropertyChanged(nameof(CurrentAlignY));
+                RaisePropertyChanged(nameof(CurrentAlignZ));
+            }
+
+            if (e.PropertyName is nameof(NeedleCalibrationParams.SensorDiX))
+                RaisePropertyChanged(nameof(SensorDiX));
+            if (e.PropertyName is nameof(NeedleCalibrationParams.SensorDiY))
+                RaisePropertyChanged(nameof(SensorDiY));
         }
 
         /// <summary>补偿管理器数值变更时刷新计算结果</summary>

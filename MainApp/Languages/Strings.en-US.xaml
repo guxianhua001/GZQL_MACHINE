@@ -1701,8 +1701,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">Fine Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">Safe Height (mm)</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">Align Position</sys:String>
-    <sys:String x:Key="NeedleAligner_AlignSystem1">System 1 (Dx Dy Dz₂)</sys:String>
-    <sys:String x:Key="NeedleAligner_AlignSystem2">System 2 (Dx Dy Dz₃)</sys:String>
+    <sys:String x:Key="NeedleAligner_AlignPositionForSystem">System {0} align position</sys:String>
+    <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
+    <sys:String x:Key="NeedleAligner_Axis_Y">Y</sys:String>
+    <sys:String x:Key="NeedleAligner_Axis_Z">Z</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiX">X sensor DI port</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiY">Y sensor DI port</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiXTip">DI port for X-edge search; active low triggers</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorDiYTip">DI port for Y-edge search; active low triggers</sys:String>
     <sys:String x:Key="NeedleAligner_TeachAlignPosition">Teach Align Position</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationControl">Calibration Control</sys:String>
     <sys:String x:Key="NeedleAligner_StartCalibration">Start Calibration</sys:String>

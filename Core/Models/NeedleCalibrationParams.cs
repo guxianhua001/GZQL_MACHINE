@@ -67,10 +67,6 @@ namespace Core.Models
         private int _sensorDiX = 38;
         /// <summary>Y方向寻针传感器 DI 端口号</summary>
         private int _sensorDiY = 37;
-        /// <summary>Z方向寻针传感器 DI 端口号（通道1）</summary>
-        private int _sensorDiZ1 = 37;
-        /// <summary>Z方向寻针传感器 DI 端口号（通道2）</summary>
-        private int _sensorDiZ2 = 38;
         public bool IsValid { get; set; } = true;
 
         #region 搜索点设置
@@ -212,6 +208,7 @@ namespace Core.Models
 
         [Category("传感器")]
         [DisplayName("X传感器DI")]
+        [Description("X方向寻针传感器 DI 端口号，低电平触发")]
         public int SensorDiX
         {
             get => _sensorDiX;
@@ -220,26 +217,11 @@ namespace Core.Models
 
         [Category("传感器")]
         [DisplayName("Y传感器DI")]
+        [Description("Y方向寻针传感器 DI 端口号，低电平触发")]
         public int SensorDiY
         {
             get => _sensorDiY;
             set => SetProperty(ref _sensorDiY, value);
-        }
-
-        [Category("传感器")]
-        [DisplayName("Z传感器DI1")]
-        public int SensorDiZ1
-        {
-            get => _sensorDiZ1;
-            set => SetProperty(ref _sensorDiZ1, value);
-        }
-
-        [Category("传感器")]
-        [DisplayName("Z传感器DI2")]
-        public int SensorDiZ2
-        {
-            get => _sensorDiZ2;
-            set => SetProperty(ref _sensorDiZ2, value);
         }
 
         // 补偿管理器参数（清零法简化版）
@@ -289,8 +271,6 @@ namespace Core.Models
                     : new PointF(),
                 SensorDiX = this.SensorDiX,
                 SensorDiY = this.SensorDiY,
-                SensorDiZ1 = this.SensorDiZ1,
-                SensorDiZ2 = this.SensorDiZ2,
 
                 // 复制补偿管理器参数
                 CompensationStorageX = this.CompensationStorageX,
