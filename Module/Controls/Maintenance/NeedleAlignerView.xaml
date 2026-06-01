@@ -140,7 +140,7 @@
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint1.Y, StringFormat=F3}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="1"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
@@ -163,7 +163,7 @@
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint2.Y, StringFormat=F3}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="2"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
@@ -186,7 +186,7 @@
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint3.Y, StringFormat=F3}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="3"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
@@ -209,7 +209,7 @@
                             <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint4.Y, StringFormat=F3}"
                                      Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
                             <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="4"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
@@ -387,7 +387,7 @@
                 </materialDesign:Card>
 
                 <!-- 当前文件路径：长路径多行显示 -->
-                <Border Background="#EDE7F6" CornerRadius="6" Padding="8,5" Margin="0,8,0,0"
+                <Border Background="#FAFAFA" CornerRadius="6" Padding="8,5" Margin="0,8,0,0"
                         Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
                     <StackPanel>
                         <Grid>
@@ -396,11 +396,11 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
-                                                     Foreground="#5E35B1" Margin="0,2,6,0"
+                                                     Foreground="#9E9E9E" Margin="0,2,6,0"
                                                      VerticalAlignment="Top" />
                             <TextBlock Grid.Column="1"
                                        Text="{lang:Lang NeedleAligner_CurrentFile}"
-                                       Foreground="#5E35B1" FontSize="10" FontWeight="Medium"
+                                       Foreground="#9E9E9E" FontSize="10" FontWeight="Medium"
                                        TextWrapping="Wrap" />
                         </Grid>
                         <TextBlock Text="{Binding CurrentFilePath}"
@@ -693,7 +693,7 @@
                     </Grid>
 
                     <Button Command="{Binding SaveParametersCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             Padding="8,5" Margin="0,0,0,4"
@@ -712,7 +712,7 @@
                     </Button>
 
                     <Button Command="{Binding LoadParametersCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             Padding="8,5" Margin="0,0,0,0"
@@ -857,7 +857,7 @@
                 </ScrollViewer>
 
                 <Button Command="{Binding ClearLogCommand}"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
                         Padding="10,4" Margin="0,8,0,0"
                         HorizontalAlignment="Right"
                         materialDesign:ButtonAssist.CornerRadius="4"

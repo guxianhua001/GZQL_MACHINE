@@ -496,8 +496,8 @@ namespace Module.ViewModels
         /// <summary>获取当前系统针尖 Z 轴名称候选（兼容 Unicode/ASCII 命名）</summary>
         private static string[] GetNeedleTipZAxisNames(int systemNumber) =>
             systemNumber == 1
-                ? new[] { "Dz₂", "Dz2" }
-                : new[] { "Dz₃", "Dz3" };
+                ? new[] { "Dz₂"}
+                : new[] { "Dz₃"};
 
         /// <summary>从示教结果中按候选轴名顺序读取位置</summary>
         private static bool TryGetAxisPosition(IReadOnlyDictionary<string, double> positions, out double value, params string[] axisNames)
