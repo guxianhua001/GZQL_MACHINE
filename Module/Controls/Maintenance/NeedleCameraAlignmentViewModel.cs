@@ -1,4 +1,5 @@
 using Core.Abstraction;
+using Core.Constants;
 using Core.Models;
 using Core.Utilities;
 using Newtonsoft.Json;
@@ -83,9 +84,10 @@ namespace Module.ViewModels
             _ = InitializeAsync().ConfigureAwait(false);
         }
 
-        /// <summary>初始化：加载全局变量，再自动加载配置文件</summary>
+        /// <summary>初始化：确保默认全局变量存在，加载变量列表，再自动加载 JSON 配置</summary>
         private async Task InitializeAsync()
         {
+            await EnsureDefaultCompGlobalVariablesAsync(1, 2);
             await LoadGlobalVariablesAsync();
             await TryAutoLoadConfigAsync();
         }
@@ -320,10 +322,10 @@ namespace Module.ViewModels
             {
                 var positions = await _motionController.TeachAsync(StationIdentifier);
 
-                if (positions.TryGetValue("Dx", out double dispX))
-                    CameraCenterX = dispX;
-                if (positions.TryGetValue("Dy", out double gantryY))
-                    CameraCenterY = gantryY;
+                if (TryGetAxisPosition(positions, out double dx, "Dx"))
+                    CameraCenterX = dx;
+                if (TryGetAxisPosition(positions, out double dy, "Dy"))
+                    CameraCenterY = dy;
 
                 CalculateCalibrationDelta();
 
@@ -347,9 +349,9 @@ namespace Module.ViewModels
             {
                 var positions = await _motionController.TeachAsync(StationIdentifier);
 
-                if (TryGetAxisPosition(positions, out double dx, "Dx", "DispX"))
+                if (TryGetAxisPosition(positions, out double dx, "Dx"))
                     NeedleTipX = dx;
-                if (TryGetAxisPosition(positions, out double dy, "Dy", "GantryY"))
+                if (TryGetAxisPosition(positions, out double dy, "Dy"))
                     NeedleTipY = dy;
 
                 var zAxisNames = GetNeedleTipZAxisNames(_selectedSystemNumber);
@@ -451,8 +453,7 @@ namespace Module.ViewModels
             CompensationY = 0;
             CompensationXExpression = null;
             CompensationYExpression = null;
-            CompXLinkedVar = null;
-            CompYLinkedVar = null;
+            _ = ApplyDefaultLinkedVariablesAsync(_selectedSystemNumber);
 
             UpdateStatus(
                 _localization.GetResource("NeedleCamera_Status_ParametersReset"),
@@ -558,6 +559,8 @@ namespace Module.ViewModels
             if (parameters == null) return;
 
             ApplyParams(parameters);
+            await EnsureLinkedCompVariablesExistAsync(CompXLinkedVar, CompYLinkedVar);
+            await LoadGlobalVariablesAsync();
 
             CurrentFilePath = filePath;
             CurrentFileName = Path.GetFileName(filePath);
@@ -566,9 +569,11 @@ namespace Module.ViewModels
             _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}配置已加载: {filePath}");
         }
 
-        /// <summary>从参数对象的值应用到ViewModel属性</summary>
+        /// <summary>从参数对象应用到 ViewModel；链接名为空时使用当前系统默认全局变量</summary>
         private void ApplyParams(NeedleCameraCalibrationParams p)
         {
+            var systemNumber = p.SystemNumber > 0 ? p.SystemNumber : _selectedSystemNumber;
+
             CameraCenterX = p.CameraCenterX;
             CameraCenterY = p.CameraCenterY;
             NeedleTipX = p.NeedleTipX;
@@ -580,8 +585,116 @@ namespace Module.ViewModels
             CompensationY = p.CompensationY;
             CompensationXExpression = p.CompensationXExpression;
             CompensationYExpression = p.CompensationYExpression;
-            CompXLinkedVar = p.CompXLinkedVar;
-            CompYLinkedVar = p.CompYLinkedVar;
+            CompXLinkedVar = ResolveCompXLinkedVar(p.CompXLinkedVar, systemNumber);
+            CompYLinkedVar = ResolveCompYLinkedVar(p.CompYLinkedVar, systemNumber);
+        }
+
+        private static string ResolveCompXLinkedVar(string linkedVarFromJson, int systemNumber) =>
+            string.IsNullOrWhiteSpace(linkedVarFromJson)
+                ? NeedleCameraGlobalVariableNames.GetDefaultCompXLinkedVar(systemNumber)
+                : linkedVarFromJson;
+
+        private static string ResolveCompYLinkedVar(string linkedVarFromJson, int systemNumber) =>
+            string.IsNullOrWhiteSpace(linkedVarFromJson)
+                ? NeedleCameraGlobalVariableNames.GetDefaultCompYLinkedVar(systemNumber)
+                : linkedVarFromJson;
+
+        /// <summary>无配置文件时，应用当前系统的默认补偿链接目标</summary>
+        private async Task ApplyDefaultLinkedVariablesAsync(int systemNumber)
+        {
+            await EnsureDefaultCompGlobalVariablesAsync(systemNumber);
+            await LoadGlobalVariablesAsync();
+
+            CompXLinkedVar = NeedleCameraGlobalVariableNames.GetDefaultCompXLinkedVar(systemNumber);
+            CompYLinkedVar = NeedleCameraGlobalVariableNames.GetDefaultCompYLinkedVar(systemNumber);
+        }
+
+        /// <summary>
+        /// 在配方池全局变量中创建默认 Double 补偿变量（若不存在）。
+        /// 系统1/2 各 X、Y 共 4 个：NeedleCamera_System{N}_CompX/Y_LinkedVar
+        /// </summary>
+        private async Task EnsureDefaultCompGlobalVariablesAsync(params int[] systemNumbers)
+        {
+            if (systemNumbers == null || systemNumbers.Length == 0)
+                systemNumbers = new[] { _selectedSystemNumber };
+
+            try
+            {
+                var poolId = _recipePoolService?.CurrentPoolName ?? "Default";
+                var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
+                var changed = false;
+
+                foreach (var systemNumber in systemNumbers.Distinct())
+                {
+                    changed |= EnsureDoubleGlobalVariable(variables,
+                        NeedleCameraGlobalVariableNames.GetDefaultCompXLinkedVar(systemNumber),
+                        $"针头相机系统{systemNumber} X补偿（默认）");
+                    changed |= EnsureDoubleGlobalVariable(variables,
+                        NeedleCameraGlobalVariableNames.GetDefaultCompYLinkedVar(systemNumber),
+                        $"针头相机系统{systemNumber} Y补偿（默认）");
+                }
+
+                if (!changed)
+                    return;
+
+                for (int i = 0; i < variables.Count; i++)
+                    variables[i].Index = i + 1;
+
+                await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+                _eventAggregator?.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>()?.Publish(poolId);
+                _logger.Info("[NeedleCamera] 已创建默认补偿全局变量");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleCamera] 创建默认补偿全局变量失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>全局变量池中不存在时添加 Double 变量，初始值 0</summary>
+        private static bool EnsureDoubleGlobalVariable(List<GlobalVariable> variables, string name, string comment)
+        {
+            if (variables.Any(v => v.Name == name))
+                return false;
+
+            variables.Add(new GlobalVariable
+            {
+                Name = name,
+                Type = GlobalVariableType.Double,
+                Value = "0",
+                Comment = comment
+            });
+            return true;
+        }
+
+        /// <summary>确保 JSON 中指定的链接目标在全局变量池中存在（Double，初始 0）</summary>
+        private async Task EnsureLinkedCompVariablesExistAsync(params string[] linkedVarNames)
+        {
+            var names = linkedVarNames?.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToArray();
+            if (names == null || names.Length == 0)
+                return;
+
+            try
+            {
+                var poolId = _recipePoolService?.CurrentPoolName ?? "Default";
+                var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
+                var changed = false;
+
+                foreach (var name in names)
+                    changed |= EnsureDoubleGlobalVariable(variables, name, "针头相机补偿链接变量");
+
+                if (!changed)
+                    return;
+
+                for (int i = 0; i < variables.Count; i++)
+                    variables[i].Index = i + 1;
+
+                await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+                _eventAggregator?.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>()?.Publish(poolId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleCamera] 确保链接变量存在失败: {ex.Message}");
+            }
         }
 
         /// <summary>从ViewModel当前状态构建参数对象</summary>
@@ -637,7 +750,8 @@ namespace Module.ViewModels
                     return;
                 }
 
-                _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}无可加载的配置文件");
+                await ApplyDefaultLinkedVariablesAsync(_selectedSystemNumber);
+                _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}无可加载的配置文件，已应用默认补偿链接");
             }
             catch (Exception ex)
             {
@@ -704,7 +818,7 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>从配方池加载全局变量列表，并刷新可链接变量集合</summary>
+        /// <summary>从配方池加载全局变量列表，并刷新可链接变量集合（链接关系仅从 JSON 恢复）</summary>
         private async Task LoadGlobalVariablesAsync()
         {
             try
@@ -714,14 +828,6 @@ namespace Module.ViewModels
                 AvailableGlobalVariables = new ObservableCollection<GlobalVariable>(variables);
 
                 RefreshLinkableGlobalVariables();
-
-                // 从全局变量池恢复补偿链接关系
-                var cxLink = variables.FirstOrDefault(v => v.Name == "NeedleCamera_CompX_LinkedVar");
-                var cyLink = variables.FirstOrDefault(v => v.Name == "NeedleCamera_CompY_LinkedVar");
-                if (cxLink != null && !string.IsNullOrEmpty(cxLink.Value))
-                    CompXLinkedVar = cxLink.Value;
-                if (cyLink != null && !string.IsNullOrEmpty(cyLink.Value))
-                    CompYLinkedVar = cyLink.Value;
 
                 RaisePropertyChanged(nameof(IsCompXLinked));
                 RaisePropertyChanged(nameof(IsCompYLinked));
@@ -772,7 +878,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(IsCompYLinked));
         }
 
-        /// <summary>将补偿计算值写入链接的全局变量，同时持久化链接关系名称</summary>
+        /// <summary>将 CalculatedComp 写入用户链接的 Double 全局变量（链接名仅保存在 JSON）</summary>
         private async Task WriteCompToGlobalVariablesAsync()
         {
             try
@@ -780,15 +886,14 @@ namespace Module.ViewModels
                 var poolId = _recipePoolService?.CurrentPoolName ?? "Default";
                 var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
 
-                // 写入链接目标变量的数值（CalculatedCompX = DeltaX + 补偿值 + 表达式结果）
-                if (!string.IsNullOrEmpty(CompXLinkedVar))
-                    UpdateOrAddGlobalVariable(variables, CompXLinkedVar, CalculatedCompX.ToString("F6"), "针头相机X补偿新值", GlobalVariableType.Double);
-                if (!string.IsNullOrEmpty(CompYLinkedVar))
-                    UpdateOrAddGlobalVariable(variables, CompYLinkedVar, CalculatedCompY.ToString("F6"), "针头相机Y补偿新值", GlobalVariableType.Double);
+                RemoveLegacyLinkMetadataVariables(variables);
 
-                // 持久化链接关系名称（String类型）
-                UpdateOrAddGlobalVariable(variables, "NeedleCamera_CompX_LinkedVar", CompXLinkedVar ?? "", "针头相机X补偿链接的全局变量名", GlobalVariableType.String);
-                UpdateOrAddGlobalVariable(variables, "NeedleCamera_CompY_LinkedVar", CompYLinkedVar ?? "", "针头相机Y补偿链接的全局变量名", GlobalVariableType.String);
+                if (!string.IsNullOrEmpty(CompXLinkedVar))
+                    UpdateOrAddGlobalVariable(variables, CompXLinkedVar, CalculatedCompX.ToString("F6"),
+                        $"针头相机系统{_selectedSystemNumber} X补偿", GlobalVariableType.Double);
+                if (!string.IsNullOrEmpty(CompYLinkedVar))
+                    UpdateOrAddGlobalVariable(variables, CompYLinkedVar, CalculatedCompY.ToString("F6"),
+                        $"针头相机系统{_selectedSystemNumber} Y补偿", GlobalVariableType.Double);
 
                 for (int i = 0; i < variables.Count; i++)
                     variables[i].Index = i + 1;
@@ -800,6 +905,15 @@ namespace Module.ViewModels
             {
                 _logger.Warn($"[NeedleCamera] 写入补偿值到全局变量失败: {ex.Message}");
             }
+        }
+
+        /// <summary>移除旧版在全局变量池中重复存储链接关系的 String 元数据项</summary>
+        private static void RemoveLegacyLinkMetadataVariables(List<GlobalVariable> variables)
+        {
+            variables.RemoveAll(v =>
+                v.Type == GlobalVariableType.String &&
+                (v.Name == NeedleCameraGlobalVariableNames.LegacyCompXLinkMetadataKey ||
+                 v.Name == NeedleCameraGlobalVariableNames.LegacyCompYLinkMetadataKey));
         }
 
         /// <summary>更新或添加全局变量，支持指定类型</summary>
