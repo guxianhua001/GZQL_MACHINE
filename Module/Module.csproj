@@ -10,6 +10,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Controls\LiveCharts\**" />
+    <EmbeddedResource Remove="Controls\LiveCharts\**" />
+    <None Remove="Controls\LiveCharts\**" />
+    <Page Remove="Controls\LiveCharts\**" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="CommonServiceLocator" Version="2.0.7" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="DotNetCore.Natasha.CSharp.All" Version="3.6.0" />
@@ -611,9 +617,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.203" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Controls\LiveCharts\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AlarmModule\AlarmModule.csproj" />

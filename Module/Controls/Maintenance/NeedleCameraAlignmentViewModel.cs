@@ -28,7 +28,7 @@ namespace Module.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private readonly IRecipePoolService _recipePoolService;
 
-        private const string StationIdentifier = "Dispenser";
+        private const string StationIdentifier = "DispenserStation";
         /// <summary>配置文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
 
@@ -332,9 +332,9 @@ namespace Module.ViewModels
             {
                 var positions = await _motionController.TeachAsync(StationIdentifier);
 
-                if (positions.TryGetValue("DispX", out double dispX))
+                if (positions.TryGetValue("Dx", out double dispX))
                     NeedleTipX = dispX;
-                if (positions.TryGetValue("GantryY", out double gantryY))
+                if (positions.TryGetValue("Dy", out double gantryY))
                     NeedleTipY = gantryY;
                 if (positions.TryGetValue("DispZ", out double dispZ))
                     NeedleTipZ = dispZ;
