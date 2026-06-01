@@ -170,7 +170,7 @@ namespace Module.Services
             }
         }
 
-        #region 寻针核心逻辑（参考 NeedleCalibrating.ExecuteNeedleCalibrationAsync）
+        #region 寻针核心逻辑
 
         private async Task<PointF> SearchCenterPointAsync(
             NeedleCalibrationParams parameters,

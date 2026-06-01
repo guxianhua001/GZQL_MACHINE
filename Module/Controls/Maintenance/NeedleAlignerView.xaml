@@ -10,7 +10,7 @@
              xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
-             d:DesignHeight="700"
+             d:DesignHeight="800"
              d:DesignWidth="1100"
              Background="#EEF2F5">
     <UserControl.Resources>
@@ -253,11 +253,11 @@
                             <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="14" Height="14"
                                                      Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.AlignPositionSystem1.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
                             <TextBox Grid.Column="2" Text="{Binding Parameters.AlignPositionSystem1.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
                             <TextBox Grid.Column="3" Text="{Binding Parameters.AlignPositionSystem1.Z, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
                             <Button Grid.Column="4" Command="{Binding TeachAlignPositionCommand}" CommandParameter="1"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
@@ -282,11 +282,11 @@
                             <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="14" Height="14"
                                                      Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.AlignPositionSystem2.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
                             <TextBox Grid.Column="2" Text="{Binding Parameters.AlignPositionSystem2.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
                             <TextBox Grid.Column="3" Text="{Binding Parameters.AlignPositionSystem2.Z, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
+                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
                             <Button Grid.Column="4" Command="{Binding TeachAlignPositionCommand}" CommandParameter="2"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     Padding="6,2" Margin="4,0,0,0"
@@ -350,7 +350,7 @@
                 </materialDesign:Card>
 
                 <!-- 运动参数卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,0"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
                         <Grid Margin="0,0,0,8">
@@ -465,30 +465,6 @@
                     </StackPanel>
                 </materialDesign:Card>
 
-                <!-- 当前文件路径：长路径多行显示 -->
-                <Border Background="#FAFAFA" CornerRadius="6" Padding="8,5" Margin="0,8,0,0"
-                        Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
-                                                     Foreground="#9E9E9E" Margin="0,2,6,0"
-                                                     VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_CurrentFile}"
-                                       Foreground="#9E9E9E" FontSize="10" FontWeight="Medium"
-                                       TextWrapping="Wrap" />
-                        </Grid>
-                        <TextBlock Text="{Binding CurrentFilePath}"
-                                   Foreground="#7E57C2" FontSize="10" FontFamily="Consolas"
-                                   TextWrapping="Wrap" Margin="0,4,0,0"
-                                   ToolTip="{Binding CurrentFilePath}" />
-                    </StackPanel>
-                </Border>
-
             </StackPanel>
         </ScrollViewer>
 
@@ -570,7 +546,7 @@
                 </materialDesign:Card>
 
                 <!-- 校准结果卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,0"
+                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                      Background="{DynamicResource MaterialDesignCardBackground}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
@@ -820,11 +796,35 @@
                                        Style="{StaticResource SideActionButtonContentStyle}" />
                         </Grid>
                     </Button>
+
+                    <!-- 当前文件路径 -->
+                    <Border Background="#FAFAFA" CornerRadius="6" Padding="8,5" Margin="0,8,0,0"
+                            Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
+                                                         Foreground="#9E9E9E" Margin="0,2,6,0"
+                                                         VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleAligner_CurrentFile}"
+                                           Foreground="#9E9E9E" FontSize="10" FontWeight="Medium"
+                                           TextWrapping="Wrap" />
+                            </Grid>
+                            <TextBlock Text="{Binding CurrentFilePath}"
+                                       Foreground="#7E57C2" FontSize="10" FontFamily="Consolas"
+                                       TextWrapping="Wrap" Margin="0,4,0,0"
+                                       ToolTip="{Binding CurrentFilePath}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </materialDesign:Card>
 
             <!-- 补偿管理卡片 -->
-            <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,0"
+            <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
                                  Background="{DynamicResource MaterialDesignCardBackground}">
                 <StackPanel IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}">
                     <Grid Margin="0,0,0,8">
