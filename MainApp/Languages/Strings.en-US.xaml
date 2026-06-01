@@ -1118,8 +1118,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleCoordinateY">Needle Y</sys:String>
     <sys:String x:Key="NeedleHeight">NeedleHeight:</sys:String>
     <sys:String x:Key="NeedleRealPathCalculation">NeedleRealPathCalculation</sys:String>
-    <sys:String x:Key="NeedleSystem1">NeedleSystem1</sys:String>
-    <sys:String x:Key="NeedleSystem2">NeedleSystem2</sys:String>
+    <sys:String x:Key="NeedleSystem1">Needle System 1</sys:String>
+    <sys:String x:Key="NeedleSystem2">Needle System 2</sys:String>
     <sys:String x:Key="NewSolution">NewSol</sys:String>
     <sys:String x:Key="NextStep">Next Step</sys:String>
     <sys:String x:Key="Number">Num.</sys:String>
@@ -1748,6 +1748,45 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPointError">Search point teach failed: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationLinked">Linked</sys:String>
     <sys:String x:Key="NeedleAligner_CurrentFile">Current Parameter File</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Starting">Starting calibration...</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Completed">Calibration completed</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Error">Calibration error: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Cancelled">Calibration cancelled</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Stopped">Calibration stopped</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_RaiseSafeHeight">Raising to safe height</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchCenterXY">Searching center XY</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchNeedleHeight">Searching needle tip height</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_CalcCompensation">Calculating compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_CalibrationDoneMotion">Needle calibration finished</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchPointX">Searching X at point {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchPointY">Searching Y at point {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_ZHeightSearch">Z height search {0}/{1}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationSuccess">Needle calibration completed successfully</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationCancelled">Needle calibration cancelled</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationError">Calibration error: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationStopped">Needle calibration stopped manually</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_StopError">Stop calibration failed: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationResult">Calibration done - Current: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_Delta">Delta: ΔX={0:F3}, ΔY={1:F3}, ΔZ={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ProcessResultError">Failed to process calibration result: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ApplyCompensationError">Failed to apply compensation: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryHeader">=== Compensation History (System {0}) ===</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | Comp X={1:F3}, Y={2:F3}, Z={3:F3} | Operator: {4}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_NoHistory">No compensation history</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">Failed to show compensation history: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ParametersSaved">System {0} parameters saved</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SaveError">Failed to save parameters: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_LoadError">Failed to load parameters: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FileNotFound">Parameter file not found</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ParametersLoaded">Needle calibration parameters loaded</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationWarning">Warning: compensation change is too large!</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationWarningAdvice">Check: needle wear, aligner fixture position</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SaveHistoryError">Failed to save compensation history: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_Cleared">Log cleared</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachAlignNoAxis">Teach align position failed: system {0} Dx/Dy/needle Z not read</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">Search center point failed</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">Search needle height failed</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">Calibration cancelled</sys:String>
     <sys:String x:Key="NeedleVerify_Title">Needle Calibration Verification</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">Verify compensation data accuracy</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">System Selection</sys:String>

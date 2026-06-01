@@ -1748,6 +1748,45 @@
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPointError">搜索点示教失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationLinked">已链接</sys:String>
     <sys:String x:Key="NeedleAligner_CurrentFile">当前参数文件</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Starting">开始校准...</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Completed">校准完成</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Error">校准异常: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Cancelled">校准已取消</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_Stopped">校准已停止</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_RaiseSafeHeight">抬升到安全高度</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchCenterXY">搜索中心点XY</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchNeedleHeight">搜索针尖高度</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_CalcCompensation">计算补偿值</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_CalibrationDoneMotion">针头校准完成</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchPointX">在点{0}进行X方向搜索</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchPointY">在点{0}进行Y方向搜索</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_ZHeightSearch">第 {0}/{1} 次高度搜索</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationSuccess">针头校准成功完成</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationCancelled">针头校准已取消</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationError">校准异常: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationStopped">针头校准已手动停止</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_StopError">停止校准失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalibrationResult">校准完成 - 当前: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_Delta">本次增量: ΔX={0:F3}, ΔY={1:F3}, ΔZ={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ProcessResultError">处理校准结果失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ApplyCompensationError">应用补偿值失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryHeader">=== 补偿历史记录（系统{0}）===</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | 补偿X={1:F3}, Y={2:F3}, Z={3:F3} | 操作员: {4}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_NoHistory">无补偿历史记录</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">显示补偿历史失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ParametersSaved">对针系统{0}参数保存成功</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SaveError">保存参数失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_LoadError">加载参数失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FileNotFound">参数文件不存在</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ParametersLoaded">针头校准参数加载成功</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationWarning">警告：补偿值变化过大！</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CompensationWarningAdvice">建议检查：针头是否磨损、校针器位置是否变动</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SaveHistoryError">保存补偿历史失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_Cleared">日志已清空</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachAlignNoAxis">对针位置示教失败: 系统{0}未读取到 Dx/Dy/针尖Z轴</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">搜索中心点失败</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">搜索针尖高度失败</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">校准已取消</sys:String>
     <sys:String x:Key="NeedleVerify_Title">针头校准验证</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">验证补偿数据准确性</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">系统选择</sys:String>

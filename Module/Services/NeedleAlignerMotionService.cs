@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using HalconDotNet;
@@ -23,12 +24,21 @@ namespace Module.Services
 
         private readonly IMotionService _motion;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private Dictionary<string, int> _axisIdCache;
 
-        public NeedleAlignerMotionService(IMotionService motion, ILoggerService logger)
+        public NeedleAlignerMotionService(IMotionService motion, ILoggerService logger, ILocalizationService localization)
         {
             _motion = motion ?? throw new ArgumentNullException(nameof(motion));
             _logger = logger;
+            _localization = localization;
+        }
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
         }
 
         public IReadOnlyDictionary<string, double> ReadCurrentPositions(int systemNumber)
@@ -107,23 +117,23 @@ namespace Module.Services
         {
             try
             {
-                progress?.Report(("抬升到安全高度", 10));
+                progress?.Report((L("NeedleAligner_Status_RaiseSafeHeight", "抬升到安全高度"), 10));
                 await MoveToSafeHeightAsync(parameters, systemNumber, token);
 
-                progress?.Report(("搜索中心点XY", 20));
+                progress?.Report((L("NeedleAligner_Status_SearchCenterXY", "搜索中心点XY"), 20));
                 var center = await SearchCenterPointAsync(parameters, systemNumber, progress, token);
                 if (center == null)
-                    return Fail("搜索中心点失败");
+                    return Fail(L("NeedleAligner_Error_SearchCenterFailed", "搜索中心点失败"));
 
-                progress?.Report(("搜索针尖高度", 60));
+                progress?.Report((L("NeedleAligner_Status_SearchNeedleHeight", "搜索针尖高度"), 60));
                 var needleHeight = await SearchNeedleHeightAsync(center, parameters, systemNumber, progress, token);
                 if (double.IsNaN(needleHeight))
-                    return Fail("搜索针尖高度失败");
+                    return Fail(L("NeedleAligner_Error_SearchHeightFailed", "搜索针尖高度失败"));
 
-                progress?.Report(("计算补偿值", 90));
+                progress?.Report((L("NeedleAligner_Status_CalcCompensation", "计算补偿值"), 90));
                 var compensation = CalculateCompensation(center, needleHeight, parameters);
 
-                progress?.Report(("针头校准完成", 100));
+                progress?.Report((L("NeedleAligner_Status_CalibrationDoneMotion", "针头校准完成"), 100));
                 await MoveToSafeHeightAsync(parameters, systemNumber, token);
 
                 return new NeedleCalibrationResult
@@ -136,7 +146,7 @@ namespace Module.Services
             }
             catch (OperationCanceledException)
             {
-                return Fail("校准已取消");
+                return Fail(L("NeedleAligner_Error_CalibrationCancelled", "校准已取消"));
             }
             catch (Exception ex)
             {
@@ -185,7 +195,7 @@ namespace Module.Services
             for (int i = 0; i < 2; i++)
             {
                 token.ThrowIfCancellationRequested();
-                progress?.Report(($"在点{i + 1}进行X方向搜索", 20 + i * 10));
+                progress?.Report((L("NeedleAligner_Status_SearchPointX", "在点{0}进行X方向搜索", i + 1), 20 + i * 10));
                 var xEdge = await SearchEdgeInDirectionAsync(searchPoints[i], SearchDirection.XPositive, SearchDirection.X, parameters, systemNumber, token);
                 if (xEdge == null) return null;
                 xEdgePoints.Add(xEdge);
@@ -194,7 +204,7 @@ namespace Module.Services
             for (int i = 2; i < 4; i++)
             {
                 token.ThrowIfCancellationRequested();
-                progress?.Report(($"在点{i + 1}进行Y方向搜索", 40 + (i - 2) * 10));
+                progress?.Report((L("NeedleAligner_Status_SearchPointY", "在点{0}进行Y方向搜索", i + 1), 40 + (i - 2) * 10));
                 var yEdge = await SearchEdgeInDirectionAsync(searchPoints[i], SearchDirection.XPositive, SearchDirection.Y, parameters, systemNumber, token);
                 if (yEdge == null) return null;
                 yEdgePoints.Add(yEdge);
@@ -327,7 +337,7 @@ namespace Module.Services
             for (int i = 0; i < parameters.ZSearchCount; i++)
             {
                 token.ThrowIfCancellationRequested();
-                progress?.Report(($"第 {i + 1}/{parameters.ZSearchCount} 次高度搜索", 60 + i * 10));
+                progress?.Report((L("NeedleAligner_Status_ZHeightSearch", "第 {0}/{1} 次高度搜索", i + 1, parameters.ZSearchCount), 60 + i * 10));
 
                 double height = await SearchSingleNeedleHeightAsync(zId, parameters, token);
                 if (!double.IsNaN(height))

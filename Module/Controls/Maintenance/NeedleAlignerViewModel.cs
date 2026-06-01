@@ -905,7 +905,7 @@ namespace Module.ViewModels
                     !TryGetNeedleZ(positions, systemNumber, out double z))
                 {
                     AddLog(string.Format(
-                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignError", "对针位置示教失败: 系统{0}"),
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignNoAxis", "对针位置示教失败: 系统{0}未读取到 Dx/Dy/针尖Z轴"),
                         systemNumber));
                     return Task.CompletedTask;
                 }
