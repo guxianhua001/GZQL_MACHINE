@@ -60,7 +60,17 @@ namespace Core.Models
         private int _zSearchCount = 3;
         private double _searchSpeed = 5.0;
         private double _fineSearchSpeed = 1.0;
-        private double _needleBaseHeight = 0.1;
+        private double _safeHeight = 30.0;
+        private PointF _alignPositionSystem1 = new PointF(0, 0, 0);
+        private PointF _alignPositionSystem2 = new PointF(0, 0, 0);
+        /// <summary>X方向寻针传感器 DI 端口号</summary>
+        private int _sensorDiX = 38;
+        /// <summary>Y方向寻针传感器 DI 端口号</summary>
+        private int _sensorDiY = 37;
+        /// <summary>Z方向寻针传感器 DI 端口号（通道1）</summary>
+        private int _sensorDiZ1 = 37;
+        /// <summary>Z方向寻针传感器 DI 端口号（通道2）</summary>
+        private int _sensorDiZ2 = 38;
         public bool IsValid { get; set; } = true;
 
         #region 搜索点设置
@@ -172,13 +182,64 @@ namespace Core.Models
         }
         #endregion
 
-        [Category("针头参数")]
-        [DisplayName("针头基准高度 (mm)")]
-        [Description("针头在零位时的基准高度")]
-        public double NeedleBaseHeight
+        [Category("运动参数")]
+        [DisplayName("安全高度 (mm)")]
+        [Description("水平移动前 Z 轴抬升高度，防止碰撞")]
+        [Range(0.0, 200.0)]
+        public double SafeHeight
         {
-            get => _needleBaseHeight;
-            set => SetProperty(ref _needleBaseHeight, value);
+            get => _safeHeight;
+            set => SetProperty(ref _safeHeight, Math.Clamp(value, 0.0, 200.0));
+        }
+
+        [Category("对针位置")]
+        [DisplayName("系统1对针位置 (Dx Dy Dz₂)")]
+        [Description("系统1对针器 XYZ 坐标，Z 为寻针高度")]
+        public PointF AlignPositionSystem1
+        {
+            get => _alignPositionSystem1;
+            set => SetProperty(ref _alignPositionSystem1, value);
+        }
+
+        [Category("对针位置")]
+        [DisplayName("系统2对针位置 (Dx Dy Dz₃)")]
+        [Description("系统2对针器 XYZ 坐标，Z 为寻针高度")]
+        public PointF AlignPositionSystem2
+        {
+            get => _alignPositionSystem2;
+            set => SetProperty(ref _alignPositionSystem2, value);
+        }
+
+        [Category("传感器")]
+        [DisplayName("X传感器DI")]
+        public int SensorDiX
+        {
+            get => _sensorDiX;
+            set => SetProperty(ref _sensorDiX, value);
+        }
+
+        [Category("传感器")]
+        [DisplayName("Y传感器DI")]
+        public int SensorDiY
+        {
+            get => _sensorDiY;
+            set => SetProperty(ref _sensorDiY, value);
+        }
+
+        [Category("传感器")]
+        [DisplayName("Z传感器DI1")]
+        public int SensorDiZ1
+        {
+            get => _sensorDiZ1;
+            set => SetProperty(ref _sensorDiZ1, value);
+        }
+
+        [Category("传感器")]
+        [DisplayName("Z传感器DI2")]
+        public int SensorDiZ2
+        {
+            get => _sensorDiZ2;
+            set => SetProperty(ref _sensorDiZ2, value);
         }
 
         // 补偿管理器参数（清零法简化版）
@@ -219,7 +280,17 @@ namespace Core.Models
                 ZSearchCount = this.ZSearchCount,
                 SearchSpeed = this.SearchSpeed,
                 FineSearchSpeed = this.FineSearchSpeed,
-                NeedleBaseHeight = this.NeedleBaseHeight,
+                SafeHeight = this.SafeHeight,
+                AlignPositionSystem1 = this.AlignPositionSystem1 != null
+                    ? new PointF(this.AlignPositionSystem1.X, this.AlignPositionSystem1.Y, this.AlignPositionSystem1.Z)
+                    : new PointF(),
+                AlignPositionSystem2 = this.AlignPositionSystem2 != null
+                    ? new PointF(this.AlignPositionSystem2.X, this.AlignPositionSystem2.Y, this.AlignPositionSystem2.Z)
+                    : new PointF(),
+                SensorDiX = this.SensorDiX,
+                SensorDiY = this.SensorDiY,
+                SensorDiZ1 = this.SensorDiZ1,
+                SensorDiZ2 = this.SensorDiZ2,
 
                 // 复制补偿管理器参数
                 CompensationStorageX = this.CompensationStorageX,
