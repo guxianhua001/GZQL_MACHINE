@@ -11,13 +11,16 @@
              mc:Ignorable="d"
              d:DesignHeight="700"
              d:DesignWidth="1000"
-             MinWidth="900"
-             MinHeight="600"
              Background="#EEF2F5">
     <UserControl.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Module;component/Controls/Maintenance/MaintenanceSharedStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
             <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
             <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+            <converters:NullToVisibilityConverter x:Key="NullToVis" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -78,7 +81,9 @@
             </Grid.ColumnDefinitions>
 
             <!-- LEFT COLUMN: Verification Operations + Results -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
+            <ScrollViewer Grid.Column="0"
+                          Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                          Margin="0,0,10,0">
                 <StackPanel>
 
                     <!-- Card: System Selection -->
@@ -302,13 +307,44 @@
                         <Button Command="{Binding SaveReportCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                 HorizontalAlignment="Stretch"
-                                Padding="10,6"
+                                Padding="10,6" Margin="0,0,0,8"
                                 materialDesign:ButtonAssist.CornerRadius="6">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,6,0" />
                                 <TextBlock Text="{lang:Lang NeedleVerify_SaveReport}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
+
+                        <Button Command="{Binding LoadParametersCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                HorizontalAlignment="Stretch"
+                                Padding="10,6" Margin="0,0,0,8"
+                                materialDesign:ButtonAssist.CornerRadius="6"
+                                ToolTip="{lang:Lang NeedleVerify_LoadParameters}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16" Margin="0,0,6,0" />
+                                <TextBlock Text="{lang:Lang NeedleVerify_LoadParameters}" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- 当前验证记录文件路径 -->
+                        <Border Background="#EDE7F6" CornerRadius="6" Padding="10,6"
+                                Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
+                                                             Foreground="#5E35B1" Margin="0,0,6,0"
+                                                             VerticalAlignment="Center" />
+                                    <TextBlock Text="{lang:Lang NeedleVerify_CurrentFile}"
+                                               Foreground="#5E35B1" FontSize="10" FontWeight="Medium"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding CurrentFilePath}"
+                                           Foreground="#7E57C2" FontSize="9" FontFamily="Consolas"
+                                           TextWrapping="Wrap" Margin="0,2,0,0"
+                                           ToolTip="{Binding CurrentFilePath}" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </materialDesign:Card>
 
@@ -325,26 +361,30 @@
                                        Foreground="{DynamicResource SecondaryHueMidBrush}" />
                         </StackPanel>
 
-                        <ListBox ItemsSource="{Binding VerificationLogs}"
-                                 VirtualizingStackPanel.IsVirtualizing="True"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                 MaxHeight="250" MinHeight="150"
-                                 Background="Transparent"
-                                 BorderBrush="#E0E0E0">
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
-                                    <Setter Property="Padding" Value="4,2" />
-                                    <Setter Property="MinHeight" Value="22" />
-                                    <Setter Property="Background" Value="Transparent" />
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#616161"
-                                               FontFamily="Consolas" TextWrapping="Wrap" />
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                        <ScrollViewer Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                                      MaxHeight="250"
+                                      MinHeight="150">
+                            <ListBox ItemsSource="{Binding VerificationLogs}"
+                                     VirtualizingStackPanel.IsVirtualizing="True"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     Background="Transparent"
+                                     BorderBrush="#E0E0E0">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                        <Setter Property="Padding" Value="4,2" />
+                                        <Setter Property="MinHeight" Value="22" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="11" Foreground="#616161"
+                                                   FontFamily="Consolas" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </ScrollViewer>
 
                         <Button Command="{Binding ClearLogCommand}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"

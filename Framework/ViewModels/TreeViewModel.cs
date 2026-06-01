@@ -20,6 +20,8 @@ namespace Framework.ViewModels
 
         private string _title = "设备树";
         private TreeNode _selectedItem;
+        private bool _isTreePanelExpanded = true;
+        private double _treePanelWidth = 280;
 
         public string Title
         {
@@ -41,7 +43,26 @@ namespace Framework.ViewModels
             }
         }
 
+        /// <summary>
+        /// 左侧树面板是否展开（false 时折叠，右侧内容区占满）
+        /// </summary>
+        public bool IsTreePanelExpanded
+        {
+            get => _isTreePanelExpanded;
+            set => SetProperty(ref _isTreePanelExpanded, value);
+        }
+
+        /// <summary>
+        /// 树面板展开时的宽度（折叠前记住，再次展开时恢复）
+        /// </summary>
+        public double TreePanelWidth
+        {
+            get => _treePanelWidth;
+            set => SetProperty(ref _treePanelWidth, value);
+        }
+
         public DelegateCommand LoadTreeCommand { get; }
+        public DelegateCommand ToggleTreePanelCommand { get; }
         public DelegateCommand<TreeNode> NodeDoubleClickCommand { get; }
 
         public TreeViewModel(IRegionManager regionManager,
@@ -56,6 +77,7 @@ namespace Framework.ViewModels
             TreeData = new ObservableCollection<TreeNode>();
 
             LoadTreeCommand = new DelegateCommand(async () => await LoadTreeDataAsync());
+            ToggleTreePanelCommand = new DelegateCommand(ToggleTreePanel);
             NodeDoubleClickCommand = new DelegateCommand<TreeNode>(OnNodeDoubleClick);
 
             // 订阅语言变化事件
@@ -66,6 +88,14 @@ namespace Framework.ViewModels
 
 
             int abc = _localizationService.GetHashCode();
+        }
+
+        /// <summary>
+        /// 切换左侧树面板展开/折叠
+        /// </summary>
+        private void ToggleTreePanel()
+        {
+            IsTreePanelExpanded = !IsTreePanelExpanded;
         }
 
         private async Task LoadTreeDataAsync()

@@ -7,20 +7,23 @@
              xmlns:prism="http://prismlibrary.com/"
              xmlns:converters="clr-namespace:Module.Converters"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
              d:DesignHeight="700"
              d:DesignWidth="1100"
-             MinWidth="1100"
-             MinHeight="700"
              Background="#EEF2F5">
     <UserControl.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Module;component/Controls/Maintenance/MaintenanceSharedStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
             <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <converters:NullToVisibilityConverter x:Key="NullToVis" />
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <converters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
-                                                TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
+                                                TrueBrush="#5E35B1" FalseBrush="#BDBDBD" />
 
             <Style x:Key="CardHeaderStyle" TargetType="StackPanel">
                 <Setter Property="Orientation" Value="Horizontal" />
@@ -74,13 +77,13 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="280" MinWidth="260" />
             <ColumnDefinition Width="*" MinWidth="400" />
-            <ColumnDefinition Width="300" MinWidth="280" />
+            <ColumnDefinition Width="240" MinWidth="200" />
         </Grid.ColumnDefinitions>
 
         <!-- ============================================================ -->
         <!-- LEFT COLUMN: 参数设置                                          -->
         <!-- ============================================================ -->
-        <ScrollViewer Grid.Column="0" Grid.RowSpan="2" VerticalScrollBarVisibility="Auto"
+        <ScrollViewer Grid.Column="0" Grid.RowSpan="2" Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
                       IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}"
                       Margin="0,0,10,0">
             <StackPanel>
@@ -231,7 +234,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
-                                                     Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                     Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
                             <TextBox Grid.Column="1" Text="{Binding Parameters.ReferenceXYZ.Z, StringFormat=F3}"
                                      Style="{StaticResource ParamTextBoxStyle}" />
                         </Grid>
@@ -330,19 +333,19 @@
                 </materialDesign:Card>
 
                 <!-- 当前文件路径信息 -->
-                <Border Background="#E3F2FD" CornerRadius="6" Padding="10,6" Margin="0,16,0,0"
+                <Border Background="#EDE7F6" CornerRadius="6" Padding="10,6" Margin="0,16,0,0"
                         Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
-                                                     Foreground="#1565C0" Margin="0,0,6,0"
+                                                     Foreground="#5E35B1" Margin="0,0,6,0"
                                                      VerticalAlignment="Center" />
                             <TextBlock Text="{lang:Lang NeedleAligner_CurrentFile}"
-                                       Foreground="#1565C0" FontSize="10" FontWeight="Medium"
+                                       Foreground="#5E35B1" FontSize="10" FontWeight="Medium"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                         <TextBlock Text="{Binding CurrentFilePath}"
-                                   Foreground="#1976D2" FontSize="9" FontFamily="Consolas"
+                                   Foreground="#7E57C2" FontSize="9" FontFamily="Consolas"
                                    TextWrapping="Wrap" Margin="0,2,0,0"
                                    ToolTip="{Binding CurrentFilePath}" />
                     </StackPanel>
@@ -354,7 +357,7 @@
         <!-- ============================================================ -->
         <!-- CENTER COLUMN: 校准控制 + 结果                                 -->
         <!-- ============================================================ -->
-        <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
+        <ScrollViewer Grid.Column="1" Grid.Row="0" Style="{StaticResource AlwaysVisibleScrollViewerStyle}" Margin="0,0,10,0">
             <StackPanel>
 
                 <!-- 校准控制卡片 -->
@@ -403,10 +406,10 @@
                         <Border Background="#FAFAFA" CornerRadius="6" Padding="12,8">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Information" Width="16" Height="16"
-                                                         Foreground="#1565C0" Margin="0,0,8,0"
+                                                         Foreground="#5E35B1" Margin="0,0,8,0"
                                                          VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding CalibrationStatus}"
-                                           FontSize="12" Foreground="#1565C0" FontWeight="Medium"
+                                           FontSize="12" Foreground="#5E35B1" FontWeight="Medium"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
@@ -450,101 +453,142 @@
                                     <StackPanel Grid.Column="2" Orientation="Horizontal">
                                         <TextBlock Text="Z=" Style="{StaticResource ResultLabelStyle}" />
                                         <TextBlock Text="{Binding Parameters.CurrentXYZ.Z, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#1E88E5" />
+                                                   Style="{StaticResource ResultValueStyle}" Foreground="#7E57C2" />
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </Border>
 
-                        <!-- 补偿详情 - 带全局变量链接 -->
+                        <!-- 补偿详情 - 偏差Δ + 表达式 + CalculatedComp + 全局变量链接（单向写入） -->
                         <Border Background="#FAFAFA" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
                             <StackPanel>
                                 <TextBlock Text="{lang:Lang NeedleAligner_CompensationDetails}"
                                            FontSize="11" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,8" />
 
-                                <!-- 补偿X -->
+                                <!-- 列标题 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="" Width="22" />
+                                    <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_CalibrationDelta}"
+                                               FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{lang:Lang NeedleCamera_CompensationExpression}"
+                                               FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="{lang:Lang NeedleCamera_CalculatedResult}"
+                                               FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
+                                    <TextBlock Grid.Column="4" Text="" FontSize="11" />
+                                </Grid>
+
+                                <!-- X：CalculatedComp = 偏差Δ + 表达式 -->
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="16" Height="16"
-                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CompensationManager.CompensationX, StringFormat=F3}"
-                                               Style="{StaticResource ResultValueStyle}" Foreground="#E53935" FontWeight="Bold" />
-                                    <Button Grid.Column="2" Command="{Binding UnlinkCompensationXCommand}"
-                                            Style="{StaticResource MaterialDesignIconButton}"
-                                            Padding="0" Width="22" Height="22"
-                                            ToolTip="{lang:Lang NeedleAligner_UnlinkGlobalVariable}">
-                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
-                                                                 Foreground="{Binding IsCompensationXLinked, Converter={StaticResource LinkedToBrushConverter}}"
-                                                                 VerticalAlignment="Center" />
-                                    </Button>
-                                    <ComboBox Grid.Column="3" ItemsSource="{Binding AvailableGlobalVariables}"
-                                              SelectedValuePath="Name"
-                                              DisplayMemberPath="Name"
-                                              SelectedValue="{Binding CompensationXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="120" FontSize="10"
-                                              materialDesign:HintAssist.Hint="{lang:Lang NeedleAligner_LinkGlobalVariable}" />
+                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaX, StringFormat=F3}"
+                                               FontSize="11" FontWeight="SemiBold" Foreground="#E53935"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <TextBox Grid.Column="2" Text="{Binding CompensationXExpression, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Padding="4,2" Margin="0,0,4,0"
+                                             materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
+                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCompX, StringFormat='= {0:F3}'}"
+                                               FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                               VerticalAlignment="Center" Margin="4,0,4,0" />
+                                    <common:GlobalVariableLinkControl Grid.Column="4"
+                                        DisplayValue="{Binding CalculatedCompX}"
+                                        DisplayForeground="#E53935"
+                                        IsLinked="{Binding IsCompensationXLinked}"
+                                        UnlinkCommand="{Binding UnlinkCompensationXCommand}"
+                                        LinkedVariableName="{Binding CompensationXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                        ComboBoxWidth="120" />
                                 </Grid>
 
-                                <!-- 补偿Y -->
+                                <!-- Y -->
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <materialDesign:PackIcon Grid.Column="0" Kind="AxisYArrow" Width="16" Height="16"
-                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CompensationManager.CompensationY, StringFormat=F3}"
-                                               Style="{StaticResource ResultValueStyle}" Foreground="#43A047" FontWeight="Bold" />
-                                    <Button Grid.Column="2" Command="{Binding UnlinkCompensationYCommand}"
-                                            Style="{StaticResource MaterialDesignIconButton}"
-                                            Padding="0" Width="22" Height="22"
-                                            ToolTip="{lang:Lang NeedleAligner_UnlinkGlobalVariable}">
-                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
-                                                                 Foreground="{Binding IsCompensationYLinked, Converter={StaticResource LinkedToBrushConverter}}"
-                                                                 VerticalAlignment="Center" />
-                                    </Button>
-                                    <ComboBox Grid.Column="3" ItemsSource="{Binding AvailableGlobalVariables}"
-                                              SelectedValuePath="Name"
-                                              DisplayMemberPath="Name"
-                                              SelectedValue="{Binding CompensationYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="120" FontSize="10"
-                                              materialDesign:HintAssist.Hint="{lang:Lang NeedleAligner_LinkGlobalVariable}" />
+                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaY, StringFormat=F3}"
+                                               FontSize="11" FontWeight="SemiBold" Foreground="#43A047"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <TextBox Grid.Column="2" Text="{Binding CompensationYExpression, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Padding="4,2" Margin="0,0,4,0"
+                                             materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
+                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCompY, StringFormat='= {0:F3}'}"
+                                               FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                               VerticalAlignment="Center" Margin="4,0,4,0" />
+                                    <common:GlobalVariableLinkControl Grid.Column="4"
+                                        DisplayValue="{Binding CalculatedCompY}"
+                                        DisplayForeground="#43A047"
+                                        IsLinked="{Binding IsCompensationYLinked}"
+                                        UnlinkCommand="{Binding UnlinkCompensationYCommand}"
+                                        LinkedVariableName="{Binding CompensationYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                        ComboBoxWidth="120" />
                                 </Grid>
 
-                                <!-- 补偿Z -->
+                                <!-- Z -->
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
-                                                             Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding CompensationManager.CompensationZ, StringFormat=F3}"
-                                               Style="{StaticResource ResultValueStyle}" Foreground="#1E88E5" FontWeight="Bold" />
-                                    <Button Grid.Column="2" Command="{Binding UnlinkCompensationZCommand}"
-                                            Style="{StaticResource MaterialDesignIconButton}"
-                                            Padding="0" Width="22" Height="22"
-                                            ToolTip="{lang:Lang NeedleAligner_UnlinkGlobalVariable}">
-                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
-                                                                 Foreground="{Binding IsCompensationZLinked, Converter={StaticResource LinkedToBrushConverter}}"
-                                                                 VerticalAlignment="Center" />
-                                    </Button>
-                                    <ComboBox Grid.Column="3" ItemsSource="{Binding AvailableGlobalVariables}"
-                                              SelectedValuePath="Name"
-                                              DisplayMemberPath="Name"
-                                              SelectedValue="{Binding CompensationZLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="120" FontSize="10"
-                                              materialDesign:HintAssist.Hint="{lang:Lang NeedleAligner_LinkGlobalVariable}" />
+                                                             Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaZ, StringFormat=F3}"
+                                               FontSize="11" FontWeight="SemiBold" Foreground="#1E88E5"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <TextBox Grid.Column="2" Text="{Binding CompensationZExpression, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Padding="4,2" Margin="0,0,4,0"
+                                             materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
+                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCompZ, StringFormat='= {0:F3}'}"
+                                               FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                               VerticalAlignment="Center" Margin="4,0,4,0" />
+                                    <common:GlobalVariableLinkControl Grid.Column="4"
+                                        DisplayValue="{Binding CalculatedCompZ}"
+                                        DisplayForeground="#1E88E5"
+                                        IsLinked="{Binding IsCompensationZLinked}"
+                                        UnlinkCommand="{Binding UnlinkCompensationZCommand}"
+                                        LinkedVariableName="{Binding CompensationZLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                        ComboBoxWidth="120" />
                                 </Grid>
+
+                                <!-- 补偿说明 -->
+                                <Border Background="#FFF8E1" CornerRadius="6" Padding="10,8" Margin="0,6,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="InformationOutline" Width="16" Height="16"
+                                                                 Foreground="#F9A825" Margin="0,0,8,0"
+                                                                 VerticalAlignment="Center" />
+                                        <TextBlock Text="{lang:Lang Maintenance_CompensationNote}"
+                                                   Foreground="#795548" FontSize="12"
+                                                   FontStyle="Italic" VerticalAlignment="Center"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -554,10 +598,10 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- ============================================================ -->
-        <!-- RIGHT COLUMN: 补偿管理                                          -->
-        <!-- ============================================================ -->
-        <StackPanel Grid.Column="2" Grid.Row="0">
+        <!-- RIGHT COLUMN: 补偿管理 -->
+        <ScrollViewer Grid.Column="2" Grid.Row="0"
+                      Style="{StaticResource AlwaysVisibleScrollViewerStyle}">
+            <StackPanel>
 
             <!-- 参数操作卡片 -->
             <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
@@ -651,7 +695,8 @@
                 </StackPanel>
             </materialDesign:Card>
 
-        </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- ============================================================ -->
         <!-- BOTTOM ROW: 校准日志 (跨第2列和第3列)                             -->
@@ -669,22 +714,25 @@
                                Foreground="{DynamicResource PrimaryHueMidBrush}" />
                 </StackPanel>
 
-                <ListBox ItemsSource="{Binding CalibrationLogs}"
-                         VirtualizingStackPanel.IsVirtualizing="True"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         MaxHeight="200"
-                         MinHeight="120"
-                         Background="Transparent"
-                         BorderBrush="#E0E0E0"
-                         FontFamily="Consolas"
-                         FontSize="11">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
-                            <Setter Property="Padding" Value="4,2" />
-                            <Setter Property="MinHeight" Value="20" />
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                </ListBox>
+                <ScrollViewer Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                              MaxHeight="200"
+                              MinHeight="120">
+                    <ListBox ItemsSource="{Binding CalibrationLogs}"
+                             VirtualizingStackPanel.IsVirtualizing="True"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             Background="Transparent"
+                             BorderBrush="#E0E0E0"
+                             FontFamily="Consolas"
+                             FontSize="11">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                <Setter Property="Padding" Value="4,2" />
+                                <Setter Property="MinHeight" Value="20" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </ScrollViewer>
 
                 <Button Command="{Binding ClearLogCommand}"
                         Style="{StaticResource MaterialDesignOutlinedButton}"

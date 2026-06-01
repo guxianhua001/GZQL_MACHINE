@@ -52,6 +52,11 @@ namespace Module.ViewModels
         private CancellationTokenSource _dispenseCts;
         private readonly ManualResetEventSlim _pauseEvent = new ManualResetEventSlim(true);
 
+        /// <summary>
+        /// 配置文件保留天数，超过此天数的旧文件在保存时自动清理
+        /// </summary>
+        private const int ConfigRetentionDays = 30;
+
         private ObservableCollection<string> _groups = new ObservableCollection<string>();
         public ObservableCollection<string> Groups
         {
@@ -1601,8 +1606,10 @@ namespace Module.ViewModels
                 P3MechX = p3mx; P3MechY = p3my;
 
                 int segCount = (row?.ArcSegments > 0) ? row.ArcSegments : 50;
-                var bezierPoints = BezierArcDispenseService.DiscretizeQuadraticBezier(
-                    (p1mx, p1my), (p2mx, p2my), (p3mx, p3my), segCount);
+                var arcHeight = row?.ArcHeight ?? 0.0;
+                var arcDirection = row?.ArcDirection ?? 0.0;
+                var bezierPoints = BezierArcDispenseService.DiscretizeQuadraticBezierFromMidPoint(
+                    (p1mx, p1my), (p2mx, p2my), (p3mx, p3my), segCount, arcHeight, arcDirection);
 
                 BezierPointCount = bezierPoints.Count;
 
@@ -1619,7 +1626,7 @@ namespace Module.ViewModels
 
                 CurrentStep = WorkflowStep.Step2_PreviewDispense;
                 StatusMessage = string.Format(L("VisionCapture_Status_PreviewArcComplete"), bezierPoints.Count);
-                _logger.Info($"[VisionCapture] 新格式弧线机械坐标完成: P1({p1mx:F3},{p1my:F3}) P2({p2mx:F3},{p2my:F3}) P3({p3mx:F3},{p3my:F3})，贝塞尔{bezierPoints.Count}点");
+                _logger.Info($"[VisionCapture] 新格式弧线机械坐标完成: P1({p1mx:F3},{p1my:F3}) P2中点({p2mx:F3},{p2my:F3}) P3({p3mx:F3},{p3my:F3})，弧高={arcHeight:F3} 方向={arcDirection:F3} 贝塞尔{bezierPoints.Count}点");
             }
             catch (Exception ex)
             {
@@ -1698,7 +1705,8 @@ namespace Module.ViewModels
                         await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts.Token);
                     }
 
-                    CurrentStep = WorkflowStep.Step2_PreviewDispense;
+                    // 拍照数据落库后立即复用预览链路，保证自动跳转后的坐标表和结果与手动“预览”一致。
+                    await PreviewMachinePointsAsync();
                 }
             }
             catch (OperationCanceledException)
@@ -1873,9 +1881,8 @@ namespace Module.ViewModels
                 }
                 else
                 {
-                    // Arc模式：视觉返回 Center/P1/P2/P3 均为9点标定后的绝对机械坐标，不使用拍照位。
-                    // 公式：Mech_n = P_n + CamToNeedle + ArcNeedleOffset + ArcNeedleComp（经贝塞尔离散后逐段插补）
-                    // 与Dot模式不同，Arc无 targetOffset，P_n 即是目标绝对坐标。
+                    // Arc模式：P1/P3为起终点，P2为弧线中点；机械坐标使用 Center-Pn 偏移后再生成贝塞尔轨迹。
+                    // 公式：Mech_n = Photo + (Center - P_n) + CamToNeedle + ArcNeedleOffset + ArcNeedleComp。
                     await _bezierArcDispenseService.ExecuteArcDispenseAsync(
                         visionData, photoDx, photoDy,
                         axisIdMap["Dx"], axisIdMap["Dy"], axisIdMap["Dz₁"],
@@ -1885,6 +1892,7 @@ namespace Module.ViewModels
                         CameraNeedleDistanceX, CameraNeedleDistanceY,
                         ArcNeedleOffsetX, ArcNeedleOffsetY,
                         ArcNeedleCompX, ArcNeedleCompY,
+                        SelectedRow.ArcHeight, SelectedRow.ArcDirection,
                         _pauseEvent, _dispenseCts.Token);
                     StatusMessage = dryRun ? L("VisionCapture_Status_ArcDryRunComplete") : L("VisionCapture_Status_ArcDispenseComplete");
                 }
@@ -1950,7 +1958,8 @@ namespace Module.ViewModels
                     isArc ? ArcNeedleOffsetX : NeedleOffsetX,
                     isArc ? ArcNeedleOffsetY : NeedleOffsetY,
                     isArc ? ArcNeedleCompX : SelectedRow.CalculatedCompensationX,
-                    isArc ? ArcNeedleCompY : SelectedRow.CalculatedCompensationY);
+                    isArc ? ArcNeedleCompY : SelectedRow.CalculatedCompensationY,
+                    SelectedRow.ArcHeight, SelectedRow.ArcDirection);
 
                 PhotoDx = photoDx;
                 PhotoDy = photoDy;
@@ -1979,12 +1988,12 @@ namespace Module.ViewModels
                     Point2Y = GetVisionValue(visionData, "point2Y", 0);
                     Point3X = GetVisionValue(visionData, "point3X", 0);
                     Point3Y = GetVisionValue(visionData, "point3Y", 0);
-                    P1DeltaX = Point1X - VisionCenterX;
-                    P1DeltaY = Point1Y - VisionCenterY;
-                    P2DeltaX = Point2X - VisionCenterX;
-                    P2DeltaY = Point2Y - VisionCenterY;
-                    P3DeltaX = Point3X - VisionCenterX;
-                    P3DeltaY = Point3Y - VisionCenterY;
+                    P1DeltaX = VisionCenterX - Point1X;
+                    P1DeltaY = VisionCenterY - Point1Y;
+                    P2DeltaX = VisionCenterX - Point2X;
+                    P2DeltaY = VisionCenterY - Point2Y;
+                    P3DeltaX = VisionCenterX - Point3X;
+                    P3DeltaY = VisionCenterY - Point3Y;
                     if (points.Count >= 3)
                     {
                         P1MechX = points[0].FinalX;
@@ -2047,17 +2056,26 @@ namespace Module.ViewModels
             Func<double, double> toCanvasX = x => offsetX + (x - minX) * scale;
             Func<double, double> toCanvasY = y => canvasHeight - offsetY - (y - minY) * scale;
 
-            var gridPen = new Pen(Brushes.LightGray, 0.5);
-            for (double gx = minX; gx <= maxX; gx += rangeX / 5)
+            // 绘制机器坐标网格和刻度，便于调试时对照关键点坐标。
+            for (int i = 0; i <= 5; i++)
             {
+                double gx = minX + rangeX * i / 5.0;
                 double cx = toCanvasX(gx);
                 ArcPathGeometry.Add(new Line { X1 = cx, Y1 = padding, X2 = cx, Y2 = canvasHeight - padding, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
+                AddCanvasText(gx.ToString("F2"), cx - 16, canvasHeight - padding + 2, 9, Brushes.Gray);
             }
-            for (double gy = minY; gy <= maxY; gy += rangeY / 5)
+            for (int i = 0; i <= 5; i++)
             {
+                double gy = minY + rangeY * i / 5.0;
                 double cy = toCanvasY(gy);
                 ArcPathGeometry.Add(new Line { X1 = padding, Y1 = cy, X2 = canvasWidth - padding, Y2 = cy, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
+                AddCanvasText(gy.ToString("F2"), 2, cy - 7, 9, Brushes.Gray);
             }
+
+            ArcPathGeometry.Add(new Line { X1 = padding, Y1 = canvasHeight - padding, X2 = canvasWidth - padding + 8, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
+            ArcPathGeometry.Add(new Line { X1 = padding, Y1 = canvasHeight - padding, X2 = padding, Y2 = padding - 8, Stroke = Brushes.DimGray, StrokeThickness = 1 });
+            AddCanvasText("X", canvasWidth - padding + 10, canvasHeight - padding - 8, 10, Brushes.DimGray);
+            AddCanvasText("Y", padding + 4, padding - 20, 10, Brushes.DimGray);
 
             var polyline = new Polyline
             {
@@ -2083,6 +2101,7 @@ namespace Module.ViewModels
                 Canvas.SetLeft(startEllipse, toCanvasX(points[0].FinalX) - 5);
                 Canvas.SetTop(startEllipse, toCanvasY(points[0].FinalY) - 5);
                 ArcPathGeometry.Add(startEllipse);
+                AddPointLabel("P1", points[0], toCanvasX, toCanvasY, 8, -22, Brushes.DarkGreen);
 
                 int midIdx = points.Count / 2;
                 var midEllipse = new Ellipse
@@ -2095,6 +2114,7 @@ namespace Module.ViewModels
                 Canvas.SetLeft(midEllipse, toCanvasX(points[midIdx].FinalX) - 5);
                 Canvas.SetTop(midEllipse, toCanvasY(points[midIdx].FinalY) - 5);
                 ArcPathGeometry.Add(midEllipse);
+                AddPointLabel("P2", points[midIdx], toCanvasX, toCanvasY, 8, 8, Brushes.DarkOrange);
 
                 var endEllipse = new Ellipse
                 {
@@ -2106,6 +2126,7 @@ namespace Module.ViewModels
                 Canvas.SetLeft(endEllipse, toCanvasX(points[points.Count - 1].FinalX) - 5);
                 Canvas.SetTop(endEllipse, toCanvasY(points[points.Count - 1].FinalY) - 5);
                 ArcPathGeometry.Add(endEllipse);
+                AddPointLabel("P3", points[points.Count - 1], toCanvasX, toCanvasY, 8, -22, Brushes.DarkRed);
             }
 
             for (int i = 0; i < points.Count; i += Math.Max(1, points.Count / 15))
@@ -2123,6 +2144,26 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(HasArcPathGeometry));
         }
 
+        private void AddPointLabel(string name, CoordinateTransformDetail point, Func<double, double> toCanvasX, Func<double, double> toCanvasY, double offsetX, double offsetY, Brush foreground)
+        {
+            AddCanvasText($"{name} ({point.FinalX:F2}, {point.FinalY:F2})", toCanvasX(point.FinalX) + offsetX, toCanvasY(point.FinalY) + offsetY, 10, foreground);
+        }
+
+        private void AddCanvasText(string text, double left, double top, double fontSize, Brush foreground)
+        {
+            var label = new TextBlock
+            {
+                Text = text,
+                FontSize = fontSize,
+                Foreground = foreground,
+                Background = new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)),
+                Padding = new Thickness(1, 0, 1, 0)
+            };
+            Canvas.SetLeft(label, left);
+            Canvas.SetTop(label, top);
+            ArcPathGeometry.Add(label);
+        }
+
         private async Task SaveTransformParamsAsync()
         {
             try
@@ -2131,24 +2172,24 @@ namespace Module.ViewModels
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
                 var variableList = variables.ToList();
 
-                UpdateOrAddGlobalVariable(variableList, "CameraCenterX", CameraCenterX.ToString("F6"), "相机中心X坐标");
-                UpdateOrAddGlobalVariable(variableList, "CameraCenterY", CameraCenterY.ToString("F6"), "相机中心Y坐标");
-                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetX", NeedleOffsetX.ToString("F6"), "针尖X偏移");
-                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetY", NeedleOffsetY.ToString("F6"), "针尖Y偏移");
+                UpdateOrAddGlobalVariable(variableList, "CameraCenterX", CameraCenterX.ToString("F6"), "相机中心X坐标", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "CameraCenterY", CameraCenterY.ToString("F6"), "相机中心Y坐标", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetX", NeedleOffsetX.ToString("F6"), "针尖X偏移", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetY", NeedleOffsetY.ToString("F6"), "针尖Y偏移", GlobalVariableType.Double);
 
-                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetX_LinkedVar", NeedleOffsetXLinkedVar ?? "", "NeedleOffsetX链接的全局变量名");
-                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetY_LinkedVar", NeedleOffsetYLinkedVar ?? "", "NeedleOffsetY链接的全局变量名");
-                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetX_LinkedVar", ArcNeedleOffsetXLinkedVar ?? "", "Arc模式NeedleOffsetX链接的全局变量名");
-                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetY_LinkedVar", ArcNeedleOffsetYLinkedVar ?? "", "Arc模式NeedleOffsetY链接的全局变量名");
-                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetX", ArcNeedleOffsetX.ToString("F6"), "Arc模式针头偏移X");
-                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetY", ArcNeedleOffsetY.ToString("F6"), "Arc模式针头偏移Y");
-                UpdateOrAddGlobalVariable(variableList, "ArcNeedleCompX", ArcNeedleCompX.ToString("F6"), "Arc模式专用补偿X");
-                UpdateOrAddGlobalVariable(variableList, "ArcNeedleCompY", ArcNeedleCompY.ToString("F6"), "Arc模式专用补偿Y");
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetX_LinkedVar", NeedleOffsetXLinkedVar ?? "", "NeedleOffsetX链接的全局变量名", GlobalVariableType.String);
+                UpdateOrAddGlobalVariable(variableList, "NeedleOffsetY_LinkedVar", NeedleOffsetYLinkedVar ?? "", "NeedleOffsetY链接的全局变量名", GlobalVariableType.String);
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetX_LinkedVar", ArcNeedleOffsetXLinkedVar ?? "", "Arc模式NeedleOffsetX链接的全局变量名", GlobalVariableType.String);
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetY_LinkedVar", ArcNeedleOffsetYLinkedVar ?? "", "Arc模式NeedleOffsetY链接的全局变量名", GlobalVariableType.String);
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetX", ArcNeedleOffsetX.ToString("F6"), "Arc模式针头偏移X", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleOffsetY", ArcNeedleOffsetY.ToString("F6"), "Arc模式针头偏移Y", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleCompX", ArcNeedleCompX.ToString("F6"), "Arc模式专用补偿X", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "ArcNeedleCompY", ArcNeedleCompY.ToString("F6"), "Arc模式专用补偿Y", GlobalVariableType.Double);
 
-                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceX", CameraNeedleDistanceX.ToString("F6"), "相机胶针固定距离X");
-                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceY", CameraNeedleDistanceY.ToString("F6"), "相机胶针固定距离Y");
-                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceX_LinkedVar", CameraNeedleDistanceXLinkedVar ?? "", "相机胶针距离X链接的全局变量名");
-                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceY_LinkedVar", CameraNeedleDistanceYLinkedVar ?? "", "相机胶针距离Y链接的全局变量名");
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceX", CameraNeedleDistanceX.ToString("F6"), "相机胶针固定距离X", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceY", CameraNeedleDistanceY.ToString("F6"), "相机胶针固定距离Y", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceX_LinkedVar", CameraNeedleDistanceXLinkedVar ?? "", "相机胶针距离X链接的全局变量名", GlobalVariableType.String);
+                UpdateOrAddGlobalVariable(variableList, "CameraNeedleDistanceY_LinkedVar", CameraNeedleDistanceYLinkedVar ?? "", "相机胶针距离Y链接的全局变量名", GlobalVariableType.String);
 
                 for (int i = 0; i < variableList.Count; i++)
                     variableList[i].Index = i + 1;
@@ -2297,19 +2338,21 @@ namespace Module.ViewModels
             }
         }
 
-        private void UpdateOrAddGlobalVariable(List<GlobalVariable> variables, string name, string value, string comment)
+        private void UpdateOrAddGlobalVariable(List<GlobalVariable> variables, string name, string value, string comment, GlobalVariableType type)
         {
             var existing = variables.FirstOrDefault(v => v.Name == name);
             if (existing != null)
             {
+                existing.Type = type;
                 existing.Value = value;
+                existing.Comment = comment;
             }
             else
             {
                 variables.Add(new GlobalVariable
                 {
                     Name = name,
-                    Type = GlobalVariableType.Double,
+                    Type = type,
                     Value = value,
                     Comment = comment
                 });
@@ -2418,38 +2461,83 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 保存当前页面所有参数到JSON文件
+        /// 保存当前页面所有参数到JSON文件。
+        /// 直接保存到默认路径（Config/VisionCapture/），以 VisionCapture_当前时间.json 命名。
         /// </summary>
         private async Task SaveConfigToFileAsync()
         {
             try
             {
                 var configDir = GetConfigDirectory();
-                var dialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                    DefaultExt = ".json",
-                    InitialDirectory = configDir,
-                    FileName = !string.IsNullOrEmpty(CurrentFileName) ? CurrentFileName : $"VisionCapture_{DateTime.Now:yyyyMMdd_HHmmss}"
-                };
-
-                if (dialog.ShowDialog() != true) return;
+                var fileName = $"VisionCapture_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                var filePath = System.IO.Path.Combine(configDir, fileName);
 
                 var config = BuildCurrentConfig();
                 var json = JsonConvert.SerializeObject(config, Formatting.Indented);
-                await File.WriteAllTextAsync(dialog.FileName, json);
+                await File.WriteAllTextAsync(filePath, json);
 
-                CurrentFilePath = dialog.FileName;
-                CurrentFileName = System.IO.Path.GetFileName(dialog.FileName);
+                CurrentFilePath = filePath;
+                CurrentFileName = fileName;
                 await SaveCurrentFileToRecipePoolAsync();
 
+                QueueCleanupOldConfigFiles(configDir, filePath);
+
                 StatusMessage = string.Format(L("VisionCapture_Status_ConfigSaved"), CurrentFileName);
-                _logger.Info($"[VisionCapture] 配置已保存: {dialog.FileName}");
+                _logger.Info($"[VisionCapture] 配置已保存: {filePath}");
             }
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_SaveFail"), ex.Message);
                 _logger.Error($"[VisionCapture] 保存配置失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 后台清理过期配置文件，避免保存配置时同步IO堵塞UI线程。
+        /// </summary>
+        private void QueueCleanupOldConfigFiles(string configDir, string currentFilePath)
+        {
+            _ = Task.Run(() => CleanupOldConfigFiles(configDir, currentFilePath));
+        }
+
+        /// <summary>
+        /// 清理超过保留天数的旧配置文件。
+        /// 仅删除匹配 VisionCapture_*.json 模式的文件，跳过当前刚保存的文件。
+        /// 清理失败仅记录日志，不影响主流程。
+        /// </summary>
+        private void CleanupOldConfigFiles(string configDir, string currentFilePath)
+        {
+            try
+            {
+                var cutoff = DateTime.Now.AddDays(-ConfigRetentionDays);
+                var cleanedCount = 0;
+
+                foreach (var file in Directory.EnumerateFiles(configDir, "VisionCapture_*.json"))
+                {
+                    if (string.Equals(file, currentFilePath, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    try
+                    {
+                        if (File.GetLastWriteTime(file) >= cutoff)
+                            continue;
+
+                        File.Delete(file);
+                        cleanedCount++;
+                        _logger.Info($"[VisionCapture] 已清理过期配置文件: {file} (超过{ConfigRetentionDays}天)");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn($"[VisionCapture] 清理过期配置文件失败: {file}, {ex.Message}");
+                    }
+                }
+
+                if (cleanedCount > 0)
+                    _logger.Info($"[VisionCapture] 本次清理了 {cleanedCount} 个过期配置文件 (保留{ConfigRetentionDays}天)");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[VisionCapture] 清理旧配置文件异常: {ex.Message}");
             }
         }
 
@@ -2567,6 +2655,18 @@ namespace Module.ViewModels
                 CameraCenterY = CameraCenterY,
                 CameraNeedleDistanceX = CameraNeedleDistanceX,
                 CameraNeedleDistanceY = CameraNeedleDistanceY,
+                NeedleOffsetX = NeedleOffsetX,
+                NeedleOffsetY = NeedleOffsetY,
+                ArcNeedleOffsetX = ArcNeedleOffsetX,
+                ArcNeedleOffsetY = ArcNeedleOffsetY,
+                ArcNeedleCompX = ArcNeedleCompX,
+                ArcNeedleCompY = ArcNeedleCompY,
+                NeedleOffsetXLinkedVar = NeedleOffsetXLinkedVar,
+                NeedleOffsetYLinkedVar = NeedleOffsetYLinkedVar,
+                ArcNeedleOffsetXLinkedVar = ArcNeedleOffsetXLinkedVar,
+                ArcNeedleOffsetYLinkedVar = ArcNeedleOffsetYLinkedVar,
+                CameraNeedleDistanceXLinkedVar = CameraNeedleDistanceXLinkedVar,
+                CameraNeedleDistanceYLinkedVar = CameraNeedleDistanceYLinkedVar,
                 SelectedGroup = SelectedGroup,
                 CurrentRunMode = CurrentRunMode,
                 Rows = PhotoPositionRows.Select(r => new PhotoPositionRowConfig
@@ -2582,6 +2682,8 @@ namespace Module.ViewModels
                     Timeout = r.Timeout,
                     DispenseType = r.DispenseType,
                     ArcSegments = r.ArcSegments,
+                    ArcHeight = r.ArcHeight,
+                    ArcDirection = r.ArcDirection,
                     ReturnToSafeAfterCapture = r.ReturnToSafeAfterCapture,
                     NeedleOffsetX = r.NeedleOffsetX,
                     NeedleOffsetY = r.NeedleOffsetY,
@@ -2608,6 +2710,18 @@ namespace Module.ViewModels
             CameraCenterY = config.CameraCenterY;
             CameraNeedleDistanceX = config.CameraNeedleDistanceX;
             CameraNeedleDistanceY = config.CameraNeedleDistanceY;
+            NeedleOffsetX = config.NeedleOffsetX;
+            NeedleOffsetY = config.NeedleOffsetY;
+            ArcNeedleOffsetX = config.ArcNeedleOffsetX;
+            ArcNeedleOffsetY = config.ArcNeedleOffsetY;
+            ArcNeedleCompX = config.ArcNeedleCompX;
+            ArcNeedleCompY = config.ArcNeedleCompY;
+            NeedleOffsetXLinkedVar = NormalizeLinkedVarName(config.NeedleOffsetXLinkedVar);
+            NeedleOffsetYLinkedVar = NormalizeLinkedVarName(config.NeedleOffsetYLinkedVar);
+            ArcNeedleOffsetXLinkedVar = NormalizeLinkedVarName(config.ArcNeedleOffsetXLinkedVar);
+            ArcNeedleOffsetYLinkedVar = NormalizeLinkedVarName(config.ArcNeedleOffsetYLinkedVar);
+            CameraNeedleDistanceXLinkedVar = NormalizeLinkedVarName(config.CameraNeedleDistanceXLinkedVar);
+            CameraNeedleDistanceYLinkedVar = NormalizeLinkedVarName(config.CameraNeedleDistanceYLinkedVar);
             CurrentRunMode = config.CurrentRunMode;
 
             if (!string.IsNullOrEmpty(config.SelectedGroup) && Groups.Contains(config.SelectedGroup))
@@ -2630,6 +2744,8 @@ namespace Module.ViewModels
                     row.Timeout = rowConfig.Timeout;
                     row.DispenseType = rowConfig.DispenseType;
                     row.ArcSegments = rowConfig.ArcSegments;
+                    row.ArcHeight = rowConfig.ArcHeight;
+                    row.ArcDirection = rowConfig.ArcDirection;
                     row.ReturnToSafeAfterCapture = rowConfig.ReturnToSafeAfterCapture;
                     row.NeedleOffsetX = rowConfig.NeedleOffsetX;
                     row.NeedleOffsetY = rowConfig.NeedleOffsetY;
@@ -2659,6 +2775,18 @@ public class VisionCaptureConfig
     public double CameraCenterY { get; set; }
     public double CameraNeedleDistanceX { get; set; }
     public double CameraNeedleDistanceY { get; set; }
+    public double NeedleOffsetX { get; set; }
+    public double NeedleOffsetY { get; set; }
+    public double ArcNeedleOffsetX { get; set; }
+    public double ArcNeedleOffsetY { get; set; }
+    public double ArcNeedleCompX { get; set; }
+    public double ArcNeedleCompY { get; set; }
+    public string NeedleOffsetXLinkedVar { get; set; }
+    public string NeedleOffsetYLinkedVar { get; set; }
+    public string ArcNeedleOffsetXLinkedVar { get; set; }
+    public string ArcNeedleOffsetYLinkedVar { get; set; }
+    public string CameraNeedleDistanceXLinkedVar { get; set; }
+    public string CameraNeedleDistanceYLinkedVar { get; set; }
     public string SelectedGroup { get; set; }
     public RunMode CurrentRunMode { get; set; }
     public List<PhotoPositionRowConfig> Rows { get; set; } = new();
@@ -2680,6 +2808,8 @@ public class PhotoPositionRowConfig
     public int Timeout { get; set; } = 5000;
     public DispenseType DispenseType { get; set; }
     public int ArcSegments { get; set; } = 20;
+    public double ArcHeight { get; set; }
+    public double ArcDirection { get; set; }
     public bool ReturnToSafeAfterCapture { get; set; } = true;
     public double NeedleOffsetX { get; set; }
     public double NeedleOffsetY { get; set; }

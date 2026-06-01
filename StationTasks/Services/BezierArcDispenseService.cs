@@ -97,8 +97,8 @@ namespace StationTasks.Services
 
         /// <summary>
         /// 生成Arc模式的贝塞尔离散机械坐标点
-        /// 视觉系统返回的 P1/P2/P3 是9点标定后的机械坐标
-        /// 公式：Mech_n = PhotoPos + ( Center - P_n) + CamToNeedle + NeedleOffset + NeedleComp）
+        /// 视觉系统返回的 P1/P2/P3 是9点标定后的机械坐标，P1/P3为端点，P2为弧线中点参考。
+        /// 公式：Mech_n = PhotoPos + (Center - P_n) + CamToNeedle + NeedleOffset + NeedleComp）
         /// </summary>
         public static List<(double X, double Y)> GenerateArcMachinePoints(
             (double Dx, double Dy) photoPosition,
@@ -107,9 +107,11 @@ namespace StationTasks.Services
             (double X, double Y) cameraNeedleDistance,
             (double X, double Y) needleOffset,
             (double X, double Y) needleCompensation,
-            int segmentCount)
+            int segmentCount,
+            double arcHeight = 0.0,
+            double arcDirection = 0.0)
         {
-            // P_n 是9点标定后的机械坐标，(拍照位 + P_n到相机中心偏移 叠加相机到针头距离 + 偏移 + 补偿
+            // P_n 是9点标定后的机械坐标，机械点需叠加相机到针头距离、偏移与补偿。
             static (double X, double Y) ApplyOffset(
                 (double Dx, double Dy) photo,
                 (double X, double Y) ctr,
@@ -122,7 +124,7 @@ namespace StationTasks.Services
             var mechP2 = ApplyOffset(photoPosition, center, p2, cameraNeedleDistance, needleOffset, needleCompensation);
             var mechP3 = ApplyOffset(photoPosition, center, p3, cameraNeedleDistance, needleOffset, needleCompensation);
 
-            return DiscretizeQuadraticBezier(mechP1, mechP2, mechP3, segmentCount);
+            return DiscretizeQuadraticBezierFromMidPoint(mechP1, mechP2, mechP3, segmentCount, arcHeight, arcDirection);
         }
 
 
@@ -133,6 +135,7 @@ namespace StationTasks.Services
             (double X, double Y) p0, (double X, double Y) p1, (double X, double Y) p2,
             int segments)
         {
+            segments = Math.Max(1, segments);
             var points = new List<(double X, double Y)>();
             for (int i = 0; i <= segments; i++)
             {
@@ -145,6 +148,66 @@ namespace StationTasks.Services
                 points.Add((x, y));
             }
             return points;
+        }
+
+        /// <summary>
+        /// 按端点和弧线中点生成二阶贝塞尔离散点。
+        /// p0/p2为起终点，midPoint为视觉给出的弧线中点；控制点按弧高(mm)和方向生成。
+        /// </summary>
+        public static List<(double X, double Y)> DiscretizeQuadraticBezierFromMidPoint(
+            (double X, double Y) p0,
+            (double X, double Y) midPoint,
+            (double X, double Y) p2,
+            int segments,
+            double arcHeight = 0.0,
+            double arcDirection = 0.0)
+        {
+            var controlPoint = CalculateControlPointFromMidPoint(p0, midPoint, p2, arcHeight, arcDirection);
+            return DiscretizeQuadraticBezier(p0, controlPoint, p2, segments);
+        }
+
+        /// <summary>
+        /// 由弧线中点确定弧线方向，并允许通过UI弧高(mm)复现旧项目按起终点和弧高生成曲线的逻辑。
+        /// </summary>
+        public static (double X, double Y) CalculateControlPointFromMidPoint(
+            (double X, double Y) start,
+            (double X, double Y) midPoint,
+            (double X, double Y) end,
+            double arcHeight = 0.0,
+            double arcDirection = 0.0)
+        {
+            double chordMidX = (start.X + end.X) / 2.0;
+            double chordMidY = (start.Y + end.Y) / 2.0;
+            double dx = end.X - start.X;
+            double dy = end.Y - start.Y;
+            double length = Math.Sqrt(dx * dx + dy * dy);
+
+            if (length < 0.000001)
+                return midPoint;
+
+            double perpendicularX = -dy / length;
+            double perpendicularY = dx / length;
+            double offsetX = midPoint.X - chordMidX;
+            double offsetY = midPoint.Y - chordMidY;
+            double signedArcHeight = offsetX * perpendicularX + offsetY * perpendicularY;
+
+            double direction = Math.Abs(arcDirection) > 0.000001
+                ? Math.Sign(arcDirection)
+                : Math.Sign(signedArcHeight);
+
+            if (direction == 0)
+                direction = 1.0;
+
+            // 弧高为0时使用旧项目默认：弦长20%；非0时使用UI输入的毫米弧高，避免倍率依赖P2偏差。
+            double effectiveArcHeight = Math.Abs(arcHeight) > 0.000001
+                ? Math.Abs(arcHeight)
+                : length * 0.2;
+
+            signedArcHeight = effectiveArcHeight * direction;
+
+            return (
+                chordMidX + 2.0 * signedArcHeight * perpendicularX,
+                chordMidY + 2.0 * signedArcHeight * perpendicularY);
         }
 
         #endregion
@@ -194,7 +257,9 @@ namespace StationTasks.Services
             double cameraNeedleDistanceX, double cameraNeedleDistanceY,
             double targetOffsetX, double targetOffsetY,
             double needleOffsetX, double needleOffsetY,
-            double needleCompensationX, double needleCompensationY)
+            double needleCompensationX, double needleCompensationY,
+            double arcHeight = 0.0,
+            double arcDirection = 0.0)
         {
             (double X, double Y) targetOffset = (targetOffsetX, targetOffsetY);
             (double X, double Y) cameraNeedleDistance = (cameraNeedleDistanceX, cameraNeedleDistanceY);
@@ -230,7 +295,7 @@ namespace StationTasks.Services
                     (photoDx, photoDy), (centerX, centerY),
                     (p1x, p1y), (p2x, p2y), (p3x, p3y),
                     cameraNeedleDistance, needleOffset, needleCompensation,
-                    arcSegments);
+                    arcSegments, arcHeight, arcDirection);
 
                 var result = new List<CoordinateTransformDetail>();
                 foreach (var pt in bezierPoints)
@@ -316,6 +381,7 @@ namespace StationTasks.Services
             double cameraNeedleDistanceX, double cameraNeedleDistanceY,
             double needleOffsetX, double needleOffsetY,
             double needleCompensationX, double needleCompensationY,
+            double arcHeight, double arcDirection,
             ManualResetEventSlim pauseEvent, CancellationToken token)
         {
             var (centerX, centerY, p1x, p1y, p2x, p2y, p3x, p3y) = ExtractArcPoints(visionData);
@@ -327,7 +393,7 @@ namespace StationTasks.Services
                 (cameraNeedleDistanceX, cameraNeedleDistanceY),
                 (needleOffsetX, needleOffsetY),
                 (needleCompensationX, needleCompensationY),
-                arcSegments);
+                arcSegments, arcHeight, arcDirection);
 
             _logger.Info($"[BezierArcDispense] Arc坐标: " +
                 $"photo({photoDx:F3},{photoDy:F3}) center({centerX:F3},{centerY:F3}) " +
@@ -337,6 +403,7 @@ namespace StationTasks.Services
                 $"camNeedle({cameraNeedleDistanceX:F3},{cameraNeedleDistanceY:F3}) " +
                 $"needleOffset({needleOffsetX:F3},{needleOffsetY:F3}) " +
                 $"comp({needleCompensationX:F3},{needleCompensationY:F3}) " +
+                $"arcHeight={arcHeight:F3} arcDirection={arcDirection:F3} " +
                 $"needleDescend={needleDescend} 插补点数={bezierPoints.Count}");
 
             await _motionService.MoveAbsAsync(dz1AxisId, dzSafePos, speed, token);

@@ -11,8 +11,6 @@
              mc:Ignorable="d"
              d:DesignHeight="700"
              d:DesignWidth="1100"
-             MinWidth="1100"
-             MinHeight="800"
              Background="#EEF2F5">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -20,6 +18,28 @@
                 <Setter Property="CornerRadius" Value="4" />
                 <Setter Property="Padding" Value="8,3" />
                 <Setter Property="Background" Value="#F5F5F5" />
+            </Style>
+
+            <!-- 维护页 TabItem：MaterialDesign 灰白风格，选中项底边灰色指示线 -->
+            <Style x:Key="MaintenanceTabItemStyle" TargetType="TabItem" BasedOn="{StaticResource MaterialDesignTabItem}">
+                <Setter Property="Height" Value="48" />
+                <Setter Property="Padding" Value="18,10" />
+                <Setter Property="materialDesign:ColorZoneAssist.Mode" Value="Custom" />
+                <Setter Property="materialDesign:ColorZoneAssist.Background" Value="Transparent" />
+                <Setter Property="materialDesign:ColorZoneAssist.Foreground" Value="#757575" />
+                <Setter Property="Background" Value="#9E9E9E" />
+                <Setter Property="BorderBrush" Value="#616161" />
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="materialDesign:ColorZoneAssist.Foreground" Value="#212121" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                        <Setter Property="Background" Value="#616161" />
+                        <Setter Property="BorderBrush" Value="#424242" />
+                    </Trigger>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="materialDesign:ColorZoneAssist.Foreground" Value="#424242" />
+                    </Trigger>
+                </Style.Triggers>
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
@@ -45,16 +65,16 @@
                 <!-- 左侧标题区 -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <materialDesign:PackIcon Kind="WrenchOutline" Width="24" Height="24"
-                                             Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                             Foreground="#616161"
                                              VerticalAlignment="Center" Margin="0,0,10,0" />
                     <TextBlock Text="{lang:Lang Maintenance_Title}"
                                FontSize="18"
                                FontWeight="Bold"
                                Foreground="#333333"
                                VerticalAlignment="Center" />
-                    <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="4" Padding="8,2" Margin="14,0,0,0">
+                    <Border Background="#F5F5F5" CornerRadius="4" Padding="8,2" Margin="14,0,0,0" BorderBrush="#E0E0E0" BorderThickness="1">
                         <TextBlock Text="{lang:Lang Maintenance_Subtitle}" FontSize="11"
-                                   Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                                   Foreground="#616161"
                                    VerticalAlignment="Center" FontWeight="Medium" />
                     </Border>
                 </StackPanel>
@@ -81,16 +101,55 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Tab Headers -->
-            <TabControl x:Name="MainTab" SelectedIndex="{Binding SelectedTabIndex}"
-                        Style="{StaticResource MaterialDesignTabControl}">
-                <TabItem Header="{lang:Lang Maintenance_Tab_CameraAlignment}" />
-                <TabItem Header="{lang:Lang Maintenance_Tab_NeedleAligner}" />
-                <TabItem Header="{lang:Lang Maintenance_Tab_CalibrationVerify}" />
-            </TabControl>
+            <!-- Tab 条：白底 + 灰色 MaterialDesign Tab -->
+            <Border Grid.Row="0" Background="White" BorderBrush="#E0E0E0" BorderThickness="1,1,1,0" CornerRadius="8,8,0,0">
+                <TabControl x:Name="MainTab"
+                            SelectedIndex="{Binding SelectedTabIndex}"
+                            Style="{StaticResource MaterialDesignTabControl}"
+                            ItemContainerStyle="{StaticResource MaintenanceTabItemStyle}"
+                            materialDesign:ColorZoneAssist.Mode="Custom"
+                            materialDesign:ColorZoneAssist.Background="White"
+                            materialDesign:ColorZoneAssist.Foreground="{DynamicResource MaterialDesignBody}"
+                            materialDesign:TabAssist.HasUniformTabWidth="False"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="4,0,4,0">
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CameraOutline" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang Maintenance_Tab_CameraAlignment}"
+                                           VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </TabItem.Header>
+                    </TabItem>
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Needle" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang Maintenance_Tab_NeedleAligner}"
+                                           VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </TabItem.Header>
+                    </TabItem>
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ClipboardCheckOutline" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang Maintenance_Tab_CalibrationVerify}"
+                                           VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </TabItem.Header>
+                    </TabItem>
+                </TabControl>
+            </Border>
 
             <!-- Lazy-loaded Content: only creates ViewModel when tab is selected -->
-            <ContentControl Grid.Row="1">
+            <Border Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8">
+                <ContentControl Margin="0">
                 <ContentControl.Style>
                     <Style TargetType="ContentControl">
                         <Style.Triggers>
@@ -124,7 +183,8 @@
                         </Style.Triggers>
                     </Style>
                 </ContentControl.Style>
-            </ContentControl>
+                </ContentControl>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

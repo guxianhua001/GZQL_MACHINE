@@ -711,6 +711,10 @@
     <sys:String x:Key="VisionCapture_CenterOffset">Center Offset</sys:String>
     <sys:String x:Key="VisionCapture_MachineCoord">Machine Coord</sys:String>
     <sys:String x:Key="VisionCapture_BezierDiscrete">Bezier Discrete</sys:String>
+    <sys:String x:Key="VisionCapture_ArcControlParams">Arc Control Params</sys:String>
+    <sys:String x:Key="VisionCapture_ArcHeight">Arc Height (mm)</sys:String>
+    <sys:String x:Key="VisionCapture_ArcDirection">Arc Direction</sys:String>
+    <sys:String x:Key="VisionCapture_ArcControlHint">Direction 0 uses the P2 side; 1/-1 forces the side. Height 0 uses 20% of the P1-P3 distance; non-zero uses the input mm value.</sys:String>
     <sys:String x:Key="VisionCapture_InterpolationPoints">Interpolation Points</sys:String>
     <sys:String x:Key="VisionCapture_MachineCoordList">Machine Coord List</sys:String>
     <sys:String x:Key="VisionCapture_Hint_Points">Coordinate point data list</sys:String>
@@ -1368,6 +1372,13 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="TorqueSetting">Torque Setting</sys:String>
     <sys:String x:Key="Total">Total</sys:String>
     <sys:String x:Key="TrajectoryType">PathType:</sys:String>
+    <sys:String x:Key="TreeView_RefreshTree">Refresh Tree</sys:String>
+    <sys:String x:Key="TreeView_NodeOperations">Tree Node Operations</sys:String>
+    <sys:String x:Key="TreeView_AddChildNode">Add Child Node</sys:String>
+    <sys:String x:Key="TreeView_RemoveNode">Remove Node</sys:String>
+    <sys:String x:Key="TreeView_ResizePanels">Drag to resize left and right panels</sys:String>
+    <sys:String x:Key="TreeView_CollapsePanel">Collapse Tree Panel</sys:String>
+    <sys:String x:Key="TreeView_ExpandPanel">Expand Tree Panel</sys:String>
     <sys:String x:Key="Tree_Equipment">Equipment Configuration</sys:String>
     <sys:String x:Key="Tree_Equipment_Assembly">Assembly Unit</sys:String>
     <sys:String x:Key="Tree_Equipment_AssemblyStation">Assembly Station</sys:String>
@@ -1675,6 +1686,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleCamera_DispX">X Axis</sys:String>
     <sys:String x:Key="NeedleCamera_DispY">Y Axis</sys:String>
     <sys:String x:Key="NeedleCamera_DispZ">Z Axis</sys:String>
+    <sys:String x:Key="NeedleCamera_CurrentFile">Current Parameter File</sys:String>
     <sys:String x:Key="Nav_Maintenance">Maintenance</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">Search Point Settings</sys:String>
     <sys:String x:Key="NeedleAligner_ReferenceCoordinates">Reference Coordinates</sys:String>
@@ -1702,6 +1714,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationLog">Calibration Log</sys:String>
     <sys:String x:Key="NeedleAligner_ClearLog">Clear Log</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_CalibrationDelta">Deviation</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">Calculated: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ReferenceUpdated">Reference updated to current measurement; deviation and expressions cleared</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">Confirm Apply Compensation</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">Apply the following compensation values to the motion controller:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;Compensation will be reset to zero after applying. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">Warning - Reset Compensation</sys:String>
@@ -1737,6 +1752,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleVerify_Result">Result</sys:String>
     <sys:String x:Key="NeedleVerify_Report">Verification Report</sys:String>
     <sys:String x:Key="NeedleVerify_SaveReport">Save Report</sys:String>
+    <sys:String x:Key="NeedleVerify_LoadParameters">Load Record</sys:String>
+    <sys:String x:Key="NeedleVerify_CurrentFile">Current Verification Record</sys:String>
     <sys:String x:Key="NeedleVerify_Log">Verification Log</sys:String>
     <sys:String x:Key="NeedleVerify_ClearLog">Clear Log</sys:String>
     <sys:String x:Key="NeedleVerify_Pass">Pass</sys:String>

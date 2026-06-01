@@ -705,6 +705,10 @@
     <sys:String x:Key="VisionCapture_CenterOffset">中心偏移</sys:String>
     <sys:String x:Key="VisionCapture_MachineCoord">机器坐标</sys:String>
     <sys:String x:Key="VisionCapture_BezierDiscrete">贝塞尔离散</sys:String>
+    <sys:String x:Key="VisionCapture_ArcControlParams">弧线控制参数</sys:String>
+    <sys:String x:Key="VisionCapture_ArcHeight">弧高(mm)</sys:String>
+    <sys:String x:Key="VisionCapture_ArcDirection">弧线方向</sys:String>
+    <sys:String x:Key="VisionCapture_ArcControlHint">方向0=使用P2侧向，1/-1=强制侧向；弧高0=按P1-P3距离20%自动计算，非0=使用输入mm值。</sys:String>
     <sys:String x:Key="VisionCapture_InterpolationPoints">插值点数</sys:String>
     <sys:String x:Key="VisionCapture_MachineCoordList">机器坐标列表</sys:String>
     <sys:String x:Key="VisionCapture_Hint_Points">坐标点数据列表</sys:String>
@@ -1353,6 +1357,13 @@
     <sys:String x:Key="TorqueSetting">力矩设定</sys:String>
     <sys:String x:Key="Total">Total</sys:String>
     <sys:String x:Key="TrajectoryType">轨迹类型:</sys:String>
+    <sys:String x:Key="TreeView_RefreshTree">刷新树结构</sys:String>
+    <sys:String x:Key="TreeView_NodeOperations">树节点操作</sys:String>
+    <sys:String x:Key="TreeView_AddChildNode">添加子节点</sys:String>
+    <sys:String x:Key="TreeView_RemoveNode">删除节点</sys:String>
+    <sys:String x:Key="TreeView_ResizePanels">拖动调整左右区域宽度</sys:String>
+    <sys:String x:Key="TreeView_CollapsePanel">收起树面板</sys:String>
+    <sys:String x:Key="TreeView_ExpandPanel">展开树面板</sys:String>
     <sys:String x:Key="Tree_Equipment">设备配置</sys:String>
     <sys:String x:Key="Tree_Equipment_Assembly">装配单元</sys:String>
     <sys:String x:Key="Tree_Equipment_AssemblyStation">装配模组</sys:String>
@@ -1675,6 +1686,7 @@
     <sys:String x:Key="NeedleCamera_DispX">X轴</sys:String>
     <sys:String x:Key="NeedleCamera_DispY">Y轴</sys:String>
     <sys:String x:Key="NeedleCamera_DispZ">Z轴</sys:String>
+    <sys:String x:Key="NeedleCamera_CurrentFile">当前参数文件</sys:String>
     <sys:String x:Key="Nav_Maintenance">设备维护</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">搜索点设置</sys:String>
     <sys:String x:Key="NeedleAligner_ReferenceCoordinates">基准坐标</sys:String>
@@ -1702,6 +1714,9 @@
     <sys:String x:Key="NeedleAligner_CalibrationLog">校准日志</sys:String>
     <sys:String x:Key="NeedleAligner_ClearLog">清空日志</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">补偿值</sys:String>
+    <sys:String x:Key="NeedleAligner_CalibrationDelta">偏差</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">计算结果: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ReferenceUpdated">基准已更新为当前测量值，偏差与表达式已清零</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">确认应用补偿</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">将应用以下补偿值到运动控制器：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;应用后补偿值将清零，确定继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">警告 - 重置补偿</sys:String>
@@ -1737,6 +1752,8 @@
     <sys:String x:Key="NeedleVerify_Result">结果</sys:String>
     <sys:String x:Key="NeedleVerify_Report">验证报告</sys:String>
     <sys:String x:Key="NeedleVerify_SaveReport">保存报告</sys:String>
+    <sys:String x:Key="NeedleVerify_LoadParameters">加载记录</sys:String>
+    <sys:String x:Key="NeedleVerify_CurrentFile">当前验证记录</sys:String>
     <sys:String x:Key="NeedleVerify_Log">验证日志</sys:String>
     <sys:String x:Key="NeedleVerify_ClearLog">清空日志</sys:String>
     <sys:String x:Key="NeedleVerify_Pass">通过</sys:String>

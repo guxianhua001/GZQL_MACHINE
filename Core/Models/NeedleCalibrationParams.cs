@@ -191,6 +191,15 @@ namespace Core.Models
         public string CompensationYLinkedVar { get; set; }
         public string CompensationZLinkedVar { get; set; }
 
+        /// <summary>X轴补偿表达式，如 "0.1+0.2"</summary>
+        public string CompensationXExpression { get; set; }
+
+        /// <summary>Y轴补偿表达式</summary>
+        public string CompensationYExpression { get; set; }
+
+        /// <summary>Z轴补偿表达式</summary>
+        public string CompensationZExpression { get; set; }
+
         // 深拷贝方法
         public NeedleCalibrationParams Clone()
         {
@@ -221,6 +230,10 @@ namespace Core.Models
                 CompensationXLinkedVar = this.CompensationXLinkedVar,
                 CompensationYLinkedVar = this.CompensationYLinkedVar,
                 CompensationZLinkedVar = this.CompensationZLinkedVar,
+
+                CompensationXExpression = this.CompensationXExpression,
+                CompensationYExpression = this.CompensationYExpression,
+                CompensationZExpression = this.CompensationZExpression,
 
                 Operator = this.Operator,
                 IsValid = this.IsValid

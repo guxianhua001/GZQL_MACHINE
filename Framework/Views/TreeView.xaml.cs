@@ -2,19 +2,9 @@
 using Framework.ViewModels;
 using Prism.Regions;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 
 namespace Framework.Views
@@ -24,25 +14,64 @@ namespace Framework.Views
     /// </summary>
     public partial class TreeView : UserControl
     {
-        TreeViewModel _viewModel;
+        private readonly TreeViewModel _viewModel;
+
         public TreeView(IRegionManager regionManager, ITreeConfigService treeConfigService, ILocalizationService localizationService)
         {
             _viewModel = new TreeViewModel(regionManager, treeConfigService, localizationService);
             DataContext = _viewModel;
             InitializeComponent();
             RegionManager.SetRegionManager(TreeRegion, regionManager);
-            this.Loaded += TreeViewView_Loaded;
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            Loaded += TreeViewView_Loaded;
         }
+
         /// <summary>
         /// TreesView's SelectedItem is read-only. Hence we can't bind it. There is a way to obtain a selected item.
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => _viewModel.SelectedItem = (Core.Models.TreeNode)e.NewValue;
+        private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) =>
+            _viewModel.SelectedItem = (Core.Models.TreeNode)e.NewValue;
 
-        private void TreeViewView_Loaded(object sender, EventArgs e)
+        private void TreeViewView_Loaded(object sender, RoutedEventArgs e)
         {
+            ApplyTreePanelLayout(_viewModel.IsTreePanelExpanded);
             Dispatcher.BeginInvoke((Action)(() => ExpandAllTreeViewItems(myTreeView)), DispatcherPriority.Loaded);
+        }
+
+        /// <summary>
+        /// 根据展开/折叠状态调整左侧列宽（折叠时宽度为 0，展开时恢复上次宽度）
+        /// </summary>
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(TreeViewModel.IsTreePanelExpanded))
+            {
+                ApplyTreePanelLayout(_viewModel.IsTreePanelExpanded);
+            }
+        }
+
+        private void ApplyTreePanelLayout(bool expanded)
+        {
+            if (TreePanelColumn == null)
+                return;
+
+            if (expanded)
+            {
+                TreePanelColumn.MinWidth = 200;
+                TreePanelColumn.MaxWidth = 600;
+                TreePanelColumn.Width = new GridLength(
+                    _viewModel.TreePanelWidth > 0 ? _viewModel.TreePanelWidth : 280,
+                    GridUnitType.Pixel);
+            }
+            else
+            {
+                var currentWidth = TreePanelColumn.ActualWidth;
+                if (currentWidth > 0)
+                    _viewModel.TreePanelWidth = currentWidth;
+
+                TreePanelColumn.MinWidth = 0;
+                TreePanelColumn.MaxWidth = double.PositiveInfinity;
+                TreePanelColumn.Width = new GridLength(0);
+            }
         }
 
         private void ExpandAllTreeViewItems(ItemsControl itemsControl)
@@ -54,13 +83,9 @@ namespace Framework.Views
                 var treeViewItem = itemsControl.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
                 if (treeViewItem != null)
                 {
-                    // 展开当前节点
                     treeViewItem.IsExpanded = true;
-
-                    // 强制更新布局以生成子容器
                     treeViewItem.UpdateLayout();
 
-                    // 延迟递归处理子项
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
                         ExpandAllTreeViewItems(treeViewItem);

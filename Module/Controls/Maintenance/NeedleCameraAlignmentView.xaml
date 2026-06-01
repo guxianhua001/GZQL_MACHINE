@@ -7,17 +7,21 @@
              xmlns:prism="http://prismlibrary.com/"
              xmlns:converters="clr-namespace:Module.Converters"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
              d:DesignHeight="700"
              d:DesignWidth="1100"
-             MinWidth="1100"
-             MinHeight="700"
              Background="#EEF2F5">
     <UserControl.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Module;component/Controls/Maintenance/MaintenanceSharedStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
             <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <converters:NullToVisibilityConverter x:Key="NullToVis" />
 
             <Style x:Key="ParamRowStyle" TargetType="Grid">
                 <Setter Property="Margin" Value="0,0,0,6" />
@@ -68,7 +72,7 @@
             <!-- ============================================================ -->
             <!-- LEFT COLUMN: 系统选择 + 示教操作 + 参数操作                     -->
             <!-- ============================================================ -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,0,0">
+            <ScrollViewer Grid.Column="0" Style="{StaticResource AlwaysVisibleScrollViewerStyle}" Margin="0,0,0,0">
                 <StackPanel>
 
                     <!-- 系统选择卡片 -->
@@ -94,16 +98,16 @@
                                              Style="{StaticResource MaterialDesignRadioButton}" />
                             </StackPanel>
 
-                            <Border Background="#E3F2FD" CornerRadius="6" Padding="10,6">
+                            <Border Background="#EDE7F6" CornerRadius="6" Padding="10,6">
                                 <StackPanel Orientation="Horizontal">
                                     <materialDesign:PackIcon Kind="CheckCircle" Width="16" Height="16"
-                                                             Foreground="#1565C0" Margin="0,0,8,0"
+                                                             Foreground="#5E35B1" Margin="0,0,8,0"
                                                              VerticalAlignment="Center" />
                                     <TextBlock Text="{lang:Lang NeedleCamera_CurrentSystem}"
-                                               Foreground="#1565C0" FontSize="12" FontWeight="Medium"
+                                               Foreground="#5E35B1" FontSize="12" FontWeight="Medium"
                                                VerticalAlignment="Center" Margin="0,0,4,0" />
                                     <TextBlock Text="{Binding SelectedSystemNumber}"
-                                               Foreground="#1565C0" FontSize="12" FontWeight="Medium"
+                                               Foreground="#5E35B1" FontSize="12" FontWeight="Medium"
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                             </Border>
@@ -187,7 +191,7 @@
                                 <TextBlock Grid.Column="1" Text="{lang:Lang NeedleCamera_DispY}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#43A047" />
                                 <TextBlock Grid.Column="2" Text="{lang:Lang NeedleCamera_DispZ}" Style="{StaticResource ParamLabelStyle}"
-                                           FontWeight="SemiBold" Foreground="#1E88E5" />
+                                           FontWeight="SemiBold" Foreground="#7E57C2" />
                                 <TextBox Grid.Column="3" Text="{Binding NeedleTipX, StringFormat=F3}"
                                          Style="{StaticResource ReadOnlyTextBoxStyle}" />
                                 <TextBox Grid.Column="4" Text="{Binding NeedleTipY, StringFormat=F3}"
@@ -250,7 +254,7 @@
                             <Button Command="{Binding ResetParametersCommand}"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     HorizontalAlignment="Stretch"
-                                    Padding="10,6"
+                                    Padding="10,6" Margin="0,0,0,8"
                                     BorderBrush="#FF9800" Foreground="#E65100"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleCamera_ResetParameters}">
@@ -259,6 +263,25 @@
                                     <TextBlock Text="{lang:Lang NeedleCamera_ResetParameters}" />
                                 </StackPanel>
                             </Button>
+
+                            <!-- 当前参数文件路径 -->
+                            <Border Background="#E3F2FD" CornerRadius="6" Padding="10,6" Margin="0,0,0,0"
+                                    Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
+                                                                 Foreground="#1565C0" Margin="0,0,6,0"
+                                                                 VerticalAlignment="Center" />
+                                        <TextBlock Text="{lang:Lang NeedleCamera_CurrentFile}"
+                                                   Foreground="#1565C0" FontSize="10" FontWeight="Medium"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding CurrentFilePath}"
+                                               Foreground="#1976D2" FontSize="9" FontFamily="Consolas"
+                                               TextWrapping="Wrap" Margin="0,2,0,0"
+                                               ToolTip="{Binding CurrentFilePath}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </materialDesign:Card>
 
@@ -274,7 +297,7 @@
             <!-- ============================================================ -->
             <!-- RIGHT COLUMN: 当前参数 + 补偿编辑器                            -->
             <!-- ============================================================ -->
-            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Column="2" Style="{StaticResource AlwaysVisibleScrollViewerStyle}">
                 <StackPanel>
 
                     <!-- 当前参数显示卡片 -->
@@ -343,7 +366,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
-                                                         Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                         Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
                                 <TextBox Grid.Column="1" Text="{Binding NeedleTipZ, StringFormat=F3}"
                                          Style="{StaticResource ReadOnlyTextBoxStyle}" />
                             </Grid>
@@ -356,50 +379,28 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Grid.Column="0" Kind="Delta" Width="16" Height="16"
                                                          Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                <TextBox Grid.Column="1" Text="{Binding CalibrationDeltaX, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
-                                <materialDesign:PackIcon Grid.Column="2" Kind="Link" Width="14" Height="14"
-                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                         VerticalAlignment="Center" Margin="4,0"
-                                                         Visibility="{Binding IsDeltaXLinked, Converter={StaticResource BoolToVis}}" />
-                                <ComboBox Grid.Column="3" ItemsSource="{Binding AvailableGlobalVariables}"
-                                          SelectedValuePath="Name"
-                                          DisplayMemberPath="Name"
-                                          SelectedValue="{Binding DeltaXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                          Width="120" FontSize="10"
-                                          materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_LinkGlobalVariable}" />
+                                <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaX, StringFormat=F3}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
                             </Grid>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Grid.Column="0" Kind="Delta" Width="16" Height="16"
                                                          Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                <TextBox Grid.Column="1" Text="{Binding CalibrationDeltaY, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
-                                <materialDesign:PackIcon Grid.Column="2" Kind="Link" Width="14" Height="14"
-                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                         VerticalAlignment="Center" Margin="4,0"
-                                                         Visibility="{Binding IsDeltaYLinked, Converter={StaticResource BoolToVis}}" />
-                                <ComboBox Grid.Column="3" ItemsSource="{Binding AvailableGlobalVariables}"
-                                          SelectedValuePath="Name"
-                                          DisplayMemberPath="Name"
-                                          SelectedValue="{Binding DeltaYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                          Width="120" FontSize="10"
-                                          materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_LinkGlobalVariable}" />
+                                <TextBlock Grid.Column="1" Text="{Binding CalibrationDeltaY, StringFormat=F3}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
                             </Grid>
                         </StackPanel>
                     </materialDesign:Card>
 
-                    <!-- 补偿编辑器卡片（参照 VisionCaptureView 三列模式） -->
+                    <!-- 补偿编辑器卡片：补偿值 + 表达式 + 计算结果 + 全局变量链接 -->
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
                         <StackPanel>
@@ -412,30 +413,33 @@
                                            Foreground="{DynamicResource PrimaryHueMidBrush}" />
                             </StackPanel>
 
-                            <!-- 三列标题 -->
+                            <!-- 列标题 -->
                             <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="70" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="" Width="70" />
+                                <TextBlock Grid.Column="0" Text="" Width="22" />
                                 <TextBlock Grid.Column="1" Text="{lang:Lang NeedleCamera_CompensationValue}"
                                            FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
                                 <TextBlock Grid.Column="2" Text="{lang:Lang NeedleCamera_CompensationExpression}"
                                            FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
                                 <TextBlock Grid.Column="3" Text="{lang:Lang NeedleCamera_CalculatedResult}"
-                                           FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" Width="80" />
+                                           FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="" FontSize="11" />
                             </Grid>
 
-                            <!-- CompensationX -->
+                            <!-- CompensationX：CalculatedComp = Delta + 补偿值 + 表达式 -->
                             <Grid Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="70" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="16" Height="16"
                                                          Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -448,16 +452,25 @@
                                          materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
                                 <TextBlock Grid.Column="3" Text="{Binding CalculatedCompX, StringFormat='= {0:F3}'}"
                                            FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                           VerticalAlignment="Center" Margin="4,0,0,0" Width="80" />
+                                           VerticalAlignment="Center" Margin="4,0,4,0" />
+                                <common:GlobalVariableLinkControl Grid.Column="4"
+                                    DisplayValue="{Binding CalculatedCompX}"
+                                    DisplayForeground="#E53935"
+                                    IsLinked="{Binding IsCompXLinked}"
+                                    UnlinkCommand="{Binding UnlinkCompXCommand}"
+                                    LinkedVariableName="{Binding CompXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                    ComboBoxWidth="120" />
                             </Grid>
 
                             <!-- CompensationY -->
                             <Grid Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="70" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Grid.Column="0" Kind="AxisYArrow" Width="16" Height="16"
                                                          Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -470,29 +483,15 @@
                                          materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
                                 <TextBlock Grid.Column="3" Text="{Binding CalculatedCompY, StringFormat='= {0:F3}'}"
                                            FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                           VerticalAlignment="Center" Margin="4,0,0,0" Width="80" />
-                            </Grid>
-
-                            <!-- CompensationZ -->
-                            <Grid Margin="0,0,0,6">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="80" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
-                                                         Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <TextBox Grid.Column="1" Text="{Binding CompensationZ, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-                                         FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         Padding="4,2" Margin="0,0,4,0" />
-                                <TextBox Grid.Column="2" Text="{Binding CompensationZExpression, UpdateSourceTrigger=PropertyChanged}"
-                                         FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         Padding="4,2" Margin="0,0,4,0"
-                                         materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
-                                <TextBlock Grid.Column="3" Text="{Binding CalculatedCompZ, StringFormat='= {0:F3}'}"
-                                           FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                           VerticalAlignment="Center" Margin="4,0,0,0" Width="80" />
+                                           VerticalAlignment="Center" Margin="4,0,4,0" />
+                                <common:GlobalVariableLinkControl Grid.Column="4"
+                                    DisplayValue="{Binding CalculatedCompY}"
+                                    DisplayForeground="#43A047"
+                                    IsLinked="{Binding IsCompYLinked}"
+                                    UnlinkCommand="{Binding UnlinkCompYCommand}"
+                                    LinkedVariableName="{Binding CompYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                    ComboBoxWidth="120" />
                             </Grid>
 
                             <!-- Yellow info note -->

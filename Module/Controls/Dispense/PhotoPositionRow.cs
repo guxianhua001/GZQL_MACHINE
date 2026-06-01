@@ -169,6 +169,26 @@ namespace Module.ViewModels
             set => SetProperty(ref _arcSegments, value);
         }
 
+        private double _arcHeight;
+        /// <summary>
+        /// Arc弧高(mm)。0表示按旧项目默认使用P1/P3弦长20%自动计算。
+        /// </summary>
+        public double ArcHeight
+        {
+            get => _arcHeight;
+            set => SetProperty(ref _arcHeight, value);
+        }
+
+        private double _arcDirection;
+        /// <summary>
+        /// Arc弧线方向；0表示使用视觉P2所在方向，1/-1强制指定弧线侧向。
+        /// </summary>
+        public double ArcDirection
+        {
+            get => _arcDirection;
+            set => SetProperty(ref _arcDirection, value);
+        }
+
         private bool _isSelected;
         public bool IsSelected
         {
