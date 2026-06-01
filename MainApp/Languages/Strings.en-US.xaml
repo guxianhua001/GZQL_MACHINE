@@ -1742,11 +1742,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">This will reset accumulated TCP offset and pending increment to zero.&#10;Fixed reference ReferenceXYZ will NOT change.&#10;This cannot be undone. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationReset">Accumulated TCP offset reset to zero</sys:String>
     <sys:String x:Key="NeedleAligner_Log_HistoryRecord">{0:yyyy-MM-dd HH:mm:ss} | Increment X={1:F3}, Y={2:F3}, Z={3:F3} | TCP X={4:F3}, Y={5:F3}, Z={6:F3} | Operator: {7}</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">Confirm Apply Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyTitle">Confirm Apply TCP</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ApplyMessage">Apply the following TCP total to the motion controller:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;Fixed reference unchanged. Continue?</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">Warning - Reset Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ResetTitle">Warning - Reset TCP Offset</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Compensation">Accumulated TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_ResetError">Reset compensation failed: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ResetError">Reset TCP offset failed: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_LinkGlobalVariable">Link Global Variable</sys:String>
     <sys:String x:Key="NeedleAligner_UnlinkGlobalVariable">Unlink</sys:String>
     <sys:String x:Key="NeedleAligner_TeachSearchPoint">Teach</sys:String>
