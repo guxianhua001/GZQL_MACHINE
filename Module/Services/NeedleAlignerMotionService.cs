@@ -185,7 +185,7 @@ namespace Module.Services
                 parameters.SearchPoint3,
                 parameters.SearchPoint4
             };
-
+            // 移到第一个搜索点
             await MoveToSearchPointXYAsync(parameters, systemNumber, searchPoints[0].X, searchPoints[0].Y, token);
             await MoveToSearchNeedleHeightAsync(parameters, systemNumber, token);
 

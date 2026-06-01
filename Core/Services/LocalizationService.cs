@@ -260,7 +260,11 @@ namespace Core.Services
 
             try
             {
-                var resource = Application.Current.TryFindResource(key);
+                var app = Application.Current;
+                if (app == null)
+                    return $"[{key}]";
+
+                var resource = app.TryFindResource(key);
                 return resource?.ToString() ?? $"[{key}]";
             }
             catch
@@ -309,7 +313,11 @@ namespace Core.Services
 
             try
             {
-                var resource = Application.Current.TryFindResource(key);
+                var app = Application.Current;
+                if (app == null)
+                    return false;
+
+                var resource = app.TryFindResource(key);
                 if (resource != null)
                 {
                     value = resource.ToString();
