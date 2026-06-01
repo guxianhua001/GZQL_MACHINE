@@ -1799,6 +1799,17 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">Search center point failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">Search needle height failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">Calibration cancelled</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Title">Parameter Setup</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Desc">Motion params &amp; search points</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Title">Teach Position</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Desc">Teach search &amp; align positions</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Title">Run Calibration</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Desc">Start calibration &amp; view results</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Title">Apply Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Desc">Review &amp; apply TCP compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_PrevStep">Previous</sys:String>
+    <sys:String x:Key="NeedleAligner_NextStep">Next</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Guide">First teach the four search point positions, then teach the align position. Search points should be evenly distributed around the needle tip; the align position should be the precise coordinates when the needle tip contacts the calibration surface.</sys:String>
     <sys:String x:Key="NeedleVerify_Title">Needle Calibration Verification</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">Verify compensation data accuracy</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">System Selection</sys:String>

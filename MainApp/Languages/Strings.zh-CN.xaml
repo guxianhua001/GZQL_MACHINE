@@ -1799,6 +1799,17 @@
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">搜索中心点失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">搜索针尖高度失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">校准已取消</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Title">参数设置</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Desc">运动参数与搜索点</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Title">示教定位</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Desc">示教搜索点与对针位置</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Title">执行校准</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Desc">启动校准并查看结果</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Title">补偿应用</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Desc">审查并应用TCP补偿</sys:String>
+    <sys:String x:Key="NeedleAligner_PrevStep">上一步</sys:String>
+    <sys:String x:Key="NeedleAligner_NextStep">下一步</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Guide">请先示教四个搜索点位置，然后示教对针位置。搜索点应围绕针尖均匀分布，对针位置应为针尖接触校准面时的精确坐标。</sys:String>
     <sys:String x:Key="NeedleVerify_Title">针头校准验证</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">验证补偿数据准确性</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">系统选择</sys:String>
