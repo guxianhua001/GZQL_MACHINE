@@ -32,6 +32,20 @@
                 <Setter Property="Foreground" Value="#616161" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="Margin" Value="0,0,6,0" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- 左侧卡片标题：图标 + 多行标题，随列宽自适应 -->
+            <Style x:Key="LeftCardHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignHeadline6TextBlock}">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+            </Style>
+
+            <!-- 左侧操作按钮：文字过长时自动换行，不撑破列宽 -->
+            <Style x:Key="LeftActionButtonContentStyle" TargetType="TextBlock">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="TextAlignment" Value="Left" />
+                <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 
             <Style x:Key="ReadOnlyTextBoxStyle" TargetType="TextBox">
@@ -40,6 +54,7 @@
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="materialDesign:HintAssist.IsFloating" Value="False" />
                 <Setter Property="Margin" Value="0,0,4,0" />
+                <Setter Property="MinWidth" Value="0" />
             </Style>
 
             <Style x:Key="CardHeaderStyle" TargetType="StackPanel">
@@ -53,6 +68,10 @@
                 <Setter Property="Foreground" Value="#9E9E9E" />
                 <Setter Property="Margin" Value="0,0,0,8" />
             </Style>
+
+            <Style x:Key="LeftStepLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource StepLabelStyle}">
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -64,29 +83,40 @@
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="480" MinWidth="280" />
+                <ColumnDefinition Width="*" MinWidth="260" MaxWidth="520" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" MinWidth="500" />
+                <ColumnDefinition Width="1.4*" MinWidth="400" />
             </Grid.ColumnDefinitions>
 
             <!-- ============================================================ -->
             <!-- LEFT COLUMN: 系统选择 + 示教操作 + 参数操作                     -->
             <!-- ============================================================ -->
-            <ScrollViewer Grid.Column="0" Style="{StaticResource AlwaysVisibleScrollViewerStyle}" Margin="0,0,0,0">
-                <StackPanel>
+            <ScrollViewer Grid.Column="0"
+                          Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          CanContentScroll="False"
+                          Margin="0,0,0,0">
+                <!-- 绑定 ScrollViewer 视口宽度，防止子控件撑出横向滚动 -->
+                <StackPanel HorizontalAlignment="Stretch"
+                            Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
 
                     <!-- 系统选择卡片 -->
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
                         <StackPanel>
-                            <StackPanel Style="{StaticResource CardHeaderStyle}">
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Kind="SwapHorizontal" Width="18" Height="18"
                                                          Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                         Margin="0,0,8,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{lang:Lang NeedleCamera_SystemSelection}"
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                           Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            </StackPanel>
+                                                         Margin="0,0,8,0" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleCamera_SystemSelection}"
+                                           Style="{StaticResource LeftCardHeaderTextStyle}" />
+                            </Grid>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <RadioButton Content="{lang:Lang NeedleCamera_System1}"
@@ -118,45 +148,62 @@
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
                         <StackPanel>
-                            <StackPanel Style="{StaticResource CardHeaderStyle}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="18" Height="18"
-                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                         Margin="0,0,8,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{lang:Lang NeedleCamera_CameraCenterTeaching}"
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                           Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            </StackPanel>
-
-                            <TextBlock Text="{lang:Lang NeedleCamera_CameraCenterStep}"
-                                       Style="{StaticResource StepLabelStyle}" />
-
-                            <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="18" Height="18"
+                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                         Margin="0,0,8,0" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleCamera_CameraCenterTeaching}"
+                                           Style="{StaticResource LeftCardHeaderTextStyle}" />
+                            </Grid>
+
+                            <TextBlock Text="{lang:Lang NeedleCamera_CameraCenterStep}"
+                                       Style="{StaticResource LeftStepLabelStyle}" />
+
+                            <Grid Style="{StaticResource ParamRowStyle}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{lang:Lang NeedleCamera_DispX}" Style="{StaticResource ParamLabelStyle}"
+                                <TextBlock Grid.Row="0" Grid.Column="0"
+                                           Text="{lang:Lang NeedleCamera_DispX}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#E53935" />
-                                <TextBlock Grid.Column="1" Text="{lang:Lang NeedleCamera_DispY}" Style="{StaticResource ParamLabelStyle}"
+                                <TextBlock Grid.Row="0" Grid.Column="1"
+                                           Text="{lang:Lang NeedleCamera_DispY}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#43A047" />
-                                <TextBox Grid.Column="2" Text="{Binding CameraCenterX, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
-                                <TextBox Grid.Column="3" Text="{Binding CameraCenterY, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding CameraCenterX, StringFormat=F3}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" MinWidth="0" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CameraCenterY, StringFormat=F3}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" MinWidth="0" />
                             </Grid>
 
                             <Button Command="{Binding TeachCameraCenterCommand}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
                                     Padding="12,8"
                                     materialDesign:ButtonAssist.CornerRadius="6"
                                     ToolTip="{lang:Lang NeedleCamera_TeachCameraCenter}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="17" Height="17" Margin="0,0,8,0" />
-                                    <TextBlock Text="{lang:Lang NeedleCamera_TeachCameraCenter}" FontWeight="SemiBold" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="17" Height="17"
+                                                             VerticalAlignment="Top" Margin="0,2,8,0" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{lang:Lang NeedleCamera_TeachCameraCenter}"
+                                               Style="{StaticResource LeftActionButtonContentStyle}"
+                                               FontWeight="SemiBold" />
+                                </Grid>
                             </Button>
                         </StackPanel>
                     </materialDesign:Card>
@@ -165,51 +212,68 @@
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
                         <StackPanel>
-                            <StackPanel Style="{StaticResource CardHeaderStyle}">
-                                <materialDesign:PackIcon Kind="Needle" Width="18" Height="18"
-                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                         Margin="0,0,8,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{lang:Lang NeedleCamera_NeedleTipTeaching}"
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                           Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            </StackPanel>
-
-                            <TextBlock Text="{lang:Lang NeedleCamera_NeedleTipStep}"
-                                       Style="{StaticResource StepLabelStyle}" />
-
-                            <Grid Style="{StaticResource ParamRowStyle}">
+                            <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="Needle" Width="18" Height="18"
+                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                         Margin="0,0,8,0" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleCamera_NeedleTipTeaching}"
+                                           Style="{StaticResource LeftCardHeaderTextStyle}" />
+                            </Grid>
+
+                            <TextBlock Text="{lang:Lang NeedleCamera_NeedleTipStep}"
+                                       Style="{StaticResource LeftStepLabelStyle}" />
+
+                            <Grid Style="{StaticResource ParamRowStyle}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{lang:Lang NeedleCamera_DispX}" Style="{StaticResource ParamLabelStyle}"
+                                <TextBlock Grid.Row="0" Grid.Column="0"
+                                           Text="{lang:Lang NeedleCamera_DispX}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#E53935" />
-                                <TextBlock Grid.Column="1" Text="{lang:Lang NeedleCamera_DispY}" Style="{StaticResource ParamLabelStyle}"
+                                <TextBlock Grid.Row="0" Grid.Column="1"
+                                           Text="{lang:Lang NeedleCamera_DispY}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#43A047" />
-                                <TextBlock Grid.Column="2" Text="{lang:Lang NeedleCamera_DispZ}" Style="{StaticResource ParamLabelStyle}"
+                                <TextBlock Grid.Row="0" Grid.Column="2"
+                                           Text="{lang:Lang NeedleCamera_DispZ}" Style="{StaticResource ParamLabelStyle}"
                                            FontWeight="SemiBold" Foreground="#7E57C2" />
-                                <TextBox Grid.Column="3" Text="{Binding NeedleTipX, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
-                                <TextBox Grid.Column="4" Text="{Binding NeedleTipY, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
-                                <TextBox Grid.Column="5" Text="{Binding NeedleTipZ, StringFormat=F3}"
-                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding NeedleTipX, StringFormat=F3}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" MinWidth="0" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NeedleTipY, StringFormat=F3}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" MinWidth="0" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding NeedleTipZ, StringFormat=F3}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" MinWidth="0" />
                             </Grid>
 
                             <Button Command="{Binding TeachNeedleTipCommand}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
                                     Padding="12,8"
                                     materialDesign:ButtonAssist.CornerRadius="6"
                                     ToolTip="{lang:Lang NeedleCamera_TeachNeedlePosition}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="Needle" Width="17" Height="17" Margin="0,0,8,0" />
-                                    <TextBlock Text="{lang:Lang NeedleCamera_TeachNeedlePosition}" FontWeight="SemiBold" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <materialDesign:PackIcon Kind="Needle" Width="17" Height="17"
+                                                             VerticalAlignment="Top" Margin="0,2,8,0" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{lang:Lang NeedleCamera_TeachNeedlePosition}"
+                                               Style="{StaticResource LeftActionButtonContentStyle}"
+                                               FontWeight="SemiBold" />
+                                </Grid>
                             </Button>
                         </StackPanel>
                     </materialDesign:Card>
@@ -218,67 +282,100 @@
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
                         <StackPanel>
-                            <StackPanel Style="{StaticResource CardHeaderStyle}">
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
                                 <materialDesign:PackIcon Kind="ContentSave" Width="18" Height="18"
                                                          Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                         Margin="0,0,8,0" VerticalAlignment="Center" />
-                                <TextBlock Text="{lang:Lang NeedleCamera_ParameterOperations}"
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                           Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            </StackPanel>
+                                                         Margin="0,0,8,0" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang NeedleCamera_ParameterOperations}"
+                                           Style="{StaticResource LeftCardHeaderTextStyle}" />
+                            </Grid>
 
                             <Button Command="{Binding LoadParametersCommand}"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
                                     Padding="10,6" Margin="0,0,0,8"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleCamera_LoadParameters}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16" Margin="0,0,8,0" />
-                                    <TextBlock Text="{lang:Lang NeedleCamera_LoadParameters}" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16"
+                                                             VerticalAlignment="Top" Margin="0,2,8,0" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{lang:Lang NeedleCamera_LoadParameters}"
+                                               Style="{StaticResource LeftActionButtonContentStyle}" />
+                                </Grid>
                             </Button>
 
                             <Button Command="{Binding SaveParametersCommand}"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
                                     Padding="10,6" Margin="0,0,0,8"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleCamera_SaveParameters}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,8,0" />
-                                    <TextBlock Text="{lang:Lang NeedleCamera_SaveParameters}" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16"
+                                                             VerticalAlignment="Top" Margin="0,2,8,0" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{lang:Lang NeedleCamera_SaveParameters}"
+                                               Style="{StaticResource LeftActionButtonContentStyle}" />
+                                </Grid>
                             </Button>
 
                             <Button Command="{Binding ResetParametersCommand}"
                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                     HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
                                     Padding="10,6" Margin="0,0,0,8"
                                     BorderBrush="#FF9800" Foreground="#E65100"
                                     materialDesign:ButtonAssist.CornerRadius="4"
                                     ToolTip="{lang:Lang NeedleCamera_ResetParameters}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" Margin="0,0,8,0" />
-                                    <TextBlock Text="{lang:Lang NeedleCamera_ResetParameters}" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"
+                                                             VerticalAlignment="Top" Margin="0,2,8,0" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{lang:Lang NeedleCamera_ResetParameters}"
+                                               Style="{StaticResource LeftActionButtonContentStyle}" />
+                                </Grid>
                             </Button>
 
-                            <!-- 当前参数文件路径 -->
+                            <!-- 当前参数文件路径：长路径多行显示，不触发横向滚动 -->
                             <Border Background="#E3F2FD" CornerRadius="6" Padding="10,6" Margin="0,0,0,0"
                                     Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
                                         <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
-                                                                 Foreground="#1565C0" Margin="0,0,6,0"
-                                                                 VerticalAlignment="Center" />
-                                        <TextBlock Text="{lang:Lang NeedleCamera_CurrentFile}"
+                                                                 Foreground="#1565C0" Margin="0,2,6,0"
+                                                                 VerticalAlignment="Top" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{lang:Lang NeedleCamera_CurrentFile}"
                                                    Foreground="#1565C0" FontSize="10" FontWeight="Medium"
-                                                   VerticalAlignment="Center" />
-                                    </StackPanel>
+                                                   TextWrapping="Wrap" />
+                                    </Grid>
                                     <TextBlock Text="{Binding CurrentFilePath}"
-                                               Foreground="#1976D2" FontSize="9" FontFamily="Consolas"
-                                               TextWrapping="Wrap" Margin="0,2,0,0"
+                                               Foreground="#1976D2" FontSize="10" FontFamily="Consolas"
+                                               TextWrapping="Wrap" Margin="0,4,0,0"
                                                ToolTip="{Binding CurrentFilePath}" />
                                 </StackPanel>
                             </Border>
