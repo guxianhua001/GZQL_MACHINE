@@ -3,6 +3,7 @@ using Core.Models;
 using Core.Utilities;
 using HalconDotNet;
 using MotionControl.Interfaces;
+using MotionControl.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,18 +19,29 @@ namespace Module.Services
     public class NeedleAlignerMotionService : INeedleAlignerMotionService
     {
         private const string StationIdentifier = "DispenserStation";
-        private const int MoveDonePollMs = 10;
         private const int SensorPollMs = 20;
         private const int SensorTimeoutMs = 60000;
+        /// <summary>Z 接近目标前减速段长度（mm）</summary>
+        private const double ZApproachGapMm = 5.0;
 
         private readonly IMotionService _motion;
+        private readonly IAxisParameterService _axisParameterService;
+        private readonly ISpeedOverrideService _speedOverride;
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localization;
         private Dictionary<string, int> _axisIdCache;
+        private int? _coordIdCache;
 
-        public NeedleAlignerMotionService(IMotionService motion, ILoggerService logger, ILocalizationService localization)
+        public NeedleAlignerMotionService(
+            IMotionService motion,
+            IAxisParameterService axisParameterService,
+            ISpeedOverrideService speedOverride,
+            ILoggerService logger,
+            ILocalizationService localization)
         {
             _motion = motion ?? throw new ArgumentNullException(nameof(motion));
+            _axisParameterService = axisParameterService ?? throw new ArgumentNullException(nameof(axisParameterService));
+            _speedOverride = speedOverride ?? throw new ArgumentNullException(nameof(speedOverride));
             _logger = logger;
             _localization = localization;
         }
@@ -66,8 +78,8 @@ namespace Module.Services
         public async Task MoveToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
         {
             var zId = ResolveZAxisId(systemNumber);
-            await _motion.MoveAbsAsync(zId, parameters.SafeHeight, parameters.SearchSpeed, token);
-            await WaitAxisDoneAsync(zId, token);
+            var fastSpeed = GetAxisMotionSpeed(zId);
+            await MoveZAbsWithApproachAsync(zId, parameters.SafeHeight, fastSpeed, parameters.FineSearchSpeed, token);
         }
 
         public async Task MoveToAlignPositionAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
@@ -80,33 +92,44 @@ namespace Module.Services
             var dyId = ResolveAxisId(map, "Dy");
             var zId = ResolveZAxisId(systemNumber);
 
-            await _motion.MoveAbsAsync(dxId, align.X, parameters.SearchSpeed, token);
-            await _motion.MoveAbsAsync(dyId, align.Y, parameters.SearchSpeed, token);
-            await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
-
-            await _motion.MoveAbsAsync(zId, align.Z, parameters.SearchSpeed * 0.5, token);
-            await WaitAxisDoneAsync(zId, token);
+            await MoveXYLineAsync(dxId, dyId, align.X, align.Y, GetXYInterpSpeed(dxId, dyId), token);
+            await MoveZAbsWithApproachAsync(zId, align.Z, GetAxisMotionSpeed(zId), parameters.FineSearchSpeed, token);
         }
 
         public async Task MoveToSearchPointXYAsync(NeedleCalibrationParams parameters, int systemNumber, double x, double y, CancellationToken token)
+        {
+            await MoveToSearchPointXYAsync(parameters, systemNumber, x, y, useAxisMotionSpeed: false, token);
+        }
+
+        /// <summary>
+        /// 安全移动到搜索点 XY：先抬安全高度，再 XY 插补。
+        /// 第一个搜索点使用轴设置 MaxSpeed×全局速度百分比；其余使用参数 SearchSpeed。
+        /// </summary>
+        private async Task MoveToSearchPointXYAsync(
+            NeedleCalibrationParams parameters,
+            int systemNumber,
+            double x,
+            double y,
+            bool useAxisMotionSpeed,
+            CancellationToken token)
         {
             await MoveToSafeHeightAsync(parameters, systemNumber, token);
 
             var map = ResolveAxisMap();
             var dxId = ResolveAxisId(map, "Dx");
             var dyId = ResolveAxisId(map, "Dy");
+            double velocity = useAxisMotionSpeed
+                ? GetXYInterpSpeed(dxId, dyId)
+                : parameters.SearchSpeed;
 
-            await _motion.MoveAbsAsync(dxId, x, parameters.SearchSpeed, token);
-            await _motion.MoveAbsAsync(dyId, y, parameters.SearchSpeed, token);
-            await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
+            await MoveXYLineAsync(dxId, dyId, x, y, velocity, token);
         }
 
         public async Task MoveToSearchNeedleHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
         {
             var align = GetAlignPosition(parameters, systemNumber);
             var zId = ResolveZAxisId(systemNumber);
-            await _motion.MoveAbsAsync(zId, align.Z, parameters.SearchSpeed * 0.5, token);
-            await WaitAxisDoneAsync(zId, token);
+            await MoveZAbsWithApproachAsync(zId, align.Z, GetAxisMotionSpeed(zId), parameters.FineSearchSpeed, token);
         }
 
         public async Task<NeedleCalibrationResult> ExecuteNeedleCalibrationAsync(
@@ -185,8 +208,8 @@ namespace Module.Services
                 parameters.SearchPoint3,
                 parameters.SearchPoint4
             };
-            // 移到第一个搜索点
-            await MoveToSearchPointXYAsync(parameters, systemNumber, searchPoints[0].X, searchPoints[0].Y, token);
+            // 移到第一个搜索点（轴设置速度×全局百分比）；其余搜索点使用 SearchSpeed
+            await MoveToSearchPointXYAsync(parameters, systemNumber, searchPoints[0].X, searchPoints[0].Y, useAxisMotionSpeed: true, token);
             await MoveToSearchNeedleHeightAsync(parameters, systemNumber, token);
 
             var xEdgePoints = new List<PointF>();
@@ -244,19 +267,13 @@ namespace Module.Services
             var dxId = ResolveAxisId(map, "Dx");
             var dyId = ResolveAxisId(map, "Dy");
 
-            await _motion.MoveAbsAsync(dxId, startX, parameters.SearchSpeed, token);
-            await _motion.MoveAbsAsync(dyId, startPoint.Y, parameters.SearchSpeed, token);
-            await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
+            await MoveXYLineAsync(dxId, dyId, startX, startPoint.Y, parameters.SearchSpeed, token);
 
             double forwardEdge = await SearchSingleEdgeAsync(moveDirection, sensorDirection, parameters.SearchRange * 2, parameters.FineSearchSpeed, axisId, parameters, token);
             if (double.IsNaN(forwardEdge)) return null;
 
-            await WaitAxisDoneAsync(axisId, token);
-
             double backwardEdge = await SearchSingleEdgeAsync(GetOppositeDirection(moveDirection), sensorDirection, parameters.SearchRange * 2, parameters.FineSearchSpeed, axisId, parameters, token);
             if (double.IsNaN(backwardEdge)) return null;
-
-            await WaitAxisDoneAsync(axisId, token);
 
             double center = (forwardEdge + backwardEdge) / 2;
             var result = new PointF(startPoint.X, startPoint.Y);
@@ -331,12 +348,12 @@ namespace Module.Services
             var zId = ResolveZAxisId(systemNumber);
             var alignZ = GetAlignPosition(parameters, systemNumber).Z;
 
-            await _motion.MoveAbsAsync(dxId, centerPoint.X, parameters.SearchSpeed, token);
-            await _motion.MoveAbsAsync(dyId, centerPoint.Y, parameters.SearchSpeed, token);
-            await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
+            var xySpeed = GetXYInterpSpeed(dxId, dyId);
+            await MoveXYLineAsync(dxId, dyId, centerPoint.X, centerPoint.Y, xySpeed, token);
 
             double totalHeight = 0;
             int count = Math.Max(1, parameters.ZSearchCount);
+            var zFastSpeed = GetAxisMotionSpeed(zId);
 
             for (int i = 0; i < count; i++)
             {
@@ -344,12 +361,8 @@ namespace Module.Services
                 progress?.Report((L("NeedleAligner_Status_ZHeightSearch", "第 {0}/{1} 次高度定位", i + 1, count), 60 + i * 10));
 
                 await MoveToSafeHeightAsync(parameters, systemNumber, token);
-                await _motion.MoveAbsAsync(dxId, centerPoint.X, parameters.SearchSpeed, token);
-                await _motion.MoveAbsAsync(dyId, centerPoint.Y, parameters.SearchSpeed, token);
-                await Task.WhenAll(WaitAxisDoneAsync(dxId, token), WaitAxisDoneAsync(dyId, token));
-
-                await _motion.MoveAbsAsync(zId, alignZ, parameters.FineSearchSpeed, token);
-                await WaitAxisDoneAsync(zId, token);
+                await MoveXYLineAsync(dxId, dyId, centerPoint.X, centerPoint.Y, xySpeed, token);
+                await MoveZAbsWithApproachAsync(zId, alignZ, zFastSpeed, parameters.FineSearchSpeed, token);
 
                 totalHeight += _motion.GetAxisPosition(zId);
             }
@@ -391,6 +404,90 @@ namespace Module.Services
             }
 
             return null;
+        }
+
+        #endregion
+
+        #region 速度与插补运动
+
+        /// <summary>
+        /// 轴设置界面 Motion.MaxSpeed，并乘以全局速度百分比（与 StationTaskBase 一致）。
+        /// </summary>
+        private double GetAxisMotionSpeed(int logicalAxisId)
+        {
+            var cfg = _motion.GetAxisConfigurations().FirstOrDefault(a => a.LogicalId == logicalAxisId);
+            if (cfg == null)
+                return 10.0 * (_speedOverride.SpeedPercent / 100.0);
+
+            var baseSpeed = _axisParameterService.GetAxisSpeed(cfg.CardId, cfg.AxisId);
+            return baseSpeed * (_speedOverride.SpeedPercent / 100.0);
+        }
+
+        /// <summary>XY 插补速度：取 Dx/Dy 轴设置速度的较小值（均已含全局百分比）。</summary>
+        private double GetXYInterpSpeed(int dxId, int dyId) =>
+            Math.Min(GetAxisMotionSpeed(dxId), GetAxisMotionSpeed(dyId));
+
+        /// <summary>解析 Dx 所在插补系 CoordId（与 VisionCapture 一致）。</summary>
+        private int ResolveCoordId()
+        {
+            if (_coordIdCache.HasValue)
+                return _coordIdCache.Value;
+
+            var axisConfigs = _motion.GetAxisConfigurations();
+            var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+            if (dxConfig == null)
+            {
+                _logger.Warn("[NeedleAligner] 未找到 Dx 轴配置，CoordId 回退 0");
+                _coordIdCache = 0;
+                return 0;
+            }
+
+            foreach (var sys in _axisParameterService.LoadInterpolationSystems())
+            {
+                foreach (var axisEntry in sys.Axes)
+                {
+                    var parts = axisEntry.Split('-');
+                    if (parts.Length == 2 && int.TryParse(parts[1], out int actAxisId) && actAxisId == dxConfig.AxisId)
+                    {
+                        _coordIdCache = sys.CoordId;
+                        return sys.CoordId;
+                    }
+                }
+            }
+
+            _logger.Warn($"[NeedleAligner] Dx 不在插补系中，CoordId 回退 0");
+            _coordIdCache = 0;
+            return 0;
+        }
+
+        /// <summary>XY 同步绝对运动（插补）；MoveLineAbsAsync 内部已 WaitForCoordDone。</summary>
+        private Task MoveXYLineAsync(int dxId, int dyId, double x, double y, double velocity, CancellationToken token)
+        {
+            int coordId = ResolveCoordId();
+            return _motion.MoveLineAbsAsync(coordId, new[] { dxId, dyId }, new[] { x, y }, velocity, token);
+        }
+
+        /// <summary>
+        /// Z 两段到位：距目标 ZApproachGapMm 以内用慢速，此前用快速（安全高度/寻针高度）。
+        /// </summary>
+        private async Task MoveZAbsWithApproachAsync(
+            int zId,
+            double targetZ,
+            double fastSpeed,
+            double slowSpeed,
+            CancellationToken token)
+        {
+            double current = _motion.GetAxisPosition(zId);
+            double delta = targetZ - current;
+            if (Math.Abs(delta) <= ZApproachGapMm)
+            {
+                await _motion.MoveAbsAsync(zId, targetZ, slowSpeed, token);
+                return;
+            }
+
+            double via = delta > 0 ? targetZ - ZApproachGapMm : targetZ + ZApproachGapMm;
+            await _motion.MoveAbsAsync(zId, via, fastSpeed, token);
+            await _motion.MoveAbsAsync(zId, targetZ, slowSpeed, token);
         }
 
         #endregion
@@ -478,18 +575,6 @@ namespace Module.Services
 
         private static PointF GetAlignPosition(NeedleCalibrationParams parameters, int systemNumber) =>
             systemNumber == 1 ? parameters.AlignPositionSystem1 : parameters.AlignPositionSystem2;
-
-        private async Task WaitAxisDoneAsync(int axisId, CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                if (!_motion.GetAxisState(axisId).IsMoving)
-                    return;
-                await Task.Delay(MoveDonePollMs, token);
-            }
-
-            token.ThrowIfCancellationRequested();
-        }
 
         private static NeedleCalibrationResult Fail(string message) =>
             new() { Success = false, ErrorMessage = message };
