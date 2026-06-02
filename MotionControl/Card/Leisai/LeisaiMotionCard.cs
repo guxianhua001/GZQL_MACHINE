@@ -267,6 +267,10 @@ namespace MotionControl.Card
                     if (MotionConvert.BitEnable(sts, 1 << 4)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_ORG);
                     if (MotionConvert.BitEnable(sts, 1 << 6)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SPEL);
                     if (MotionConvert.BitEnable(sts, 1 << 7)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SMEL);
+                    // 高段位 IO：与 Leisai_Define 一致，供 MotionService 解析 SVON/ASTP 指示灯
+                    if (MotionConvert.BitEnable(sts, 1 << 11)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_DSTP);
+                    if (MotionConvert.BitEnable(sts, 1 << 12)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SVON);
+                    if (MotionConvert.BitEnable(sts, 1 << 13)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_ASTP);
 
                     status = result;
                     return 0;

@@ -269,6 +269,8 @@ namespace MotionControl.ViewModels
                     Position = e.Position;
                     IsMoving = e.IsMoving;
                     IsAlarmed = e.IsAlarmed;
+                    // XAML 报警灯绑定 IsALM，与 IsAlarmed 同步
+                    IsALM = e.IsAlarmed;
                     IsServoOn = e.IsServoOn;
                     IsMEL = e.IsMEL;
                     IsORG = e.IsORG;
