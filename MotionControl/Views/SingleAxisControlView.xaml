@@ -53,9 +53,9 @@
                 <!-- 运动操作列 -->
                 <ColumnDefinition Width="110"/>
                 <!-- 伺服/复位列 -->
-                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="130"/>
                 <!-- 状态指示灯列 -->
-                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="160"/>
             </Grid.ColumnDefinitions>
 
             <!-- ========== 第1列：轴基本信息 ========== -->

@@ -162,7 +162,7 @@ namespace MotionControl.Services
                     continue;
                 }
 
-                // 在后台线程调用雷赛 SDK（可能阻塞较久）；日志与 Add 放在 await 之后，且 ConfigureAwait(false) 避免 UI 线程 .Wait() 死锁
+                // 在后台线程调用雷赛加载配置文件
                 int loadResult = await Task.Run(() => card.LoadConfig(configPath)).ConfigureAwait(false);
                 if (loadResult != 0)
                     _logger.Error($"Card {cardCfg.Index} failed to load config '{configPath}', error code: {loadResult}");
@@ -441,7 +441,7 @@ namespace MotionControl.Services
 
             int raw = 0;
             card.GetDo(io.Port, ref raw);
-            io.Value = (raw != 0);          // raw非零=ON，零=OFF
+            io.Value = (raw != 0);          // raw零=ON，1=OFF
             return io.Value;
         }
         public void WriteDo(int logicalId, bool value)

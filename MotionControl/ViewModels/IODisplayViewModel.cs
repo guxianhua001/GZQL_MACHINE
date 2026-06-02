@@ -310,7 +310,7 @@ namespace MotionControl.ViewModels
                 {
                     var item = DOList[i];
                     bool state = _motionService.ReadDo(item.LogicalId);
-                    item.IsActive = state;
+                    item.IsActive = !state;
                 }
                 catch (Exception ex)
                 {
