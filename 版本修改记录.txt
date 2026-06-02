@@ -11,6 +11,14 @@ v2026.06.02 — 安全互锁配置驱动（Dz₁/Dz₂/Dz₃ 锁 Dx/Dy）
 5. SafetyZoneConfigView 增加 Dz₂/Dz₃ 安全高度编辑；平面互锁状态 IsPlaneMovementLocked
 6. SafetyZoneMonitor 注入 Lazy<IMotionService>，修复与 MotionService 的 DI 循环依赖
 
+v2026.06.02 — SingleAxisControlView Jog 与 LED 修复
+-------------------------------------------------------------------------------
+
+1. SafeJogBehavior：虚拟化 Unloaded 不再拆除事件；Loaded 时重新注册；IsJogging 同步到 ViewModel
+2. Jog 按钮绑定 SafetyZoneMonitor；AxisControlPanel 注入互锁服务
+3. StationAxisView 轴列表改用 StackPanel，避免 VirtualizingStackPanel 回收导致 Jog 失效
+4. Jog LED 绑定改为 TwoWay + 行为内显式刷新 IsJogging
+
 -------------------------------------------------------------------------------
 
 v2026.06.01 — NeedleAligner Z 下探高度参数

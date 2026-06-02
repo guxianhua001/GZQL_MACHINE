@@ -24,8 +24,19 @@ namespace MotionControl.Services
         private readonly ILocalizationService _localization;
 
         private SafetyZoneConfig _config = SafetyZoneConfig.CreateDefaultForCurrentMachine();
+        private readonly object _configLock = new();
 
         private IMotionService Motion => _motionLazy.Value;
+
+        /// <summary>当前是否启用互锁（线程安全读取快照）</summary>
+        public bool IsInterlockEnabled
+        {
+            get
+            {
+                lock (_configLock)
+                    return _config?.Enabled ?? false;
+            }
+        }
 
         public SafetyZoneMonitor(
             Lazy<IMotionService> motionService,
@@ -40,21 +51,33 @@ namespace MotionControl.Services
         }
 
         /// <inheritdoc/>
-        public double JogEstimateOffset => _config?.JogEstimateOffset > 0 ? _config.JogEstimateOffset : 10.0;
+        public double JogEstimateOffset
+        {
+            get
+            {
+                lock (_configLock)
+                    return _config?.JogEstimateOffset > 0 ? _config.JogEstimateOffset : 10.0;
+            }
+        }
 
         /// <summary>
         /// 检查单轴移动是否被安全策略允许（配置驱动规则求值）
         /// </summary>
         public (bool allowed, string reason) CheckMoveAllowed(int axisId, double targetPosition)
         {
-            if (!_config.Enabled)
+            SafetyZoneConfig configSnapshot;
+            lock (_configLock)
+                configSnapshot = _config;
+
+            // 每次 Jog/运动前读取最新 Enabled 与规则（不缓存互锁条件）
+            if (configSnapshot == null || !configSnapshot.Enabled)
                 return (true, null);
 
             var axisName = TryGetAxisName(axisId);
             var getPos = BuildPositionResolver();
 
             var (allowed, reasonKey, reasonArgs, ruleId) = SafetyInterlockEvaluator.EvaluateMove(
-                _config, axisName, getPos, _localization);
+                configSnapshot, axisName, getPos, _localization);
 
             if (!allowed)
             {
@@ -93,26 +116,31 @@ namespace MotionControl.Services
                 return false;
 
             double position = Motion.GetAxisPosition(axisId);
-            return SafetyInterlockEvaluator.IsInDangerZone(_config, axisName, position);
+            lock (_configLock)
+                return SafetyInterlockEvaluator.IsInDangerZone(_config, axisName, position);
         }
 
         /// <inheritdoc/>
         public SafetyStatus GetSafetyStatus()
         {
             var status = new SafetyStatus();
+            SafetyZoneConfig configSnapshot;
+            lock (_configLock)
+                configSnapshot = _config;
+
             var getPos = BuildPositionResolver();
 
             foreach (var axis in Motion.GetAxisConfigurations())
             {
                 double pos = Motion.GetAxisPosition(axis.LogicalId);
                 status.CurrentPositions[axis.Name] = pos;
-                status.DangerZoneFlags[axis.Name] = SafetyInterlockEvaluator.IsInDangerZone(_config, axis.Name, pos);
+                status.DangerZoneFlags[axis.Name] = SafetyInterlockEvaluator.IsInDangerZone(configSnapshot, axis.Name, pos);
             }
 
-            status.LowHeightAxisNames = SafetyInterlockEvaluator.GetLowHeightAxisNames(_config, getPos);
-            status.IsPlaneMovementLocked = SafetyInterlockEvaluator.IsPlaneMovementLocked(_config, getPos);
+            status.LowHeightAxisNames = SafetyInterlockEvaluator.GetLowHeightAxisNames(configSnapshot, getPos);
+            status.IsPlaneMovementLocked = SafetyInterlockEvaluator.IsPlaneMovementLocked(configSnapshot, getPos);
             status.IsZ1BelowSafeHeight = status.LowHeightAxisNames.Contains("Dz₁");
-            status.ActiveRules = SafetyInterlockEvaluator.GetActiveRuleIds(_config, getPos);
+            status.ActiveRules = SafetyInterlockEvaluator.GetActiveRuleIds(configSnapshot, getPos);
 
             return status;
         }
@@ -129,8 +157,11 @@ namespace MotionControl.Services
             if (config.Rules == null || config.Rules.Count == 0)
                 SafetyZoneConfigLoader.EnsureMigrated(config);
 
-            _config = config;
-            _logger.Info("[安全互锁] 配置已更新");
+            var snapshot = config.Clone();
+            lock (_configLock)
+                _config = snapshot;
+
+            _logger.Info($"[安全互锁] 配置已热更新 | Enabled={snapshot.Enabled} | 规则={snapshot.Rules?.Count ?? 0} | FailClosed={snapshot.FailClosedOnMissingAxis}");
         }
 
         #region 私有辅助
@@ -156,8 +187,11 @@ namespace MotionControl.Services
                     .FirstOrDefault(a => string.Equals(a.Name, axisName, StringComparison.Ordinal));
                 if (match == null)
                 {
-                    if (_config.FailClosedOnMissingAxis)
-                        _logger.Warn($"[安全互锁] 配置引用的轴 '{axisName}' 未在硬件配置中找到");
+                    lock (_configLock)
+                    {
+                        if (_config.FailClosedOnMissingAxis)
+                            _logger.Warn($"[安全互锁] 配置引用的轴 '{axisName}' 未在硬件配置中找到");
+                    }
                     return null;
                 }
 

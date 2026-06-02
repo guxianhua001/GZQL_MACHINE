@@ -344,11 +344,12 @@ namespace Module.ViewModels
             if (max.HasValue) zone.Max = max.Value;
         }
 
+        /// <summary>深拷贝推送到单例监控器，Jog/运动立即使用最新 Enabled 与 Z 阈值</summary>
         private void SyncConfigToMonitor()
         {
             try
             {
-                _safetyZoneMonitor.UpdateConfig(_config);
+                _safetyZoneMonitor.UpdateConfig(_config.Clone());
             }
             catch (Exception ex)
             {

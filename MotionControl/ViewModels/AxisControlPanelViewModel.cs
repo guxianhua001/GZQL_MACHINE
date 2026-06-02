@@ -18,6 +18,7 @@ namespace MotionControl.ViewModels
     {
         private readonly IMotionService _motionService;
         private readonly ILocalizationService _localizationService;
+        private readonly ISafetyZoneMonitor _safetyZoneMonitor;
 
         // 按工站分组的 Tab 列表
         public ObservableCollection<StationAxisViewModel> Stations { get; } = new();
@@ -26,10 +27,12 @@ namespace MotionControl.ViewModels
         public DelegateCommand GlobalEmergencyStopCommand { get; }
 
         public AxisControlPanelViewModel(IMotionService motionService, 
-                                        ILocalizationService localizationService)
+                                        ILocalizationService localizationService,
+                                        ISafetyZoneMonitor safetyZoneMonitor = null)
         {
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _localizationService = localizationService;
+            _safetyZoneMonitor = safetyZoneMonitor;
 
             GlobalEmergencyStopCommand = new DelegateCommand(ExecuteGlobalEmergencyStop);
 
@@ -70,7 +73,7 @@ namespace MotionControl.ViewModels
 
                     var stationVM = new StationAxisViewModel(
                         stationId, taskName, taskGroup,
-                        _motionService, _localizationService);
+                        _motionService, _localizationService, _safetyZoneMonitor);
                     Stations.Add(stationVM);
                 }
 
@@ -117,7 +120,7 @@ namespace MotionControl.ViewModels
             string defaultName = _localizationService?.GetResourceOrDefault("DefaultStationName", "All Axes") ?? "All Axes";
             var defaultStation = new StationAxisViewModel(
                 0, defaultName, axes, 
-                _motionService, _localizationService);
+                _motionService, _localizationService, _safetyZoneMonitor);
             Stations.Add(defaultStation);
         }
 

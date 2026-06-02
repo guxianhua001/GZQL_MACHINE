@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using MotionControl.Interfaces;
+using MotionControl.ViewModels;
 
 namespace MotionControl.Behaviors
 {
@@ -38,7 +39,10 @@ namespace MotionControl.Behaviors
 
         public static readonly DependencyProperty IsJoggingProperty =
             DependencyProperty.RegisterAttached("IsJogging", typeof(bool), typeof(SafeJogBehavior),
-                new PropertyMetadata(false));
+                new FrameworkPropertyMetadata(
+                    false,
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnAttachedIsJoggingChanged));
 
         public static bool GetIsJogging(DependencyObject obj) => (bool)obj.GetValue(IsJoggingProperty);
         public static void SetIsJogging(DependencyObject obj, bool value) => obj.SetValue(IsJoggingProperty, value);
@@ -65,21 +69,49 @@ namespace MotionControl.Behaviors
         private static void SetJogState(DependencyObject obj, JogState value) => obj.SetValue(JogStateProperty, value);
 
         /// <summary>
-        /// 当参数变化时注册事件（仅首次）
+        /// 附加属性变更时确保按钮已注册事件（支持虚拟化回收后重新绑定）
         /// </summary>
         private static void OnJogParamsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is not Button button) return;
+            if (d is Button button)
+                EnsureHandlersRegistered(button);
+        }
 
+        /// <summary>
+        /// 将附加属性 IsJogging 同步到 ViewModel，保证 LED 与状态文本可靠刷新
+        /// </summary>
+        private static void OnAttachedIsJoggingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is not Button button || e.NewValue is not bool isJogging)
+                return;
+
+            if (button.DataContext is SingleAxisViewModel vm && vm.IsJogging != isJogging)
+                vm.IsJogging = isJogging;
+        }
+
+        private static void EnsureHandlersRegistered(Button button)
+        {
             var state = GetJogState(button);
-            if (state != null) return;
+            if (state?.HandlersRegistered == true)
+                return;
 
-            state = new JogState();
+            state ??= new JogState();
             SetJogState(button, state);
 
-            button.PreviewMouseLeftButtonDown += OnPreviewMouseDown;
-            button.PreviewMouseLeftButtonUp += OnPreviewMouseUp;
-            button.Unloaded += OnUnloaded;
+            if (!state.HandlersRegistered)
+            {
+                button.PreviewMouseLeftButtonDown += OnPreviewMouseDown;
+                button.PreviewMouseLeftButtonUp += OnPreviewMouseUp;
+                button.Loaded += OnButtonLoaded;
+                button.Unloaded += OnUnloaded;
+                state.HandlersRegistered = true;
+            }
+        }
+
+        private static void OnButtonLoaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button)
+                EnsureHandlersRegistered(button);
         }
 
         /// <summary>
@@ -88,13 +120,19 @@ namespace MotionControl.Behaviors
         private static void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             var button = (Button)sender;
+            EnsureHandlersRegistered(button);
+
             var state = GetJogState(button);
             if (state?.IsJogging == true) return;
 
             e.Handled = true;
 
             var motionService = GetMotionService(button);
-            if (motionService == null) return;
+            if (motionService == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[SafeJog] MotionService 未绑定，无法点动");
+                return;
+            }
 
             int axisId = GetAxisId(button);
             string directionStr = GetDirection(button);
@@ -162,21 +200,14 @@ namespace MotionControl.Behaviors
             var button = (Button)sender;
             var state = GetJogState(button);
             if (state?.IsJogging == true)
-            {
                 StopJog(button, state);
-            }
 
-            button.PreviewMouseLeftButtonDown -= OnPreviewMouseDown;
-            button.PreviewMouseLeftButtonUp -= OnPreviewMouseUp;
-            button.Unloaded -= OnUnloaded;
-
+            // 虚拟化回收时仅停止运动，保留 Handler 以便再次进入可视区时可用
             if (state?.WindowRef != null)
             {
                 state.WindowRef.Deactivated -= OnWindowDeactivated;
                 state.WindowRef = null;
             }
-
-            SetJogState(button, null);
         }
 
         // ========== 核心逻辑 ==========
@@ -188,14 +219,7 @@ namespace MotionControl.Behaviors
             state.MotionService = motionService;
             state.AxisId = axisId;
 
-            lock (_syncRoot)
-            {
-                _activeJogStates.Add(state);
-            }
-
-            SetIsJogging(button, true);
-
-            // 安全区域检查：在启动Jog前验证目标位置是否被安全策略允许
+            // 安全区域检查：在点亮 LED / 启动 Jog 前读取最新互锁配置与实时轴位置
             var safetyMonitor = GetSafetyZoneMonitor(button);
             if (safetyMonitor != null)
             {
@@ -210,7 +234,6 @@ namespace MotionControl.Behaviors
                     currentPosition = 0;
                 }
 
-                // 根据点动方向估算目标位置（正方向+偏移量，负方向-偏移量）
                 double jogOffset = safetyMonitor.JogEstimateOffset > 0 ? safetyMonitor.JogEstimateOffset : 10.0;
                 double targetPosition = positiveDirection
                     ? currentPosition + jogOffset
@@ -220,10 +243,24 @@ namespace MotionControl.Behaviors
                 if (!allowed)
                 {
                     System.Diagnostics.Debug.WriteLine($"[SafeJog] 安全互锁阻止Jog | 轴:{axisId} | 方向:{(positiveDirection ? "正向" : "负向")} | 原因:{reason}");
-                    StopJog(button, state);
+                    state.IsJogging = false;
                     return;
                 }
             }
+
+            if (!button.IsEnabled)
+            {
+                state.IsJogging = false;
+                return;
+            }
+
+            lock (_syncRoot)
+            {
+                _activeJogStates.Add(state);
+            }
+
+            SetIsJogging(button, true);
+            SyncIsJoggingToViewModel(button, true);
 
             try
             {
@@ -256,8 +293,15 @@ namespace MotionControl.Behaviors
             try { Mouse.Capture(null); } catch { }
 
             SetIsJogging(button, false);
+            SyncIsJoggingToViewModel(button, false);
 
             EnsureStop(state);
+        }
+
+        private static void SyncIsJoggingToViewModel(Button button, bool isJogging)
+        {
+            if (button.DataContext is SingleAxisViewModel vm)
+                vm.IsJogging = isJogging;
         }
 
         /// <summary>
@@ -311,6 +355,7 @@ namespace MotionControl.Behaviors
         private class JogState
         {
             public bool IsJogging;
+            public bool HandlersRegistered;
             public IMotionService MotionService;
             public int AxisId;
             public WeakReference ButtonRef;
