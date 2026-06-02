@@ -38,14 +38,14 @@
     <Reference Include="Basler.Pylon">
       <HintPath>Common\Basler.Pylon.dll</HintPath>
     </Reference>
+    <Reference Include="halcondotnet">
+      <HintPath>..\..\..\GZQL_MACHINE\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
+    </Reference>
     <Reference Include="MvCameraControl.Net">
       <HintPath>Common\MvCameraControl.Net.dll</HintPath>
     </Reference>
     <Reference Include="NLog">
       <HintPath>..\MainApp\NLog.dll</HintPath>
-    </Reference>
-    <Reference Include="halcondotnet">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
     </Reference>
 
   </ItemGroup>
