@@ -1799,10 +1799,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">Search center point failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">Search needle height failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">Calibration cancelled</sys:String>
-    <sys:String x:Key="NeedleAligner_Step1_Title">Parameter Setup</sys:String>
-    <sys:String x:Key="NeedleAligner_Step1_Desc">Motion params &amp; search points</sys:String>
-    <sys:String x:Key="NeedleAligner_Step2_Title">Teach Position</sys:String>
-    <sys:String x:Key="NeedleAligner_Step2_Desc">Teach search &amp; align positions</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Title">Configure &amp; Teach</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Desc">Params, teach positions &amp; reference</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Title">Calibrate &amp; Apply</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Desc">Run needle search &amp; apply TCP</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Guide">Teach four search points and align position, set ReferenceXYZ baseline, save parameters, then proceed to the next step.</sys:String>
     <sys:String x:Key="NeedleAligner_Step3_Title">Run Calibration</sys:String>
     <sys:String x:Key="NeedleAligner_Step3_Desc">Start calibration &amp; view results</sys:String>
     <sys:String x:Key="NeedleAligner_Step4_Title">Apply Compensation</sys:String>

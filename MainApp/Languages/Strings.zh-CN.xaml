@@ -1799,10 +1799,11 @@
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">搜索中心点失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">搜索针尖高度失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">校准已取消</sys:String>
-    <sys:String x:Key="NeedleAligner_Step1_Title">参数设置</sys:String>
-    <sys:String x:Key="NeedleAligner_Step1_Desc">运动参数与搜索点</sys:String>
-    <sys:String x:Key="NeedleAligner_Step2_Title">示教定位</sys:String>
-    <sys:String x:Key="NeedleAligner_Step2_Desc">示教搜索点与对针位置</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Title">配置示教</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Desc">参数、示教位置与固定基准</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Title">校准应用</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Desc">寻针校准并应用 TCP</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Guide">示教四个搜索点与对针位置，设置固定基准 ReferenceXYZ，完成后保存参数并进入下一步。</sys:String>
     <sys:String x:Key="NeedleAligner_Step3_Title">执行校准</sys:String>
     <sys:String x:Key="NeedleAligner_Step3_Desc">启动校准并查看结果</sys:String>
     <sys:String x:Key="NeedleAligner_Step4_Title">补偿应用</sys:String>
