@@ -53,7 +53,7 @@
                 <!-- 运动操作列 -->
                 <ColumnDefinition Width="110"/>
                 <!-- 伺服/复位列 -->
-                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="110"/>
                 <!-- 状态指示灯列 -->
                 <ColumnDefinition Width="140"/>
             </Grid.ColumnDefinitions>
