@@ -2018,6 +2018,65 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadAlignment_UnitLabel">Unit: mm / °</sys:String>
     <sys:String x:Key="CadAlignment_UseStep3Target">Use Step 3 Target Point</sys:String>
     <sys:String x:Key="CadAlignment_WriteGlobalVar">Write Global Variable</sys:String>
+    <sys:String x:Key="CadAlignment_LoadFile">Load</sys:String>
+    <sys:String x:Key="CadAlignment_SaveFile">Save</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigSaved">Config saved: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigSaveFail">Save config failed: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigLoaded">Config loaded: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigLoadFail">Load config failed: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_Step1_Title">Rotation Center</sys:String>
+    <sys:String x:Key="CadAlignment_Step2_Title">Global Offset</sys:String>
+    <sys:String x:Key="CadAlignment_Step3_Title">Rotation Angle</sys:String>
+    <sys:String x:Key="CadAlignment_Step4_Title">Coord Transform</sys:String>
+    <sys:String x:Key="CadAlignment_Step5_Title">Gripper Position</sys:String>
+    <sys:String x:Key="CadAlignment_StepLabel">Step</sys:String>
+    <sys:String x:Key="CadAlignment_Step1_Hint">4-Point Fit</sys:String>
+    <sys:String x:Key="CadAlignment_Step2_Hint">ΔX/ΔY</sys:String>
+    <sys:String x:Key="CadAlignment_Step3_Hint">CAD Vector</sys:String>
+    <sys:String x:Key="CadAlignment_Step4_Hint">Translate+Rotate</sys:String>
+    <sys:String x:Key="CadAlignment_Step5_Hint">Final Assembly</sys:String>
+    <sys:String x:Key="CAD_Fit_Coord_Get">Got {0} coord: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_Fit_Need3Points">At least 3 points required for circle fit</sys:String>
+    <sys:String x:Key="CAD_Fit_Degenerate">Degenerate fit: points collinear or coincident</sys:String>
+    <sys:String x:Key="CAD_Fit_Center_Done">Fit done: center({0}, {1}), radius={2}</sys:String>
+    <sys:String x:Key="CAD_Offset_Done">Global offset calculated: ΔX={0}, ΔY={1}</sys:String>
+    <sys:String x:Key="CAD_Rotation_InvalidIndex">Invalid point index, please reselect</sys:String>
+    <sys:String x:Key="CAD_Rotation_Done_CAD">Rotation angle calculated (CAD method): θ={0}°</sys:String>
+    <sys:String x:Key="CAD_Rotation_Done_Theta">Rotation angle: θ={0}°</sys:String>
+    <sys:String x:Key="CAD_ImportDXF_First">Please import DXF file first</sys:String>
+    <sys:String x:Key="CAD_Import_CAD_First">Please import CAD drawing first</sys:String>
+    <sys:String x:Key="CAD_Import_Success">DXF imported: {0} points</sys:String>
+    <sys:String x:Key="CAD_Import_Failed">DXF import failed</sys:String>
+    <sys:String x:Key="CAD_PickBaseline_Start">Select baseline start and end points on drawing</sys:String>
+    <sys:String x:Key="CAD_PickBaseline_Status">Baseline selection mode: click two points</sys:String>
+    <sys:String x:Key="CAD_PickTarget_Start">Select target start and end points on drawing</sys:String>
+    <sys:String x:Key="CAD_PickTarget_Status">Target selection mode: click two points</sys:String>
+    <sys:String x:Key="CAD_Baseline_Start_Selected">Baseline start selected</sys:String>
+    <sys:String x:Key="CAD_Baseline_Done">Baseline selection complete</sys:String>
+    <sys:String x:Key="CAD_Target_Start_Selected">Target start selected</sys:String>
+    <sys:String x:Key="CAD_Target_Done">Target selection complete</sys:String>
+    <sys:String x:Key="CAD_TwoLines_Ready">Both baseline and target selected, ready to calculate</sys:String>
+    <sys:String x:Key="CAD_SamePoint_Warning_Base">Baseline start and end cannot be the same</sys:String>
+    <sys:String x:Key="CAD_SamePoint_Warning_Target">Target start and end cannot be the same</sys:String>
+    <sys:String x:Key="CAD_Click_Miss">No valid point selected, click a table row</sys:String>
+    <sys:String x:Key="CAD_SmartRecommend_Fail">Smart recommend failed: insufficient points</sys:String>
+    <sys:String x:Key="CAD_AutoRecommend_Done">Auto-recommended baseline and target</sys:String>
+    <sys:String x:Key="CAD_NeedStep2_First">Please complete Step 2 (Global Offset) first</sys:String>
+    <sys:String x:Key="CAD_NeedStep3_First">Please complete Step 3 (Rotation Angle) first</sys:String>
+    <sys:String x:Key="CAD_NeedStep4_First">Please complete Step 4 (Coord Transform) first</sys:String>
+    <sys:String x:Key="CAD_Inherit_Step3_Success">Inherited Step 3 target start point</sys:String>
+    <sys:String x:Key="CAD_Single_Transform_Done">Single point transform complete</sys:String>
+    <sys:String x:Key="CAD_BatchTransform_NotEnough">Batch transform requires at least 1 point</sys:String>
+    <sys:String x:Key="CAD_Teach_Failed">Teach failed</sys:String>
+    <sys:String x:Key="CAD_Teach_Success">Teach successful</sys:String>
+    <sys:String x:Key="CAD_Apply_Calc_Offset">Apply calculated offset to fixed offset</sys:String>
+    <sys:String x:Key="CAD_OffsetMode_Calc">Calculated Offset</sys:String>
+    <sys:String x:Key="CAD_OffsetMode_Fixed">Fixed Offset</sys:String>
+    <sys:String x:Key="CAD_Gripper_Position_Done">Gripper position calculated</sys:String>
+    <sys:String x:Key="CAD_Write_Global_Var_Success">Written to global vars: {0}={1}, {2}={3}</sys:String>
+    <sys:String x:Key="CAD_EllipseFit_Done">Ellipse fit complete</sys:String>
+    <sys:String x:Key="CAD_DXF_NoPoints">DXF file contains no valid points</sys:String>
+    <sys:String x:Key="CAD_NoPoints_Found">No valid points found</sys:String>
 
     <!-- CadPointEditorControl -->
     <sys:String x:Key="CadPoint_Btn_FitAll">Fit All</sys:String>
