@@ -1707,6 +1707,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeed">Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">Fine Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">Safe Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeight">Z Probe Descent (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">Extra descent from align Z, range -10~10mm; use positive value when needle tip is higher after change</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">Align Position</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionForSystem">System {0} align position</sys:String>
     <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
