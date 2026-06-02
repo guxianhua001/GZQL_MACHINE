@@ -4,8 +4,8 @@
 v2026.06.02 — SingleAxisControlView 状态指示灯刷新修复（修正）
 -------------------------------------------------------------------------------
 
-1. 撤销 GetMotionIO 误读 bit12/13；新增 GetMotionSts（dmc_get_stop_reason + 轴状态机 ENABLE→MTS_SVON）
-2. MotionService：ON 灯读 motionSts.MTS_SVON，ASTP 灯读 motionSts.MTS_OTHER；极限/报警仍读 GetMotionIO
+1. GetMotionSts：停止原因映射 + 保留 dmc_get_stop_reason 原始 bit10（MTS_SVON 不 SetBits）
+2. MotionService：IsServoOn = BitEnable(motionSts, MTS_SVON)，与旧项目 IsSVON 一致
 3. SingleAxisViewModel：IsALM ← IsAlarmed，修复 ALM 灯绑定遗漏
 
 v2026.06.02 — 安全互锁配置驱动（Dz₁/Dz₂/Dz₃ 锁 Dx/Dy）

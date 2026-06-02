@@ -570,16 +570,16 @@ namespace MotionControl.Services
                     int io = 0;
                     card.GetMotionIO(axisId, ref io);
 
-                    // 运动状态字：SVON/ASTP（dmc_get_stop_reason + 轴状态机，与旧项目 m_MotionSts 一致）
+                    // 运动状态字：SVON/ASTP（GetMotionSts → m_MotionSts，与旧项目 IsSVON/IsASTP 一致）
                     int motionSts = 0;
                     card.GetMotionSts(axisId, ref motionSts);
 
-                    bool isServoOn = (motionSts & Leisai_Define.MTS_SVON) != 0;
+                    bool isServoOn = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_SVON);
                     bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;      // 负极限
                     bool isORG = (io & Leisai_Define.MIO_ORG) != 0;      // 原点
                     bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;      // 正极限
                     bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;  // 报警/急停
-                    bool isASTP = (motionSts & Leisai_Define.MTS_OTHER) != 0;    // 其它轴急停（ASTP 灯）
+                    bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);    // 其它轴急停（ASTP 灯）
 
                     // 更新内部状态
                     kv.Value.ActualPosition = newPos;

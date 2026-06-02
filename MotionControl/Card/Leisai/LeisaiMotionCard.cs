@@ -276,8 +276,8 @@ namespace MotionControl.Card
         }
 
         /// <summary>
-        /// 读取轴运动状态字（dmc_get_stop_reason + 伺服使能）
-        /// SVON/ASTP 指示灯读 m_MotionSts：MTS_SVON(bit10)、MTS_OTHER(bit15)，非 GetMotionIO
+        /// 读取轴运动状态字（dmc_get_stop_reason，与旧项目 GetMotionSts 一致）
+        /// MTS_SVON(bit10) 由 API 原始返回值携带，不手动 SetBits；IsSVON 用 BitEnable(motionSts, MTS_SVON) 读取
         /// </summary>
         public override int GetMotionSts(int axisId, ref int status)
         {
@@ -285,27 +285,25 @@ namespace MotionControl.Card
             {
                 try
                 {
-                    int stopReason = 0;
-                    LTDMC.dmc_get_stop_reason(_cardId, (ushort)axisId, ref stopReason);
+                    int res = 0;
+                    LTDMC.dmc_get_stop_reason(_cardId, (ushort)axisId, ref res);
 
-                    int result = 0;
-                    // 停止原因 → MTS 掩码
-                    switch (stopReason)
-                    {
-                        case 0:
-                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_MDN);
-                            break;
-                        case 1:
-                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_ALM);
-                            break;
-                        case 4:
-                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_EMG);
-                            break;
-                        case 15:
-                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_OTHER);
-                            break;
-                    }
-                    return status = result;
+                    int sts = (int)res;
+                    int rSts = 0;
+
+                    // 停止原因 → MTS 掩码（与旧项目 GetMotionSts 完全一致）
+                    if (sts == 0)
+                        MotionConvert.SetBits(ref rSts, Leisai_Define.MTS_MDN);
+                    if (sts == 1)
+                        MotionConvert.SetBits(ref rSts, Leisai_Define.MTS_ALM);
+                    if (sts == 15)
+                        MotionConvert.SetBits(ref rSts, Leisai_Define.MTS_OTHER);
+                    if (sts == 4)
+                        MotionConvert.SetBits(ref rSts, Leisai_Define.MTS_EMG);
+
+                    // MTS_SVON 不置位：保留 dmc_get_stop_reason 原始值中的 bit10
+                    status = rSts | (sts & Leisai_Define.MTS_SVON);
+                    return 0;
                 }
                 catch { return -1; }
             }
