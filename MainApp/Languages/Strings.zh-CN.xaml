@@ -1707,6 +1707,8 @@
     <sys:String x:Key="NeedleAligner_SearchSpeed">搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">精细搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">安全高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeight">Z 下探高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">在对针高度基础上再下探，范围 -10~10mm；换针后针尖偏高时可设正值，使寻针 Z 更低以可靠检测</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionForSystem">系统{0} 对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>

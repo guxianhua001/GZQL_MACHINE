@@ -144,6 +144,10 @@
                                     <TextBlock Text="{lang:Lang NeedleAligner_SafeHeight}" Style="{StaticResource ParamLabel}"/>
                                     <materialDesign:DecimalUpDown Value="{Binding Parameters.SafeHeight}"
                                                                   ValueStep="1" Minimum="0" Maximum="500"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_ZProbeDescentHeight}" Style="{StaticResource ParamLabel}"
+                                               ToolTip="{lang:Lang NeedleAligner_ZProbeDescentHeightTip}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.ZProbeDescentHeight}"
+                                                                  ValueStep="0.1" Minimum="-10" Maximum="10"/>
                                     <TextBlock Text="{lang:Lang NeedleAligner_SensorDiX}" Style="{StaticResource ParamLabel}"/>
                                     <materialDesign:DecimalUpDown Value="{Binding SensorDiX}"
                                                                   ValueStep="1" Minimum="0" Maximum="65535"/>

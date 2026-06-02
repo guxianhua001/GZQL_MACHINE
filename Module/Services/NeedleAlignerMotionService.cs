@@ -333,7 +333,7 @@ namespace Module.Services
         }
 
         /// <summary>
-        /// 针尖 Z：仅使用对针位置高度（无 Z 向 DI），移至中心后下降到对针位 Z 并读取编码器。
+        /// 针尖 Z：对针高度 + Z 下探补偿后定位，多次采样取平均（无 Z 向 DI）。
         /// </summary>
         private async Task<double> SearchNeedleHeightAsync(
             PointF centerPoint,
@@ -346,7 +346,8 @@ namespace Module.Services
             var dxId = ResolveAxisId(map, "Dx");
             var dyId = ResolveAxisId(map, "Dy");
             var zId = ResolveZAxisId(systemNumber);
-            var alignZ = GetAlignPosition(parameters, systemNumber).Z;
+            // 对针高度 + 下探补偿：换针后针尖偏高时，先多下探再读 Z
+            var alignZ = GetSearchNeedleTargetZ(parameters, systemNumber);
 
             var xySpeed = GetXYInterpSpeed(dxId, dyId);
             await MoveXYLineAsync(dxId, dyId, centerPoint.X, centerPoint.Y, xySpeed, token);
@@ -368,8 +369,15 @@ namespace Module.Services
             }
 
             double average = totalHeight / count;
-            _logger.Info($"[NeedleAligner] 针尖 Z(对针高度): {average:F3}mm, 次数={count}");
+            _logger.Info($"[NeedleAligner] 针尖 Z(对针高度+下探={parameters.ZProbeDescentHeight:F3}): {average:F3}mm, 次数={count}");
             return average;
+        }
+
+        /// <summary>寻针 Z 目标 = 对针位置 Z + Z 下探高度</summary>
+        private static double GetSearchNeedleTargetZ(NeedleCalibrationParams parameters, int systemNumber)
+        {
+            var alignZ = GetAlignPosition(parameters, systemNumber).Z;
+            return alignZ + parameters.ZProbeDescentHeight;
         }
 
         private static PointF CalculateCompensation(PointF measured, double measuredHeight, NeedleCalibrationParams parameters)

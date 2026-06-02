@@ -61,6 +61,8 @@ namespace Core.Models
         private double _searchSpeed = 5.0;
         private double _fineSearchSpeed = 1.0;
         private double _safeHeight = 30.0;
+        /// <summary>Z 下探高度：在对针高度基础上再下探，换针后针尖偏高时可加大以可靠触探</summary>
+        private double _zProbeDescentHeight;
         private PointF _alignPositionSystem1 = new PointF(0, 0, 0);
         private PointF _alignPositionSystem2 = new PointF(0, 0, 0);
         /// <summary>X方向寻针传感器 DI 端口号</summary>
@@ -188,6 +190,16 @@ namespace Core.Models
             set => SetProperty(ref _safeHeight, Math.Clamp(value, 0.0, 200.0));
         }
 
+        [Category("运动参数")]
+        [DisplayName("Z下探高度 (mm)")]
+        [Description("在对针高度基础上再下探，防止换针后针尖偏高导致检测不到")]
+        [Range(-10.0, 10.0)]
+        public double ZProbeDescentHeight
+        {
+            get => _zProbeDescentHeight;
+            set => SetProperty(ref _zProbeDescentHeight, Math.Clamp(value, -10.0, 10.0));
+        }
+
         [Category("对针位置")]
         [DisplayName("系统1对针位置 (Dx Dy Dz₂)")]
         [Description("系统1对针器 XYZ 坐标，Z 为寻针高度")]
@@ -270,6 +282,7 @@ namespace Core.Models
                 SearchSpeed = this.SearchSpeed,
                 FineSearchSpeed = this.FineSearchSpeed,
                 SafeHeight = this.SafeHeight,
+                ZProbeDescentHeight = this.ZProbeDescentHeight,
                 AlignPositionSystem1 = this.AlignPositionSystem1 != null
                     ? new PointF(this.AlignPositionSystem1.X, this.AlignPositionSystem1.Y, this.AlignPositionSystem1.Z)
                     : new PointF(),
