@@ -1,4 +1,4 @@
-<UserControl x:Class="Module.Views.NeedleAlignerView"
+﻿<UserControl x:Class="Module.Views.NeedleAlignerView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,9 +10,9 @@
              xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
-             d:DesignHeight="800"
+             d:DesignHeight="720"
              d:DesignWidth="1100"
-             Background="#EEF2F5">
+             Background="{DynamicResource MaterialDesignPaper}">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -22,995 +22,707 @@
             <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
             <converters:NullToVisibilityConverter x:Key="NullToVis" />
-            <BooleanToVisibilityConverter x:Key="BoolToVis" />
-            <converters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
-                                                TrueBrush="#5E35B1" FalseBrush="#BDBDBD" />
+            <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <converters:StepStateToBrushConverter x:Key="StepStateToBrush" />
+            <converters:StepStateToTextBrushConverter x:Key="StepStateToTextBrush" />
+            <converters:StepStateToConnectorBrushConverter x:Key="StepStateToConnectorBrush" />
 
-            <Style x:Key="CardHeaderStyle" TargetType="StackPanel">
-                <Setter Property="Orientation" Value="Horizontal" />
-                <Setter Property="Margin" Value="0,0,0,8" />
+            <Style x:Key="GroupBoxBlueHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#1565C0"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,0,8,8"/>
+            </Style>
+            <Style x:Key="GroupBoxRedHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#C62828"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="8,0,0,8"/>
+            </Style>
+            <Style x:Key="GroupBoxTealHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#00838F"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <Style x:Key="GroupBoxAmberHeader" TargetType="GroupBox">
+                <Setter Property="Foreground" Value="#F57C00"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="8,0,0,0"/>
             </Style>
 
-            <!-- 左右侧卡片标题：多行换行，随列宽自适应 -->
-            <Style x:Key="SideCardHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignHeadline6TextBlock}">
-                <Setter Property="TextWrapping" Value="Wrap" />
+            <Style x:Key="ParamLabel" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Foreground" Value="#FF607D8B"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
 
-            <!-- 左右侧按钮文字：过长时换行，不撑破列宽 -->
-            <Style x:Key="SideActionButtonContentStyle" TargetType="TextBlock">
-                <Setter Property="TextWrapping" Value="Wrap" />
-                <Setter Property="TextAlignment" Value="Left" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-            </Style>
-
-            <Style x:Key="StatusPill" TargetType="Border">
-                <Setter Property="CornerRadius" Value="4" />
-                <Setter Property="Padding" Value="8,3" />
-                <Setter Property="Background" Value="#F5F5F5" />
-            </Style>
-
-            <Style x:Key="ParamRowStyle" TargetType="Grid">
-                <Setter Property="Margin" Value="0,0,0,4" />
-            </Style>
-
-            <Style x:Key="ParamLabelStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="Foreground" Value="#616161" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Margin" Value="0,0,4,0" />
-                <Setter Property="TextWrapping" Value="Wrap" />
-            </Style>
-
-            <Style x:Key="ParamTextBoxStyle" TargetType="TextBox">
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="materialDesign:HintAssist.IsFloating" Value="False" />
-                <Setter Property="Margin" Value="0,0,0,0" />
-                <Setter Property="MinWidth" Value="0" />
-            </Style>
-
-            <Style x:Key="ResultValueStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="13" />
-                <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="Foreground" Value="#424242" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-            </Style>
-
-            <Style x:Key="ResultLabelStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="11" />
-                <Setter Property="Foreground" Value="#9E9E9E" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Margin" Value="0,0,8,0" />
+            <Style x:Key="ReadOnlyValueText" TargetType="TextBlock">
+                <Setter Property="Background" Value="#F5F5F5"/>
+                <Setter Property="Padding" Value="6,4"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontFamily" Value="Consolas"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="240" MaxWidth="380" />
-            <ColumnDefinition Width="1.5*" MinWidth="380" />
-            <ColumnDefinition Width="*" MinWidth="200" MaxWidth="320" />
-        </Grid.ColumnDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <materialDesign:Card UniformCornerRadius="8" Margin="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-        <!-- ============================================================ -->
-        <!-- LEFT COLUMN: 参数设置                                          -->
-        <!-- ============================================================ -->
-        <ScrollViewer Grid.Column="0" Grid.RowSpan="2" Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      CanContentScroll="False"
-                      IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}"
-                      Margin="0,0,6,0">
-            <!-- 绑定视口宽度，防止子控件撑出横向滚动 -->
-            <StackPanel HorizontalAlignment="Stretch"
-                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+                <!-- ========== 顶部标题栏 ========== -->
+                <Border Grid.Row="0" Background="{DynamicResource PrimaryHueLightBrush}" Padding="12,8"
+                        BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="Needle" Width="24" Height="24"
+                                                     Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock Text="{lang:Lang NeedleAligner_Title}" FontSize="18" FontWeight="Medium"
+                                       Foreground="{DynamicResource PrimaryHueDarkBrush}" VerticalAlignment="Center" Margin="0,0,16,0"/>
 
-                <!-- 搜索点设置卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                     Background="{DynamicResource MaterialDesignCardBackground}">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="CrosshairsGps" Width="18" Height="18"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SearchPointSettings}"
-                                       Style="{StaticResource SideCardHeaderTextStyle}"
-                                       Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </Grid>
-
-                        <!-- 搜索点1 -->
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="P1" Style="{StaticResource ParamLabelStyle}"
-                                       FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint1.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
-                            <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint1.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
-                            <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="1"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Padding="6,2" Margin="4,0,0,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
-                            </Button>
-                        </Grid>
-
-                        <!-- 搜索点2 -->
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="P2" Style="{StaticResource ParamLabelStyle}"
-                                       FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint2.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
-                            <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint2.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
-                            <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="2"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Padding="6,2" Margin="4,0,0,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
-                            </Button>
-                        </Grid>
-
-                        <!-- 搜索点3 -->
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="P3" Style="{StaticResource ParamLabelStyle}"
-                                       FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint3.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
-                            <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint3.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
-                            <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="3"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Padding="6,2" Margin="4,0,0,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
-                            </Button>
-                        </Grid>
-
-                        <!-- 搜索点4 -->
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="P4" Style="{StaticResource ParamLabelStyle}"
-                                       FontWeight="SemiBold" Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.SearchPoint4.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0"/>
-                            <TextBox Grid.Column="2" Text="{Binding Parameters.SearchPoint4.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" MinWidth="0" />
-                            <Button Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="4"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Padding="6,2" Margin="4,0,0,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-                </materialDesign:Card>
-
-                <!-- 对针位置：随系统1/2切换显示一套 XYZ -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                     Background="{DynamicResource MaterialDesignCardBackground}">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="Target" Width="18" Height="18"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding CurrentAlignPositionTitle}"
-                                       Style="{StaticResource SideCardHeaderTextStyle}"
-                                       Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </Grid>
-
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{lang:Lang NeedleAligner_Axis_X}"
-                                       Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
-                                       Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding CurrentAlignX, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <TextBlock Grid.Column="2" Text="{lang:Lang NeedleAligner_Axis_Y}"
-                                       Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
-                                       Foreground="#43A047" VerticalAlignment="Center" Margin="4,0,4,0" />
-                            <TextBox Grid.Column="3" Text="{Binding CurrentAlignY, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{lang:Lang NeedleAligner_Axis_Z}"
-                                       Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold"
-                                       Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding CurrentAlignZ, StringFormat=F3, UpdateSourceTrigger=LostFocus}"
-                                     Style="{StaticResource ParamTextBoxStyle}" VerticalContentAlignment="Center" />
-                            <Button Grid.Column="2" Command="{Binding TeachAlignPositionCommand}"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Padding="6,2" Margin="4,0,0,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_TeachAlignPosition}">
-                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-                </materialDesign:Card>
-
-                <!-- 参考坐标卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                     Background="{DynamicResource MaterialDesignCardBackground}">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="MapMarker" Width="18" Height="18"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_ReferenceCoordinates}"
-                                       ToolTip="{lang:Lang NeedleAligner_ReferenceCoordinatesTip}"
-                                       Style="{StaticResource SideCardHeaderTextStyle}"
-                                       Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </Grid>
-
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="16" Height="16"
-                                                     Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.ReferenceXYZ.X, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="AxisYArrow" Width="16" Height="16"
-                                                     Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.ReferenceXYZ.Y, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
-                                                     Foreground="#7E57C2" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBox Grid.Column="1" Text="{Binding Parameters.ReferenceXYZ.Z, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                    </StackPanel>
-                </materialDesign:Card>
-
-                <!-- 运动参数卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                     Background="{DynamicResource MaterialDesignCardBackground}">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="Tune" Width="18" Height="18"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Top" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_MotionParameters}"
-                                       Style="{StaticResource SideCardHeaderTextStyle}"
-                                       Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </Grid>
-
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Radius" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SearchRange}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_SearchRangeTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding Parameters.SearchRange, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Repeat" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_ZSearchCount}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_ZSearchCountTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding Parameters.ZSearchCount}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="Speedometer" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SearchSpeed}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_SearchSpeedTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding Parameters.SearchSpeed, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="SpeedometerSlow" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_FineSearchSpeed}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_FineSearchSpeedTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding Parameters.FineSearchSpeed, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="ArrowUpBold" Width="16" Height="16"
-                                                     Foreground="#9E9E9E" VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SafeHeight}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_SafeHeightTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding Parameters.SafeHeight, StringFormat=F3}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="ElectricSwitch"
-                                                     Width="16" Height="16" Foreground="#9E9E9E"
-                                                     VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SensorDiX}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_SensorDiXTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding SensorDiX, UpdateSourceTrigger=LostFocus}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                        <Grid Style="{StaticResource ParamRowStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Grid.Row="0" Grid.Column="0" Kind="ElectricSwitch"
-                                                     Width="16" Height="16" Foreground="#9E9E9E"
-                                                     VerticalAlignment="Top" Margin="0,2,4,0" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SensorDiY}"
-                                       Style="{StaticResource ParamLabelStyle}"
-                                       ToolTip="{lang:Lang NeedleAligner_SensorDiYTip}" />
-                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                     Text="{Binding SensorDiY, UpdateSourceTrigger=LostFocus}"
-                                     Style="{StaticResource ParamTextBoxStyle}" />
-                        </Grid>
-                    </StackPanel>
-                </materialDesign:Card>
-
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- ============================================================ -->
-        <!-- CENTER COLUMN: 校准控制 + 结果                                 -->
-        <!-- ============================================================ -->
-        <ScrollViewer Grid.Column="1" Grid.Row="0" Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
-                      HorizontalScrollBarVisibility="Disabled"
-                      CanContentScroll="False"
-                      Margin="0,0,6,0">
-            <StackPanel Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
-
-                <!-- 校准控制卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                     Background="{DynamicResource MaterialDesignCardBackground}">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <materialDesign:PackIcon Kind="PlayCircle" Width="18" Height="18"
-                                                     Foreground="{DynamicResource SecondaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{lang:Lang NeedleAligner_CalibrationControl}"
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                       Foreground="{DynamicResource SecondaryHueMidBrush}" />
+                            <!-- 步骤指示器：紧跟标题靠左 -->
+                            <Border Width="26" Height="26" CornerRadius="13"
+                                    Background="{Binding Step1State, Converter={StaticResource StepStateToBrush}}">
+                                <TextBlock Text="1" Foreground="White" FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{lang:Lang NeedleAligner_Step1_Title}" FontSize="10" FontWeight="Medium"
+                                           Foreground="{Binding Step1State, Converter={StaticResource StepStateToTextBrush}}"/>
+                            </StackPanel>
+                            <Border Width="32" Height="2" Margin="6,0" VerticalAlignment="Center"
+                                    Background="{Binding Step1State, Converter={StaticResource StepStateToConnectorBrush}}"/>
+                            <Border Width="26" Height="26" CornerRadius="13"
+                                    Background="{Binding Step2State, Converter={StaticResource StepStateToBrush}}">
+                                <TextBlock Text="2" Foreground="White" FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{lang:Lang NeedleAligner_Step2_Title}" FontSize="10" FontWeight="Medium"
+                                           Foreground="{Binding Step2State, Converter={StaticResource StepStateToTextBrush}}"/>
+                            </StackPanel>
                         </StackPanel>
+                    </Grid>
+                </Border>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <RadioButton Content="{lang:Lang NeedleSystem1}"
-                                         Command="{Binding System1Command}"
-                                         IsChecked="{Binding SystemNumber, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"
-                                         Style="{StaticResource MaterialDesignRadioButton}"
-                                         Margin="0,0,16,0" />
-                            <RadioButton Content="{lang:Lang NeedleSystem2}"
-                                         Command="{Binding System2Command}"
-                                         IsChecked="{Binding SystemNumber, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}"
-                                         Style="{StaticResource MaterialDesignRadioButton}" />
-                        </StackPanel>
+                <!-- ========== 主内容区 ========== -->
+                <Grid Grid.Row="1" Margin="12">
 
-                        <WrapPanel Margin="0,0,0,12">
-                            <Button Command="{Binding StartCalibrationCommand}"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Background="#4CAF50" Foreground="White"
-                                    Padding="14,6" Margin="0,0,8,0"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_StartCalibration}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Play" Width="16" Height="16" Margin="0,0,6,0" />
-                                    <TextBlock Text="{lang:Lang NeedleAligner_StartCalibration}" />
+                    <!-- ===== Step 1：配置示教 ===== -->
+                    <Grid Visibility="{Binding IsStep1Active, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左列：运动参数 + 传感器参数 -->
+                            <GroupBox Grid.Column="0" Style="{StaticResource GroupBoxBlueHeader}">
+                                <GroupBox.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Tune" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang NeedleAligner_MotionParameters}"/>
+                                    </StackPanel>
+                                </GroupBox.Header>
+                                <StackPanel>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_SearchRange}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.SearchRange}"
+                                                                  ValueStep="0.1" Minimum="0.1" Maximum="10.0"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_ZSearchCount}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.ZSearchCount}"
+                                                                  ValueStep="1" Minimum="1" Maximum="10"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_SearchSpeed}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.SearchSpeed}"
+                                                                  ValueStep="0.5" Minimum="0.1" Maximum="20.0"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_FineSearchSpeed}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.FineSearchSpeed}"
+                                                                  ValueStep="0.1" Minimum="0.1" Maximum="5.0"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_SafeHeight}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.SafeHeight}"
+                                                                  ValueStep="1" Minimum="0" Maximum="500"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_ZProbeDescentHeight}" Style="{StaticResource ParamLabel}"
+                                               ToolTip="{lang:Lang NeedleAligner_ZProbeDescentHeightTip}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding Parameters.ZProbeDescentHeight}"
+                                                                  ValueStep="0.1" Minimum="-10" Maximum="10"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_SensorDiX}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding SensorDiX}"
+                                                                  ValueStep="1" Minimum="0" Maximum="65535"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_SensorDiY}" Style="{StaticResource ParamLabel}"/>
+                                    <materialDesign:DecimalUpDown Value="{Binding SensorDiY}"
+                                                                  ValueStep="1" Minimum="0" Maximum="65535"/>
                                 </StackPanel>
-                            </Button>
+                            </GroupBox>
 
-                            <Button Command="{Binding StopCalibrationCommand}"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Padding="14,6"
-                                    BorderBrush="#EF5350" Foreground="#C62828"
-                                    materialDesign:ButtonAssist.CornerRadius="4"
-                                    ToolTip="{lang:Lang NeedleAligner_StopCalibration}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Stop" Width="16" Height="16" Margin="0,0,6,0" />
-                                    <TextBlock Text="{lang:Lang NeedleAligner_StopCalibration}" />
-                                </StackPanel>
-                            </Button>
-                        </WrapPanel>
-
-                        <ProgressBar Value="{Binding CalibrationProgress}" Minimum="0" Maximum="100"
-                                     Height="6" Margin="0,0,0,8"
-                                     Foreground="{DynamicResource SecondaryHueMidBrush}" />
-
-                        <Border Background="#FAFAFA" CornerRadius="6" Padding="12,8">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Information" Width="16" Height="16"
-                                                         Foreground="#5E35B1" Margin="0,0,8,0"
-                                                         VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding CalibrationStatus}"
-                                           FontSize="12" Foreground="#5E35B1" FontWeight="Medium"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </materialDesign:Card>
-
-                <!-- 校准结果卡片 -->
-                <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                     Background="{DynamicResource MaterialDesignCardBackground}">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <materialDesign:PackIcon Kind="ClipboardCheck" Width="18" Height="18"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                     Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{lang:Lang NeedleAligner_CalibrationResults}"
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                       Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                        </StackPanel>
-
-                        <!-- 当前坐标 -->
-                        <Border Background="#FAFAFA" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                            <StackPanel>
-                                <TextBlock Text="{lang:Lang NeedleAligner_CurrentXYZ}"
-                                           FontSize="11" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,6" />
+                            <!-- 右列：系统切换 + 参考坐标 + 对针位置 + 搜索点 -->
+                            <GroupBox Grid.Column="1" Style="{StaticResource GroupBoxRedHeader}">
+                                <GroupBox.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="MapMarker" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang NeedleAligner_PositionSettings}"/>
+                                    </StackPanel>
+                                </GroupBox.Header>
                                 <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                        <TextBlock Text="X=" Style="{StaticResource ResultLabelStyle}" />
-                                        <TextBlock Text="{Binding Parameters.CurrentXYZ.X, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#E53935" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <TextBlock Text="Y=" Style="{StaticResource ResultLabelStyle}" />
-                                        <TextBlock Text="{Binding Parameters.CurrentXYZ.Y, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#43A047" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                        <TextBlock Text="Z=" Style="{StaticResource ResultLabelStyle}" />
-                                        <TextBlock Text="{Binding Parameters.CurrentXYZ.Z, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#7E57C2" />
-                                    </StackPanel>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- 系统切换行 -->
+                                    <Border Grid.Row="0" Background="#F5F5F5" CornerRadius="4" Padding="8,6" Margin="0,0,0,8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="SwapHorizontal" Width="16" Height="16"
+                                                                     Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <TextBlock Text="{lang:Lang NeedleAligner_SystemSelect}" FontSize="12" FontWeight="Medium"
+                                                       VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <RadioButton Content="{lang:Lang NeedleSystem1}"
+                                                         Command="{Binding System1Command}"
+                                                         IsChecked="{Binding SystemNumber, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"
+                                                         Style="{StaticResource MaterialDesignRadioButton}" Margin="0,0,16,0"/>
+                                            <RadioButton Content="{lang:Lang NeedleSystem2}"
+                                                         Command="{Binding System2Command}"
+                                                         IsChecked="{Binding SystemNumber, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}"
+                                                         Style="{StaticResource MaterialDesignRadioButton}"/>
+                                            <!-- 运行状态指示灯 -->
+                                            <Border Width="8" Height="8" CornerRadius="4" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#BDBDBD"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCalibrating}" Value="True">
+                                                                <Setter Property="Background" Value="#FFA000"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 参考坐标（只读文本） -->
+                                    <GroupBox Grid.Row="1" Margin="0,0,0,8" Foreground="#7E57C2" FontWeight="SemiBold" >
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="MapMarker" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang NeedleAligner_ReferenceCoordinates}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                <TextBlock Text="X" Style="{StaticResource ParamLabel}" Foreground="#E53935" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Parameters.ReferenceXYZ.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="4,0">
+                                                <TextBlock Text="Y" Style="{StaticResource ParamLabel}" Foreground="#43A047" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Parameters.ReferenceXYZ.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                                                <TextBlock Text="Z" Style="{StaticResource ParamLabel}" Foreground="#7E57C2" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Parameters.ReferenceXYZ.Z, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </GroupBox>
+
+                                    <!-- 对针位置（只读文本 + 示教按钮） -->
+                                    <GroupBox Grid.Row="2" Margin="0,0,0,8" Foreground="#00838F" FontWeight="SemiBold" >
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Target" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding CurrentAlignPositionTitle}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                <TextBlock Text="X" Style="{StaticResource ParamLabel}" Foreground="#E53935" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding CurrentAlignX, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="4,0">
+                                                <TextBlock Text="Y" Style="{StaticResource ParamLabel}" Foreground="#43A047" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding CurrentAlignY, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Margin="4,0">
+                                                <TextBlock Text="Z" Style="{StaticResource ParamLabel}" Foreground="#7E57C2" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding CurrentAlignZ, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="3" VerticalAlignment="Bottom"
+                                                    Command="{Binding TeachAlignPositionCommand}"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    Padding="6,4" Margin="4,0,0,0"
+                                                    materialDesign:ButtonAssist.CornerRadius="4"
+                                                    ToolTip="{lang:Lang NeedleAligner_TeachAlignPosition}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{lang:Lang NeedleAligner_Teach}" FontSize="11"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </GroupBox>
+
+                                    <!-- 搜索点 P1-P4（只读文本 + 示教按钮） -->
+                                    <GroupBox Grid.Row="3" Foreground="#F57C00" FontWeight="SemiBold" >
+                                        <GroupBox.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang NeedleAligner_SearchPointSettings}"/>
+                                            </StackPanel>
+                                        </GroupBox.Header>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="32"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- P1 -->
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="P1" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Parameters.SearchPoint1.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Parameters.SearchPoint1.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
+                                            <Button Grid.Row="0" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="1"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Margin="0,0,0,4" Width="36"
+                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
+                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                            </Button>
+
+                                            <!-- P2 -->
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="P2" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Parameters.SearchPoint2.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Parameters.SearchPoint2.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
+                                            <Button Grid.Row="1" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="2"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Margin="0,0,0,4"
+                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
+                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                            </Button>
+
+                                            <!-- P3 -->
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="P3" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Parameters.SearchPoint3.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Parameters.SearchPoint3.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
+                                            <Button Grid.Row="2" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="3"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Margin="0,0,0,4"
+                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
+                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                            </Button>
+
+                                            <!-- P4 -->
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="P4" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Parameters.SearchPoint4.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,0"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding Parameters.SearchPoint4.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,0"/>
+                                            <Button Grid.Row="3" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="4"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2"
+                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
+                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </GroupBox>
                                 </Grid>
-                            </StackPanel>
-                        </Border>
+                            </GroupBox>
+                        </Grid>
+                    </Grid>
 
-                        <!-- 累计 TCP 偏移 -->
-                        <Border Background="#E8F5E9" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                            <StackPanel>
-                                <TextBlock Text="{lang:Lang NeedleAligner_TcpTotalOffset}"
-                                           FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32" Margin="0,0,0,6" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                        <TextBlock Text="X=" Style="{StaticResource ResultLabelStyle}" />
-                                        <TextBlock Text="{Binding TcpTotalOffsetX, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#E53935" />
+                    <!-- ===== Step 2：校准执行与应用 ===== -->
+                    <Grid Visibility="{Binding IsStep2Active, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左列：校准控制 + 测量结果 -->
+                            <GroupBox Grid.Column="0" Style="{StaticResource GroupBoxTealHeader}">
+                                <GroupBox.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="PlayCircle" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang NeedleAligner_CalibrationControl}"/>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <TextBlock Text="Y=" Style="{StaticResource ResultLabelStyle}" />
-                                        <TextBlock Text="{Binding TcpTotalOffsetY, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#43A047" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                        <TextBlock Text="Z=" Style="{StaticResource ResultLabelStyle}" />
-                                        <TextBlock Text="{Binding TcpTotalOffsetZ, StringFormat=F3}"
-                                                   Style="{StaticResource ResultValueStyle}" Foreground="#1E88E5" />
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
+                                </GroupBox.Header>
+                                <StackPanel>
+                                    <!-- 操作按钮组 -->
+                                    <WrapPanel Margin="0,0,0,8">
+                                        <Button Command="{Binding StartCalibrationCommand}"
+                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                Background="#43A047" Foreground="White" Margin="0,0,6,0"
+                                                materialDesign:ButtonAssist.CornerRadius="4"
+                                                ToolTip="{lang:Lang NeedleAligner_StartCalibration}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Play" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                <TextBlock Text="{lang:Lang NeedleAligner_StartCalibration}" FontSize="12"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding StopCalibrationCommand}"
+                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                BorderBrush="#EF5350" Foreground="#C62828"
+                                                materialDesign:ButtonAssist.CornerRadius="4"
+                                                ToolTip="{lang:Lang NeedleAligner_StopCalibration}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Stop" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                <TextBlock Text="{lang:Lang NeedleAligner_StopCalibration}" FontSize="12"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </WrapPanel>
 
-                        <!-- 补偿详情 - 本次增量 + 表达式 + TCP总计 + 全局变量链接 -->
-                        <Border Background="#FAFAFA" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
-                            <StackPanel>
-                                <TextBlock Text="{lang:Lang NeedleAligner_CompensationDetails}"
-                                           FontSize="11" FontWeight="SemiBold" Foreground="#9E9E9E" Margin="0,0,0,8" />
+                                    <!-- 进度条 -->
+                                    <ProgressBar Value="{Binding CalibrationProgress}" Height="4" Minimum="0" Maximum="100"
+                                                 Margin="0,0,0,6" Foreground="{DynamicResource SecondaryHueMidBrush}"/>
 
-                                <!-- 列标题 -->
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="" Width="22" />
-                                    <TextBlock Grid.Column="1" Text="{lang:Lang NeedleAligner_PendingIncrement}"
-                                               FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Text="{lang:Lang NeedleCamera_CompensationExpression}"
-                                               FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
-                                    <TextBlock Grid.Column="3" Text="{lang:Lang NeedleAligner_TcpTotalAfterApply}"
-                                               FontSize="11" Foreground="#9E9E9E" HorizontalAlignment="Center" />
-                                    <TextBlock Grid.Column="4" Text="" FontSize="11" />
-                                </Grid>
+                                    <!-- 状态文本 -->
+                                    <TextBlock Text="{Binding CalibrationStatus}" FontSize="11" Foreground="#5E35B1"
+                                               FontWeight="Medium" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
-                                <!-- X：CalculatedComp = 偏差Δ + 表达式 -->
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="16" Height="16"
-                                                             Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding PendingIncrementX, StringFormat=F3}"
-                                               FontSize="11" FontWeight="SemiBold" Foreground="#E53935"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                    <TextBox Grid.Column="2" Text="{Binding CompensationXExpression, UpdateSourceTrigger=PropertyChanged}"
-                                             FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Padding="4,2" Margin="0,0,4,0"
-                                             materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
-                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCompX, StringFormat='= {0:F3}'}"
-                                               FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                               VerticalAlignment="Center" Margin="4,0,4,0" />
-                                    <common:GlobalVariableLinkControl Grid.Column="4"
-                                        DisplayValue="{Binding CalculatedCompX}"
-                                        DisplayForeground="#E53935"
-                                        IsLinked="{Binding IsCompensationXLinked}"
-                                        UnlinkCommand="{Binding UnlinkCompensationXCommand}"
-                                        LinkedVariableName="{Binding CompensationXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                        ComboBoxWidth="120" />
-                                </Grid>
+                                    <!-- 当前坐标 -->
+                                    <TextBlock Text="{lang:Lang NeedleAligner_CurrentXYZ}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="#9E9E9E" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,4,0">
+                                            <TextBlock Text="X=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Parameters.CurrentXYZ.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0">
+                                            <TextBlock Text="Y=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Parameters.CurrentXYZ.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                                            <TextBlock Text="Z=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Parameters.CurrentXYZ.Z, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                    </Grid>
 
-                                <!-- Y -->
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Grid.Column="0" Kind="AxisYArrow" Width="16" Height="16"
-                                                             Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding PendingIncrementY, StringFormat=F3}"
-                                               FontSize="11" FontWeight="SemiBold" Foreground="#43A047"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                    <TextBox Grid.Column="2" Text="{Binding CompensationYExpression, UpdateSourceTrigger=PropertyChanged}"
-                                             FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Padding="4,2" Margin="0,0,4,0"
-                                             materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
-                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCompY, StringFormat='= {0:F3}'}"
-                                               FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                               VerticalAlignment="Center" Margin="4,0,4,0" />
-                                    <common:GlobalVariableLinkControl Grid.Column="4"
-                                        DisplayValue="{Binding CalculatedCompY}"
-                                        DisplayForeground="#43A047"
-                                        IsLinked="{Binding IsCompensationYLinked}"
-                                        UnlinkCommand="{Binding UnlinkCompensationYCommand}"
-                                        LinkedVariableName="{Binding CompensationYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                        ComboBoxWidth="120" />
-                                </Grid>
+                                    <!-- TCP总偏移 -->
+                                    <TextBlock Text="{lang:Lang NeedleAligner_TcpTotalOffset}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="#2E7D32" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,4,0">
+                                            <TextBlock Text="X=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TcpTotalOffsetX, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0">
+                                            <TextBlock Text="Y=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TcpTotalOffsetY, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                                            <TextBlock Text="Z=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TcpTotalOffsetZ, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                    </Grid>
 
-                                <!-- Z -->
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="16" Height="16"
-                                                             Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding PendingIncrementZ, StringFormat=F3}"
-                                               FontSize="11" FontWeight="SemiBold" Foreground="#1E88E5"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                    <TextBox Grid.Column="2" Text="{Binding CompensationZExpression, UpdateSourceTrigger=PropertyChanged}"
-                                             FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Padding="4,2" Margin="0,0,4,0"
-                                             materialDesign:HintAssist.Hint="{lang:Lang NeedleCamera_CompensationExpression}" />
-                                    <TextBlock Grid.Column="3" Text="{Binding CalculatedCompZ, StringFormat='= {0:F3}'}"
-                                               FontSize="11" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                               VerticalAlignment="Center" Margin="4,0,4,0" />
-                                    <common:GlobalVariableLinkControl Grid.Column="4"
-                                        DisplayValue="{Binding CalculatedCompZ}"
-                                        DisplayForeground="#1E88E5"
-                                        IsLinked="{Binding IsCompensationZLinked}"
-                                        UnlinkCommand="{Binding UnlinkCompensationZCommand}"
-                                        LinkedVariableName="{Binding CompensationZLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                        LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                        ComboBoxWidth="120" />
-                                </Grid>
-
-                                <!-- 补偿说明 -->
-                                <Border Background="#FFF8E1" CornerRadius="6" Padding="8,6" Margin="0,4,0,0">
+                                    <!-- 待应用增量 -->
+                                    <TextBlock Text="{lang:Lang NeedleAligner_PendingIncrement}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="#F57C00" Margin="0,0,0,4"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <materialDesign:PackIcon Kind="InformationOutline" Width="16" Height="16"
-                                                                 Foreground="#F9A825" Margin="0,2,8,0"
-                                                                 VerticalAlignment="Top" />
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{lang:Lang NeedleAligner_TcpCompensationNote}"
-                                                   Foreground="#795548" FontSize="12"
-                                                   FontStyle="Italic"
-                                                   TextWrapping="Wrap" />
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,4,0">
+                                            <TextBlock Text="X=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding PendingIncrementX, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="4,0">
+                                            <TextBlock Text="Y=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding PendingIncrementY, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                                            <TextBlock Text="Z=" FontSize="11" Foreground="#9E9E9E" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding PendingIncrementZ, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" FontSize="12"/>
+                                        </StackPanel>
                                     </Grid>
-                                </Border>
-                            </StackPanel>
-                        </Border>
+                                </StackPanel>
+                            </GroupBox>
 
-                    </StackPanel>
-                </materialDesign:Card>
+                            <!-- 右列：补偿管理 + 日志 -->
+                            <GroupBox Grid.Column="1" Style="{StaticResource GroupBoxAmberHeader}">
+                                <GroupBox.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="MathCompass" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang NeedleAligner_CompensationDetails}"/>
+                                    </StackPanel>
+                                </GroupBox.Header>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
 
-            </StackPanel>
-        </ScrollViewer>
+                                    <!-- X轴补偿行 -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="60"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="72"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Grid.Column="0" Kind="AxisXArrow" Width="14" Height="14"
+                                                                 Foreground="#E53935" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding PendingIncrementX, StringFormat=F3}"
+                                                 Style="{StaticResource ReadOnlyValueText}" FontSize="11" Margin="0,0,4,0"/>
+                                        <TextBox Grid.Column="2" Text="{Binding CompensationXExpression, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 Padding="3,2" Margin="0,0,4,0"
+                                                 materialDesign:HintAssist.Hint="Expr"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding CalculatedCompX, StringFormat='= {0:F3}'}"
+                                                 Style="{StaticResource ReadOnlyValueText}" FontSize="11" Margin="0,0,4,0"/>
+                                        <common:GlobalVariableLinkControl Grid.Column="4"
+                                            DisplayValue="{Binding CalculatedCompX}" DisplayForeground="#E53935"
+                                            IsLinked="{Binding IsCompensationXLinked}"
+                                            UnlinkCommand="{Binding UnlinkCompensationXCommand}"
+                                            LinkedVariableName="{Binding CompensationXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                            LinkableGlobalVariables="{Binding LinkableGlobalVariables}" ComboBoxWidth="166"/>
+                                    </Grid>
 
-        <!-- RIGHT COLUMN: 补偿管理 -->
-        <ScrollViewer Grid.Column="2" Grid.Row="0"
-                      Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      CanContentScroll="False">
-            <StackPanel HorizontalAlignment="Stretch"
-                        Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+                                    <!-- Y轴补偿行 -->
+                                    <Grid Grid.Row="1" Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="60"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="72"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Grid.Column="0" Kind="AxisYArrow" Width="14" Height="14"
+                                                                 Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding PendingIncrementY, StringFormat=F3}"
+                                                 Style="{StaticResource ReadOnlyValueText}" FontSize="11" Margin="0,0,4,0"/>
+                                        <TextBox Grid.Column="2" Text="{Binding CompensationYExpression, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 Padding="3,2" Margin="0,0,4,0"
+                                                 materialDesign:HintAssist.Hint="Expr"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding CalculatedCompY, StringFormat='= {0:F3}'}"
+                                                 Style="{StaticResource ReadOnlyValueText}" FontSize="11" Margin="0,0,4,0"/>
+                                        <common:GlobalVariableLinkControl Grid.Column="4"
+                                            DisplayValue="{Binding CalculatedCompY}" DisplayForeground="#43A047"
+                                            IsLinked="{Binding IsCompensationYLinked}"
+                                            UnlinkCommand="{Binding UnlinkCompensationYCommand}"
+                                            LinkedVariableName="{Binding CompensationYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                            LinkableGlobalVariables="{Binding LinkableGlobalVariables}" ComboBoxWidth="166"/>
+                                    </Grid>
 
-            <!-- 参数操作卡片 -->
-            <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                 Background="{DynamicResource MaterialDesignCardBackground}">
-                <StackPanel IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}">
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <materialDesign:PackIcon Kind="ContentSave" Width="18" Height="18"
-                                                 Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                 Margin="0,0,8,0" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="1"
-                                   Text="{lang:Lang NeedleAligner_ParameterOperations}"
-                                   Style="{StaticResource SideCardHeaderTextStyle}"
-                                   Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                    <!-- Z轴补偿行 -->
+                                    <Grid Grid.Row="2" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="60"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="72"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Grid.Column="0" Kind="AxisZArrow" Width="14" Height="14"
+                                                                 Foreground="#1E88E5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding PendingIncrementZ, StringFormat=F3}"
+                                                 Style="{StaticResource ReadOnlyValueText}" FontSize="11" Margin="0,0,4,0"/>
+                                        <TextBox Grid.Column="2" Text="{Binding CompensationZExpression, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 Padding="3,2" Margin="0,0,4,0"
+                                                 materialDesign:HintAssist.Hint="Expr"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding CalculatedCompZ, StringFormat='= {0:F3}'}"
+                                                 Style="{StaticResource ReadOnlyValueText}" FontSize="11" Margin="0,0,4,0"/>
+                                        <common:GlobalVariableLinkControl Grid.Column="4"
+                                            DisplayValue="{Binding CalculatedCompZ}" DisplayForeground="#1E88E5"
+                                            IsLinked="{Binding IsCompensationZLinked}"
+                                            UnlinkCommand="{Binding UnlinkCompensationZCommand}"
+                                            LinkedVariableName="{Binding CompensationZLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                            LinkableGlobalVariables="{Binding LinkableGlobalVariables}" ComboBoxWidth="166"/>
+                                    </Grid>
+
+                                    <!-- 补偿操作按钮 + 日志 -->
+                                    <Grid Grid.Row="3">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+                                            <Button Command="{Binding ApplyCompensationCommand}"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    Background="#43A047" Foreground="White" Margin="0,0,6,0"
+                                                    materialDesign:ButtonAssist.CornerRadius="4"
+                                                    ToolTip="{lang:Lang NeedleAligner_ApplyCompensation}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="CheckCircle" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{lang:Lang NeedleAligner_ApplyCompensation}" FontWeight="SemiBold" FontSize="11"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding ResetCompensationCommand}"
+                                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    BorderBrush="#FF9800" Foreground="#E65100" Margin="0,0,6,0"
+                                                    materialDesign:ButtonAssist.CornerRadius="4"
+                                                    ToolTip="{lang:Lang NeedleAligner_ResetCompensation}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Refresh" Width="12" Height="12" Margin="0,0,3,0"/>
+                                                    <TextBlock Text="{lang:Lang NeedleAligner_ResetCompensation}" FontSize="11"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding ShowCompensationHistoryCommand}"
+                                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    materialDesign:ButtonAssist.CornerRadius="4"
+                                                    ToolTip="{lang:Lang NeedleAligner_ShowCompensationHistory}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="History" Width="12" Height="12" Margin="0,0,3,0"/>
+                                                    <TextBlock Text="{lang:Lang NeedleAligner_ShowCompensationHistory}" FontSize="11"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
+
+                                        <!-- 日志列表 -->
+                                        <GroupBox Grid.Row="1" Foreground="#757575" FontWeight="SemiBold" >
+                                            <GroupBox.Header>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="TextBox" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{lang:Lang NeedleAligner_CalibrationLog}"/>
+                                                </StackPanel>
+                                            </GroupBox.Header>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <ListBox Grid.Row="0" ItemsSource="{Binding CalibrationLogs}"
+                                                         VirtualizingStackPanel.IsVirtualizing="True"
+                                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                         Background="Transparent" BorderBrush="#E0E0E0"
+                                                         FontFamily="Consolas" FontSize="10" MinHeight="80">
+                                                    <ListBox.ItemContainerStyle>
+                                                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                                            <Setter Property="Padding" Value="3,1"/>
+                                                            <Setter Property="MinHeight" Value="18"/>
+                                                        </Style>
+                                                    </ListBox.ItemContainerStyle>
+                                                </ListBox>
+                                                <Button Grid.Row="1" Command="{Binding ClearLogCommand}"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        Padding="6,3" Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="10"
+                                                        materialDesign:ButtonAssist.CornerRadius="4"
+                                                        ToolTip="{lang:Lang NeedleAligner_ClearLog}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="DeleteSweep" Width="12" Height="12" Margin="0,0,3,0"/>
+                                                        <TextBlock Text="{lang:Lang NeedleAligner_ClearLog}"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+                                        </GroupBox>
+                                    </Grid>
+                                </Grid>
+                            </GroupBox>
+                        </Grid>
                     </Grid>
+                </Grid>
 
-                    <Button Command="{Binding SaveParametersCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            Padding="8,5" Margin="0,0,0,4"
-                            ToolTip="{lang:Lang NeedleAligner_SaveParameters}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="ContentSave" Width="14" Height="14"
-                                                     VerticalAlignment="Top" Margin="0,2,6,0" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_SaveParameters}"
-                                       Style="{StaticResource SideActionButtonContentStyle}" />
-                        </Grid>
-                    </Button>
+                <!-- ========== 底部操作栏 ========== -->
+                <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource MaterialDesignDivider}" Padding="10,8,14,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <Button Command="{Binding LoadParametersCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            Padding="8,5" Margin="0,0,0,0"
-                            ToolTip="{lang:Lang NeedleAligner_LoadParameters}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="FolderOpen" Width="14" Height="14"
-                                                     VerticalAlignment="Top" Margin="0,2,6,0" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{lang:Lang NeedleAligner_LoadParameters}"
-                                       Style="{StaticResource SideActionButtonContentStyle}" />
-                        </Grid>
-                    </Button>
-
-                    <!-- 当前文件路径 -->
-                    <Border Background="#FAFAFA" CornerRadius="6" Padding="8,5" Margin="0,8,0,0"
-                            Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
-                        <StackPanel>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
-                                                         Foreground="#9E9E9E" Margin="0,2,6,0"
-                                                         VerticalAlignment="Top" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{lang:Lang NeedleAligner_CurrentFile}"
-                                           Foreground="#9E9E9E" FontSize="10" FontWeight="Medium"
-                                           TextWrapping="Wrap" />
-                            </Grid>
-                            <TextBlock Text="{Binding CurrentFilePath}"
-                                       Foreground="#7E57C2" FontSize="10" FontFamily="Consolas"
-                                       TextWrapping="Wrap" Margin="0,4,0,0"
-                                       ToolTip="{Binding CurrentFilePath}" />
+                        <!-- 当前步骤信息 -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="Information" Width="14" Height="14"
+                                                     Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding CurrentStepTitle}" Foreground="{DynamicResource PrimaryHueMidBrush}" FontSize="12"
+                                       FontWeight="Medium" VerticalAlignment="Center"/>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </materialDesign:Card>
 
-            <!-- 补偿管理卡片 -->
-            <materialDesign:Card UniformCornerRadius="8" Padding="12" Margin="0,0,0,6"
-                                 Background="{DynamicResource MaterialDesignCardBackground}">
-                <StackPanel IsEnabled="{Binding IsCalibrating, Converter={StaticResource InverseBooleanConverter}}">
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <materialDesign:PackIcon Kind="MathCompass" Width="18" Height="18"
-                                                 Foreground="{DynamicResource SecondaryHueMidBrush}"
-                                                 Margin="0,0,8,0" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="1"
-                                   Text="{lang:Lang NeedleAligner_CompensationManagement}"
-                                   Style="{StaticResource SideCardHeaderTextStyle}"
-                                   Foreground="{DynamicResource SecondaryHueMidBrush}" />
+                        <!-- 中央状态文本 -->
+                        <TextBlock Grid.Column="1" Text="{Binding CalibrationStatus}" Foreground="#757575" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding IsStep2Active, Converter={StaticResource BoolToVis}}"/>
+
+                        <!-- 文件操作 + 步骤导航 -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- 文件操作 -->
+                            <Border Background="#F5F5F5" CornerRadius="4" Padding="8,4" Margin="0,0,8,0"
+                                    Visibility="{Binding CurrentFilePath, Converter={StaticResource NullToVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileDocumentOutline" Width="12" Height="12" Foreground="#9E9E9E"
+                                                             VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="{Binding CurrentFileName}" Foreground="#7E57C2" FontSize="9"
+                                               FontFamily="Consolas" TextTrimming="CharacterEllipsis" MaxWidth="120"
+                                               ToolTip="{Binding CurrentFilePath}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Button Command="{Binding SaveParametersCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Padding="8,4" Margin="0,0,4,0" materialDesign:ButtonAssist.CornerRadius="4"
+                                    ToolTip="{lang:Lang NeedleAligner_SaveParameters}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="ContentSave" Width="14" Height="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_SaveParameters}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding LoadParametersCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Padding="8,4" Margin="0,0,12,0" materialDesign:ButtonAssist.CornerRadius="4"
+                                    ToolTip="{lang:Lang NeedleAligner_LoadParameters}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FolderOpen" Width="14" Height="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_LoadParameters}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Border Width="1" Height="18" Background="#E0E0E0" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                            <!-- 步骤导航 -->
+                            <Button Command="{Binding GoPrevCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Padding="8,4" materialDesign:ButtonAssist.CornerRadius="4">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="ChevronLeft" Width="16" Height="16" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{lang:Lang NeedleAligner_PrevStep}" Margin="3,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding GoNextCommand}" Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Padding="8,4" Margin="4,0,0,0" materialDesign:ButtonAssist.CornerRadius="4">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{lang:Lang NeedleAligner_NextStep}" Margin="0,0,3,0" VerticalAlignment="Center" FontSize="11"/>
+                                    <materialDesign:PackIcon Kind="ChevronRight" Width="16" Height="16" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </Grid>
-
-                    <StackPanel>
-                        <Button Command="{Binding ResetCompensationCommand}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,5" Margin="0,0,0,4"
-                                BorderBrush="#FF9800" Foreground="#E65100"
-                                materialDesign:ButtonAssist.CornerRadius="4"
-                                ToolTip="{lang:Lang NeedleAligner_ResetCompensation}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14"
-                                                         VerticalAlignment="Top" Margin="0,2,6,0" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{lang:Lang NeedleAligner_ResetCompensation}"
-                                           Style="{StaticResource SideActionButtonContentStyle}" />
-                            </Grid>
-                        </Button>
-
-                        <Button Command="{Binding ShowCompensationHistoryCommand}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,5" Margin="0,0,0,4"
-                                materialDesign:ButtonAssist.CornerRadius="4"
-                                ToolTip="{lang:Lang NeedleAligner_ShowCompensationHistory}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <materialDesign:PackIcon Kind="History" Width="14" Height="14"
-                                                         VerticalAlignment="Top" Margin="0,2,6,0" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{lang:Lang NeedleAligner_ShowCompensationHistory}"
-                                           Style="{StaticResource SideActionButtonContentStyle}" />
-                            </Grid>
-                        </Button>
-
-                        <Button Command="{Binding ApplyCompensationCommand}"
-                                Style="{StaticResource MaterialDesignRaisedButton}"
-                                Background="#4CAF50" Foreground="White"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="8,6" Margin="0,4,0,0"
-                                materialDesign:ButtonAssist.CornerRadius="4"
-                                ToolTip="{lang:Lang NeedleAligner_ApplyCompensation}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <materialDesign:PackIcon Kind="CheckCircle" Width="16" Height="16"
-                                                         VerticalAlignment="Top" Margin="0,2,6,0" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{lang:Lang NeedleAligner_ApplyCompensation}"
-                                           Style="{StaticResource SideActionButtonContentStyle}"
-                                           FontWeight="SemiBold" />
-                            </Grid>
-                        </Button>
-                    </StackPanel>
-                </StackPanel>
-            </materialDesign:Card>
-
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- ============================================================ -->
-        <!-- BOTTOM ROW: 校准日志 (跨第2列和第3列)                             -->
-        <!-- ============================================================ -->
-        <materialDesign:Card Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                             UniformCornerRadius="8" Padding="12" Margin="0,6,0,0"
-                             Background="{DynamicResource MaterialDesignCardBackground}">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <materialDesign:PackIcon Kind="TextBox" Width="18" Height="18"
-                                             Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                             Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <TextBlock Text="{lang:Lang NeedleAligner_CalibrationLog}"
-                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                               Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                </StackPanel>
-
-                <ScrollViewer Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
-                              MaxHeight="200"
-                              MinHeight="120">
-                    <ListBox ItemsSource="{Binding CalibrationLogs}"
-                             VirtualizingStackPanel.IsVirtualizing="True"
-                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             Background="Transparent"
-                             BorderBrush="#E0E0E0"
-                             FontFamily="Consolas"
-                             FontSize="11">
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
-                                <Setter Property="Padding" Value="4,2" />
-                                <Setter Property="MinHeight" Value="20" />
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                    </ListBox>
-                </ScrollViewer>
-
-                <Button Command="{Binding ClearLogCommand}"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        Padding="10,4" Margin="0,8,0,0"
-                        HorizontalAlignment="Right"
-                        materialDesign:ButtonAssist.CornerRadius="4"
-                        ToolTip="{lang:Lang NeedleAligner_ClearLog}">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="DeleteSweep" Width="14" Height="14" Margin="0,0,5,0" />
-                        <TextBlock Text="{lang:Lang NeedleAligner_ClearLog}" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
+                </Border>
+            </Grid>
         </materialDesign:Card>
-    </Grid>
+    </ScrollViewer>
 </UserControl>
+

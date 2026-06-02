@@ -150,6 +150,9 @@ namespace MotionControl.ViewModels
         // IMotionService 公开引用（供 SafeJogBehavior 使用）
         public IMotionService MotionService => _motionService;
 
+        /// <summary>安全区域监控（供 Jog 点动前互锁检查）</summary>
+        public ISafetyZoneMonitor SafetyZoneMonitor { get; }
+
         // ========== 命令 ==========
 
         public DelegateCommand MovePositiveCommand { get; }
@@ -163,14 +166,18 @@ namespace MotionControl.ViewModels
 
         // ========== 构造函数 ==========
 
-        public SingleAxisViewModel(AxisConfig axisConfig, IMotionService motionService, 
-                                   ILocalizationService localizationService)
+        public SingleAxisViewModel(
+            AxisConfig axisConfig,
+            IMotionService motionService,
+            ILocalizationService localizationService,
+            ISafetyZoneMonitor safetyZoneMonitor = null)
         {
             _axisId = axisConfig.LogicalId;
             _name = axisConfig.Name;
             _direction = axisConfig.Direction ?? "X";
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _localizationService = localizationService;
+            SafetyZoneMonitor = safetyZoneMonitor;
 
             // 初始化步距选项
             var distances = new[] { 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20 };

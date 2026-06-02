@@ -1,0 +1,24 @@
+{
+  "SchemaVersion": 2,
+  "Enabled": true,
+  "FailClosedOnMissingAxis": true,
+  "JogEstimateOffset": 10.0,
+  "Rules": [
+    {
+      "Id": "HeightLockPlane_XY",
+      "Type": 0,
+      "Enabled": true,
+      "MessageKey": "SafetyRule_HeightLockPlane",
+      "HeightAxes": [
+        { "AxisName": "Dz₁", "SafeHeight": 50.0 },
+        { "AxisName": "Dz₂", "SafeHeight": 50.0 },
+        { "AxisName": "Dz₃", "SafeHeight": 50.0 }
+      ],
+      "LockedAxes": [ "Dx", "Dy" ]
+    }
+  ],
+  "DangerZones": [
+    { "AxisName": "Dx", "Min": 0.0, "Max": 200.0 },
+    { "AxisName": "Dy", "Min": 0.0, "Max": 200.0 }
+  ]
+}

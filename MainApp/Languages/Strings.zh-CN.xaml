@@ -1707,6 +1707,8 @@
     <sys:String x:Key="NeedleAligner_SearchSpeed">搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">精细搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">安全高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeight">Z 下探高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">在对针高度基础上再下探，范围 -10~10mm；换针后针尖偏高时可设正值，使寻针 Z 更低以可靠检测</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionForSystem">系统{0} 对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
@@ -1799,6 +1801,22 @@
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">搜索中心点失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">搜索针尖高度失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">校准已取消</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Title">配置示教</sys:String>
+    <sys:String x:Key="NeedleAligner_Title">针头对齐</sys:String>
+    <sys:String x:Key="NeedleAligner_PositionSettings">位置设置</sys:String>
+    <sys:String x:Key="NeedleAligner_SystemSelect">系统选择</sys:String>
+    <sys:String x:Key="NeedleAligner_Teach">示教</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Desc">参数、示教位置与固定基准</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Title">校准应用</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Desc">寻针校准并应用 TCP</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Guide">示教四个搜索点与对针位置，设置固定基准 ReferenceXYZ，完成后保存参数并进入下一步。</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Title">执行校准</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Desc">启动校准并查看结果</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Title">补偿应用</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Desc">审查并应用TCP补偿</sys:String>
+    <sys:String x:Key="NeedleAligner_PrevStep">上一步</sys:String>
+    <sys:String x:Key="NeedleAligner_NextStep">下一步</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Guide">请先示教四个搜索点位置，然后示教对针位置。搜索点应围绕针尖均匀分布，对针位置应为针尖接触校准面时的精确坐标。</sys:String>
     <sys:String x:Key="NeedleVerify_Title">针头校准验证</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">验证补偿数据准确性</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">系统选择</sys:String>
@@ -2821,6 +2839,7 @@
     <sys:String x:Key="Setting_DeviceConfig">设备配置</sys:String>
     <sys:String x:Key="Setting_AxisParamConfig">轴参数配置</sys:String>
     <sys:String x:Key="Setting_OtherConfig">其他配置</sys:String>
+    <sys:String x:Key="Setting_SafetyZoneConfig">安全区域配置</sys:String>
     <sys:String x:Key="Authority">权限</sys:String>
     <sys:String x:Key="AddUser">添加用户</sys:String>
     <sys:String x:Key="SystemGlobalSettings">系统全局设置</sys:String>
@@ -2907,5 +2926,26 @@
     <sys:String x:Key="AxisSetting_LoadInterpolationToolTip">从配置文件加载插补系参数</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationSuccess">坐标系参数已加载</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationFailed">加载坐标系失败: {0}</sys:String>
+    <!-- ========== 安全区域配置 (SafetyZoneConfig) ========== -->
+    <sys:String x:Key="SafetyZone_Title">安全区域配置</sys:String>
+    <sys:String x:Key="SafetyZone_Parameters">参数设置</sys:String>
+    <sys:String x:Key="SafetyZone_Visualization">区域可视化</sys:String>
+    <sys:String x:Key="SafetyZone_EnableInterlock">启用安全互锁</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyRule_HeightLockPlane">垂直轴 [{1}] 未达安全高度，禁止 {0} 移动</sys:String>
+    <sys:String x:Key="SafetyRule_MissingAxis">无法识别运动轴，安全互锁拒绝运动</sys:String>
+    <sys:String x:Key="SafetyRule_InvalidInterpolation">插补参数无效</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMin">X 危险区下限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMax">X 危险区上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMin">Y 危险区下限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMax">Y 危险区上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_Save">保存配置</sys:String>
+    <sys:String x:Key="SafetyZone_Safe">安全</sys:String>
+    <sys:String x:Key="SafetyZone_Danger">危险</sys:String>
+    <sys:String x:Key="SafetyZone_DismissAlarm">关闭</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccess">保存成功</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccessMessage">安全区域配置已成功保存并生效</sys:String>
 </ResourceDictionary>
 

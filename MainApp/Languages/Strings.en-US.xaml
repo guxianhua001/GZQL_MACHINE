@@ -1707,6 +1707,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeed">Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">Fine Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">Safe Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeight">Z Probe Descent (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">Extra descent from align Z, range -10~10mm; use positive value when needle tip is higher after change</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">Align Position</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionForSystem">System {0} align position</sys:String>
     <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
@@ -1799,6 +1801,22 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">Search center point failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">Search needle height failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">Calibration cancelled</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Title">Configure &amp; Teach</sys:String>
+    <sys:String x:Key="NeedleAligner_Title">Needle Alignment</sys:String>
+    <sys:String x:Key="NeedleAligner_PositionSettings">Position Settings</sys:String>
+    <sys:String x:Key="NeedleAligner_SystemSelect">System Select</sys:String>
+    <sys:String x:Key="NeedleAligner_Teach">Teach</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Desc">Params, teach positions &amp; reference</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Title">Calibrate &amp; Apply</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Desc">Run needle search &amp; apply TCP</sys:String>
+    <sys:String x:Key="NeedleAligner_Step1_Guide">Teach four search points and align position, set ReferenceXYZ baseline, save parameters, then proceed to the next step.</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Title">Run Calibration</sys:String>
+    <sys:String x:Key="NeedleAligner_Step3_Desc">Start calibration &amp; view results</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Title">Apply Compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_Step4_Desc">Review &amp; apply TCP compensation</sys:String>
+    <sys:String x:Key="NeedleAligner_PrevStep">Previous</sys:String>
+    <sys:String x:Key="NeedleAligner_NextStep">Next</sys:String>
+    <sys:String x:Key="NeedleAligner_Step2_Guide">First teach the four search point positions, then teach the align position. Search points should be evenly distributed around the needle tip; the align position should be the precise coordinates when the needle tip contacts the calibration surface.</sys:String>
     <sys:String x:Key="NeedleVerify_Title">Needle Calibration Verification</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">Verify compensation data accuracy</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">System Selection</sys:String>
@@ -2821,6 +2839,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Setting_DeviceConfig">Device Config</sys:String>
     <sys:String x:Key="Setting_AxisParamConfig">Axis Param Config</sys:String>
     <sys:String x:Key="Setting_OtherConfig">Other Config</sys:String>
+    <sys:String x:Key="Setting_SafetyZoneConfig">Safety Zone Config</sys:String>
     <sys:String x:Key="Authority">Authority</sys:String>
     <sys:String x:Key="AddUser">Add User</sys:String>
     <sys:String x:Key="SystemGlobalSettings">System Global Settings</sys:String>
@@ -2907,5 +2926,26 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationToolTip">Load interpolation system from config file</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationSuccess">Coordinate system parameters loaded</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationFailed">Load coordinate system failed: {0}</sys:String>
+    <!-- ========== Safety Zone Configuration ========== -->
+    <sys:String x:Key="SafetyZone_Title">Safety Zone Config</sys:String>
+    <sys:String x:Key="SafetyZone_Parameters">Parameters</sys:String>
+    <sys:String x:Key="SafetyZone_Visualization">Visualization</sys:String>
+    <sys:String x:Key="SafetyZone_EnableInterlock">Enable Interlock</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyRule_HeightLockPlane">Height axis [{1}] not safe; {0} move blocked</sys:String>
+    <sys:String x:Key="SafetyRule_MissingAxis">Unknown axis; safety interlock denied</sys:String>
+    <sys:String x:Key="SafetyRule_InvalidInterpolation">Invalid interpolation parameters</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMin">X Danger Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMax">X Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMin">Y Danger Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMax">Y Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_Save">Save Config</sys:String>
+    <sys:String x:Key="SafetyZone_Safe">Safe</sys:String>
+    <sys:String x:Key="SafetyZone_Danger">Danger</sys:String>
+    <sys:String x:Key="SafetyZone_DismissAlarm">Dismiss</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccess">Saved Successfully</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccessMessage">Safety zone configuration saved and applied successfully</sys:String>
 </ResourceDictionary>
 

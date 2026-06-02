@@ -37,6 +37,11 @@
             </TabItem>
 
 
+            <!-- 安全区域配置 -->
+            <TabItem Header="{lang:Lang Setting_SafetyZoneConfig}">
+                <ContentControl prism:RegionManager.RegionName="SafetyZoneConfigRegion" />
+            </TabItem>
+
             <!-- 其他配置选项卡 -->
             <TabItem Header="{lang:Lang Setting_OtherConfig}">
                 <StackPanel>

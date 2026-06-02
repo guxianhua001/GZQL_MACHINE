@@ -1,6 +1,44 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.02 — 安全互锁配置驱动（Dz₁/Dz₂/Dz₃ 锁 Dx/Dy）
+-------------------------------------------------------------------------------
+
+1. 当前机型规则：Dz₁、Dz₂、Dz₃ 任一低于各自安全高度时，禁止 Dx/Dy 任意方向移动
+2. SafetyZoneConfig 升级为 SchemaVersion 2：Rules + DangerZones JSON，无硬编码轴名
+3. 新增 SafetyInterlockEvaluator、ISafetyZoneConfigLoader；启动时自动加载 Config/SafetyZoneConfig.json
+4. 旧版扁平字段（SafeHeightZ1 等）自动迁移；违规文案多语言；FailClosed 缺轴拒绝运动
+5. SafetyZoneConfigView 增加 Dz₂/Dz₃ 安全高度编辑；平面互锁状态 IsPlaneMovementLocked
+6. SafetyZoneMonitor 注入 Lazy<IMotionService>，修复与 MotionService 的 DI 循环依赖
+
+v2026.06.02 — SingleAxisControlView Jog 与 LED 修复
+-------------------------------------------------------------------------------
+
+1. SafeJogBehavior：虚拟化 Unloaded 不再拆除事件；Loaded 时重新注册；IsJogging 同步到 ViewModel
+2. Jog 按钮绑定 SafetyZoneMonitor；AxisControlPanel 注入互锁服务
+3. StationAxisView 轴列表改用 StackPanel，避免 VirtualizingStackPanel 回收导致 Jog 失效
+4. Jog LED 绑定改为 TwoWay + 行为内显式刷新 IsJogging
+
+-------------------------------------------------------------------------------
+
+v2026.06.01 — NeedleAligner Z 下探高度参数
+-------------------------------------------------------------------------------
+
+1. 运动参数新增 ZProbeDescentHeight（-10~10mm）：在对针高度基础上再下探
+2. SearchNeedleHeightAsync 寻针 Z 目标 = 对针位置 Z + Z 下探高度，换针后针尖偏高时可加大触探
+
+-------------------------------------------------------------------------------
+
+v2026.06.01 — NeedleAlignerView UI 两步化精简
+-------------------------------------------------------------------------------
+
+1. 工作流由四步合并为两步：①配置示教 ②校准应用
+2. 去除跨步骤重复的搜索点/基准/运动参数摘要；单页集中编辑与操作
+3. 步骤1：运动参数 + 固定基准 + 对针位 + 搜索点 + 存取参数
+4. 步骤2：校准控制 + 测量/TCP摘要 + 补偿应用 + 日志
+
+-------------------------------------------------------------------------------
+
 v2026.06.01 — NeedleCalibrationVerifyView 验证逻辑完善（实测+TCP vs Reference）
 -------------------------------------------------------------------------------
 

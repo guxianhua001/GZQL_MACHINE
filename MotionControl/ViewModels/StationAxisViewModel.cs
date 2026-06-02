@@ -20,6 +20,7 @@ namespace MotionControl.ViewModels
     {
         private readonly IMotionService _motionService;
         private readonly ILocalizationService _localizationService;
+        private readonly ISafetyZoneMonitor _safetyZoneMonitor;
         private readonly int _stationId;
         private readonly string _stationName;
 
@@ -52,12 +53,14 @@ namespace MotionControl.ViewModels
         public StationAxisViewModel(int stationId, string stationName, 
                                    IEnumerable<AxisConfig> axisConfigs,
                                    IMotionService motionService, 
-                                   ILocalizationService localizationService)
+                                   ILocalizationService localizationService,
+                                   ISafetyZoneMonitor safetyZoneMonitor = null)
         {
             _stationId = stationId;
             _stationName = stationName ?? $"Station_{stationId}";
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _localizationService = localizationService;
+            _safetyZoneMonitor = safetyZoneMonitor;
 
             EmergencyStopCommand = new DelegateCommand(ExecuteEmergencyStop);
 
@@ -74,7 +77,7 @@ namespace MotionControl.ViewModels
 
             foreach (var axisConfig in axisConfigs.OrderBy(a => a.LogicalId))
             {
-                var axisVM = new SingleAxisViewModel(axisConfig, _motionService, _localizationService);
+                var axisVM = new SingleAxisViewModel(axisConfig, _motionService, _localizationService, _safetyZoneMonitor);
                 Axes.Add(axisVM);
             }
         }

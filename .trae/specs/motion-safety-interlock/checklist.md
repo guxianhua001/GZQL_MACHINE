@@ -1,0 +1,21 @@
+# Checklist
+
+- [x] SafetyZoneConfig 模型包含 SafeHeightZ1、DangerZoneXMin/Max、DangerZoneYMin/Max、Enabled 属性，均有合理默认值
+- [x] ISafetyZoneMonitor 接口定义 CheckMoveAllowed、CheckInterpolationMoveAllowed、IsInDangerZone、GetSafetyStatus 方法
+- [x] SafetyViolationEvent 事件类包含 AxisId、AxisName、TargetPosition、CurrentPosition、Reason、Timestamp、RuleName 字段
+- [x] SafetyViolationException 继承 InvalidOperationException，包含 Reason 和 AxisId 属性
+- [x] SafetyZoneMonitor 通过 IMotionService.GetAxisPosition() 获取当前轴位置（非阻塞，<1ms）
+- [x] 互锁规则 Z₁_X_Negative_Lock：Z₁ < SafeHeight 时 X 目标 < DangerZoneXMin 返回 false
+- [x] 互锁规则 Z₁_X_Danger_Y_Lock：Z₁ < SafeHeight 且 X < DangerZoneXMin 时 Y 返回 false
+- [x] MotionService.MoveAbsAsync 在运动前调用 CheckMoveAllowed，不通过时抛 SafetyViolationException
+- [x] MotionService.MoveRelAsync 计算目标位置后调用 CheckMoveAllowed，逻辑同 MoveAbsAsync
+- [x] MotionService.MoveLineAbsAsync 调用 CheckInterpolationMoveAllowed 检查多轴
+- [x] SafetyViolationEvent 在违规时通过 EventAggregator 或直接事件发布
+- [x] SafeJogBehavior.StartJog 中对 Jog 方向做安全检查，不安全时不启动 Jog
+- [x] Enable=false 时所有检查直接返回 true，MotionService 行为与修改前一致
+- [x] DI 注册正确：ISafetyZoneMonitor → SafetyZoneMonitor Singleton
+- [x] SafetyZoneConfigView 左侧参数编辑区包含所有配置项（DecimalUpDown + CheckBox + 保存按钮）
+- [x] SafetyZoneConfigView 右侧 Canvas 可视化图显示坐标轴、安全区绿框、危险区红框、当前位置标记点
+- [x] SafetyZoneConfigView 底部报警提示条在收到 SafetyViolationEvent 时显示红色警告信息
+- [x] SafetyZoneConfigViewModel 正确绑定属性并订阅安全状态更新和违规事件
+- [x] 编译通过无 error

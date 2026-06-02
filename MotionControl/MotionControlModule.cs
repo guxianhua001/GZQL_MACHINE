@@ -36,6 +36,12 @@ namespace MotionControl
 
                 // 3. 启动系统状态监控
                 var stateService = containerProvider.Resolve<ISystemStateService>();
+
+                // 4. 加载安全互锁配置（不依赖维护界面是否打开）
+                var safetyMonitor = containerProvider.Resolve<ISafetyZoneMonitor>();
+                var safetyConfigLoader = containerProvider.Resolve<ISafetyZoneConfigLoader>();
+                safetyMonitor.UpdateConfig(safetyConfigLoader.Load());
+
                 logger.Info("Motion system, gripper service, and state monitoring started successfully.");
             }
             catch (Exception ex)
@@ -75,6 +81,10 @@ namespace MotionControl
 
             // ★ 位置编辑器运动控制
             containerRegistry.RegisterSingleton<Core.Abstraction.IPositionMotionController, PositionMotionControllerImpl>();
+
+            // ★ 安全区域监控服务（运动互锁，配置驱动）
+            containerRegistry.RegisterSingleton<ISafetyZoneConfigLoader, SafetyZoneConfigLoader>();
+            containerRegistry.RegisterSingleton<ISafetyZoneMonitor, SafetyZoneMonitor>();
         }
 
     }

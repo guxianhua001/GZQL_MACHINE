@@ -33,6 +33,8 @@ namespace MotionControl.Services
         private readonly IAlarmService _alarmService;
         /// <summary> AD值转换器：将原始AD值转换为物理量 </summary>
         private readonly IADValueConverter _adConverter;
+        /// <summary> 安全区域监控器：运动前安全互锁检查，防止轴进入危险区域 </summary>
+        private readonly ISafetyZoneMonitor _safetyZoneMonitor;
         private MotionSystemConfig _config;
 
         private List<IMotionCard> _cards = new();
@@ -112,7 +114,7 @@ namespace MotionControl.Services
 
         public MotionService(IMotionCardFactory cardFactory, IHardwareConfigLoader configLoader,
                              IEventAggregator ea, ILoggerService logger, IAlarmService alarmService,
-                             IADValueConverter adConverter)
+                             IADValueConverter adConverter, ISafetyZoneMonitor safetyZoneMonitor)
         {
             _cardFactory = cardFactory;
             _configLoader = configLoader;
@@ -120,6 +122,7 @@ namespace MotionControl.Services
             _logger = logger;
             _alarmService = alarmService;
             _adConverter = adConverter;
+            _safetyZoneMonitor = safetyZoneMonitor;
         }
 
         // ---------- 初始化 ----------
@@ -235,6 +238,14 @@ namespace MotionControl.Services
             var card = GetCardForAxis(axisId);
             await Task.Run(() =>
             {
+                // 安全互锁检查：运动前校验目标位置是否在允许的安全区域内
+                var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, position);
+                if (!allowed)
+                {
+                    _logger.Error($"[安全互锁] 轴{axisId}绝对移动被拒绝 | 目标位置:{position:F3} | 原因:{reason}");
+                    throw new SafetyViolationException($"轴{axisId}绝对移动被安全策略拒绝: {reason}", axisId, reason);
+                }
+
                 card.MoveAbs(axisId, position, velocity);
                 WaitForDone(card, axisId, position, token); // 传入目标位置和令牌
             }, token);
@@ -249,6 +260,14 @@ namespace MotionControl.Services
                 double startPos = card.GetPosition(axisId);
                 double targetPos = startPos + distance;
 
+                // 安全互锁检查：用计算出的绝对目标位置进行安全区域校验
+                var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
+                if (!allowed)
+                {
+                    _logger.Error($"[安全互锁] 轴{axisId}相对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                    throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
+                }
+
                 card.MoveRel(axisId, distance, velocity);
                 WaitForDone(card, axisId, targetPos, token); // 传入计算出的绝对目标位置
             }, token);
@@ -259,6 +278,14 @@ namespace MotionControl.Services
             var card = GetCardForAxis(axisIds[0]);
             await Task.Run(() =>
             {
+                // 安全互锁检查：插补运动前校验所有参与轴的目标位置是否均在安全区域内
+                var (allowed, reason) = _safetyZoneMonitor.CheckInterpolationMoveAllowed(axisIds, positions);
+                if (!allowed)
+                {
+                    _logger.Error($"[安全互锁] 插补移动(坐标系{coordId})被拒绝 | 原因:{reason}");
+                    throw new SafetyViolationException($"插补移动被安全策略拒绝: {reason}", axisIds[0], reason);
+                }
+
                 card.MoveLineAbs(coordId, axisIds, positions, velocity);
                 foreach (var id in axisIds) WaitForCoordDone(card, id, axisIds, positions, token);
             });

@@ -411,6 +411,63 @@ namespace Module.ViewModels
         /// <summary>Z轴补偿是否已链接全局变量</summary>
         public bool IsCompensationZLinked => !string.IsNullOrEmpty(CompensationZLinkedVar);
 
+        #region 步骤导航（两步：1=配置示教，2=校准应用）
+
+        private const int MaxStep = 2;
+
+        private int _currentStep = 1;
+        /// <summary>当前工作流步骤（1=配置示教, 2=校准应用）</summary>
+        public int CurrentStep
+        {
+            get => _currentStep;
+            set
+            {
+                var clamped = Math.Clamp(value, 1, MaxStep);
+                if (SetProperty(ref _currentStep, clamped))
+                {
+                    RaisePropertyChanged(nameof(Step1State));
+                    RaisePropertyChanged(nameof(Step2State));
+                    RaisePropertyChanged(nameof(CurrentStepTitle));
+                    RaisePropertyChanged(nameof(IsStep1Active));
+                    RaisePropertyChanged(nameof(IsStep2Active));
+                    GoPrevCommand?.RaiseCanExecuteChanged();
+                    GoNextCommand?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>步骤1：配置示教</summary>
+        public StepState Step1State => GetStepState(1);
+        /// <summary>步骤2：校准应用</summary>
+        public StepState Step2State => GetStepState(2);
+
+        public bool IsStep1Active => CurrentStep == 1;
+        public bool IsStep2Active => CurrentStep == 2;
+
+        /// <summary>当前步骤标题</summary>
+        public string CurrentStepTitle => CurrentStep switch
+        {
+            1 => _localization.GetResourceOrDefault("NeedleAligner_Step1_Title", "配置示教"),
+            2 => _localization.GetResourceOrDefault("NeedleAligner_Step2_Title", "校准应用"),
+            _ => ""
+        };
+
+        /// <summary>根据步骤号计算步骤状态</summary>
+        private StepState GetStepState(int step)
+        {
+            if (step < CurrentStep) return StepState.Done;
+            if (step == CurrentStep) return StepState.Active;
+            return StepState.Pending;
+        }
+
+        /// <summary>上一步</summary>
+        private void GoPrev() { if (CurrentStep > 1) CurrentStep--; }
+
+        /// <summary>下一步</summary>
+        private void GoNext() { if (CurrentStep < MaxStep) CurrentStep++; }
+
+        #endregion
+
         public DelegateCommand StartCalibrationCommand { get; }
         public DelegateCommand StopCalibrationCommand { get; }
         public DelegateCommand ApplyCompensationCommand { get; }
@@ -426,6 +483,10 @@ namespace Module.ViewModels
         public DelegateCommand UnlinkCompensationXCommand { get; }
         public DelegateCommand UnlinkCompensationYCommand { get; }
         public DelegateCommand UnlinkCompensationZCommand { get; }
+        /// <summary>上一步命令</summary>
+        public DelegateCommand GoPrevCommand { get; }
+        /// <summary>下一步命令</summary>
+        public DelegateCommand GoNextCommand { get; }
 
         public NeedleAlignerViewModel(
             INeedleAlignerMotionService needleMotion,
@@ -499,6 +560,11 @@ namespace Module.ViewModels
             UnlinkCompensationXCommand = new DelegateCommand(() => CompensationXLinkedVar = null);
             UnlinkCompensationYCommand = new DelegateCommand(() => CompensationYLinkedVar = null);
             UnlinkCompensationZCommand = new DelegateCommand(() => CompensationZLinkedVar = null);
+
+            GoPrevCommand = new DelegateCommand(GoPrev, () => CurrentStep > 1)
+                .ObservesProperty(() => CurrentStep);
+            GoNextCommand = new DelegateCommand(GoNext, () => CurrentStep < MaxStep)
+                .ObservesProperty(() => CurrentStep);
 
             _eventAggregator.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>().Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
