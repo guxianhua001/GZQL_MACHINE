@@ -211,10 +211,10 @@ namespace MotionControl.Behaviors
                 }
 
                 // 根据点动方向估算目标位置（正方向+偏移量，负方向-偏移量）
-                const double JogEstimateOffset = 10.0;
+                double jogOffset = safetyMonitor.JogEstimateOffset > 0 ? safetyMonitor.JogEstimateOffset : 10.0;
                 double targetPosition = positiveDirection
-                    ? currentPosition + JogEstimateOffset
-                    : currentPosition - JogEstimateOffset;
+                    ? currentPosition + jogOffset
+                    : currentPosition - jogOffset;
 
                 var (allowed, reason) = safetyMonitor.CheckMoveAllowed(axisId, targetPosition);
                 if (!allowed)

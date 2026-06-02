@@ -4,6 +4,9 @@ namespace MotionControl.Interfaces
 {
     public interface ISafetyZoneMonitor
     {
+        /// <summary>Jog 安全检查使用的估算位移（mm），来自配置</summary>
+        double JogEstimateOffset { get; }
+
         /// <summary>
         /// 检查单轴移动是否被安全策略允许
         /// 返回元组：(是否允许, 拒绝原因)

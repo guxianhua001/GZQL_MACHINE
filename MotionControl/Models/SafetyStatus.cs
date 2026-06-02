@@ -21,9 +21,18 @@ namespace MotionControl.Models
         public List<string> ActiveRules { get; set; } = new();
 
         /// <summary>
-        /// Z1轴是否低于安全高度阈值
-        /// 核心安全指标，直接影响设备运行权限判断
+        /// Dz₁ 是否低于安全高度（兼容旧 UI 绑定）
         /// </summary>
         public bool IsZ1BelowSafeHeight { get; set; }
+
+        /// <summary>
+        /// 任一配置的高度轴未达安全高度
+        /// </summary>
+        public bool IsPlaneMovementLocked { get; set; }
+
+        /// <summary>
+        /// 当前未在安全区域的高度轴名称列表
+        /// </summary>
+        public List<string> LowHeightAxisNames { get; set; } = new();
     }
 }

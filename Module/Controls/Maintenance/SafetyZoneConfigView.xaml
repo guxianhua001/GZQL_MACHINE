@@ -104,9 +104,17 @@
                                       Style="{StaticResource MaterialDesignCheckBox}"
                                       Margin="0,0,0,8"/>
 
-                            <!-- Z₁ 安全高度 -->
+                            <!-- Dz₁/Dz₂/Dz₃ 安全高度：任一未达则互锁 Dx/Dy -->
                             <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ1}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ1}"
+                                                          ValueStep="1" Minimum="0" Maximum="500"
+                                                          Margin="0,0,0,4"/>
+                            <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ2}" Style="{StaticResource ParamLabel}"/>
+                            <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ2}"
+                                                          ValueStep="1" Minimum="0" Maximum="500"
+                                                          Margin="0,0,0,4"/>
+                            <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ3}" Style="{StaticResource ParamLabel}"/>
+                            <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ3}"
                                                           ValueStep="1" Minimum="0" Maximum="500"
                                                           Margin="0,0,0,8"/>
 
@@ -245,9 +253,9 @@
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="#42A5F5"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsZ1BelowSafe}" Value="True">
-                                                            <Setter Property="Background" Value="#EF5350"/>
-                                                        </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsPlaneMovementLocked}" Value="True">
+                                                    <Setter Property="Background" Value="#EF5350"/>
+                                                </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
@@ -280,7 +288,7 @@
                                             <Setter Property="Text" Value="{lang:Lang SafetyZone_Safe}"/>
                                             <Setter Property="Foreground" Value="#43A047"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsZ1BelowSafe}" Value="True">
+                                                <DataTrigger Binding="{Binding IsPlaneMovementLocked}" Value="True">
                                                     <Setter Property="Text" Value="{lang:Lang SafetyZone_Danger}"/>
                                                     <Setter Property="Foreground" Value="#E53935"/>
                                                 </DataTrigger>

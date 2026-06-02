@@ -1,65 +1,18 @@
 using Prism.Mvvm;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 
 namespace MotionControl.Models
 {
+    /// <summary>
+    /// 安全区域互锁配置（JSON 持久化，支持多设备不同规则集）
+    /// </summary>
     public class SafetyZoneConfig : BindableBase
     {
-        private double _safeHeightZ1 = 50.0;
-
-        [Category("安全区域")]
-        [DisplayName("Z1安全高度阈值")]
-        [Description("Dz₁安全高度阈值，低于此值时触发安全互锁保护（单位：mm）")]
-        public double SafeHeightZ1
-        {
-            get => _safeHeightZ1;
-            set => SetProperty(ref _safeHeightZ1, value);
-        }
-
-        private double _dangerZoneXMin = 0.0;
-
-        [Category("危险区域-X轴")]
-        [DisplayName("X轴危险区下限")]
-        [Description("X轴危险区域下边界位置（单位：mm），低于此值视为进入危险区")]
-        public double DangerZoneXMin
-        {
-            get => _dangerZoneXMin;
-            set => SetProperty(ref _dangerZoneXMin, value);
-        }
-
-        private double _dangerZoneXMax = 200.0;
-
-        [Category("危险区域-X轴")]
-        [DisplayName("X轴危险区上限")]
-        [Description("X轴危险区域上边界位置（单位：mm），高于此值视为进入危险区")]
-        public double DangerZoneXMax
-        {
-            get => _dangerZoneXMax;
-            set => SetProperty(ref _dangerZoneXMax, value);
-        }
-
-        private double _dangerZoneYMin = 0.0;
-
-        [Category("危险区域-Y轴")]
-        [DisplayName("Y轴危险区下限")]
-        [Description("Y轴危险区域下边界位置（单位：mm），低于此值视为进入危险区")]
-        public double DangerZoneYMin
-        {
-            get => _dangerZoneYMin;
-            set => SetProperty(ref _dangerZoneYMin, value);
-        }
-
-        private double _dangerZoneYMax = 200.0;
-
-        [Category("危险区域-Y轴")]
-        [DisplayName("Y轴危险区上限")]
-        [Description("Y轴危险区域上边界位置（单位：mm），高于此值视为进入危险区")]
-        public double DangerZoneYMax
-        {
-            get => _dangerZoneYMax;
-            set => SetProperty(ref _dangerZoneYMax, value);
-        }
+        /// <summary>配置架构版本，用于迁移旧版扁平字段</summary>
+        public int SchemaVersion { get; set; } = 2;
 
         private bool _enabled = true;
 
@@ -72,20 +25,136 @@ namespace MotionControl.Models
             set => SetProperty(ref _enabled, value);
         }
 
+        /// <summary>轴名无法解析或高度轴缺失时是否拒绝运动（fail-closed）</summary>
+        public bool FailClosedOnMissingAxis { get; set; } = true;
+
+        /// <summary>Jog 启动前估算位移（mm），用于 SafeJogBehavior 安全检查</summary>
+        public double JogEstimateOffset { get; set; } = 10.0;
+
+        /// <summary>互锁规则列表，不同设备可配置不同规则组合</summary>
+        public List<SafetyInterlockRuleConfig> Rules { get; set; } = new();
+
+        /// <summary>各轴危险区边界（状态显示/可视化，可选）</summary>
+        public List<AxisDangerZoneConfig> DangerZones { get; set; } = new();
+
+        #region 旧版字段（仅用于 JSON 迁移，新配置请使用 Rules / DangerZones）
+
+        public double? SafeHeightZ1 { get; set; }
+        public double? DangerZoneXMin { get; set; }
+        public double? DangerZoneXMax { get; set; }
+        public double? DangerZoneYMin { get; set; }
+        public double? DangerZoneYMax { get; set; }
+
+        #endregion
+
         /// <summary>
-        /// 深拷贝当前配置对象的所有属性值，用于创建独立副本避免引用共享问题
+        /// 当前机型默认配置：Dz₁/Dz₂/Dz₃ 任一未达安全高度时禁止 Dx/Dy 移动
         /// </summary>
+        public static SafetyZoneConfig CreateDefaultForCurrentMachine()
+        {
+            return new SafetyZoneConfig
+            {
+                SchemaVersion = 2,
+                Enabled = true,
+                FailClosedOnMissingAxis = true,
+                JogEstimateOffset = 10.0,
+                Rules = new List<SafetyInterlockRuleConfig>
+                {
+                    new()
+                    {
+                        Id = "HeightLockPlane_XY",
+                        Type = SafetyInterlockRuleType.HeightLockPlane,
+                        Enabled = true,
+                        MessageKey = "SafetyRule_HeightLockPlane",
+                        HeightAxes = new List<HeightAxisSafeConfig>
+                        {
+                            new() { AxisName = "Dz₁", SafeHeight = 50.0 },
+                            new() { AxisName = "Dz₂", SafeHeight = 50.0 },
+                            new() { AxisName = "Dz₃", SafeHeight = 50.0 }
+                        },
+                        LockedAxes = new List<string> { "Dx", "Dy" }
+                    }
+                },
+                DangerZones = new List<AxisDangerZoneConfig>
+                {
+                    new() { AxisName = "Dx", Min = 0, Max = 200 },
+                    new() { AxisName = "Dy", Min = 0, Max = 200 }
+                }
+            };
+        }
+
+        /// <summary>获取主高度锁平面规则（UI 编辑 Z 阈值时使用）</summary>
+        public SafetyInterlockRuleConfig GetOrCreateHeightLockPlaneRule()
+        {
+            var rule = Rules.FirstOrDefault(r => r.Type == SafetyInterlockRuleType.HeightLockPlane);
+            if (rule != null)
+                return rule;
+
+            rule = new SafetyInterlockRuleConfig
+            {
+                Id = "HeightLockPlane_XY",
+                Type = SafetyInterlockRuleType.HeightLockPlane,
+                Enabled = true,
+                MessageKey = "SafetyRule_HeightLockPlane",
+                LockedAxes = new List<string> { "Dx", "Dy" }
+            };
+            Rules.Add(rule);
+            return rule;
+        }
+
+        /// <summary>读取指定高度轴的安全高度，未配置时返回默认值</summary>
+        public double GetSafeHeightForAxis(string axisName, double defaultValue = 50.0)
+        {
+            var rule = Rules.FirstOrDefault(r => r.Type == SafetyInterlockRuleType.HeightLockPlane);
+            var entry = rule?.HeightAxes?.FirstOrDefault(h =>
+                string.Equals(h.AxisName, axisName, System.StringComparison.Ordinal));
+            return entry?.SafeHeight ?? defaultValue;
+        }
+
+        /// <summary>设置指定高度轴的安全高度</summary>
+        public void SetSafeHeightForAxis(string axisName, double safeHeight)
+        {
+            var rule = GetOrCreateHeightLockPlaneRule();
+            var entry = rule.HeightAxes.FirstOrDefault(h =>
+                string.Equals(h.AxisName, axisName, System.StringComparison.Ordinal));
+            if (entry == null)
+            {
+                entry = new HeightAxisSafeConfig { AxisName = axisName };
+                rule.HeightAxes.Add(entry);
+            }
+            entry.SafeHeight = safeHeight;
+        }
+
         public SafetyZoneConfig Clone()
         {
             return new SafetyZoneConfig
             {
-                SafeHeightZ1 = SafeHeightZ1,
-                DangerZoneXMin = DangerZoneXMin,
-                DangerZoneXMax = DangerZoneXMax,
-                DangerZoneYMin = DangerZoneYMin,
-                DangerZoneYMax = DangerZoneYMax,
-                Enabled = Enabled
+                SchemaVersion = SchemaVersion,
+                Enabled = Enabled,
+                FailClosedOnMissingAxis = FailClosedOnMissingAxis,
+                JogEstimateOffset = JogEstimateOffset,
+                Rules = Rules.Select(CloneRule).ToList(),
+                DangerZones = DangerZones.Select(z => new AxisDangerZoneConfig
+                {
+                    AxisName = z.AxisName,
+                    Min = z.Min,
+                    Max = z.Max
+                }).ToList()
             };
         }
+
+        private static SafetyInterlockRuleConfig CloneRule(SafetyInterlockRuleConfig r) => new()
+        {
+            Id = r.Id,
+            Type = r.Type,
+            Enabled = r.Enabled,
+            MessageKey = r.MessageKey,
+            HeightAxes = r.HeightAxes?.Select(h => new HeightAxisSafeConfig
+            {
+                AxisName = h.AxisName,
+                SafeHeight = h.SafeHeight
+            }).ToList() ?? new List<HeightAxisSafeConfig>(),
+            LockedAxes = r.LockedAxes?.ToList() ?? new List<string>()
+        };
     }
 }

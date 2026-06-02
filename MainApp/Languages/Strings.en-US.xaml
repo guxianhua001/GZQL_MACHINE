@@ -2930,7 +2930,12 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="SafetyZone_Parameters">Parameters</sys:String>
     <sys:String x:Key="SafetyZone_Visualization">Visualization</sys:String>
     <sys:String x:Key="SafetyZone_EnableInterlock">Enable Interlock</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ1">Z₁ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyRule_HeightLockPlane">Height axis [{1}] not safe; {0} move blocked</sys:String>
+    <sys:String x:Key="SafetyRule_MissingAxis">Unknown axis; safety interlock denied</sys:String>
+    <sys:String x:Key="SafetyRule_InvalidInterpolation">Invalid interpolation parameters</sys:String>
     <sys:String x:Key="SafetyZone_DangerXMin">X Danger Min (mm)</sys:String>
     <sys:String x:Key="SafetyZone_DangerXMax">X Danger Max (mm)</sys:String>
     <sys:String x:Key="SafetyZone_DangerYMin">Y Danger Min (mm)</sys:String>

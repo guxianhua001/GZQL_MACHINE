@@ -2930,7 +2930,12 @@
     <sys:String x:Key="SafetyZone_Parameters">参数设置</sys:String>
     <sys:String x:Key="SafetyZone_Visualization">区域可视化</sys:String>
     <sys:String x:Key="SafetyZone_EnableInterlock">启用安全互锁</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ1">Z₁ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyRule_HeightLockPlane">垂直轴 [{1}] 未达安全高度，禁止 {0} 移动</sys:String>
+    <sys:String x:Key="SafetyRule_MissingAxis">无法识别运动轴，安全互锁拒绝运动</sys:String>
+    <sys:String x:Key="SafetyRule_InvalidInterpolation">插补参数无效</sys:String>
     <sys:String x:Key="SafetyZone_DangerXMin">X 危险区下限 (mm)</sys:String>
     <sys:String x:Key="SafetyZone_DangerXMax">X 危险区上限 (mm)</sys:String>
     <sys:String x:Key="SafetyZone_DangerYMin">Y 危险区下限 (mm)</sys:String>
