@@ -202,7 +202,7 @@
                                     </Border>
 
                                     <!-- 参考坐标（只读文本） -->
-                                    <GroupBox Grid.Row="1" Margin="0,0,0,8" Foreground="#7E57C2" FontWeight="SemiBold" Style="{StaticResource GroupBoxRedHeader}">
+                                    <GroupBox Grid.Row="1" Margin="0,0,0,8" Foreground="#7E57C2" FontWeight="SemiBold" >
                                         <GroupBox.Header>
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="MapMarker" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -231,7 +231,7 @@
                                     </GroupBox>
 
                                     <!-- 对针位置（只读文本 + 示教按钮） -->
-                                    <GroupBox Grid.Row="2" Margin="0,0,0,8" Foreground="#00838F" FontWeight="SemiBold" Style="{StaticResource GroupBoxRedHeader}">
+                                    <GroupBox Grid.Row="2" Margin="0,0,0,8" Foreground="#00838F" FontWeight="SemiBold" >
                                         <GroupBox.Header>
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="Target" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -272,7 +272,7 @@
                                     </GroupBox>
 
                                     <!-- 搜索点 P1-P4（只读文本 + 示教按钮） -->
-                                    <GroupBox Grid.Row="3" Foreground="#F57C00" FontWeight="SemiBold" Style="{StaticResource GroupBoxRedHeader}">
+                                    <GroupBox Grid.Row="3" Foreground="#F57C00" FontWeight="SemiBold" >
                                         <GroupBox.Header>
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="CrosshairsGps" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -600,7 +600,7 @@
                                         </WrapPanel>
 
                                         <!-- 日志列表 -->
-                                        <GroupBox Grid.Row="1" Foreground="#757575" FontWeight="SemiBold" Style="{StaticResource GroupBoxRedHeader}">
+                                        <GroupBox Grid.Row="1" Foreground="#757575" FontWeight="SemiBold" >
                                             <GroupBox.Header>
                                                 <StackPanel Orientation="Horizontal">
                                                     <materialDesign:PackIcon Kind="TextBox" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
