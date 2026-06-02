@@ -2018,6 +2018,65 @@
     <sys:String x:Key="CadAlignment_UnitLabel">单位: mm / °</sys:String>
     <sys:String x:Key="CadAlignment_UseStep3Target">使用步骤3目标点</sys:String>
     <sys:String x:Key="CadAlignment_WriteGlobalVar">写入全局变量</sys:String>
+    <sys:String x:Key="CadAlignment_LoadFile">加载</sys:String>
+    <sys:String x:Key="CadAlignment_SaveFile">保存</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigSaved">配置已保存: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigSaveFail">保存配置失败: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigLoaded">配置已加载: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_ConfigLoadFail">加载配置失败: {0}</sys:String>
+    <sys:String x:Key="CadAlignment_Step1_Title">回转中心</sys:String>
+    <sys:String x:Key="CadAlignment_Step2_Title">全局偏移</sys:String>
+    <sys:String x:Key="CadAlignment_Step3_Title">旋转角度</sys:String>
+    <sys:String x:Key="CadAlignment_Step4_Title">坐标变换</sys:String>
+    <sys:String x:Key="CadAlignment_Step5_Title">夹爪定位</sys:String>
+    <sys:String x:Key="CadAlignment_StepLabel">步骤</sys:String>
+    <sys:String x:Key="CadAlignment_Step1_Hint">四点拟合</sys:String>
+    <sys:String x:Key="CadAlignment_Step2_Hint">ΔX/ΔY</sys:String>
+    <sys:String x:Key="CadAlignment_Step3_Hint">CAD向量角</sys:String>
+    <sys:String x:Key="CadAlignment_Step4_Hint">平移+旋转</sys:String>
+    <sys:String x:Key="CadAlignment_Step5_Hint">最终组装</sys:String>
+    <sys:String x:Key="CAD_Fit_Coord_Get">已获取{0}坐标: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_Fit_Need3Points">至少需要3个点才能拟合圆</sys:String>
+    <sys:String x:Key="CAD_Fit_Degenerate">拟合退化：点共线或重合，无法确定圆心</sys:String>
+    <sys:String x:Key="CAD_Fit_Center_Done">拟合完成: 中心({0}, {1}), 半径={2}</sys:String>
+    <sys:String x:Key="CAD_Offset_Done">全局偏移计算完成: ΔX={0}, ΔY={1}</sys:String>
+    <sys:String x:Key="CAD_Rotation_InvalidIndex">选取的点位索引无效，请重新选取</sys:String>
+    <sys:String x:Key="CAD_Rotation_Done_CAD">旋转角计算完成（CAD线段法）: θ={0}°</sys:String>
+    <sys:String x:Key="CAD_Rotation_Done_Theta">旋转角: θ={0}°</sys:String>
+    <sys:String x:Key="CAD_ImportDXF_First">请先导入DXF文件</sys:String>
+    <sys:String x:Key="CAD_Import_CAD_First">请先导入CAD图纸</sys:String>
+    <sys:String x:Key="CAD_Import_Success">DXF导入成功：{0}个点</sys:String>
+    <sys:String x:Key="CAD_Import_Failed">DXF导入失败</sys:String>
+    <sys:String x:Key="CAD_PickBaseline_Start">请在图上依次选取基准线段的起点和终点</sys:String>
+    <sys:String x:Key="CAD_PickBaseline_Status">选取基准线段模式：点击两个点</sys:String>
+    <sys:String x:Key="CAD_PickTarget_Start">请在图上依次选取目标线段的起点和终点</sys:String>
+    <sys:String x:Key="CAD_PickTarget_Status">选取目标线段模式：点击两个点</sys:String>
+    <sys:String x:Key="CAD_Baseline_Start_Selected">基准起点已选取</sys:String>
+    <sys:String x:Key="CAD_Baseline_Done">基准线段选取完成</sys:String>
+    <sys:String x:Key="CAD_Target_Start_Selected">目标起点已选取</sys:String>
+    <sys:String x:Key="CAD_Target_Done">目标线段选取完成</sys:String>
+    <sys:String x:Key="CAD_TwoLines_Ready">基准和目标线段均已选取，可计算旋转角</sys:String>
+    <sys:String x:Key="CAD_SamePoint_Warning_Base">基准起点和终点不能相同</sys:String>
+    <sys:String x:Key="CAD_SamePoint_Warning_Target">目标起点和终点不能相同</sys:String>
+    <sys:String x:Key="CAD_Click_Miss">未选中有效点位，请点击表格中的行</sys:String>
+    <sys:String x:Key="CAD_SmartRecommend_Fail">智能推荐失败：点位不足或无法形成有效线段</sys:String>
+    <sys:String x:Key="CAD_AutoRecommend_Done">已自动推荐基准和目标线段</sys:String>
+    <sys:String x:Key="CAD_NeedStep2_First">请先完成步骤2（全局偏移）</sys:String>
+    <sys:String x:Key="CAD_NeedStep3_First">请先完成步骤3（旋转角度）</sys:String>
+    <sys:String x:Key="CAD_NeedStep4_First">请先完成步骤4（坐标变换）</sys:String>
+    <sys:String x:Key="CAD_Inherit_Step3_Success">已继承步骤3目标线段起点</sys:String>
+    <sys:String x:Key="CAD_Single_Transform_Done">单点变换完成</sys:String>
+    <sys:String x:Key="CAD_BatchTransform_NotEnough">批量变换需要至少1个对应点</sys:String>
+    <sys:String x:Key="CAD_Teach_Failed">示教失败</sys:String>
+    <sys:String x:Key="CAD_Teach_Success">示教成功</sys:String>
+    <sys:String x:Key="CAD_Apply_Calc_Offset">将计算偏移应用到固定偏移</sys:String>
+    <sys:String x:Key="CAD_OffsetMode_Calc">计算偏移</sys:String>
+    <sys:String x:Key="CAD_OffsetMode_Fixed">固定偏移</sys:String>
+    <sys:String x:Key="CAD_Gripper_Position_Done">夹爪位置计算完成</sys:String>
+    <sys:String x:Key="CAD_Write_Global_Var_Success">已写入全局变量: {0}={1}, {2}={3}</sys:String>
+    <sys:String x:Key="CAD_EllipseFit_Done">椭圆拟合完成</sys:String>
+    <sys:String x:Key="CAD_DXF_NoPoints">DXF文件未包含有效点位</sys:String>
+    <sys:String x:Key="CAD_NoPoints_Found">未找到有效点位</sys:String>
 
     <!-- CadPointEditorControl -->
     <sys:String x:Key="CadPoint_Btn_FitAll">适配全部</sys:String>
