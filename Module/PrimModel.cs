@@ -26,7 +26,7 @@ namespace Module
             Core.Models.CadEntityHalconExtensions.DxfParserService =
                 containerProvider.Resolve<Core.Services.IDxfParserService>();
             // 1. 首页/总览
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "MonitorMultiple", DisplayName = localizationService.GetResourceOrDefault("Nav_Home", "首页"), DisplayNameKey = "Nav_Home", UserLevel = 0, Display = true });
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "HomeMinusOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Home", "首页"), DisplayNameKey = "Nav_Home", UserLevel = 0, Display = true });
             // 2. 操作页面
             Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TreeView", IconKind = "FileTreeOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Operation", "操作页面"), DisplayNameKey = "Nav_Operation", UserLevel = 0, Display = true });
             // 3. 实时报警（当前活跃报警、未确认计数、批量确认/复位）
