@@ -1,12 +1,12 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
-v2026.06.02 — SingleAxisControlView 状态指示灯刷新修复
+v2026.06.02 — SingleAxisControlView 状态指示灯刷新修复（修正）
 -------------------------------------------------------------------------------
 
-1. LeisaiMotionCard.GetMotionIO：补读 bit 12（SVON）、bit 13（ASTP），ON/急停灯可随硬件状态更新
-2. SingleAxisViewModel：事件更新时同步 IsALM ← IsAlarmed，修复 ALM 灯永不亮
-3. 位置与 IO 状态仍共用 AxisStateChangedEvent 事件链，无需改 XAML 绑定
+1. 撤销 GetMotionIO 误读 bit12/13；新增 GetMotionSts（dmc_get_stop_reason + 轴状态机 ENABLE→MTS_SVON）
+2. MotionService：ON 灯读 motionSts.MTS_SVON，ASTP 灯读 motionSts.MTS_OTHER；极限/报警仍读 GetMotionIO
+3. SingleAxisViewModel：IsALM ← IsAlarmed，修复 ALM 灯绑定遗漏
 
 v2026.06.02 — 安全互锁配置驱动（Dz₁/Dz₂/Dz₃ 锁 Dx/Dy）
 -------------------------------------------------------------------------------

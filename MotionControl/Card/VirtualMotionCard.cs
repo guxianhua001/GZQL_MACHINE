@@ -13,6 +13,8 @@ namespace MotionControl.Card
         private int _virtualCardId;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _doStates = new();
         private readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _diStates = new();
+        /// <summary>虚拟轴伺服使能状态（供 GetMotionSts 返回 MTS_SVON）</summary>
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _servoEnabled = new();
 
         public VirtualMotionCard(int cardId = -1)
         {
@@ -24,7 +26,11 @@ namespace MotionControl.Card
         public override int Close() => 0;
         public override int SoftReset() => 0;
         public override int LoadConfig(string configPath) => 0;
-        public override int SetServo(int axisId, bool enable) => 0;
+        public override int SetServo(int axisId, bool enable)
+        {
+            _servoEnabled[axisId] = enable;
+            return 0;
+        }
         public override int MoveAbs(int axisId, double position, double velocity) => 0;
         public override int MoveRel(int axisId, double distance, double velocity) => 0;
         public override int GoHome(int axisId) => 0;
@@ -33,6 +39,13 @@ namespace MotionControl.Card
         public override int EStop(int axisId) => 0;
         public override double GetPosition(int axisId) => 0.0;
         public override int GetMotionIO(int axisId, ref int status) { status = 0; return 0; }
+        public override int GetMotionSts(int axisId, ref int status)
+        {
+            status = Leisai_Define.MTS_MDN;
+            if (_servoEnabled.GetValueOrDefault(axisId, false))
+                status |= Leisai_Define.MTS_SVON;
+            return 0;
+        }
         public override int ClearAlarm(int axisId) => 0;
         public override int SetDo(int port, int value)
         {

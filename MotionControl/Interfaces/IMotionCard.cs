@@ -21,6 +21,8 @@ namespace MotionControl.Interfaces
 
         double GetPosition(int axisId);
         int GetMotionIO(int axisId, ref int status);
+        /// <summary>读取轴运动状态字（停止原因 + MTS_SVON 等，与 GetMotionIO 分离）</summary>
+        int GetMotionSts(int axisId, ref int status);
         int ClearAlarm(int axisId);
 
         int SetDo(int port, int value);

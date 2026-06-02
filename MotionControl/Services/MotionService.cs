@@ -566,17 +566,20 @@ namespace MotionControl.Services
                     double newPos = card.GetPosition(axisId);
                     bool isMoving = card.CheckDone(axisId) == 0;
                     
-                    // 读取 IO 状态字（包含伺服、极限、报警等信息）
+                    // IO 状态字：极限/原点/报警（dmc_axis_io_status）
                     int io = 0;
                     card.GetMotionIO(axisId, ref io);
 
-                    // 解析状态位（基于雷赛卡定义）
-                    bool isServoOn = (io & Leisai_Define.MIO_SVON) != 0;
+                    // 运动状态字：SVON/ASTP（dmc_get_stop_reason + 轴状态机，与旧项目 m_MotionSts 一致）
+                    int motionSts = 0;
+                    card.GetMotionSts(axisId, ref motionSts);
+
+                    bool isServoOn = (motionSts & Leisai_Define.MTS_SVON) != 0;
                     bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;      // 负极限
                     bool isORG = (io & Leisai_Define.MIO_ORG) != 0;      // 原点
                     bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;      // 正极限
                     bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;  // 报警/急停
-                    bool isASTP = (io & Leisai_Define.MIO_ASTP) != 0;    // 急停状态
+                    bool isASTP = (motionSts & Leisai_Define.MTS_OTHER) != 0;    // 其它轴急停（ASTP 灯）
 
                     // 更新内部状态
                     kv.Value.ActualPosition = newPos;

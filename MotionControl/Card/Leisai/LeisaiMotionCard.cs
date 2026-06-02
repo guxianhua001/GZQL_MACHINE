@@ -267,10 +267,50 @@ namespace MotionControl.Card
                     if (MotionConvert.BitEnable(sts, 1 << 4)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_ORG);
                     if (MotionConvert.BitEnable(sts, 1 << 6)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SPEL);
                     if (MotionConvert.BitEnable(sts, 1 << 7)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SMEL);
-                    // 高段位 IO：与 Leisai_Define 一致，供 MotionService 解析 SVON/ASTP 指示灯
-                    if (MotionConvert.BitEnable(sts, 1 << 11)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_DSTP);
-                    if (MotionConvert.BitEnable(sts, 1 << 12)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SVON);
-                    if (MotionConvert.BitEnable(sts, 1 << 13)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_ASTP);
+
+                    status = result;
+                    return 0;
+                }
+                catch { return -1; }
+            }
+        }
+
+        /// <summary>
+        /// 读取轴运动状态字（dmc_get_stop_reason + 伺服使能）
+        /// SVON/ASTP 指示灯读 m_MotionSts：MTS_SVON(bit10)、MTS_OTHER(bit15)，非 GetMotionIO
+        /// </summary>
+        public override int GetMotionSts(int axisId, ref int status)
+        {
+            lock (_lockObj)
+            {
+                try
+                {
+                    int stopReason = 0;
+                    LTDMC.dmc_get_stop_reason(_cardId, (ushort)axisId, ref stopReason);
+
+                    int result = 0;
+                    // 停止原因 → MTS 掩码（与旧项目 GetMotionSts 一致）
+                    switch (stopReason)
+                    {
+                        case 0:
+                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_MDN);
+                            break;
+                        case 1:
+                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_ALM);
+                            break;
+                        case 4:
+                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_EMG);
+                            break;
+                        case 15:
+                            MotionConvert.SetBits(ref result, Leisai_Define.MTS_OTHER);
+                            break;
+                    }
+
+                    // 伺服使能写入 MTS_SVON（IsSVON 读此位；SetServo 使用 nmc_set_axis_enable）
+                    ushort stateMachine = 0;
+                    LTDMC.nmc_get_axis_state_machine(_cardId, (ushort)axisId, ref stateMachine);
+                    if ((stateMachine & Leisai_Define.ENABLE) != 0)
+                        MotionConvert.SetBits(ref result, Leisai_Define.MTS_SVON);
 
                     status = result;
                     return 0;
