@@ -11,6 +11,7 @@ using Module.Views;
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Mvvm;
+using Prism.Regions;
 using TreeView = Framework.Views.TreeView;
 
 namespace Module
@@ -25,7 +26,7 @@ namespace Module
             Core.Models.CadEntityHalconExtensions.DxfParserService =
                 containerProvider.Resolve<Core.Services.IDxfParserService>();
             // 1. 首页/总览
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "Home", DisplayName = localizationService.GetResourceOrDefault("Nav_Home", "首页"), DisplayNameKey = "Nav_Home", UserLevel = 0, Display = true });
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "MonitorMultiple", DisplayName = localizationService.GetResourceOrDefault("Nav_Home", "首页"), DisplayNameKey = "Nav_Home", UserLevel = 0, Display = true });
             // 2. 操作页面
             Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TreeView", IconKind = "FileTreeOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Operation", "操作页面"), DisplayNameKey = "Nav_Operation", UserLevel = 0, Display = true });
             // 3. 实时报警（当前活跃报警、未确认计数、批量确认/复位）
@@ -41,10 +42,13 @@ namespace Module
             // 8. 配方管理
             Navigate.NavigateList.Add(new NavigateItem() { ViewName = "RecipeManagerView", IconKind = "NoteEditOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_RecipeManager", "配方管理"), DisplayNameKey = "Nav_RecipeManager", UserLevel = 0, Display = true });
             // 9. TCPIP设置
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TcpConfigView", IconKind = "NetworkOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_TcpConfig", "TCPIP设置"), DisplayNameKey = "Nav_TcpConfig", UserLevel = 0, Display = true });
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TcpConfigView", IconKind = "LanPending", DisplayName = localizationService.GetResourceOrDefault("Nav_TcpConfig", "TCPIP设置"), DisplayNameKey = "Nav_TcpConfig", UserLevel = 0, Display = true });
             // 10. 设备维护
-            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "MaintenanceView", IconKind = "WrenchOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Maintenance", "设备维护"), DisplayNameKey = "Nav_Maintenance", UserLevel = 1, Display = true });
+            //Navigate.NavigateList.Add(new NavigateItem() { ViewName = "MaintenanceView", IconKind = "WrenchOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Maintenance", "设备维护"), DisplayNameKey = "Nav_Maintenance", UserLevel = 1, Display = true });
             Navigate.DefaultView = "OverView";
+
+            var regionManager = containerProvider.Resolve<IRegionManager>();
+            regionManager.RegisterViewWithRegion("SafetyZoneConfigRegion", typeof(SafetyZoneConfigView));
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
@@ -125,6 +129,7 @@ namespace Module
             containerRegistry.RegisterForNavigation<NeedleCameraAlignmentView, NeedleCameraAlignmentViewModel>();
             containerRegistry.RegisterForNavigation<NeedleAlignerView, NeedleAlignerViewModel>();
             containerRegistry.RegisterForNavigation<NeedleCalibrationVerifyView, NeedleCalibrationVerifyViewModel>();
+            containerRegistry.RegisterForNavigation<SafetyZoneConfigView, SafetyZoneConfigViewModel>();
         }
     }
 }

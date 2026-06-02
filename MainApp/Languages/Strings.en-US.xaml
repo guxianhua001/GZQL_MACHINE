@@ -2839,6 +2839,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Setting_DeviceConfig">Device Config</sys:String>
     <sys:String x:Key="Setting_AxisParamConfig">Axis Param Config</sys:String>
     <sys:String x:Key="Setting_OtherConfig">Other Config</sys:String>
+    <sys:String x:Key="Setting_SafetyZoneConfig">Safety Zone Config</sys:String>
     <sys:String x:Key="Authority">Authority</sys:String>
     <sys:String x:Key="AddUser">Add User</sys:String>
     <sys:String x:Key="SystemGlobalSettings">System Global Settings</sys:String>

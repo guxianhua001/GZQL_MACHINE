@@ -143,7 +143,7 @@
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     Background="#43A047" Foreground="White"
                                     materialDesign:ButtonAssist.CornerRadius="4"
-                                    HorizontalAlignment="Stretch" Padding="0,10">
+                                    HorizontalAlignment="Stretch" Padding="0,6">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{lang:Lang SafetyZone_Save}" FontSize="13" FontWeight="Medium"/>

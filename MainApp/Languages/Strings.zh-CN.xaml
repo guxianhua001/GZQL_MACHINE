@@ -2839,6 +2839,7 @@
     <sys:String x:Key="Setting_DeviceConfig">设备配置</sys:String>
     <sys:String x:Key="Setting_AxisParamConfig">轴参数配置</sys:String>
     <sys:String x:Key="Setting_OtherConfig">其他配置</sys:String>
+    <sys:String x:Key="Setting_SafetyZoneConfig">安全区域配置</sys:String>
     <sys:String x:Key="Authority">权限</sys:String>
     <sys:String x:Key="AddUser">添加用户</sys:String>
     <sys:String x:Key="SystemGlobalSettings">系统全局设置</sys:String>
