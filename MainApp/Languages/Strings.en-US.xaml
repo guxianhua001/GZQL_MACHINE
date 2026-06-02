@@ -2923,5 +2923,21 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationToolTip">Load interpolation system from config file</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationSuccess">Coordinate system parameters loaded</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationFailed">Load coordinate system failed: {0}</sys:String>
+    <!-- ========== Safety Zone Configuration ========== -->
+    <sys:String x:Key="SafetyZone_Title">Safety Zone Config</sys:String>
+    <sys:String x:Key="SafetyZone_Parameters">Parameters</sys:String>
+    <sys:String x:Key="SafetyZone_Visualization">Visualization</sys:String>
+    <sys:String x:Key="SafetyZone_EnableInterlock">Enable Interlock</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ1">Z₁ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMin">X Danger Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMax">X Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMin">Y Danger Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMax">Y Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_Save">Save Config</sys:String>
+    <sys:String x:Key="SafetyZone_Safe">Safe</sys:String>
+    <sys:String x:Key="SafetyZone_Danger">Danger</sys:String>
+    <sys:String x:Key="SafetyZone_DismissAlarm">Dismiss</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccess">Saved Successfully</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccessMessage">Safety zone configuration saved and applied successfully</sys:String>
 </ResourceDictionary>
 

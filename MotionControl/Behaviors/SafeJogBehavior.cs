@@ -50,6 +50,13 @@ namespace MotionControl.Behaviors
         public static IMotionService GetMotionService(DependencyObject obj) => (IMotionService)obj.GetValue(MotionServiceProperty);
         public static void SetMotionService(DependencyObject obj, IMotionService value) => obj.SetValue(MotionServiceProperty, value);
 
+        public static readonly DependencyProperty SafetyZoneMonitorProperty =
+            DependencyProperty.RegisterAttached("SafetyZoneMonitor", typeof(ISafetyZoneMonitor), typeof(SafeJogBehavior),
+                new PropertyMetadata(null, OnJogParamsChanged));
+
+        public static ISafetyZoneMonitor GetSafetyZoneMonitor(DependencyObject obj) => (ISafetyZoneMonitor)obj.GetValue(SafetyZoneMonitorProperty);
+        public static void SetSafetyZoneMonitor(DependencyObject obj, ISafetyZoneMonitor value) => obj.SetValue(SafetyZoneMonitorProperty, value);
+
         private static readonly DependencyProperty JogStateProperty =
             DependencyProperty.RegisterAttached("JogState", typeof(JogState), typeof(SafeJogBehavior),
                 new PropertyMetadata(null));
@@ -187,6 +194,36 @@ namespace MotionControl.Behaviors
             }
 
             SetIsJogging(button, true);
+
+            // 安全区域检查：在启动Jog前验证目标位置是否被安全策略允许
+            var safetyMonitor = GetSafetyZoneMonitor(button);
+            if (safetyMonitor != null)
+            {
+                double currentPosition;
+                try
+                {
+                    currentPosition = motionService.GetAxisPosition(axisId);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SafeJog] 获取轴{axisId}当前位置失败，跳过安全检查: {ex.Message}");
+                    currentPosition = 0;
+                }
+
+                // 根据点动方向估算目标位置（正方向+偏移量，负方向-偏移量）
+                const double JogEstimateOffset = 10.0;
+                double targetPosition = positiveDirection
+                    ? currentPosition + JogEstimateOffset
+                    : currentPosition - JogEstimateOffset;
+
+                var (allowed, reason) = safetyMonitor.CheckMoveAllowed(axisId, targetPosition);
+                if (!allowed)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SafeJog] 安全互锁阻止Jog | 轴:{axisId} | 方向:{(positiveDirection ? "正向" : "负向")} | 原因:{reason}");
+                    StopJog(button, state);
+                    return;
+                }
+            }
 
             try
             {

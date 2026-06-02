@@ -2923,5 +2923,21 @@
     <sys:String x:Key="AxisSetting_LoadInterpolationToolTip">从配置文件加载插补系参数</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationSuccess">坐标系参数已加载</sys:String>
     <sys:String x:Key="AxisSetting_LoadInterpolationFailed">加载坐标系失败: {0}</sys:String>
+    <!-- ========== 安全区域配置 (SafetyZoneConfig) ========== -->
+    <sys:String x:Key="SafetyZone_Title">安全区域配置</sys:String>
+    <sys:String x:Key="SafetyZone_Parameters">参数设置</sys:String>
+    <sys:String x:Key="SafetyZone_Visualization">区域可视化</sys:String>
+    <sys:String x:Key="SafetyZone_EnableInterlock">启用安全互锁</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightZ1">Z₁ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMin">X 危险区下限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerXMax">X 危险区上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMin">Y 危险区下限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerYMax">Y 危险区上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_Save">保存配置</sys:String>
+    <sys:String x:Key="SafetyZone_Safe">安全</sys:String>
+    <sys:String x:Key="SafetyZone_Danger">危险</sys:String>
+    <sys:String x:Key="SafetyZone_DismissAlarm">关闭</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccess">保存成功</sys:String>
+    <sys:String x:Key="SafetyZone_SaveSuccessMessage">安全区域配置已成功保存并生效</sys:String>
 </ResourceDictionary>
 

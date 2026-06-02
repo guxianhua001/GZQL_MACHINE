@@ -75,6 +75,9 @@ namespace MotionControl
 
             // ★ 位置编辑器运动控制
             containerRegistry.RegisterSingleton<Core.Abstraction.IPositionMotionController, PositionMotionControllerImpl>();
+
+            // ★ 安全区域监控服务（运动互锁）
+            containerRegistry.RegisterSingleton<ISafetyZoneMonitor, SafetyZoneMonitor>();
         }
 
     }
