@@ -565,7 +565,7 @@ namespace MotionControl.Services
                     // 读取位置和运动状态
                     double newPos = card.GetPosition(axisId);
                     bool isMoving = card.CheckDone(axisId) == 0;
-                    
+                         
                     // IO 状态字：极限/原点/报警（dmc_axis_io_status）
                     int io = 0;
                     card.GetMotionIO(axisId, ref io);

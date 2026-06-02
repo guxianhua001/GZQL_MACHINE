@@ -289,7 +289,7 @@ namespace MotionControl.Card
                     LTDMC.dmc_get_stop_reason(_cardId, (ushort)axisId, ref stopReason);
 
                     int result = 0;
-                    // 停止原因 → MTS 掩码（与旧项目 GetMotionSts 一致）
+                    // 停止原因 → MTS 掩码
                     switch (stopReason)
                     {
                         case 0:
@@ -305,15 +305,7 @@ namespace MotionControl.Card
                             MotionConvert.SetBits(ref result, Leisai_Define.MTS_OTHER);
                             break;
                     }
-
-                    // 伺服使能写入 MTS_SVON（IsSVON 读此位；SetServo 使用 nmc_set_axis_enable）
-                    ushort stateMachine = 0;
-                    LTDMC.nmc_get_axis_state_machine(_cardId, (ushort)axisId, ref stateMachine);
-                    if ((stateMachine & Leisai_Define.ENABLE) != 0)
-                        MotionConvert.SetBits(ref result, Leisai_Define.MTS_SVON);
-
-                    status = result;
-                    return 0;
+                    return status = result;
                 }
                 catch { return -1; }
             }
