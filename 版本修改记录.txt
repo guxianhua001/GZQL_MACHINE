@@ -19,6 +19,12 @@ v2026.06.02 — SingleAxisControlView Jog 与 LED 修复
 3. StationAxisView 轴列表改用 StackPanel，避免 VirtualizingStackPanel 回收导致 Jog 失效
 4. Jog LED 绑定改为 TwoWay + 行为内显式刷新 IsJogging
 
+v2026.06.02 — MotionService.InitializeAsync UI 死锁修复
+-------------------------------------------------------------------------------
+
+1. LoadConfig 的 await 使用 ConfigureAwait(false)，日志与 _cards.Add 放在 await 之后
+2. MotionControlModule 对 InitializeAsync 使用 ConfigureAwait(false).GetAwaiter().GetResult()，避免模块初始化卡死
+
 -------------------------------------------------------------------------------
 
 v2026.06.01 — NeedleAligner Z 下探高度参数
