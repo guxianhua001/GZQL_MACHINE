@@ -15,20 +15,25 @@ namespace MotionControl.Services
     /// </summary>
     public class SafetyZoneMonitor : ISafetyZoneMonitor
     {
-        private readonly IMotionService _motionService;
+        /// <summary>
+        /// 延迟解析 IMotionService，打破与 MotionService 的构造期循环依赖
+        /// </summary>
+        private readonly Lazy<IMotionService> _motionLazy;
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILocalizationService _localization;
 
         private SafetyZoneConfig _config = SafetyZoneConfig.CreateDefaultForCurrentMachine();
 
+        private IMotionService Motion => _motionLazy.Value;
+
         public SafetyZoneMonitor(
-            IMotionService motionService,
+            Lazy<IMotionService> motionService,
             ILoggerService logger,
             IEventAggregator eventAggregator,
             ILocalizationService localization = null)
         {
-            _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
+            _motionLazy = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
             _localization = localization;
@@ -55,7 +60,7 @@ namespace MotionControl.Services
             {
                 string reason = SafetyInterlockEvaluator.FormatReason(_localization, reasonKey, reasonArgs);
                 double current = axisName != null
-                    ? _motionService.GetAxisPosition(axisId)
+                    ? Motion.GetAxisPosition(axisId)
                     : 0;
                 PublishViolation(axisId, axisName ?? axisId.ToString(), targetPosition, current, reason, ruleId ?? "Unknown");
                 return (false, reason);
@@ -87,7 +92,7 @@ namespace MotionControl.Services
             if (axisName == null)
                 return false;
 
-            double position = _motionService.GetAxisPosition(axisId);
+            double position = Motion.GetAxisPosition(axisId);
             return SafetyInterlockEvaluator.IsInDangerZone(_config, axisName, position);
         }
 
@@ -97,9 +102,9 @@ namespace MotionControl.Services
             var status = new SafetyStatus();
             var getPos = BuildPositionResolver();
 
-            foreach (var axis in _motionService.GetAxisConfigurations())
+            foreach (var axis in Motion.GetAxisConfigurations())
             {
-                double pos = _motionService.GetAxisPosition(axis.LogicalId);
+                double pos = Motion.GetAxisPosition(axis.LogicalId);
                 status.CurrentPositions[axis.Name] = pos;
                 status.DangerZoneFlags[axis.Name] = SafetyInterlockEvaluator.IsInDangerZone(_config, axis.Name, pos);
             }
@@ -132,7 +137,7 @@ namespace MotionControl.Services
 
         private string TryGetAxisName(int axisId)
         {
-            var match = _motionService.GetAxisConfigurations()
+            var match = Motion.GetAxisConfigurations()
                 .FirstOrDefault(a => a.LogicalId == axisId);
             return match?.Name;
         }
@@ -147,7 +152,7 @@ namespace MotionControl.Services
                 if (string.IsNullOrWhiteSpace(axisName))
                     return null;
 
-                var match = _motionService.GetAxisConfigurations()
+                var match = Motion.GetAxisConfigurations()
                     .FirstOrDefault(a => string.Equals(a.Name, axisName, StringComparison.Ordinal));
                 if (match == null)
                 {
@@ -156,7 +161,7 @@ namespace MotionControl.Services
                     return null;
                 }
 
-                return _motionService.GetAxisPosition(match.LogicalId);
+                return Motion.GetAxisPosition(match.LogicalId);
             };
         }
 
