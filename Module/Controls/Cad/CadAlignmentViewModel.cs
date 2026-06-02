@@ -14,6 +14,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Newtonsoft.Json;
 
 namespace Module.ViewModels
 {
@@ -130,6 +131,10 @@ namespace Module.ViewModels
             ShowBaselineSegmentCommand = new DelegateCommand(OnShowBaselineSegment, () => HasBaselineSelected);
             ShowTargetlineSegmentCommand = new DelegateCommand(OnShowTargetlineSegment, () => HasTargetlineSelected);
             WriteToGlobalVariablesCommand = new DelegateCommand(OnWriteToGlobalVariables, () => Step5Done);
+            SaveConfigCommand = new DelegateCommand(async () => await SaveConfigToFileAsync());
+            LoadConfigCommand = new DelegateCommand(async () => await LoadConfigFromFileAsync());
+            UnlinkGripperXCommand = new DelegateCommand(() => { IsGripperXLinked = false; FinalGripperXLinkedVar = ""; });
+            UnlinkGripperYCommand = new DelegateCommand(() => { IsGripperYLinked = false; FinalGripperYLinkedVar = ""; });
 
             Steps = InitializeSteps();
             _currentStep = 1;
@@ -139,6 +144,7 @@ namespace Module.ViewModels
 
             RefreshPointPairNames();
             _ = LoadAvailableGlobalVariablesAsync();
+            _ = TryAutoLoadConfigAsync();
         }
 
         #region 对应点集合
@@ -504,12 +510,29 @@ public string FinalGripperXLinkedVar { get => _finalGripperXLinkedVar; set => Se
 private string _finalGripperYLinkedVar = "GripperFinalY";
 public string FinalGripperYLinkedVar { get => _finalGripperYLinkedVar; set => SetProperty(ref _finalGripperYLinkedVar, value); }
 
+private bool _isGripperXLinked;
+public bool IsGripperXLinked { get => _isGripperXLinked; set => SetProperty(ref _isGripperXLinked, value); }
+
+private bool _isGripperYLinked;
+public bool IsGripperYLinked { get => _isGripperYLinked; set => SetProperty(ref _isGripperYLinked, value); }
+
+public DelegateCommand UnlinkGripperXCommand { get; }
+public DelegateCommand UnlinkGripperYCommand { get; }
+
 /// <summary>可选取的全局变量列表（用于ComboBox下拉选择）</summary>
 private ObservableCollection<GlobalVariable> _availableGlobalVariables = new();
 public ObservableCollection<GlobalVariable> AvailableGlobalVariables { get => _availableGlobalVariables; set => SetProperty(ref _availableGlobalVariables, value); }
 
+public ObservableCollection<GlobalVariable> LinkableGlobalVariables => AvailableGlobalVariables;
+
 private bool _step5Done;
 public bool Step5Done { get => _step5Done; set => SetProperty(ref _step5Done, value); }
+
+private string _currentFilePath = "";
+public string CurrentFilePath { get => _currentFilePath; set => SetProperty(ref _currentFilePath, value); }
+
+private string _currentFileName = "";
+public string CurrentFileName { get => _currentFileName; set => SetProperty(ref _currentFileName, value); }
 
 #endregion
 
@@ -547,6 +570,8 @@ public bool Step5Done { get => _step5Done; set => SetProperty(ref _step5Done, va
         public ICommand ShowBaselineSegmentCommand { get; private set; }
         public ICommand ShowTargetlineSegmentCommand { get; private set; }
         public ICommand WriteToGlobalVariablesCommand { get; private set; }
+        public DelegateCommand SaveConfigCommand { get; }
+        public DelegateCommand LoadConfigCommand { get; }
 
         /// <summary>请求画布执行 FitToAll 自适应视口（由 View 订阅）</summary>
         public event Action FitToAllRequested;
@@ -805,7 +830,7 @@ public bool Step5Done { get => _step5Done; set => SetProperty(ref _step5Done, va
             {
                 Filter = "DXF文件|*.dxf",
                 Title = "选择CAD图纸(DXF)",
-                InitialDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "net9.0-windows7.0", "Config", "LibreCAD")
+                InitialDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "LibreCAD")
             };
 
             if (dialog.ShowDialog() != true) return;
@@ -1872,6 +1897,199 @@ public bool Step5Done { get => _step5Done; set => SetProperty(ref _step5Done, va
                 });
             }
         }
+
+        #region 配置文件管理
+
+        /// <summary>获取配置文件存储目录（不存在则自动创建）</summary>
+        private static string GetConfigDirectory()
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory ?? System.IO.Directory.GetCurrentDirectory();
+            var configDir = System.IO.Path.Combine(baseDir, "Config", "CadAlignment");
+            if (!System.IO.Directory.Exists(configDir))
+                System.IO.Directory.CreateDirectory(configDir);
+            return configDir;
+        }
+
+        /// <summary>将当前对位配置保存为JSON文件</summary>
+        private async Task SaveConfigToFileAsync()
+        {
+            try
+            {
+                var configDir = GetConfigDirectory();
+                var fileName = $"CadAlignment_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                var filePath = System.IO.Path.Combine(configDir, fileName);
+
+                var config = BuildCurrentConfig();
+                var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+                await System.IO.File.WriteAllTextAsync(filePath, json);
+
+                CurrentFilePath = filePath;
+                CurrentFileName = fileName;
+                await SaveCurrentFileToRecipePoolAsync();
+
+                StatusMessage = string.Format(L("CadAlignment_ConfigSaved"), CurrentFileName);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("CadAlignment_ConfigSaveFail"), ex.Message);
+            }
+        }
+
+        /// <summary>从文件选择对话框加载配置</summary>
+        private async Task LoadConfigFromFileAsync()
+        {
+            try
+            {
+                var configDir = GetConfigDirectory();
+                var dialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                    InitialDirectory = configDir
+                };
+
+                if (dialog.ShowDialog() != true) return;
+
+                await LoadConfigFromPathAsync(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("CadAlignment_ConfigLoadFail"), ex.Message);
+            }
+        }
+
+        /// <summary>从指定路径加载配置文件并应用到当前状态</summary>
+        private async Task LoadConfigFromPathAsync(string filePath)
+        {
+            var json = await System.IO.File.ReadAllTextAsync(filePath);
+            var config = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+            if (config == null) return;
+
+            ApplyConfig(config);
+            CurrentFilePath = filePath;
+            CurrentFileName = System.IO.Path.GetFileName(filePath);
+            StatusMessage = string.Format(L("CadAlignment_ConfigLoaded"), CurrentFileName);
+        }
+
+        /// <summary>构建当前配置的字典快照（用于序列化保存）</summary>
+        private Dictionary<string, object> BuildCurrentConfig()
+        {
+            return new Dictionary<string, object>
+            {
+                ["Mox"] = Mox,
+                ["Moy"] = Moy,
+                ["FitRadius"] = FitRadius,
+                ["Step1Done"] = Step1Done,
+                ["FitPoints"] = FitPoints.Select(p => new { p.Index, p.AngleLabel, p.FitX, p.FitY }).ToList(),
+                ["P1Mx"] = P1Mx, ["P1My"] = P1My,
+                ["P1Cx"] = P1Cx, ["P1Cy"] = P1Cy,
+                ["DeltaX"] = DeltaX, ["DeltaY"] = DeltaY,
+                ["Step2Done"] = Step2Done,
+                ["ThetaDeg"] = ThetaDeg,
+                ["Step3Done"] = Step3Done,
+                ["TransResultX"] = TransResultX, ["TransResultY"] = TransResultY,
+                ["Step4Done"] = Step4Done,
+                ["GripperOffX"] = GripperOffX, ["GripperOffY"] = GripperOffY,
+                ["TeachX"] = TeachX, ["TeachY"] = TeachY, ["TeachRy"] = TeachRy, ["TeachZ"] = TeachZ,
+                ["UseCalculatedOffset"] = UseCalculatedOffset,
+                ["FinalGripperX"] = FinalGripperX, ["FinalGripperY"] = FinalGripperY,
+                ["FinalGripperXLinkedVar"] = FinalGripperXLinkedVar, ["FinalGripperYLinkedVar"] = FinalGripperYLinkedVar,
+                ["IsGripperXLinked"] = IsGripperXLinked, ["IsGripperYLinked"] = IsGripperYLinked,
+                ["CadFilePath"] = CadFilePath,
+                ["Step5Done"] = Step5Done,
+            };
+        }
+
+        /// <summary>将字典配置应用到当前ViewModel属性</summary>
+        private void ApplyConfig(Dictionary<string, object> config)
+        {
+            if (config.TryGetValue("Mox", out var mox)) Mox = Convert.ToDouble(mox);
+            if (config.TryGetValue("Moy", out var moy)) Moy = Convert.ToDouble(moy);
+            if (config.TryGetValue("FitRadius", out var fr)) FitRadius = Convert.ToDouble(fr);
+            if (config.TryGetValue("Step1Done", out var s1)) Step1Done = Convert.ToBoolean(s1);
+            if (config.TryGetValue("P1Mx", out var p1mx)) P1Mx = Convert.ToDouble(p1mx);
+            if (config.TryGetValue("P1My", out var p1my)) P1My = Convert.ToDouble(p1my);
+            if (config.TryGetValue("P1Cx", out var p1cx)) P1Cx = Convert.ToDouble(p1cx);
+            if (config.TryGetValue("P1Cy", out var p1cy)) P1Cy = Convert.ToDouble(p1cy);
+            if (config.TryGetValue("DeltaX", out var dx)) DeltaX = Convert.ToDouble(dx);
+            if (config.TryGetValue("DeltaY", out var dy)) DeltaY = Convert.ToDouble(dy);
+            if (config.TryGetValue("Step2Done", out var s2)) Step2Done = Convert.ToBoolean(s2);
+            if (config.TryGetValue("ThetaDeg", out var td)) ThetaDeg = Convert.ToDouble(td);
+            if (config.TryGetValue("Step3Done", out var s3)) Step3Done = Convert.ToBoolean(s3);
+            if (config.TryGetValue("TransResultX", out var trx)) TransResultX = Convert.ToDouble(trx);
+            if (config.TryGetValue("TransResultY", out var try_)) TransResultY = Convert.ToDouble(try_);
+            if (config.TryGetValue("Step4Done", out var s4)) Step4Done = Convert.ToBoolean(s4);
+            if (config.TryGetValue("GripperOffX", out var gox)) GripperOffX = Convert.ToDouble(gox);
+            if (config.TryGetValue("GripperOffY", out var goy)) GripperOffY = Convert.ToDouble(goy);
+            if (config.TryGetValue("TeachX", out var tx)) TeachX = Convert.ToDouble(tx);
+            if (config.TryGetValue("TeachY", out var ty)) TeachY = Convert.ToDouble(ty);
+            if (config.TryGetValue("TeachRy", out var try2)) TeachRy = Convert.ToDouble(try2);
+            if (config.TryGetValue("TeachZ", out var tz)) TeachZ = Convert.ToDouble(tz);
+            if (config.TryGetValue("UseCalculatedOffset", out var uco)) UseCalculatedOffset = Convert.ToBoolean(uco);
+            if (config.TryGetValue("FinalGripperX", out var fgx)) FinalGripperX = Convert.ToDouble(fgx);
+            if (config.TryGetValue("FinalGripperY", out var fgy)) FinalGripperY = Convert.ToDouble(fgy);
+            if (config.TryGetValue("FinalGripperXLinkedVar", out var fgxv)) FinalGripperXLinkedVar = fgxv?.ToString() ?? "";
+            if (config.TryGetValue("FinalGripperYLinkedVar", out var fgyv)) FinalGripperYLinkedVar = fgyv?.ToString() ?? "";
+            if (config.TryGetValue("IsGripperXLinked", out var igxl)) IsGripperXLinked = Convert.ToBoolean(igxl);
+            if (config.TryGetValue("IsGripperYLinked", out var igyl)) IsGripperYLinked = Convert.ToBoolean(igyl);
+            if (config.TryGetValue("CadFilePath", out var cfp)) CadFilePath = cfp?.ToString() ?? "";
+            if (config.TryGetValue("Step5Done", out var s5)) Step5Done = Convert.ToBoolean(s5);
+
+            if (config.TryGetValue("FitPoints", out var fpsObj))
+            {
+                var fpsJson = JsonConvert.SerializeObject(fpsObj);
+                var fpsList = JsonConvert.DeserializeObject<List<FitPoint>>(fpsJson);
+                if (fpsList != null)
+                {
+                    FitPoints.Clear();
+                    foreach (var fp in fpsList)
+                        FitPoints.Add(fp);
+                }
+            }
+
+            UpdateStepStates(CurrentStep);
+            UpdateMachineCoordinates();
+            UpdateTransformedCoordText();
+        }
+
+        /// <summary>将当前配置文件路径保存到配方池扩展数据</summary>
+        private async Task SaveCurrentFileToRecipePoolAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                await _recipePoolService.SetExtensionDataAsync(poolName, "CadAlignment_CurrentFile",
+                    new { FilePath = CurrentFilePath });
+            }
+            catch { }
+        }
+
+        /// <summary>启动时自动加载配置（优先从配方池恢复，其次加载默认配置文件）</summary>
+        private async Task TryAutoLoadConfigAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                var extData = await _recipePoolService.GetExtensionDataAsync<object>(poolName, "CadAlignment_CurrentFile");
+                if (extData != null)
+                {
+                    var dict = JsonConvert.DeserializeObject<Dictionary<string, string>>(
+                        JsonConvert.SerializeObject(extData));
+                    if (dict != null && dict.TryGetValue("FilePath", out var path) && System.IO.File.Exists(path))
+                    {
+                        await LoadConfigFromPathAsync(path);
+                        return;
+                    }
+                }
+
+                var configDir = GetConfigDirectory();
+                var defaultPath = System.IO.Path.Combine(configDir, "CadAlignment_Default.json");
+                if (System.IO.File.Exists(defaultPath))
+                    await LoadConfigFromPathAsync(defaultPath);
+            }
+            catch { }
+        }
+
+        #endregion
 
         private void OnShowPrinciple()
         {

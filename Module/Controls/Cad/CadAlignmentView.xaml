@@ -8,6 +8,7 @@
              xmlns:conv="clr-namespace:Module.Converters"
              xmlns:controls="clr-namespace:Module.Controls"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
              d:DesignHeight="820" d:DesignWidth="1100">
@@ -1137,39 +1138,31 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <!-- Gripper_X -->
-                                    <Border Grid.Column="0" Style="{StaticResource ResultBorder}" Margin="0,0,4,0" Padding="8,6" Width="200">
+                                    <Border Grid.Column="0" Style="{StaticResource ResultBorder}" Margin="0,0,4,0" Padding="8,6" Width="220">
                                         <StackPanel>
-                                            <DockPanel Margin="0,0,0,3">
-                                                <TextBlock DockPanel.Dock="Left" Text="{lang:Lang CadAlignment_GripperXLabel}" FontSize="10.5" Foreground="#80CBC4"
-                                                           VerticalAlignment="Center"/>
-                                                <ComboBox DockPanel.Dock="Right"
-                                                         ItemsSource="{Binding AvailableGlobalVariables}"
-                                                         SelectedValuePath="Name" DisplayMemberPath="Name"
-                                                         SelectedValue="{Binding FinalGripperXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                                         FontSize="9" MinWidth="90" MaxWidth="160"
-                                                         materialDesign:HintAssist.Hint="选取变量"
-                                                         ToolTip="从全局变量列表中选取要链接的变量名"/>
-                                            </DockPanel>
-                                            <TextBlock Text="{Binding FinalGripperX, StringFormat=F3}" FontSize="20" FontWeight="Bold"
-                                                       Foreground="#2E7D32" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{lang:Lang CadAlignment_GripperXLabel}" FontSize="10.5" Foreground="#80CBC4" Margin="0,0,0,3" HorizontalAlignment="Center"/>
+                                            <common:GlobalVariableLinkControl HorizontalAlignment="Center"
+                                                DisplayValue="{Binding FinalGripperX}"
+                                                DisplayForeground="#2E7D32"
+                                                IsLinked="{Binding IsGripperXLinked}"
+                                                UnlinkCommand="{Binding UnlinkGripperXCommand}"
+                                                LinkedVariableName="{Binding FinalGripperXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                ComboBoxWidth="90"/>
                                         </StackPanel>
                                     </Border>
                                     <!-- Gripper_Y -->
-                                    <Border Grid.Column="1" Style="{StaticResource ResultBorder}" Margin="4,0,0,0" Padding="8,6" Width="200">
+                                    <Border Grid.Column="1" Style="{StaticResource ResultBorder}" Margin="4,0,0,0" Padding="8,6" Width="220">
                                         <StackPanel>
-                                            <DockPanel Margin="0,0,0,3">
-                                                <TextBlock DockPanel.Dock="Left" Text="{lang:Lang CadAlignment_GripperYLabel}" FontSize="10.5" Foreground="#80CBC4"
-                                                           VerticalAlignment="Center"/>
-                                                <ComboBox DockPanel.Dock="Right"
-                                                         ItemsSource="{Binding AvailableGlobalVariables}"
-                                                         SelectedValuePath="Name" DisplayMemberPath="Name"
-                                                         SelectedValue="{Binding FinalGripperYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                                         FontSize="9" MinWidth="90" MaxWidth="160"
-                                                         materialDesign:HintAssist.Hint="选取变量"
-                                                         ToolTip="从全局变量列表中选取要链接的变量名"/>
-                                            </DockPanel>
-                                            <TextBlock Text="{Binding FinalGripperY, StringFormat=F3}" FontSize="20" FontWeight="Bold"
-                                                       Foreground="#2E7D32" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{lang:Lang CadAlignment_GripperYLabel}" FontSize="10.5" Foreground="#80CBC4" Margin="0,0,0,3" HorizontalAlignment="Center"/>
+                                            <common:GlobalVariableLinkControl HorizontalAlignment="Center"
+                                                DisplayValue="{Binding FinalGripperY}"
+                                                DisplayForeground="#2E7D32"
+                                                IsLinked="{Binding IsGripperYLinked}"
+                                                UnlinkCommand="{Binding UnlinkGripperYCommand}"
+                                                LinkedVariableName="{Binding FinalGripperYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                ComboBoxWidth="90"/>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
@@ -1305,6 +1298,27 @@
                         </StackPanel>
                     </Button>
 
+                </StackPanel>
+            </StatusBarItem>
+
+            <Separator Foreground="#37474F"/>
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="FileDocumentOutline" Width="12" Height="12" Foreground="#80CBC4" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding CurrentFileName, Mode=OneWay}" Foreground="#90A4AE" FontSize="10" VerticalAlignment="Center" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
+                    <Button Command="{Binding LoadConfigCommand}" Style="{StaticResource MaterialDesignFlatButton}" Foreground="#80CBC4" Padding="6,2" materialDesign:ButtonAssist.CornerRadius="4" Margin="6,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FolderOpen" Width="12" Height="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{lang:Lang CadAlignment_LoadFile}" FontSize="9" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding SaveConfigCommand}" Style="{StaticResource MaterialDesignFlatButton}" Foreground="#80CBC4" Padding="6,2" materialDesign:ButtonAssist.CornerRadius="4" Margin="4,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentSave" Width="12" Height="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{lang:Lang CadAlignment_SaveFile}" FontSize="9" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </StatusBarItem>
 
