@@ -162,14 +162,13 @@ namespace MotionControl.Services
                     continue;
                 }
 
-                await Task.Run(() =>
-                {
-                    int loadResult = card.LoadConfig(configPath);
-                    if (loadResult != 0)
-                        _logger.Error($"Card {cardCfg.Index} failed to load config '{configPath}', error code: {loadResult}");
-                    else
-                        _logger.Info($"Card {cardCfg.Index} loaded config '{configPath}'");
-                });
+                // 在后台线程调用雷赛 SDK（可能阻塞较久）；日志与 Add 放在 await 之后，且 ConfigureAwait(false) 避免 UI 线程 .Wait() 死锁
+                int loadResult = await Task.Run(() => card.LoadConfig(configPath)).ConfigureAwait(false);
+                if (loadResult != 0)
+                    _logger.Error($"Card {cardCfg.Index} failed to load config '{configPath}', error code: {loadResult}");
+                else
+                    _logger.Info($"Card {cardCfg.Index} loaded config '{configPath}'");
+
                 _cards.Add(card);
             }
             BuildMappings(_config);

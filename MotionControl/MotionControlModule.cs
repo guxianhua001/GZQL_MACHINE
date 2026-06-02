@@ -27,12 +27,13 @@ namespace MotionControl
             {
                 // 1. 初始化运动服务
                 var motionService = containerProvider.Resolve<IMotionService>();
-                motionService.InitializeAsync().Wait();
+                // ConfigureAwait(false)：OnInitialized 在 UI 线程同步等待，避免 InitializeAsync 内 await 续延切回 UI 造成死锁
+                motionService.InitializeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                 motionService.StartPolling(10);
 
                 // 2. 初始化夹爪服务
                 var gripperService = containerProvider.Resolve<IGripperService>();
-                gripperService.InitializeAsync().Wait();
+                gripperService.InitializeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
                 // 3. 启动系统状态监控
                 var stateService = containerProvider.Resolve<ISystemStateService>();
