@@ -1800,6 +1800,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">Search needle height failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">Calibration cancelled</sys:String>
     <sys:String x:Key="NeedleAligner_Step1_Title">Configure &amp; Teach</sys:String>
+    <sys:String x:Key="NeedleAligner_Title">Needle Alignment</sys:String>
+    <sys:String x:Key="NeedleAligner_PositionSettings">Position Settings</sys:String>
+    <sys:String x:Key="NeedleAligner_SystemSelect">System Select</sys:String>
+    <sys:String x:Key="NeedleAligner_Teach">Teach</sys:String>
     <sys:String x:Key="NeedleAligner_Step1_Desc">Params, teach positions &amp; reference</sys:String>
     <sys:String x:Key="NeedleAligner_Step2_Title">Calibrate &amp; Apply</sys:String>
     <sys:String x:Key="NeedleAligner_Step2_Desc">Run needle search &amp; apply TCP</sys:String>

@@ -1800,6 +1800,10 @@
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">搜索针尖高度失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">校准已取消</sys:String>
     <sys:String x:Key="NeedleAligner_Step1_Title">配置示教</sys:String>
+    <sys:String x:Key="NeedleAligner_Title">针头对齐</sys:String>
+    <sys:String x:Key="NeedleAligner_PositionSettings">位置设置</sys:String>
+    <sys:String x:Key="NeedleAligner_SystemSelect">系统选择</sys:String>
+    <sys:String x:Key="NeedleAligner_Teach">示教</sys:String>
     <sys:String x:Key="NeedleAligner_Step1_Desc">参数、示教位置与固定基准</sys:String>
     <sys:String x:Key="NeedleAligner_Step2_Title">校准应用</sys:String>
     <sys:String x:Key="NeedleAligner_Step2_Desc">寻针校准并应用 TCP</sys:String>
