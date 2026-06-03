@@ -41,6 +41,7 @@ namespace MotionControl.Services
 
         /// <summary>
         /// 判断轴当前位置是否在配置的危险区内
+        /// 危险区定义：位置在 [Min, Max] 范围内为危险（可能碰撞），范围外为安全
         /// </summary>
         public static bool IsInDangerZone(SafetyZoneConfig config, string axisName, double position)
         {
@@ -52,11 +53,12 @@ namespace MotionControl.Services
             if (zone == null)
                 return false;
 
-            return position < zone.Min || position > zone.Max;
+            return position >= zone.Min && position <= zone.Max;
         }
 
         /// <summary>
         /// 判断指定轴当前位置是否在危险区内（内部重载）
+        /// 危险区定义：位置在 [Min, Max] 范围内为危险，范围外为安全
         /// </summary>
         private static bool IsInDangerZone(List<AxisDangerZoneConfig> dangerZones, string axisName, double position)
         {
@@ -69,7 +71,7 @@ namespace MotionControl.Services
                 // 未配置危险区的轴，默认视为在危险区内（fail-closed）
                 return true;
 
-            return position < zone.Min || position > zone.Max;
+            return position >= zone.Min && position <= zone.Max;
         }
 
         /// <summary>
