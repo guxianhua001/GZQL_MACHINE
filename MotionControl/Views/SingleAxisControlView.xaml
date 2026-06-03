@@ -121,6 +121,7 @@
                     <!-- Jog 负向按钮 -->
                     <Button behaviors:SafeJogBehavior.AxisId="{Binding AxisId}"
                             behaviors:SafeJogBehavior.Direction="Negative"
+                            behaviors:SafeJogBehavior.Speed="{Binding Speed}"
                             behaviors:SafeJogBehavior.MotionService="{Binding MotionService}"
                             behaviors:SafeJogBehavior.SafetyZoneMonitor="{Binding SafetyZoneMonitor}"
                             behaviors:SafeJogBehavior.IsJogging="{Binding IsJogging, Mode=TwoWay}"
@@ -134,6 +135,7 @@
                     <!-- Jog 正向按钮 -->
                     <Button behaviors:SafeJogBehavior.AxisId="{Binding AxisId}"
                             behaviors:SafeJogBehavior.Direction="Positive"
+                            behaviors:SafeJogBehavior.Speed="{Binding Speed}"
                             behaviors:SafeJogBehavior.MotionService="{Binding MotionService}"
                             behaviors:SafeJogBehavior.SafetyZoneMonitor="{Binding SafetyZoneMonitor}"
                             behaviors:SafeJogBehavior.IsJogging="{Binding IsJogging, Mode=TwoWay}"

@@ -1,6 +1,12 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.02 — SingleAxisControlView Jog 速度链路修复
+-------------------------------------------------------------------------------
+
+1. SafeJogBehavior 绑定 Speed；JogStart/MoveJog 增加 speed 参数（mm/s）
+2. LeisaiMotionCard.MoveJog：Jog 前 dmc_set_profile_unit 写入速度，再 dmc_vmove（与 MoveAbs 一致）
+
 v2026.06.02 — EtherCAT 总线复位与状态栏展示
 -------------------------------------------------------------------------------
 

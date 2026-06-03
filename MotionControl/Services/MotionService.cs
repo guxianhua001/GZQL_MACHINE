@@ -337,7 +337,8 @@ namespace MotionControl.Services
             }, token);
         }
 
-        public void JogStart(int axisId, bool positive) => GetCardForAxis(axisId).MoveJog(axisId, positive ? 0 : 1);
+        public void JogStart(int axisId, bool positive, double speed)
+            => GetCardForAxis(axisId).MoveJog(axisId, positive ? 0 : 1, speed);
         public void JogStop(int axisId) => GetCardForAxis(axisId).Stop(axisId);
         public void StopAxis(int axisId) => GetCardForAxis(axisId).Stop(axisId);
         public void EmergencyStop(int axisId) => GetCardForAxis(axisId).EStop(axisId);

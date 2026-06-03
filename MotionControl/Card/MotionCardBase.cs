@@ -26,7 +26,7 @@ namespace MotionControl.Card
         public abstract int GetDi(int port, ref int value);
         public abstract int GetDo(int port, ref int value);
         public abstract int MoveLineAbs(int coordId, int[] axisIds, double[] positions, double velocity);
-        public abstract int MoveJog(int axisId, int direction);
+        public abstract int MoveJog(int axisId, int direction, double speed);
         public abstract int CheckDone(int axisId);
         public abstract int CheckHomeDone(int axisId);
         public abstract int CheckCoordDone(int coordId);

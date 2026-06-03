@@ -61,6 +61,14 @@ namespace MotionControl.Behaviors
         public static ISafetyZoneMonitor GetSafetyZoneMonitor(DependencyObject obj) => (ISafetyZoneMonitor)obj.GetValue(SafetyZoneMonitorProperty);
         public static void SetSafetyZoneMonitor(DependencyObject obj, ISafetyZoneMonitor value) => obj.SetValue(SafetyZoneMonitorProperty, value);
 
+        /// <summary>Jog 速度（mm/s），绑定 SingleAxisViewModel.Speed</summary>
+        public static readonly DependencyProperty SpeedProperty =
+            DependencyProperty.RegisterAttached("Speed", typeof(double), typeof(SafeJogBehavior),
+                new PropertyMetadata(10.0));
+
+        public static double GetSpeed(DependencyObject obj) => (double)obj.GetValue(SpeedProperty);
+        public static void SetSpeed(DependencyObject obj, double value) => obj.SetValue(SpeedProperty, value);
+
         private static readonly DependencyProperty JogStateProperty =
             DependencyProperty.RegisterAttached("JogState", typeof(JogState), typeof(SafeJogBehavior),
                 new PropertyMetadata(null));
@@ -262,9 +270,13 @@ namespace MotionControl.Behaviors
             SetIsJogging(button, true);
             SyncIsJoggingToViewModel(button, true);
 
+            double speed = GetSpeed(button);
+            if (button.DataContext is SingleAxisViewModel vmSpeed && speed <= 0)
+                speed = vmSpeed.Speed;
+
             try
             {
-                motionService.JogStart(axisId, positiveDirection);
+                motionService.JogStart(axisId, positiveDirection, speed);
             }
             catch (Exception ex)
             {

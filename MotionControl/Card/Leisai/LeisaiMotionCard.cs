@@ -250,11 +250,25 @@ namespace MotionControl.Card
             }
         }
 
-        public override int MoveJog(int axisId, int direction)
+        /// <summary>连续点动：先 dmc_set_profile_unit 写入速度，再 dmc_vmove</summary>
+        public override int MoveJog(int axisId, int direction, double velocity)
         {
             lock (_lockObj)
             {
-                try { return LTDMC.dmc_vmove(_cardId, (ushort)axisId, (ushort)direction); }
+                try
+                {
+                    double minvel = 0, maxvel = 0, acc = 0, dec = 0, stopvel = 0;
+                    ushort s_mode = 0;
+                    double s_time = 0.1;
+
+                    LTDMC.dmc_get_profile_unit(_cardId, (ushort)axisId,
+                        ref minvel, ref maxvel, ref acc, ref dec, ref stopvel);
+                    LTDMC.dmc_set_profile_unit(_cardId, (ushort)axisId, minvel, velocity, acc, dec, stopvel);
+                    LTDMC.dmc_get_s_profile(_cardId, (ushort)axisId, s_mode, ref s_time);
+                    LTDMC.dmc_set_s_profile(_cardId, (ushort)axisId, 0, s_time);
+
+                    return LTDMC.dmc_vmove(_cardId, (ushort)axisId, (ushort)direction);
+                }
                 catch { return -1; }
             }
         }

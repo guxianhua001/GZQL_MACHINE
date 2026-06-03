@@ -29,7 +29,8 @@ namespace MotionControl.Interfaces
 
         Task HomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20, CancellationToken token = default);
 
-        void JogStart(int axisId, bool positiveDirection);
+        /// <summary>点动启动（speed 单位 mm/s，Jog 前写入轴速度曲线）</summary>
+        void JogStart(int axisId, bool positiveDirection, double speed);
         void JogStop(int axisId);
 
         void StopAxis(int axisId);

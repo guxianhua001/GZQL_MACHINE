@@ -31,7 +31,8 @@ namespace MotionControl.Interfaces
         int GetDi(int port, ref int value);
         int GetDo(int port, ref int value);
         int MoveLineAbs(int coordId, int[] axisIds, double[] positions, double velocity);
-        int MoveJog(int axisId, int direction);
+        /// <summary>连续点动（direction: 0=正向 1=负向；speed 单位 mm/s）</summary>
+        int MoveJog(int axisId, int direction, double speed);
 
         int CheckDone(int axisId);
         int CheckHomeDone(int axisId);

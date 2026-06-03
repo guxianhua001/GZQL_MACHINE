@@ -70,7 +70,7 @@ namespace MotionControl.Card
             return 0;
         }
         public override int MoveLineAbs(int coordId, int[] axisIds, double[] positions, double velocity) => 0;
-        public override int MoveJog(int axisId, int direction) => 0;
+        public override int MoveJog(int axisId, int direction, double speed) => 0;
         public override int CheckDone(int axisId) => 1; // 始终认为运动完成
         public override int CheckHomeDone(int axisId) => 1;
         public override int CheckEtherCatStatus() => 0; // 总线正常
