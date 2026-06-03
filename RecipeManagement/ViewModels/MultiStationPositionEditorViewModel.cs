@@ -505,6 +505,10 @@ namespace Recipe.ViewModels
         #endregion
 
         #region Save
+        /// <summary>
+        /// 保存当前工站 Positions 到配方文件。
+        /// 性能要点：仅 Commit 阶段读盘一次；避免保存前重复 GetRecipePoolAsync。
+        /// </summary>
         private async void Save()
         {
             if (string.IsNullOrEmpty(_currentStationIdentifier))
@@ -542,51 +546,35 @@ namespace Recipe.ViewModels
                 newPosObj[name] = positionObj;
             }
 
-            // 重新从配方中读取该工站的完整参数，仅更新 Positions 子节点
-            // 避免覆盖该工站的其他参数（如 PickDelayTime、ConfigVersion 等）
+            // 基于已加载的工站节点合并 Positions，避免保存前额外读盘
+            // Commit 阶段会再读一次配方池并写入，保证与其他工站参数合并正确
             JsonObject stationNodeToSave;
             try
             {
-                var pool = await _recipePoolService.GetRecipePoolAsync(_recipePoolService.CurrentPoolName);
-                var recipe = pool?.GetRecipeByName(pool.CurrentRecipeName);
-
-                if (recipe != null && recipe.Parameters.TryGetValue(_currentStationIdentifier, out var paramObj))
-                {
-                    // 从配方中获取工站的完整参数
-                    if (paramObj is JsonElement jsonElement)
-                        stationNodeToSave = JsonNode.Parse(jsonElement.GetRawText()).AsObject();
-                    else if (paramObj is JsonObject jsonObj)
-                        stationNodeToSave = JsonNode.Parse(jsonObj.ToJsonString()).AsObject();
-                    else
-                        stationNodeToSave = JsonNode.Parse(JsonSerializer.Serialize(paramObj)).AsObject();
-                }
-                else
-                {
-                    // 配方中没有该工站参数，使用当前内存中的节点
-                    stationNodeToSave = _currentStationNode ?? CreateEmptyStationNode();
-                }
-
-                // 仅替换 Positions 子节点，保留其他所有参数
+                stationNodeToSave = _currentStationNode != null
+                    ? JsonNode.Parse(_currentStationNode.ToJsonString()).AsObject()
+                    : CreateEmptyStationNode();
                 stationNodeToSave["Positions"] = newPosObj;
             }
             catch (Exception ex)
             {
-                _logger.Error($"保存前读取工站完整参数失败: {ex.Message}，将仅保存位置数据");
-                stationNodeToSave = _currentStationNode ?? CreateEmptyStationNode();
+                _logger.Error($"构建工站保存节点失败: {ex.Message}，将仅保存位置数据");
+                stationNodeToSave = CreateEmptyStationNode();
                 stationNodeToSave["Positions"] = newPosObj;
             }
 
-            var finalElement = JsonSerializer.Deserialize<JsonElement>(stationNodeToSave.ToJsonString());
-
-            var currentPool = await _recipePoolService.GetRecipePoolAsync(_recipePoolService.CurrentPoolName);
-            string currentRecipeName = currentPool?.CurrentRecipeName ?? "Default";
+            string currentRecipeName = _recipePoolService.CurrentRecipeName;
+            if (string.IsNullOrEmpty(currentRecipeName))
+                currentRecipeName = "Default";
 
             await _recipePoolService.SaveStationParametersAsync(
                 _recipePoolService.CurrentPoolName,
                 currentRecipeName,
                 _currentStationIdentifier,
-                finalElement
+                stationNodeToSave
             );
+
+            _currentStationNode = stationNodeToSave;
 
             // 通知其他组件位置参数已更新（如自定义编辑器流程的位置缓存）
             _eventAggregator.GetEvent<StationParameterSavedEvent>().Publish(_currentStationIdentifier);

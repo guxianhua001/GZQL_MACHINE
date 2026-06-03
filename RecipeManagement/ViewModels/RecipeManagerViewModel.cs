@@ -810,8 +810,8 @@ namespace Recipe.ViewModels
                 {
                     // 替换内存中的旧配方对象
                     SelectedRecipe = freshRecipe;
-                    // 基于新配方重新生成工站参数表格
-                    await LoadStationParametersForRecipe(freshRecipe);
+                    // 已持有最新配方对象，避免 LoadStationParametersForRecipe 再次读盘
+                    await LoadStationParametersForRecipe(freshRecipe, reloadFromStorage: false);
                 }
             }
         }
@@ -821,14 +821,18 @@ namespace Recipe.ViewModels
         /// <summary>
         /// 加载指定配方的工站参数，过滤掉 Positions 和 GlobalVariables
         /// </summary>
-        private async Task LoadStationParametersForRecipe(RecipeInfo recipe)
+        /// <param name="recipe">配方对象</param>
+        /// <param name="reloadFromStorage">为 false 时直接使用传入的 recipe，不再重复读盘</param>
+        private async Task LoadStationParametersForRecipe(RecipeInfo recipe, bool reloadFromStorage = true)
         {
             if (recipe == null) { StationParameters.Clear(); return; }
             try
             {
                 IsLoading = true;
                 string poolId = SelectedRecipePool?.Name ?? "Default";
-                var fullRecipe = await _recipeStorage.LoadRecipeAsync(poolId, recipe.Name);
+                var fullRecipe = reloadFromStorage
+                    ? await _recipeStorage.LoadRecipeAsync(poolId, recipe.Name)
+                    : recipe;
                 if (fullRecipe == null) { StationParameters.Clear(); return; }
 
                 StationParameters.Clear();
