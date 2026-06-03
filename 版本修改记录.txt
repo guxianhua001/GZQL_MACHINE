@@ -1,6 +1,13 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.03 — 单轴状态刷新与 UI 卡顿修复
+-------------------------------------------------------------------------------
+
+1. SingleAxisViewModel：修复 ApplyLatestStatusToUi 因 _latestStatusEvent!=null 无限 BeginInvoke 导致 UI 卡死、状态不刷
+2. 状态 UI 合并改用序列号调度；MoveRelStartAsync/轴命令改后台读卡写卡，避免与 5ms 轮询争抢 Leisai 卡锁
+3. PollAxesStatus：首次采样强制发布；移除 _fullPollLock 缩短持锁时间
+
 v2026.06.03 — Position Editor Save 性能优化
 -------------------------------------------------------------------------------
 

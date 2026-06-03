@@ -287,19 +287,23 @@ namespace MotionControl.Services
         }
 
         /// <inheritdoc />
-        public void MoveRelStart(int axisId, double distance, double velocity)
+        public Task MoveRelStartAsync(int axisId, double distance, double velocity)
         {
-            var card = GetCardForAxis(axisId);
-            double startPos = card.GetPosition(axisId);
-            double targetPos = startPos + distance;
-            var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
-            if (!allowed)
+            // 读卡与安全互锁均在后台执行，避免与 5ms 轮询争抢 Leisai 卡锁导致 UI 卡顿
+            return Task.Run(() =>
             {
-                _logger.Error($"[安全互锁] 轴{axisId}相对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
-                throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
-            }
+                var card = GetCardForAxis(axisId);
+                double startPos = card.GetPosition(axisId);
+                double targetPos = startPos + distance;
+                var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
+                if (!allowed)
+                {
+                    _logger.Error($"[安全互锁] 轴{axisId}相对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                    throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
+                }
 
-            ThreadPool.QueueUserWorkItem(_ => card.MoveRel(axisId, distance, velocity));
+                card.MoveRel(axisId, distance, velocity);
+            });
         }
 
         public async Task MoveLineAbsAsync(int coordId, int[] axisIds, double[] positions, double velocity, CancellationToken token = default)
@@ -577,8 +581,6 @@ namespace MotionControl.Services
                 }
             }
         }
-        /// <summary>完整状态轮询互斥锁（避免重入；不跳过周期，防止长时间无 UI 刷新）</summary>
-        private readonly object _fullPollLock = new();
 
         /// <summary> 仅检查所有轴的报警和急停信号，不读取位置；检测到报警时触发AlarmModule报警记录 </summary>
         private void CheckCriticalAlarms()
@@ -627,46 +629,43 @@ namespace MotionControl.Services
         /// <summary>轴状态快采样（不含 DO 回读）；仅变化时发布，减轻 UI 延迟</summary>
         private void PollAxesStatus(bool readHomeResult)
         {
-            lock (_fullPollLock)
+            foreach (var kv in _axisStates)
             {
-                foreach (var kv in _axisStates)
+                int axisId = kv.Key;
+                var card = GetCardForAxis(axisId);
+
+                double newPos = card.GetPosition(axisId);
+                bool isMoving = card.CheckDone(axisId) == 0;
+
+                int io = 0;
+                card.GetMotionIO(axisId, ref io);
+
+                int motionSts = 0;
+                card.GetMotionSts(axisId, ref motionSts);
+
+                int etherCatSts = 0;
+                card.GetEtherCatSts(axisId, ref etherCatSts);
+                bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
+                bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;
+                bool isORG = (io & Leisai_Define.MIO_ORG) != 0;
+                bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;
+                bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;
+                bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
+
+                if (!_axisPollSnapshots.TryGetValue(axisId, out var snap))
+                    snap = _axisPollSnapshots[axisId] = new AxisPollSnapshot();
+
+                bool isHomeOk = snap.IsHomeOk;
+                if (readHomeResult || isMoving)
+                    isHomeOk = card.CheckHomeDone(axisId) == 1;
+
+                kv.Value.ActualPosition = newPos;
+                kv.Value.IsMoving = isMoving;
+                kv.Value.IsAlarmed = isALM;
+                kv.Value.IsEnabled = isServoOn;
+
+                if (!snap.IsInitialized || snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
                 {
-                    int axisId = kv.Key;
-                    var card = GetCardForAxis(axisId);
-
-                    double newPos = card.GetPosition(axisId);
-                    bool isMoving = card.CheckDone(axisId) == 0;
-
-                    int io = 0;
-                    card.GetMotionIO(axisId, ref io);
-
-                    int motionSts = 0;
-                    card.GetMotionSts(axisId, ref motionSts);
-
-                    int etherCatSts = 0;
-                    card.GetEtherCatSts(axisId, ref etherCatSts);
-                    bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
-                    bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;
-                    bool isORG = (io & Leisai_Define.MIO_ORG) != 0;
-                    bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;
-                    bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;
-                    bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
-
-                    if (!_axisPollSnapshots.TryGetValue(axisId, out var snap))
-                        snap = _axisPollSnapshots[axisId] = new AxisPollSnapshot();
-
-                    bool isHomeOk = snap.IsHomeOk;
-                    if (readHomeResult || isMoving)
-                        isHomeOk = card.CheckHomeDone(axisId) == 1;
-
-                    kv.Value.ActualPosition = newPos;
-                    kv.Value.IsMoving = isMoving;
-                    kv.Value.IsAlarmed = isALM;
-                    kv.Value.IsEnabled = isServoOn;
-
-                    if (!snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
-                        continue;
-
                     snap.Update(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io);
 
                     PublishAxisStateChanged(new AxisStateChangedEvent
@@ -703,6 +702,7 @@ namespace MotionControl.Services
         private sealed class AxisPollSnapshot
         {
             private const double PositionEpsilon = 0.0005;
+            public bool IsInitialized;
             public double Position;
             public bool IsMoving, IsAlarmed, IsServoOn, IsMEL, IsORG, IsPEL, IsASTP, IsHomeOk;
             public int StatusWord;
@@ -715,6 +715,7 @@ namespace MotionControl.Services
 
             public void Update(double pos, bool moving, bool alm, bool servo, bool mel, bool org, bool pel, bool astp, bool homeOk, int io)
             {
+                IsInitialized = true;
                 Position = pos;
                 IsMoving = moving;
                 IsAlarmed = alm;

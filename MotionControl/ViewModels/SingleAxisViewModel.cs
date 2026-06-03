@@ -29,6 +29,8 @@ namespace MotionControl.ViewModels
 
         private IDisposable _statusSubscription;
         private volatile AxisStateChangedEvent _latestStatusEvent;
+        private long _statusEventSequence;
+        private long _lastAppliedStatusSequence;
         private int _uiUpdateScheduled;
 
         /// <summary>允许执行回零：未回零、断使能再上使能、急停/报警复位后可回零；回零成功后置 false</summary>
@@ -199,7 +201,7 @@ namespace MotionControl.ViewModels
 
         // ========== 事件驱动状态监控 ==========
 
-        /// <summary>订阅轴状态：轮询线程推送后尽快合并刷新 UI（无 20ms 防抖）</summary>
+        /// <summary>订阅轴状态：轮询线程推送后合并刷新 UI（序列号避免重复 BeginInvoke 死循环）</summary>
         private void SubscribeToStatusEvents()
         {
             var observable = (_motionService as IObservable<AxisStateChangedEvent>)
@@ -210,23 +212,30 @@ namespace MotionControl.ViewModels
                 {
                     if (e.AxisId != _axisId) return;
                     _latestStatusEvent = e;
-                    if (Interlocked.CompareExchange(ref _uiUpdateScheduled, 1, 0) != 0)
-                        return;
-
-                    var dispatcher = Application.Current?.Dispatcher;
-                    if (dispatcher == null)
-                    {
-                        Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-                        return;
-                    }
-
-                    dispatcher.BeginInvoke(ApplyLatestStatusToUi, DispatcherPriority.Normal);
+                    Interlocked.Increment(ref _statusEventSequence);
+                    ScheduleStatusUiUpdate();
                 },
                 onError: ex => System.Diagnostics.Debug.WriteLine($"Axis {_axisId} status error: {ex.Message}")
             ));
         }
 
-        /// <summary>在 UI 线程应用最新轴状态（合并同一调度周期内的多次采样）</summary>
+        /// <summary>合并调度 UI 刷新，同一时刻仅排队一次 BeginInvoke</summary>
+        private void ScheduleStatusUiUpdate()
+        {
+            if (Interlocked.CompareExchange(ref _uiUpdateScheduled, 1, 0) != 0)
+                return;
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+                return;
+            }
+
+            dispatcher.BeginInvoke(ApplyLatestStatusToUi, DispatcherPriority.Render);
+        }
+
+        /// <summary>在 UI 线程应用最新轴状态</summary>
         private void ApplyLatestStatusToUi()
         {
             try
@@ -251,15 +260,15 @@ namespace MotionControl.ViewModels
                 ApplyHomeAllowanceRules(e);
                 if (homeChanged) RefreshLocalizedText();
                 if (servoChanged) HomeCommand.RaiseCanExecuteChanged();
+
+                Interlocked.Exchange(ref _lastAppliedStatusSequence, _statusEventSequence);
             }
             finally
             {
                 Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-                if (_latestStatusEvent != null
-                    && Interlocked.CompareExchange(ref _uiUpdateScheduled, 1, 0) == 0)
-                {
-                    Application.Current?.Dispatcher.BeginInvoke(ApplyLatestStatusToUi, DispatcherPriority.Normal);
-                }
+                // 仅当回调期间又来了新采样时才补调度（不能用 != null，否则会无限 BeginInvoke 卡死 UI）
+                if (Interlocked.Read(ref _statusEventSequence) != Interlocked.Read(ref _lastAppliedStatusSequence))
+                    ScheduleStatusUiUpdate();
             }
         }
 
@@ -297,11 +306,11 @@ namespace MotionControl.ViewModels
 
         // ========== 命令实现 ==========
 
-        private void ExecuteMoveRelative(double distance)
+        private async void ExecuteMoveRelative(double distance)
         {
             try
             {
-                _motionService.MoveRelStart(_axisId, distance, Speed);
+                await _motionService.MoveRelStartAsync(_axisId, distance, Speed).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -336,66 +345,59 @@ namespace MotionControl.ViewModels
         /// </summary>
         public void ExecuteStop()
         {
-            try
+            _ = RunAxisCommandAsync(() =>
             {
                 _motionService.StopAxis(_axisId);
-                
                 if (_isJogging)
-                {
-                    IsJogging = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowError($"{GetLocalizedText("AxisError_StopFailed", "停止失败: ")}{ex.Message}");
-            }
+                    Application.Current?.Dispatcher.Invoke(() => IsJogging = false);
+            }, "AxisError_StopFailed", "停止失败: ");
         }
 
         private void ExecuteClearPosition()
         {
-            try
+            _ = RunAxisCommandAsync(() =>
             {
                 _motionService.ClearPosition(_axisId);
-                Position = 0;
-            }
-            catch (Exception ex)
-            {
-                ShowError($"{GetLocalizedText("AxisError_ClearPosFailed", "清零失败: ")}{ex.Message}");
-            }
+                Application.Current?.Dispatcher.Invoke(() => Position = 0);
+            }, "AxisError_ClearPosFailed", "清零失败: ");
         }
 
         private void ExecuteClearAlarm()
         {
-            try
+            _ = RunAxisCommandAsync(() =>
             {
                 _motionService.ClearAlarm(_axisId);
-                SetAllowHome(true);
-            }
-            catch (Exception ex)
-            {
-                ShowError($"{GetLocalizedText("AxisError_ClearAlarmFailed", "清除报警失败: ")}{ex.Message}");
-            }
+                Application.Current?.Dispatcher.Invoke(SetAllowHome, true);
+            }, "AxisError_ClearAlarmFailed", "清除报警失败: ");
         }
 
         private void ExecuteServo(bool enable)
         {
-            try
+            _ = RunAxisCommandAsync(() =>
             {
                 if (enable)
                 {
                     _motionService.EnableAxis(_axisId);
-                    HomeCommand.RaiseCanExecuteChanged();
+                    Application.Current?.Dispatcher.Invoke(() => HomeCommand.RaiseCanExecuteChanged());
                 }
                 else
                 {
                     _motionService.DisableAxis(_axisId);
-                    // 断使能后允许再次回零（需再上使能且 CanExecuteHome 检查伺服 ON）
-                    SetAllowHome(true);
+                    Application.Current?.Dispatcher.Invoke(() => SetAllowHome(true));
                 }
+            }, "AxisError_ServoOpFailed", "伺服操作失败: ");
+        }
+
+        /// <summary>在后台线程执行读卡/写卡，避免阻塞 UI 与轮询争抢卡锁</summary>
+        private async Task RunAxisCommandAsync(Action action, string errorResourceKey, string errorFallbackPrefix)
+        {
+            try
+            {
+                await Task.Run(action).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
-                ShowError($"{GetLocalizedText("AxisError_ServoOpFailed", "伺服操作失败: ")}{ex.Message}");
+                ShowError($"{GetLocalizedText(errorResourceKey, errorFallbackPrefix)}{ex.Message}");
             }
         }
 

@@ -26,8 +26,8 @@ namespace MotionControl.Interfaces
         Task MoveAbsAsync(int axisId, double position, double velocity, CancellationToken token = default);
         Task MoveRelAsync(int axisId, double distance, double velocity, CancellationToken token = default);
 
-        /// <summary>相对运动下发（单轴手动：立即返回，不等待到位，保证 UI/操作及时性）</summary>
-        void MoveRelStart(int axisId, double distance, double velocity);
+        /// <summary>相对运动下发（单轴手动：后台读卡+下发，立即返回 Task，不阻塞 UI）</summary>
+        Task MoveRelStartAsync(int axisId, double distance, double velocity);
         Task MoveLineAbsAsync(int coordId, int[] axisIds, double[] positions, double velocity, CancellationToken token = default);
 
         /// <summary>单轴回原点：仅指定轴号，使用卡内/参数表已配置的回零模式与速度（单轴操作页）</summary>
