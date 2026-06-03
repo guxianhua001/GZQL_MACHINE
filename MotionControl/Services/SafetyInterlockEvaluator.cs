@@ -28,7 +28,7 @@ namespace MotionControl.Services
 
             foreach (var rule in config.Rules.Where(r => r.Enabled))
             {
-                var deny = EvaluateRule(rule, movingAxisName, getPositionByName, config.FailClosedOnMissingAxis);
+                var deny = EvaluateRule(rule, movingAxisName, getPositionByName, config.FailClosedOnMissingAxis, config.DangerZones);
                 if (deny != null)
                 {
                     var reason = FormatReason(localization, deny.Value.messageKey, deny.Value.args);
@@ -51,6 +51,23 @@ namespace MotionControl.Services
                 string.Equals(z.AxisName, axisName, StringComparison.Ordinal));
             if (zone == null)
                 return false;
+
+            return position < zone.Min || position > zone.Max;
+        }
+
+        /// <summary>
+        /// 判断指定轴当前位置是否在危险区内（内部重载）
+        /// </summary>
+        private static bool IsInDangerZone(List<AxisDangerZoneConfig> dangerZones, string axisName, double position)
+        {
+            if (dangerZones == null)
+                return false;
+
+            var zone = dangerZones.FirstOrDefault(z =>
+                string.Equals(z.AxisName, axisName, StringComparison.Ordinal));
+            if (zone == null)
+                // 未配置危险区的轴，默认视为在危险区内（fail-closed）
+                return true;
 
             return position < zone.Min || position > zone.Max;
         }
@@ -131,32 +148,44 @@ namespace MotionControl.Services
             SafetyInterlockRuleConfig rule,
             string movingAxisName,
             Func<string, double?> getPositionByName,
-            bool failClosed)
+            bool failClosed,
+            List<AxisDangerZoneConfig> dangerZones)
         {
             return rule.Type switch
             {
                 SafetyInterlockRuleType.HeightLockPlane => EvaluateHeightLockPlane(
-                    rule, movingAxisName, getPositionByName, failClosed),
+                    rule, movingAxisName, getPositionByName, failClosed, dangerZones),
                 _ => null
             };
         }
 
         /// <summary>
-        /// 高度锁平面：任一高度轴未达安全高度时，禁止 LockedAxes 中轴移动
+        /// 高度锁平面：Z轴未达安全高度 且 平面轴在危险区域内时，禁止平面轴移动
+        /// 逻辑：Z低 + XY在危险区 → 锁定；Z低 + XY在安全区 → 允许（已在安全位置，无需锁定）
         /// </summary>
         private static (string messageKey, object[] args)? EvaluateHeightLockPlane(
             SafetyInterlockRuleConfig rule,
             string movingAxisName,
             Func<string, double?> getPositionByName,
-            bool failClosed)
+            bool failClosed,
+            List<AxisDangerZoneConfig> dangerZones)
         {
+            // 移动轴不在锁定列表中，不拦截
             if (rule.LockedAxes == null || !rule.LockedAxes.Any(a =>
                     string.Equals(a, movingAxisName, StringComparison.Ordinal)))
                 return null;
 
+            // 检查是否有高度轴未达安全高度
             if (!IsRuleActive(rule, getPositionByName, failClosed))
                 return null;
 
+            // 关键：移动轴当前是否在危险区域内
+            // 不在危险区 → 允许移动（已在安全位置，无需锁定）
+            var movingAxisPos = getPositionByName(movingAxisName);
+            if (movingAxisPos != null && !IsInDangerZone(dangerZones, movingAxisName, movingAxisPos.Value))
+                return null;
+
+            // 收集未达安全高度的高度轴名称，用于提示信息
             var lowAxes = new List<string>();
             foreach (var ha in rule.HeightAxes)
             {
