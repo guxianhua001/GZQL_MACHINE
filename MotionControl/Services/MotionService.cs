@@ -44,12 +44,13 @@ namespace MotionControl.Services
         private Dictionary<int, IMotionCard> _axisCardMap = new();
         private Dictionary<int, IMotionCard> _ioCardMap = new();
 
-        /// <summary> 是否运行在模拟环境（所有卡均为 VirtualMotionCard） </summary>
-        public bool IsSimulationMode => _cards.Count > 0 && _cards.All(c => c is VirtualMotionCard);
+        /// <summary> 是否运行在模拟环境（无真实雷赛/硬件卡） </summary>
+        public bool IsSimulationMode => !_cards.Any(c => c is not VirtualMotionCard);
 
         // EtherCAT 总线状态轮询（约 1s 一次）
         private int _busPollCounter;
         private int _lastBusErrorCode = int.MinValue;
+        private bool _lastPublishedIsSimulation = true;
 
         /// <inheritdoc />
         public int GetEtherCatBusErrorCode() => _lastBusErrorCode == int.MinValue ? ReadEtherCatBusErrorCode() : _lastBusErrorCode;
@@ -473,6 +474,8 @@ namespace MotionControl.Services
             };
             _isPolling = true;
             _pollThread.Start();
+            // 轮询启动后立即刷新总线状态（避免 UI 订阅晚于 InitializeAsync 发布）
+            PublishEtherCatBusStatus(force: true);
         }
 
         public void StopPolling()
@@ -657,14 +660,16 @@ namespace MotionControl.Services
         private void PublishEtherCatBusStatus(bool force = false)
         {
             int errorCode = ReadEtherCatBusErrorCode();
-            if (!force && errorCode == _lastBusErrorCode)
+            bool isSimulation = IsSimulationMode;
+            if (!force && errorCode == _lastBusErrorCode && isSimulation == _lastPublishedIsSimulation)
                 return;
 
             _lastBusErrorCode = errorCode;
+            _lastPublishedIsSimulation = isSimulation;
             _ea.GetEvent<EtherCatBusStatusChangedEvent>().Publish(new EtherCatBusStatusPayload
             {
                 ErrorCode = errorCode,
-                IsSimulation = IsSimulationMode
+                IsSimulation = isSimulation
             });
         }
 
