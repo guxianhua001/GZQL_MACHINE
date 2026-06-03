@@ -1,12 +1,48 @@
-﻿GZQL_MACHINE 版本修改记录
+GZQL_MACHINE 版本修改记录
 ============================
+
+v2026.06.03 — CustomDialog 多功能自定义弹窗
+-------------------------------------------------------------------------------
+
+1. 新增 Framework\Models\DialogButton 数据模型
+   - 支持自定义文本、背景色(BackgroundHex)、图标(IconKind)、按钮索引(ButtonIndex)
+   - 继承 BindableBase，属性变更自动通知 UI
+   - BackgroundBrush 由 BackgroundHex 自动转换，XAML 直接绑定
+
+2. 新增 ModuleCore\ViewModels\CustomDialogViewModel
+   - 实现 IDialogAware，支持可配置标题/消息/图标/图标颜色
+   - 动态按钮列表 ObservableCollection<DialogButton>
+   - OnDialogOpened 从 DialogParameters 读取 "buttons" 参数注入点击命令
+   - CloseWithResult 返回 buttonIndex，调用方据此判断用户选择
+
+3. 新增 ModuleCore\Views\CustomDialog.xaml
+   - 参考 RecoverableFaultDialogView 样式：图标+标题行 → 消息区 → 动态按钮
+   - ItemsControl + UniformGrid(Rows=1) 实现任意数量按钮等宽排列
+   - 每个按钮绑定 BackgroundBrush/ClickCommand/IconKind/Text
+   - 使用 MaterialDesignRaisedButton 样式 + PackIcon 图标
+
+4. ModuleCore.cs 注册 CustomDialog
+   - containerRegistry.RegisterDialog<CustomDialog, ViewModels.CustomDialogViewModel>()
+
+5. MultiStationPositionEditorViewModel 替换调用
+   - ShowMessageDialogAsync → ShowCustomDialogAsync
+   - 参数从 yesButtonText/noButtonText/showYesButton 等改为 buttons 列表
+   - 三按钮示例：单轴移动(#7B1FA2) / 多轴同时启动(#512DA8) / 取消(#757575)
+
+修改文件:
+  - Framework\Models\DialogButton.cs (新增)
+  - ModuleCore\ViewModels\CustomDialogViewModel.cs (新增)
+  - ModuleCore\Views\CustomDialog.xaml (新增)
+  - ModuleCore\Views\CustomDialog.xaml.cs (新增)
+  - ModuleCore\ModuleCore.cs (注册 Dialog)
+  - RecipeManagement\ViewModels\MultiStationPositionEditorViewModel.cs (替换调用)
 
 v2026.06.03 — 多工站位置编辑器轴控与安全确认
 -------------------------------------------------------------------------------
 
 1. MultiStationPositionEditorViewModel：示教/前往改为直接调用 IMotionService（GetAxisPosition / MoveAbsAsync / StopAxis）
-2. 示教前弹出 Yes/No 确认框；前往前弹出三选一：单轴顺序移动 / 多轴同时启动 / 取消
-3. 多轴同时启动：各轴并行 MoveAbsAsync（Task.WhenAll），非插补联动
+2. 示教前弹出 Yes/No 确认框；前往前通过 MessageDialog（ShowDialogAsync）三选一：单轴移动 / 多轴同时启动 / 取消
+3. 单轴移动：仅移动表格当前选中轴列；多轴同时启动：各行轴并行 MoveAbsAsync
 4. 新增多语言资源键 MultiStationPos_*
 
 v2026.06.03 — 回退第五轮（恢复 100ms Timer 刷新）

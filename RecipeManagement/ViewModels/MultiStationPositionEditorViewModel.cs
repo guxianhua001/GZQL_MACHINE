@@ -5,6 +5,7 @@ using Core.Services;
 using Core.Utilities;
 using Framework.Dialogs;
 using MaterialDesignThemes.Wpf;
+using Framework.Models;
 using MotionControl.Interfaces;
 using Prism.Commands;
 using Prism.Events;
@@ -33,7 +34,6 @@ namespace Recipe.ViewModels
         private readonly IStationRegistry _stationRegistry;
         private readonly ILoggerService _logger;
         private readonly IDialogService _dialogService;
-        private readonly IRecipeDialogService _recipeDialogService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IMotionService _motionService;
         private readonly Core.Abstraction.ILocalizationService _localization;
@@ -42,6 +42,8 @@ namespace Recipe.ViewModels
 
         private StationItem _selectedStation;
         private DataRowView _selectedRow;
+        /// <summary>表格当前选中的轴列名（点击轴坐标单元格时更新）</summary>
+        private string _selectedAxisColumnName;
         private double _selectedSpeed = 10.0;
         private DataTable _positionsTable;
         private bool _isMoving;
@@ -92,6 +94,13 @@ namespace Recipe.ViewModels
             }
         }
 
+        /// <summary>当前选中的轴列（如 X、Y），用于单轴 GOTO</summary>
+        public string SelectedAxisColumnName
+        {
+            get => _selectedAxisColumnName;
+            private set => SetProperty(ref _selectedAxisColumnName, value);
+        }
+
         public double SelectedSpeed { get => _selectedSpeed; set => SetProperty(ref _selectedSpeed, value); }
         public bool IsMoving { get => _isMoving; private set => SetProperty(ref _isMoving, value); }
         public ObservableCollection<double> SpeedOptions { get; } = new ObservableCollection<double> { 1, 5, 10, 20, 30, 40, 50 };
@@ -125,7 +134,6 @@ namespace Recipe.ViewModels
             IStationRegistry stationRegistry,
             ILoggerService loggerService,
             IDialogService dialogService,
-            IRecipeDialogService recipeDialogService,
             IEventAggregator eventAggregator,
             IMotionService motionService,
             Core.Abstraction.ILocalizationService localization)
@@ -135,7 +143,6 @@ namespace Recipe.ViewModels
             _stationRegistry = stationRegistry;
             _logger = loggerService;
             _dialogService = dialogService;
-            _recipeDialogService = recipeDialogService;
             _eventAggregator = eventAggregator;
             _motionService = motionService;
             _localization = localization;
@@ -449,6 +456,30 @@ namespace Recipe.ViewModels
             return tcs.Task;
         }
 
+        /// <summary>
+        /// 表格单元格切换时更新选中轴列（仅工站轴列有效）
+        /// </summary>
+        public void SetSelectedAxisColumn(string columnName)
+        {
+            if (string.IsNullOrEmpty(columnName) ||
+                columnName is "PositionName" or "Comment" or "IsReadOnly" ||
+                string.IsNullOrEmpty(_currentStationIdentifier))
+            {
+                SelectedAxisColumnName = null;
+                return;
+            }
+
+            var isAxis = _axisConfig.GetAxesForStation(_currentStationIdentifier)
+                .Any(a => a.Name == columnName);
+            SelectedAxisColumnName = isAxis ? columnName : null;
+        }
+
+        /// <summary>
+        /// CustomDialog 异步弹出（多功能自定义弹窗）
+        /// </summary>
+        private Task<IDialogResult> ShowCustomDialogAsync(DialogParameters parameters)
+            => _dialogService.ShowDialogAsync("CustomDialog", parameters);
+
         private string Loc(string key, string fallback)
             => _localization.GetResourceOrDefault(key, fallback);
 
@@ -509,25 +540,39 @@ namespace Recipe.ViewModels
                 return;
             }
 
-            var btnSingle = Loc("MultiStationPos_GotoSingleAxis", "单轴顺序移动");
+            var btnSingle = Loc("MultiStationPos_GotoSingleAxis", "单轴移动");
             var btnSimultaneous = Loc("MultiStationPos_GotoSimultaneous", "多轴同时启动");
             var btnCancel = Loc("Cancel", "取消");
 
-            var choice = await _recipeDialogService.ShowConfirmationDialogAsync(
-                Loc("MultiStationPos_ConfirmGotoTitle", "确认前往"),
-                _localization.GetResource("MultiStationPos_ConfirmGotoMessage", positionName),
-                new[] { btnSingle, btnSimultaneous, btnCancel });
+            var dialogResult = await ShowCustomDialogAsync(new DialogParameters
+            {
+                { "title", Loc("MultiStationPos_ConfirmGotoTitle", "确认前往") },
+                { "message", _localization.GetResource("MultiStationPos_ConfirmGotoMessage", positionName) },
+                { "iconKind", PackIconKind.Target },
+                { "buttons", new ObservableCollection<DialogButton>
+                    {
+                        new DialogButton { Text = btnSingle, BackgroundHex = "#7B1FA2", IconKind = PackIconKind.ArrowRight, ButtonIndex = 0 },
+                        new DialogButton { Text = btnSimultaneous, BackgroundHex = "#512DA8", IconKind = PackIconKind.FastForward, ButtonIndex = 1 },
+                        new DialogButton { Text = btnCancel, BackgroundHex = "#757575", IconKind = PackIconKind.Close, ButtonIndex = 2 }
+                    }
+                }
+            });
 
-            if (string.IsNullOrEmpty(choice) || choice == btnCancel) return;
+            int? choiceIndex = null;
+            if (dialogResult?.Result == ButtonResult.OK &&
+                dialogResult.Parameters.TryGetValue<int>("buttonIndex", out var index))
+                choiceIndex = index;
+
+            if (choiceIndex == null || choiceIndex == 2) return;
 
             try
             {
                 IsMoving = true;
                 var velocity = SelectedSpeed > 0 ? SelectedSpeed : DefaultVelocity;
 
-                if (choice == btnSingle)
-                    await GotoSingleAxisSequentialAsync(targetPositions, velocity);
-                else if (choice == btnSimultaneous)
+                if (choiceIndex == 0)
+                    await GotoSelectedAxisAsync(targetPositions, velocity);
+                else if (choiceIndex == 1)
                     await GotoSimultaneousAsync(targetPositions, velocity);
             }
             catch (Exception ex)
@@ -546,16 +591,33 @@ namespace Recipe.ViewModels
         }
 
         /// <summary>
-        /// 单轴顺序移动：逐轴绝对定位，前一轴到位后再动下一轴（工业手动调试常用）
+        /// 单轴移动：仅移动表格当前选中轴列对应的目标位置
         /// </summary>
-        private async Task GotoSingleAxisSequentialAsync(Dictionary<string, double> targetPositions, double velocity)
+        private async Task GotoSelectedAxisAsync(Dictionary<string, double> targetPositions, double velocity)
         {
-            foreach (var kvp in targetPositions)
+            if (string.IsNullOrEmpty(SelectedAxisColumnName))
             {
-                var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
-                if (axisId >= 0)
-                    await _motionService.MoveAbsAsync(axisId, kvp.Value, velocity);
+                await _dialogService.ShowDialogAsync("NotificationDialog",
+                    new DialogParameters {
+                        { "message", Loc("MultiStationPos_SelectAxisCell", "请先在表格中选中要移动的轴列单元格。") },
+                        { "icon", PackIconKind.Warning }
+                    });
+                return;
             }
+
+            if (!targetPositions.TryGetValue(SelectedAxisColumnName, out var targetPos))
+            {
+                await _dialogService.ShowDialogAsync("NotificationDialog",
+                    new DialogParameters {
+                        { "message", Loc("MultiStationPos_NoAxisValue", "选中轴列没有有效的目标坐标。") },
+                        { "icon", PackIconKind.Warning }
+                    });
+                return;
+            }
+
+            var axisId = FindAxisLogicalId(_currentStationIdentifier, SelectedAxisColumnName);
+            if (axisId >= 0)
+                await _motionService.MoveAbsAsync(axisId, targetPos, velocity);
         }
 
         /// <summary>

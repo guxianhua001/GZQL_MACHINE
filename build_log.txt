@@ -1,0 +1,45 @@
+﻿  姝ｅ湪纭畾瑕佽繕鍘熺殑椤圭洰鈥?
+  鎵€鏈夐」鐩潎鏄渶鏂扮殑锛屾棤娉曡繕鍘熴€?
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  HalconWrapper -> c:\WorkFiles\5.30\GZQL_MACHINE\HalconWrapper\bin\Debug\net9.0-windows7.0\HalconWrapper.dll
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  LogGenerator -> c:\WorkFiles\5.30\GZQL_MACHINE\LogGenerator\bin\Debug\net9.0-windows7.0\LogGenerator.dll
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  MvvmTextEditor -> c:\WorkFiles\5.30\GZQL_MACHINE\MvvmTextEditor\bin\Debug\net9.0-windows7.0\MvvmTextEditor.dll
+  Core -> c:\WorkFiles\5.30\GZQL_MACHINE\Core\bin\Debug\net9.0-windows7.0\Core.dll
+  Framework -> c:\WorkFiles\5.30\GZQL_MACHINE\Framework\bin\Debug\net9.0-windows7.0\Framework.dll
+  Language -> c:\WorkFiles\5.30\GZQL_MACHINE\LanguageModule\bin\Debug\net9.0-windows7.0\Language.dll
+  AlarmModule -> c:\WorkFiles\5.30\GZQL_MACHINE\AlarmModule\bin\Debug\net9.0-windows\AlarmModule.dll
+  鑷姩鐢熸垚鐗堟湰鍙? 1.0.153
+  MotionControl -> c:\WorkFiles\5.30\GZQL_MACHINE\MotionControl\bin\Debug\net9.0-windows7.0\MotionControl.dll
+  TCPIPModule -> c:\WorkFiles\5.30\GZQL_MACHINE\TCPIPModule\bin\Debug\net9.0-windows7.0\TCPIPModule.dll
+  Recipe -> c:\WorkFiles\5.30\GZQL_MACHINE\RecipeManagement\bin\Debug\net9.0-windows7.0\Recipe.dll
+  StationTasks -> c:\WorkFiles\5.30\GZQL_MACHINE\StationTasks\bin\Debug\net9.0-windows\StationTasks.dll
+  LogViewer -> c:\WorkFiles\5.30\GZQL_MACHINE\LogViewer\bin\Debug\net9.0-windows7.0\LogViewer.dll
+C:\Program Files\dotnet\sdk\10.0.203\Sdks\Microsoft.NET.Sdk\targets\Microsoft.PackageDependencyResolution.targets(266,5): warning NETSDK1187: 鍖?MaterialDesignExtensions 3.0.0 鍏锋湁鍏锋湁鍖哄煙璁剧疆'Ru'鐨勮祫婧愩€傛鍖哄煙璁剧疆宸茶鑼冨寲涓烘爣鍑嗘牸寮?ru'浠ラ槻姝㈢敓鎴愪腑鍑虹幇澶у皬鍐欓棶棰樸€傝鑰冭檻灏辨澶у皬鍐欓棶棰橀€氱煡鍖呬綔鑰呫€?[c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+C:\Program Files\dotnet\sdk\10.0.203\Sdks\Microsoft.NET.Sdk\targets\Microsoft.PackageDependencyResolution.targets(266,5): warning NETSDK1187: 鍖?MaterialDesignExtensions 3.0.0 鍏锋湁鍏锋湁鍖哄煙璁剧疆'ru-ru'鐨勮祫婧愩€傛鍖哄煙璁剧疆宸茶鑼冨寲涓烘爣鍑嗘牸寮?ru-RU'浠ラ槻姝㈢敓鎴愪腑鍑虹幇澶у皬鍐欓棶棰樸€傝鑰冭檻灏辨澶у皬鍐欓棶棰橀€氱煡鍖呬綔鑰呫€?[c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ViewModels\CustomDialogViewModel.cs(55,22): error CS0246: 鏈兘鎵惧埌绫诲瀷鎴栧懡鍚嶇┖闂村悕鈥淎ction<>鈥?鏄惁缂哄皯 using 鎸囦护鎴栫▼搴忛泦寮曠敤?) [c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ViewModels\CustomDialogViewModel.cs(14,56): error CS0738: 鈥淐ustomDialogViewModel鈥濅笉瀹炵幇鎺ュ彛鎴愬憳鈥淚DialogAware.RequestClose鈥濄€傗€淐ustomDialogViewModel.RequestClose鈥濇棤娉曞疄鐜扳€淚DialogAware.RequestClose鈥濓紝鍥犱负瀹冩病鏈夆€淎ction<IDialogResult>鈥濈殑鍖归厤杩斿洖绫诲瀷銆?[c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+
+鐢熸垚澶辫触銆?
+
+C:\Program Files\dotnet\sdk\10.0.203\Sdks\Microsoft.NET.Sdk\targets\Microsoft.PackageDependencyResolution.targets(266,5): warning NETSDK1187: 鍖?MaterialDesignExtensions 3.0.0 鍏锋湁鍏锋湁鍖哄煙璁剧疆'Ru'鐨勮祫婧愩€傛鍖哄煙璁剧疆宸茶鑼冨寲涓烘爣鍑嗘牸寮?ru'浠ラ槻姝㈢敓鎴愪腑鍑虹幇澶у皬鍐欓棶棰樸€傝鑰冭檻灏辨澶у皬鍐欓棶棰橀€氱煡鍖呬綔鑰呫€?[c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+C:\Program Files\dotnet\sdk\10.0.203\Sdks\Microsoft.NET.Sdk\targets\Microsoft.PackageDependencyResolution.targets(266,5): warning NETSDK1187: 鍖?MaterialDesignExtensions 3.0.0 鍏锋湁鍏锋湁鍖哄煙璁剧疆'ru-ru'鐨勮祫婧愩€傛鍖哄煙璁剧疆宸茶鑼冨寲涓烘爣鍑嗘牸寮?ru-RU'浠ラ槻姝㈢敓鎴愪腑鍑虹幇澶у皬鍐欓棶棰樸€傝鑰冭檻灏辨澶у皬鍐欓棶棰橀€氱煡鍖呬綔鑰呫€?[c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ViewModels\CustomDialogViewModel.cs(55,22): error CS0246: 鏈兘鎵惧埌绫诲瀷鎴栧懡鍚嶇┖闂村悕鈥淎ction<>鈥?鏄惁缂哄皯 using 鎸囦护鎴栫▼搴忛泦寮曠敤?) [c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ViewModels\CustomDialogViewModel.cs(14,56): error CS0738: 鈥淐ustomDialogViewModel鈥濅笉瀹炵幇鎺ュ彛鎴愬憳鈥淚DialogAware.RequestClose鈥濄€傗€淐ustomDialogViewModel.RequestClose鈥濇棤娉曞疄鐜扳€淚DialogAware.RequestClose鈥濓紝鍥犱负瀹冩病鏈夆€淎ction<IDialogResult>鈥濈殑鍖归厤杩斿洖绫诲瀷銆?[c:\WorkFiles\5.30\GZQL_MACHINE\ModuleCore\ModuleCore_oohg2mfs_wpftmp.csproj]
+    2 涓鍛?
+    2 涓敊璇?
+
+宸茬敤鏃堕棿 00:00:40.08

@@ -2657,12 +2657,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="MultiStationPos_ConfirmTeachTitle">Confirm Teach</sys:String>
     <sys:String x:Key="MultiStationPos_ConfirmTeachMessage">Teach current machine position to '{0}'? This will overwrite axis values in the selected row.</sys:String>
     <sys:String x:Key="MultiStationPos_ConfirmGotoTitle">Confirm Go To</sys:String>
-    <sys:String x:Key="MultiStationPos_ConfirmGotoMessage">Go to position '{0}'? Please choose move mode:</sys:String>
-    <sys:String x:Key="MultiStationPos_GotoSingleAxis">Single-axis sequential</sys:String>
+    <sys:String x:Key="MultiStationPos_ConfirmGotoMessage">Go to position '{0}'? For single-axis move, select an axis cell first. Multi-axis start moves all axes in the row.</sys:String>
+    <sys:String x:Key="MultiStationPos_GotoSingleAxis">Single-axis move</sys:String>
     <sys:String x:Key="MultiStationPos_GotoSimultaneous">Multi-axis parallel start</sys:String>
     <sys:String x:Key="MultiStationPos_TeachFailed">Teach failed: {0}</sys:String>
     <sys:String x:Key="MultiStationPos_GotoFailed">Go to failed: {0}</sys:String>
     <sys:String x:Key="MultiStationPos_NoAxisValues">No valid axis values in the selected row.</sys:String>
+    <sys:String x:Key="MultiStationPos_SelectAxisCell">Please select an axis cell in the table first.</sys:String>
+    <sys:String x:Key="MultiStationPos_NoAxisValue">The selected axis cell has no valid target coordinate.</sys:String>
     <sys:String x:Key="Index">Index</sys:String>
     <sys:String x:Key="Name">Name</sys:String>
     <sys:String x:Key="Value">Value</sys:String>

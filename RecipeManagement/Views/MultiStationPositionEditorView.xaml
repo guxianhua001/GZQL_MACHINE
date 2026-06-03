@@ -95,7 +95,8 @@
         </StackPanel>
 
         <!-- 位置表格（使用自动生成列） -->
-        <DataGrid Grid.Row="3"
+        <DataGrid x:Name="PositionsDataGrid"
+                  Grid.Row="3"
                   ItemsSource="{Binding PositionsTable.DefaultView}"
                   AutoGenerateColumns="True"
                   CanUserAddRows="False"
@@ -104,6 +105,7 @@
                   CanUserSortColumns="False"
                   SelectedItem="{Binding SelectedRow}"
                   SelectionMode="Single"
+                  CurrentCellChanged="PositionsDataGrid_CurrentCellChanged"
                   AutoGeneratingColumn="DataGrid_AutoGeneratingColumn" />
 
         <!-- 底部按钮 -->

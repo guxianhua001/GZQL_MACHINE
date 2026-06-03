@@ -1,17 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using Recipe.ViewModels;
 
 namespace Recipe.Views
 {
@@ -61,6 +52,21 @@ namespace Recipe.Views
 
             // 禁用用户排序（可选）
             e.Column.CanUserSort = false;
+        }
+
+        /// <summary>
+        /// 单元格切换时通知 ViewModel 更新选中轴列（供单轴 GOTO 使用）
+        /// </summary>
+        private void PositionsDataGrid_CurrentCellChanged(object sender, EventArgs e)
+        {
+            if (DataContext is not MultiStationPositionEditorViewModel vm || sender is not DataGrid grid)
+                return;
+
+            var cell = grid.CurrentCell;
+            if (cell.Column is DataGridTextColumn textColumn && textColumn.Binding is Binding binding)
+                vm.SetSelectedAxisColumn(binding.Path.Path);
+            else
+                vm.SetSelectedAxisColumn(null);
         }
     }
 }

@@ -39,6 +39,7 @@ namespace ModuleCore
             containerRegistry.RegisterDialog<LogView, ViewModels.LogViewViewModel>();
             containerRegistry.RegisterDialog<ConfirmationDialog, ViewModels.ConfirmationDialogViewModel>();
             containerRegistry.RegisterDialog<ErrorDialog, ViewModels.ErrorDialogViewModel>();
+            containerRegistry.RegisterDialog<CustomDialog, ViewModels.CustomDialogViewModel>();
             //注入导航
             containerRegistry.RegisterForNavigation<Setting>();
 

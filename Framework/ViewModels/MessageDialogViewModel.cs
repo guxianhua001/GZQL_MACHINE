@@ -160,8 +160,19 @@ namespace Framework.ViewModels
             // 停止自动关闭定时器
             _autoCloseTimer?.Dispose();
 
-            // 执行关闭回调
+            // 静态 DialogService 路径（Window.CloseCallback）
             CloseCallback?.Invoke(result);
+
+            // Prism IDialogService 路径
+            if (RequestClose != null)
+            {
+                var parameters = new DialogParameters();
+                if (result is int index)
+                    parameters.Add("buttonIndex", index);
+
+                var buttonResult = result is int idx && idx >= 0 ? ButtonResult.OK : ButtonResult.Cancel;
+                RequestClose.Invoke(new DialogResult(buttonResult, parameters));
+            }
         }
         // 自动关闭
         private void SetupAutoCloseTimer()
