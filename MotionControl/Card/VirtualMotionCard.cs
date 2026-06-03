@@ -13,7 +13,7 @@ namespace MotionControl.Card
         private int _virtualCardId;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _doStates = new();
         private readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _diStates = new();
-        /// <summary>虚拟轴伺服使能状态（供 GetMotionSts 返回 MTS_SVON）</summary>
+        /// <summary>虚拟轴伺服使能状态（供 GetEtherCatSts 模拟 sts==4）</summary>
         private readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> _servoEnabled = new();
 
         public VirtualMotionCard(int cardId = -1)
@@ -42,10 +42,17 @@ namespace MotionControl.Card
         public override int GetMotionSts(int axisId, ref int status)
         {
             status = Leisai_Define.MTS_MDN;
-            if (_servoEnabled.GetValueOrDefault(axisId, false))
-                status |= Leisai_Define.MTS_SVON;
             return 0;
         }
+
+        public override int GetEtherCatSts(int axisId, ref int status)
+        {
+            status = _servoEnabled.GetValueOrDefault(axisId, false)
+                ? Leisai_Define.AXIS_SM_OPERATION_ENABLED
+                : 0;
+            return 0;
+        }
+
         public override int ClearAlarm(int axisId) => 0;
         public override int SetDo(int port, int value)
         {

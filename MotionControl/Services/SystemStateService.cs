@@ -350,7 +350,17 @@ namespace MotionControl.Services
         public bool CanStart => (_currentState == StationState.WAITRUN || _currentState == StationState.PAUSE) &&
                                 !(_safetyGateEnabled && _safetyGateSignals.Any(s => IsSignalActive(s))) &&
                                 !(_gratingEnabled && _gratingSignals.Any(s => IsSignalActive(s))) &&
-                                !_estopSignals.Any(s => IsSignalActive(s));
+                                !_estopSignals.Any(s => IsSignalActive(s)) &&
+                                IsEtherCatBusHealthy();
+
+        /// <summary>启动前检查 EtherCAT 总线（nmc_get_errcode==0）</summary>
+        private bool IsEtherCatBusHealthy()
+        {
+            if (_motion.IsSimulationMode)
+                return true;
+            return _motion.GetEtherCatBusErrorCode() == 0;
+        }
+
         public bool CanPause => _currentState == StationState.RUNNING;
         public bool CanResume => _currentState == StationState.PAUSE;
         public bool CanReset => CheckResetConditions();

@@ -1,11 +1,20 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.02 — EtherCAT 总线复位与状态栏展示
+-------------------------------------------------------------------------------
+
+1. LeisaiMotionCard.SoftReset：dmc_soft_reset → board_close → 等待15s → board_init，与旧项目一致
+2. 修复 _cardIndex 未赋值；复位后重新 dmc_get_CardInfList 获取卡号
+3. MotionService 约 1s 轮询 nmc_get_errcode，发布 EtherCatBusStatusChangedEvent
+4. SystemStateService.CanStart 增加总线健康检查；MainWindow 底部状态栏展示 EtherCAT 状态
+5. Leisai_Define 补全轴状态机 0~7 常量；EtherCatStatusHelper 多语言资源键
+
 v2026.06.02 — SingleAxisControlView 状态指示灯刷新修复（修正）
 -------------------------------------------------------------------------------
 
-1. GetMotionSts：停止原因映射 + 保留 dmc_get_stop_reason 原始 bit10（MTS_SVON 不 SetBits）
-2. MotionService：IsServoOn = BitEnable(motionSts, MTS_SVON)，与旧项目 IsSVON 一致
+1. 新增 GetEtherCatSts（nmc_get_axis_state_machine）；IsServoOn 判断 sts==4，与旧项目 IsSVON 一致
+2. GetMotionSts 仅负责停止原因/ASTP；VirtualMotionCard 模拟使能时返回状态机值 4
 3. SingleAxisViewModel：IsALM ← IsAlarmed，修复 ALM 灯绑定遗漏
 
 v2026.06.02 — 安全互锁配置驱动（Dz₁/Dz₂/Dz₃ 锁 Dx/Dy）

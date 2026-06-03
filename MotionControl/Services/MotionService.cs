@@ -46,6 +46,14 @@ namespace MotionControl.Services
 
         /// <summary> 是否运行在模拟环境（所有卡均为 VirtualMotionCard） </summary>
         public bool IsSimulationMode => _cards.Count > 0 && _cards.All(c => c is VirtualMotionCard);
+
+        // EtherCAT 总线状态轮询（约 1s 一次）
+        private int _busPollCounter;
+        private int _lastBusErrorCode = int.MinValue;
+
+        /// <inheritdoc />
+        public int GetEtherCatBusErrorCode() => _lastBusErrorCode == int.MinValue ? ReadEtherCatBusErrorCode() : _lastBusErrorCode;
+
         // 高精度轮询线程 (轮询间隔10ms)
         private Thread _pollThread;
         private CancellationTokenSource _pollCts;
@@ -172,6 +180,7 @@ namespace MotionControl.Services
                 _cards.Add(card);
             }
             BuildMappings(_config);
+            PublishEtherCatBusStatus(force: true);
         }
         private void BuildMappings(MotionSystemConfig config)
         {
@@ -492,6 +501,10 @@ namespace MotionControl.Services
                     PollFullStatus();
                 }
 
+                // 约 1s 检查一次 EtherCAT 总线（10ms × 100）
+                if ((_busPollCounter++ % 100) == 0)
+                    PublishEtherCatBusStatus();
+
                 // 精确等待到下一个周期起点
                 long elapsed = stopwatch.ElapsedMilliseconds;
                 long waitMs = intervalMs - elapsed;
@@ -570,11 +583,14 @@ namespace MotionControl.Services
                     int io = 0;
                     card.GetMotionIO(axisId, ref io);
 
-                    // 运动状态字：SVON/ASTP（GetMotionSts → m_MotionSts，与旧项目 IsSVON/IsASTP 一致）
+                    // 运动状态字：ASTP（GetMotionSts → m_MotionSts）
                     int motionSts = 0;
                     card.GetMotionSts(axisId, ref motionSts);
 
-                    bool isServoOn = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_SVON);
+                    // 伺服使能：GetEtherCatSts，旧项目 IsSVON 判断 sts==4
+                    int etherCatSts = 0;
+                    card.GetEtherCatSts(axisId, ref etherCatSts);
+                    bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
                     bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;      // 负极限
                     bool isORG = (io & Leisai_Define.MIO_ORG) != 0;      // 原点
                     bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;      // 正极限
@@ -617,6 +633,39 @@ namespace MotionControl.Services
             {
                 Interlocked.Exchange(ref _pollingInProgress, 0);
             }
+        }
+
+        /// <summary>读取所有运动卡的 EtherCAT 总线错误码（取首个非零；模拟模式返回 0）</summary>
+        private int ReadEtherCatBusErrorCode()
+        {
+            if (IsSimulationMode)
+                return 0;
+
+            foreach (var card in _cards)
+            {
+                if (card is VirtualMotionCard)
+                    continue;
+
+                int err = card.CheckEtherCatStatus();
+                if (err != 0)
+                    return err;
+            }
+            return 0;
+        }
+
+        /// <summary>轮询总线状态并发布变更事件（供 MainWindow 底部状态栏）</summary>
+        private void PublishEtherCatBusStatus(bool force = false)
+        {
+            int errorCode = ReadEtherCatBusErrorCode();
+            if (!force && errorCode == _lastBusErrorCode)
+                return;
+
+            _lastBusErrorCode = errorCode;
+            _ea.GetEvent<EtherCatBusStatusChangedEvent>().Publish(new EtherCatBusStatusPayload
+            {
+                ErrorCode = errorCode,
+                IsSimulation = IsSimulationMode
+            });
         }
 
         public void Dispose() => Shutdown();

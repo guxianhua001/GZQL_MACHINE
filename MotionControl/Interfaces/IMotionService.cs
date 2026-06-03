@@ -17,6 +17,9 @@ namespace MotionControl.Interfaces
         /// <summary> 是否运行在模拟环境（无真实硬件卡，使用 VirtualMotionCard） </summary>
         bool IsSimulationMode { get; }
 
+        /// <summary>EtherCAT 总线错误码（nmc_get_errcode），0=正常</summary>
+        int GetEtherCatBusErrorCode();
+
         void EnableAxis(int axisId);
         void DisableAxis(int axisId);
 

@@ -1,6 +1,7 @@
 using MotionControl.Interfaces;
 using MotionControl.Services;
 using System;
+using System.Threading;
 
 namespace MotionControl.Card
 {
@@ -21,6 +22,7 @@ namespace MotionControl.Card
         // 默认使用第 0 号卡
         public LeisaiMotionCard(int cardIndex = 0)
         {
+            _cardIndex = cardIndex;
             _cardId = (ushort)cardIndex;
         }
 
@@ -73,23 +75,43 @@ namespace MotionControl.Card
             }
         }
 
+        /// <summary>
+        /// 总线卡软件复位：dmc_soft_reset → close → 等待约15s → board_init（与旧项目一致）
+        /// </summary>
         public override int SoftReset()
         {
             lock (_lockObj)
             {
                 try
                 {
-                    DateTime dtStart = DateTime.Now;
+                    _initialized = false;
+
                     int res = LTDMC.dmc_soft_reset(_cardId);
                     if (res != 0) return res;
 
-                    while ((DateTime.Now - dtStart).TotalMilliseconds < 10000.0)
-                    {
-                        ushort usErr = 0;
-                        res = LTDMC.nmc_get_errcode(_cardId, 2, ref usErr);
-                        if (res == 0 && usErr == 0) break;
-                    }
-                    return res;
+                    LTDMC.dmc_board_close();
+
+                    // 总线卡软件复位耗时约 15s
+                    for (int i = 0; i < 15; i++)
+                        Thread.Sleep(1000);
+
+                    int initNum = LTDMC.dmc_board_init();
+                    if (initNum < 0 || initNum > 8) return -1;
+
+                    ushort cardNum = 0;
+                    ushort[] ids = new ushort[8];
+                    uint[] types = new uint[8];
+                    short listRes = LTDMC.dmc_get_CardInfList(ref cardNum, types, ids);
+                    if (listRes != 0) return listRes;
+
+                    if (_cardIndex < 0 || _cardIndex >= cardNum) return -2;
+
+                    _cardId = ids[_cardIndex];
+                    _initialized = true;
+
+                    ushort usErr = 0;
+                    LTDMC.nmc_get_errcode(_cardId, 2, ref usErr);
+                    return usErr;
                 }
                 catch { return -1; }
             }
@@ -277,7 +299,7 @@ namespace MotionControl.Card
 
         /// <summary>
         /// 读取轴运动状态字（dmc_get_stop_reason，与旧项目 GetMotionSts 一致）
-        /// MTS_SVON(bit10) 由 API 原始返回值携带，不手动 SetBits；IsSVON 用 BitEnable(motionSts, MTS_SVON) 读取
+        /// ASTP 等读 m_MotionSts；伺服使能 IsSVON 改走 GetEtherCatSts
         /// </summary>
         public override int GetMotionSts(int axisId, ref int status)
         {
@@ -301,8 +323,26 @@ namespace MotionControl.Card
                     if (sts == 4)
                         MotionConvert.SetBits(ref rSts, Leisai_Define.MTS_EMG);
 
-                    // MTS_SVON 不置位：保留 dmc_get_stop_reason 原始值中的 bit10
-                    status = rSts | (sts & Leisai_Define.MTS_SVON);
+                    status = rSts;
+                    return 0;
+                }
+                catch { return -1; }
+            }
+        }
+
+        /// <summary>
+        /// 读取 EtherCAT 轴状态机（nmc_get_axis_state_machine）
+        /// 旧项目 IsSVON：GetEtherCatSts 后 sts==4 表示伺服使能
+        /// </summary>
+        public override int GetEtherCatSts(int axisId, ref int status)
+        {
+            lock (_lockObj)
+            {
+                try
+                {
+                    ushort res = 0;
+                    LTDMC.nmc_get_axis_state_machine(_cardId, (ushort)axisId, ref res);
+                    status = res;
                     return 0;
                 }
                 catch { return -1; }

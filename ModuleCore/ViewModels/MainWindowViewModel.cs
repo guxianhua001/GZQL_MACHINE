@@ -71,6 +71,22 @@ namespace ModuleCore.ViewModels
             get => _secsStatusColor;
             set => SetProperty(ref _secsStatusColor, value);
         }
+
+        // EtherCAT 总线状态（MainWindow 底部状态栏）
+        private string _etherCatStatusText = string.Empty;
+        public string EtherCatStatusText
+        {
+            get => _etherCatStatusText;
+            set => SetProperty(ref _etherCatStatusText, value);
+        }
+
+        private Brush _etherCatStatusColor = Brushes.Gray;
+        public Brush EtherCatStatusColor
+        {
+            get => _etherCatStatusColor;
+            set => SetProperty(ref _etherCatStatusColor, value);
+        }
+
         public LoginModel Model { get; set; }
         public NavigateModel Navigate { get; set; }
         private readonly IDialogService _dialogService;
@@ -133,6 +149,10 @@ namespace ModuleCore.ViewModels
 
             // 订阅系统状态变化事件，驱动IsSystemRunning属性更新
             _eventAggregator.GetEvent<StationStateChangedEvent>().Subscribe(OnStationStateChanged, ThreadOption.PublisherThread, false);
+
+            // EtherCAT 总线状态（MotionService 轮询发布）
+            _eventAggregator.GetEvent<EtherCatBusStatusChangedEvent>().Subscribe(OnEtherCatBusStatusChanged, ThreadOption.UIThread);
+            UpdateEtherCatStatusDisplay(new EtherCatBusStatusPayload { ErrorCode = 0, IsSimulation = true });
 
             InitializeCommands(); // 初始化命令
             LoadDefaultView(appConfig, container); // 加载默认视图
@@ -612,6 +632,36 @@ namespace ModuleCore.ViewModels
 
         #endregion
 
+        /// <summary>EtherCAT 总线状态变更：更新底部状态栏</summary>
+        private void OnEtherCatBusStatusChanged(EtherCatBusStatusPayload payload)
+        {
+            UpdateEtherCatStatusDisplay(payload);
+        }
+
+        private void UpdateEtherCatStatusDisplay(EtherCatBusStatusPayload payload)
+        {
+            _lastEtherCatErrorCode = payload.ErrorCode;
+            _etherCatIsSimulation = payload.IsSimulation;
+
+            if (payload.IsSimulation)
+            {
+                EtherCatStatusText = L("MainWindow_EtherCatSimulated");
+                EtherCatStatusColor = Brushes.Gray;
+                return;
+            }
+
+            if (payload.ErrorCode == 0)
+            {
+                EtherCatStatusText = L("MainWindow_EtherCatNormal");
+                EtherCatStatusColor = Brushes.LimeGreen;
+            }
+            else
+            {
+                EtherCatStatusText = string.Format(L("MainWindow_EtherCatError"), payload.ErrorCode);
+                EtherCatStatusColor = Brushes.Red;
+            }
+        }
+
         /// <summary>
         /// 语言切换时刷新导航菜单 DisplayName 及其他依赖多语言的属性
         /// </summary>
@@ -637,6 +687,16 @@ namespace ModuleCore.ViewModels
 
             RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
             SecsStatusText = L("MainWindow_SecsOffline");
+
+            // 刷新 EtherCAT 文案（保留当前错误码）
+            UpdateEtherCatStatusDisplay(new EtherCatBusStatusPayload
+            {
+                ErrorCode = _lastEtherCatErrorCode,
+                IsSimulation = _etherCatIsSimulation
+            });
         }
+
+        private int _lastEtherCatErrorCode;
+        private bool _etherCatIsSimulation = true;
     }
 }

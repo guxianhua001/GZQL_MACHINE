@@ -21,8 +21,10 @@ namespace MotionControl.Interfaces
 
         double GetPosition(int axisId);
         int GetMotionIO(int axisId, ref int status);
-        /// <summary>读取轴运动状态字（停止原因 + MTS_SVON 等，与 GetMotionIO 分离）</summary>
+        /// <summary>读取轴运动状态字（dmc_get_stop_reason，与 GetMotionIO 分离）</summary>
         int GetMotionSts(int axisId, ref int status);
+        /// <summary>读取 EtherCAT 轴状态机（nmc_get_axis_state_machine，IsSVON 判断 sts==4）</summary>
+        int GetEtherCatSts(int axisId, ref int status);
         int ClearAlarm(int axisId);
 
         int SetDo(int port, int value);

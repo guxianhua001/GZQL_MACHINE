@@ -34,7 +34,16 @@ namespace MotionControl.Card
         public const int MTS_MEL = 1 << 6;  // 负硬限位停止
         public const int MTS_SVON = 1 << 10; // 伺服使能
 
-        // 总线轴状态机 (nmc_get_axis_state_machine)
+        // 总线轴状态机 (nmc_get_axis_state_machine)，返回值 0~7
+        public const int AXIS_SM_NOT_STARTED = 0;           // 未启动
+        public const int AXIS_SM_SWITCH_ON_DISABLED = 1;    // 启动禁止
+        public const int AXIS_SM_READY_TO_SWITCH_ON = 2;    // 准备启动
+        public const int AXIS_SM_SWITCHED_ON = 3;           // 已启动
+        /// <summary> 操作使能（旧项目 IsSVON 判断 sts==4） </summary>
+        public const int AXIS_SM_OPERATION_ENABLED = 4;
+        public const int AXIS_SM_QUICK_STOP = 5;           // 停止
+        public const int AXIS_SM_FAULT_REACTION = 6;        // 错误触发
+        public const int AXIS_SM_FAULT = 7;                 // 错误
         public const int NOT_READY = 1 << 0;
         public const int DISABLE = 1 << 1;
         public const int READY = 1 << 2;
