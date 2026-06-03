@@ -300,41 +300,55 @@ namespace MotionControl.Services
             });
         }
 
-        public async Task HomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20, CancellationToken token = default)
+        /// <inheritdoc />
+        public Task HomeAxisAsync(int axisId, CancellationToken token = default)
+            => RunHomeAsync(axisId, applyHomeMode: false, mode: 0, minVel: 0, maxVel: 0, token);
+
+        /// <inheritdoc />
+        public Task HomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20, CancellationToken token = default)
+            => RunHomeAsync(axisId, applyHomeMode: true, mode, minVel, maxVel, token);
+
+        /// <summary>执行回零并等待完成；applyHomeMode=false 时仅 GoHome，沿用卡内已配置参数</summary>
+        private async Task RunHomeAsync(int axisId, bool applyHomeMode, int mode, double minVel, double maxVel, CancellationToken token)
         {
             var card = GetCardForAxis(axisId);
             await Task.Run(() =>
             {
-                card.SetHomeMode(axisId, mode, minVel, maxVel);
+                if (applyHomeMode)
+                    card.SetHomeMode(axisId, mode, minVel, maxVel);
                 card.GoHome(axisId);
-                var spinWait = new SpinWait();
-                // 1：等待回零流程结束（搜索原点、找Z相）
-                while (true)
-                {
-                    token.ThrowIfCancellationRequested(); // 支持急停/停止打断
-                    int homeStatus = card.CheckHomeDone(axisId);
-                    // 1 表示回零成功完成，-1 表示回零失败/超时，0 表示正在进行中
-                    if (homeStatus == 1)
-                        break;
-                    if (homeStatus < 0) 
-                    {
-                        throw new RecoverableException(
-                            message: $"轴 {axisId} 回原点失败，错误码: {homeStatus}",
-                            suggestedAction: "请检查原点传感器是否正常、回零方向是否正确、未撞限位，复位后重试。"
-                        );
-                    }
-                    spinWait.SpinOnce(); // 自旋等待，避免 CPU 空转
-                }
-                // 2：等待运动彻底停止（回零流程结束后，轴可能还在微调运动）
-                while (true)
-                {
-                    token.ThrowIfCancellationRequested(); // 支持急停/停止打断
-                    if (card.CheckDone(axisId) == 1)
-                        break;
-                    spinWait.SpinOnce();
-                }
-                // 3：回零完成后的位置校验
+                WaitHomeComplete(card, axisId, token);
             }, token);
+        }
+
+        /// <summary>等待回零流程结束并确认轴已停止</summary>
+        private static void WaitHomeComplete(IMotionCard card, int axisId, CancellationToken token)
+        {
+            var spinWait = new SpinWait();
+            // 1：等待回零流程结束（搜索原点、找Z相等）
+            while (true)
+            {
+                token.ThrowIfCancellationRequested();
+                int homeStatus = card.CheckHomeDone(axisId);
+                if (homeStatus == 1)
+                    break;
+                if (homeStatus < 0)
+                {
+                    throw new RecoverableException(
+                        message: $"轴 {axisId} 回原点失败，错误码: {homeStatus}",
+                        suggestedAction: "请检查原点传感器是否正常、回零方向是否正确、未撞限位，复位后重试。"
+                    );
+                }
+                spinWait.SpinOnce();
+            }
+            // 2：回零结束后等待运动彻底停止
+            while (true)
+            {
+                token.ThrowIfCancellationRequested();
+                if (card.CheckDone(axisId) == 1)
+                    break;
+                spinWait.SpinOnce();
+            }
         }
 
         public void JogStart(int axisId, bool positive, double speed)

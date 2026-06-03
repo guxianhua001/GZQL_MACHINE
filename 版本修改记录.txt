@@ -1,6 +1,13 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.02 — 单轴回原点 API（仅轴号）
+-------------------------------------------------------------------------------
+
+1. IMotionService 新增 HomeAxisAsync：不调用 SetHomeMode，沿用卡内/轴参数已配置的回零模式与速度
+2. HomeAsync 保留 mode/minVel/maxVel，供工站任务与配方步骤临时覆盖回零参数
+3. SingleAxisViewModel 归零命令改为 HomeAxisAsync
+
 v2026.06.02 — SingleAxisControlView Jog 速度链路修复
 -------------------------------------------------------------------------------
 

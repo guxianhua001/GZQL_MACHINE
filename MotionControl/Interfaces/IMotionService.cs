@@ -27,6 +27,10 @@ namespace MotionControl.Interfaces
         Task MoveRelAsync(int axisId, double distance, double velocity, CancellationToken token = default);
         Task MoveLineAbsAsync(int coordId, int[] axisIds, double[] positions, double velocity, CancellationToken token = default);
 
+        /// <summary>单轴回原点：仅指定轴号，使用卡内/参数表已配置的回零模式与速度（单轴操作页）</summary>
+        Task HomeAxisAsync(int axisId, CancellationToken token = default);
+
+        /// <summary>回原点并临时写入回零模式与速度（工站任务、配方步骤等）</summary>
         Task HomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20, CancellationToken token = default);
 
         /// <summary>点动启动（speed 单位 mm/s，Jog 前写入轴速度曲线）</summary>

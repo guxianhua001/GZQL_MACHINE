@@ -321,7 +321,7 @@ namespace MotionControl.ViewModels
         {
             try
             {
-                await _motionService.HomeAsync(_axisId);
+                await _motionService.HomeAxisAsync(_axisId);
             }
             catch (Exception ex)
             {
