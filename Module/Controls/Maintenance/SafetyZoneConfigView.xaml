@@ -107,15 +107,15 @@
                             <!-- Dz₁/Dz₂/Dz₃ 安全高度：任一未达则互锁 Dx/Dy -->
                             <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ1}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ1}"
-                                                          ValueStep="1" Minimum="0" Maximum="500"
+                                                          ValueStep="1" Minimum="-500" Maximum="500"
                                                           Margin="0,0,0,4"/>
                             <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ2}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ2}"
-                                                          ValueStep="1" Minimum="0" Maximum="500"
+                                                          ValueStep="1" Minimum="-500" Maximum="500"
                                                           Margin="0,0,0,4"/>
                             <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ3}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ3}"
-                                                          ValueStep="1" Minimum="0" Maximum="500"
+                                                          ValueStep="1" Minimum="-500" Maximum="500"
                                                           Margin="0,0,0,4"/>
 
                             <!-- Z轴方向反转：Z越往下值越大时勾选 -->
@@ -127,21 +127,21 @@
                             <!-- X 危险区下限/上限 -->
                             <TextBlock Text="{lang:Lang SafetyZone_DangerXMin}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding DangerZoneXMin}"
-                                                          ValueStep="1" Minimum="-10000" Maximum="10000"
+                                                          ValueStep="1" Minimum="-1000" Maximum="1000"
                                                           Margin="0,0,0,4"/>
                             <TextBlock Text="{lang:Lang SafetyZone_DangerXMax}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding DangerZoneXMax}"
-                                                          ValueStep="1" Minimum="-10000" Maximum="10000"
+                                                          ValueStep="1" Minimum="-1000" Maximum="1000"
                                                           Margin="0,0,0,8"/>
 
                             <!-- Y 危险区下限/上限 -->
                             <TextBlock Text="{lang:Lang SafetyZone_DangerYMin}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding DangerZoneYMin}"
-                                                          ValueStep="1" Minimum="-10000" Maximum="10000"
+                                                          ValueStep="1" Minimum="-1000" Maximum="1000"
                                                           Margin="0,0,0,4"/>
                             <TextBlock Text="{lang:Lang SafetyZone_DangerYMax}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding DangerZoneYMax}"
-                                                          ValueStep="1" Minimum="-10000" Maximum="10000"
+                                                          ValueStep="1" Minimum="-1000" Maximum="1000"
                                                           Margin="0,0,0,12"/>
 
                             <!-- 保存按钮 -->
