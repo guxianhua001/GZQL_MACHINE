@@ -5,9 +5,7 @@ using MotionControl.Models;
 using Prism.Commands;
 using Prism.Mvvm;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,7 +15,7 @@ namespace MotionControl.ViewModels
 {
     /// <summary>
     /// 单个轴的 ViewModel
-    /// 采用事件驱动模式监控轴状态；UI 合并刷新，无额外防抖延迟
+    /// 轮询线程推送状态 → DispatcherTimer 合并刷新 UI（稳定、不阻塞 UI 线程读卡）
     /// </summary>
     public class SingleAxisViewModel : BindableBase, IDisposable
     {
@@ -28,10 +26,8 @@ namespace MotionControl.ViewModels
         private readonly string _direction;
 
         private IDisposable _statusSubscription;
-        private volatile AxisStateChangedEvent _latestStatusEvent;
-        private long _statusEventSequence;
-        private long _lastAppliedStatusSequence;
-        private int _uiUpdateScheduled;
+        private DispatcherTimer _statusRefreshTimer;
+        private AxisStateChangedEvent _pendingStatusEvent;
 
         /// <summary>允许执行回零：未回零、断使能再上使能、急停/报警复位后可回零；回零成功后置 false</summary>
         private bool _allowHome = true;
@@ -44,13 +40,10 @@ namespace MotionControl.ViewModels
             set => SetProperty(ref _isJogging, value);
         }
 
-        // ========== 基础属性 ==========
-        
         public int AxisId => _axisId;
         public string Name => _name;
         public string Direction => _direction;
 
-        // 缓存的本地化文本，避免每次绑定刷新都查资源字典
         private string _localizedAxisName;
         public string LocalizedAxisName
         {
@@ -65,8 +58,6 @@ namespace MotionControl.ViewModels
             private set => SetProperty(ref _localizedHomeStatus, value);
         }
 
-        // ========== 运动参数 ==========
-
         private double _position;
         public double Position
         {
@@ -74,7 +65,7 @@ namespace MotionControl.ViewModels
             set => SetProperty(ref _position, value);
         }
 
-        private double _speed = 10.0;  // 默认速度 mm/s
+        private double _speed = 10.0;
         public double Speed
         {
             get => _speed;
@@ -92,8 +83,6 @@ namespace MotionControl.ViewModels
         }
 
         public ObservableCollection<double> DistanceOptions { get; } = new();
-
-        // ========== 状态属性（由事件更新）==========
 
         private bool _isServoOn;
         public bool IsServoOn
@@ -137,7 +126,6 @@ namespace MotionControl.ViewModels
             set => SetProperty(ref _isASTP, value);
         }
 
-        /// <summary>回零完成（CheckHomeDone==1，由轮询事件或归零命令后刷新）</summary>
         private bool _isHomeOk;
         public bool IsHomeOk
         {
@@ -145,13 +133,8 @@ namespace MotionControl.ViewModels
             set => SetProperty(ref _isHomeOk, value);
         }
 
-        // IMotionService 公开引用（供 SafeJogBehavior 使用）
         public IMotionService MotionService => _motionService;
-
-        /// <summary>安全区域监控（供 Jog 点动前互锁检查）</summary>
         public ISafetyZoneMonitor SafetyZoneMonitor { get; }
-
-        // ========== 命令 ==========
 
         public DelegateCommand MovePositiveCommand { get; }
         public DelegateCommand MoveNegativeCommand { get; }
@@ -161,8 +144,6 @@ namespace MotionControl.ViewModels
         public DelegateCommand ClearAlarmCommand { get; }
         public DelegateCommand ServoOnCommand { get; }
         public DelegateCommand ServoOffCommand { get; }
-
-        // ========== 构造函数 ==========
 
         public SingleAxisViewModel(
             AxisConfig axisConfig,
@@ -177,15 +158,11 @@ namespace MotionControl.ViewModels
             _localizationService = localizationService;
             SafetyZoneMonitor = safetyZoneMonitor;
 
-            // 初始化步距选项
             var distances = new[] { 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20 };
             foreach (var d in distances) DistanceOptions.Add(d);
-            StepSize = _stepSize;
 
-            // 初始化缓存的本地化文本
             RefreshLocalizedText();
 
-            // 初始化命令
             MovePositiveCommand = new DelegateCommand(() => ExecuteMoveRelative(_stepSize));
             MoveNegativeCommand = new DelegateCommand(() => ExecuteMoveRelative(-_stepSize));
             HomeCommand = new DelegateCommand(ExecuteHome, CanExecuteHome);
@@ -195,87 +172,83 @@ namespace MotionControl.ViewModels
             ServoOnCommand = new DelegateCommand(() => ExecuteServo(true));
             ServoOffCommand = new DelegateCommand(() => ExecuteServo(false));
 
-            // 订阅事件驱动的状态更新
             SubscribeToStatusEvents();
+            SyncInitialStatusFromService();
         }
 
-        // ========== 事件驱动状态监控 ==========
-
-        /// <summary>订阅轴状态：轮询线程推送后合并刷新 UI（序列号避免重复 BeginInvoke 死循环）</summary>
+        /// <summary>订阅轮询事件，16ms 防抖合并刷新（在 UI 线程 Timer 中应用，避免 BeginInvoke 丢失/死循环）</summary>
         private void SubscribeToStatusEvents()
         {
             var observable = (_motionService as IObservable<AxisStateChangedEvent>)
                 ?? throw new InvalidOperationException("IMotionService does not implement IObservable<AxisStateChangedEvent>");
 
+            _statusRefreshTimer = new DispatcherTimer(DispatcherPriority.Background, Application.Current.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+            _statusRefreshTimer.Tick += OnStatusRefreshTimerTick;
+
             _statusSubscription = observable.Subscribe(new AxisStatusObserver(
                 onNext: e =>
                 {
                     if (e.AxisId != _axisId) return;
-                    _latestStatusEvent = e;
-                    Interlocked.Increment(ref _statusEventSequence);
-                    ScheduleStatusUiUpdate();
+                    _pendingStatusEvent = e;
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        _statusRefreshTimer.Stop();
+                        _statusRefreshTimer.Start();
+                    }, DispatcherPriority.Background);
                 },
                 onError: ex => System.Diagnostics.Debug.WriteLine($"Axis {_axisId} status error: {ex.Message}")
             ));
         }
 
-        /// <summary>合并调度 UI 刷新，同一时刻仅排队一次 BeginInvoke</summary>
-        private void ScheduleStatusUiUpdate()
+        /// <summary>构造后立即从 MotionService 缓存拉一次，避免等首次变化才显示</summary>
+        private void SyncInitialStatusFromService()
         {
-            if (Interlocked.CompareExchange(ref _uiUpdateScheduled, 1, 0) != 0)
-                return;
+            var axis = _motionService.GetAxisState(_axisId);
+            if (axis == null) return;
 
-            var dispatcher = Application.Current?.Dispatcher;
-            if (dispatcher == null)
-            {
-                Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-                return;
-            }
-
-            dispatcher.BeginInvoke(ApplyLatestStatusToUi, DispatcherPriority.Render);
+            Position = axis.ActualPosition;
+            IsMoving = axis.IsMoving;
+            IsAlarmed = axis.IsAlarmed;
+            IsALM = axis.IsAlarmed;
+            IsServoOn = axis.IsEnabled;
         }
 
-        /// <summary>在 UI 线程应用最新轴状态</summary>
-        private void ApplyLatestStatusToUi()
+        private void OnStatusRefreshTimerTick(object sender, EventArgs e)
         {
-            try
-            {
-                var e = _latestStatusEvent;
-                if (e == null || e.AxisId != _axisId) return;
+            _statusRefreshTimer.Stop();
+            var evt = _pendingStatusEvent;
+            if (evt == null || evt.AxisId != _axisId) return;
 
-                bool homeChanged = IsHomeOk != e.IsHomeOk;
-                bool servoChanged = IsServoOn != e.IsServoOn;
-
-                Position = e.Position;
-                IsMoving = e.IsMoving;
-                IsAlarmed = e.IsAlarmed;
-                IsALM = e.IsAlarmed;
-                IsServoOn = e.IsServoOn;
-                IsMEL = e.IsMEL;
-                IsORG = e.IsORG;
-                IsPEL = e.IsPEL;
-                IsASTP = e.IsASTP;
-                IsHomeOk = e.IsHomeOk;
-
-                ApplyHomeAllowanceRules(e);
-                if (homeChanged) RefreshLocalizedText();
-                if (servoChanged) HomeCommand.RaiseCanExecuteChanged();
-
-                Interlocked.Exchange(ref _lastAppliedStatusSequence, _statusEventSequence);
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-                // 仅当回调期间又来了新采样时才补调度（不能用 != null，否则会无限 BeginInvoke 卡死 UI）
-                if (Interlocked.Read(ref _statusEventSequence) != Interlocked.Read(ref _lastAppliedStatusSequence))
-                    ScheduleStatusUiUpdate();
-            }
+            _pendingStatusEvent = null;
+            ApplyStatusFromEvent(evt);
         }
 
-        /// <summary>回零按钮可用：已允许回零且伺服 ON（断使能→再上使能后 _allowHome 为 true）</summary>
+        private void ApplyStatusFromEvent(AxisStateChangedEvent e)
+        {
+            bool homeChanged = IsHomeOk != e.IsHomeOk;
+            bool servoChanged = IsServoOn != e.IsServoOn;
+
+            Position = e.Position;
+            IsMoving = e.IsMoving;
+            IsAlarmed = e.IsAlarmed;
+            IsALM = e.IsAlarmed;
+            IsServoOn = e.IsServoOn;
+            IsMEL = e.IsMEL;
+            IsORG = e.IsORG;
+            IsPEL = e.IsPEL;
+            IsASTP = e.IsASTP;
+            IsHomeOk = e.IsHomeOk;
+
+            ApplyHomeAllowanceRules(e);
+            if (homeChanged) RefreshLocalizedText();
+            if (servoChanged) HomeCommand.RaiseCanExecuteChanged();
+        }
+
         private bool CanExecuteHome() => _allowHome && IsServoOn;
 
-        /// <summary>根据回零/使能/急停状态更新是否允许再次回零</summary>
         private void ApplyHomeAllowanceRules(AxisStateChangedEvent e)
         {
             if (!e.IsHomeOk || e.IsAlarmed || e.IsASTP)
@@ -289,7 +262,6 @@ namespace MotionControl.ViewModels
             HomeCommand.RaiseCanExecuteChanged();
         }
 
-        // 补充属性：IsMoving（用于内部逻辑）
         private bool _isMoving;
         public bool IsMoving
         {
@@ -303,8 +275,6 @@ namespace MotionControl.ViewModels
             get => _isAlarmed;
             set => SetProperty(ref _isAlarmed, value);
         }
-
-        // ========== 命令实现 ==========
 
         private async void ExecuteMoveRelative(double distance)
         {
@@ -340,64 +310,64 @@ namespace MotionControl.ViewModels
             }
         }
 
-        /// <summary>
-        /// 停止轴运动（公开方法，供 StationAxisViewModel 调用）
-        /// </summary>
         public void ExecuteStop()
-        {
-            _ = RunAxisCommandAsync(() =>
-            {
-                _motionService.StopAxis(_axisId);
-                if (_isJogging)
-                    Application.Current?.Dispatcher.Invoke(() => IsJogging = false);
-            }, "AxisError_StopFailed", "停止失败: ");
-        }
-
-        private void ExecuteClearPosition()
-        {
-            _ = RunAxisCommandAsync(() =>
-            {
-                _motionService.ClearPosition(_axisId);
-                Application.Current?.Dispatcher.Invoke(() => Position = 0);
-            }, "AxisError_ClearPosFailed", "清零失败: ");
-        }
-
-        private void ExecuteClearAlarm()
-        {
-            _ = RunAxisCommandAsync(() =>
-            {
-                _motionService.ClearAlarm(_axisId);
-                Application.Current?.Dispatcher.Invoke(SetAllowHome, true);
-            }, "AxisError_ClearAlarmFailed", "清除报警失败: ");
-        }
-
-        private void ExecuteServo(bool enable)
-        {
-            _ = RunAxisCommandAsync(() =>
-            {
-                if (enable)
-                {
-                    _motionService.EnableAxis(_axisId);
-                    Application.Current?.Dispatcher.Invoke(() => HomeCommand.RaiseCanExecuteChanged());
-                }
-                else
-                {
-                    _motionService.DisableAxis(_axisId);
-                    Application.Current?.Dispatcher.Invoke(() => SetAllowHome(true));
-                }
-            }, "AxisError_ServoOpFailed", "伺服操作失败: ");
-        }
-
-        /// <summary>在后台线程执行读卡/写卡，避免阻塞 UI 与轮询争抢卡锁</summary>
-        private async Task RunAxisCommandAsync(Action action, string errorResourceKey, string errorFallbackPrefix)
         {
             try
             {
-                await Task.Run(action).ConfigureAwait(true);
+                _motionService.StopAxis(_axisId);
+                if (_isJogging)
+                    IsJogging = false;
             }
             catch (Exception ex)
             {
-                ShowError($"{GetLocalizedText(errorResourceKey, errorFallbackPrefix)}{ex.Message}");
+                ShowError($"{GetLocalizedText("AxisError_StopFailed", "停止失败: ")}{ex.Message}");
+            }
+        }
+
+        private async void ExecuteClearPosition()
+        {
+            try
+            {
+                await Task.Run(() => _motionService.ClearPosition(_axisId)).ConfigureAwait(true);
+                Position = 0;
+            }
+            catch (Exception ex)
+            {
+                ShowError($"{GetLocalizedText("AxisError_ClearPosFailed", "清零失败: ")}{ex.Message}");
+            }
+        }
+
+        private async void ExecuteClearAlarm()
+        {
+            try
+            {
+                await Task.Run(() => _motionService.ClearAlarm(_axisId)).ConfigureAwait(true);
+                SetAllowHome(true);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"{GetLocalizedText("AxisError_ClearAlarmFailed", "清除报警失败: ")}{ex.Message}");
+            }
+        }
+
+        private async void ExecuteServo(bool enable)
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    if (enable) _motionService.EnableAxis(_axisId);
+                    else _motionService.DisableAxis(_axisId);
+                }).ConfigureAwait(true);
+
+                if (enable)
+                    HomeCommand.RaiseCanExecuteChanged();
+                else
+                    SetAllowHome(true);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"{GetLocalizedText("AxisError_ServoOpFailed", "伺服操作失败: ")}{ex.Message}");
             }
         }
 
@@ -412,10 +382,6 @@ namespace MotionControl.ViewModels
             return _localizationService?.GetResourceOrDefault(key, fallback) ?? fallback;
         }
 
-        /// <summary>
-        /// 刷新缓存的本地化文本（构造时、状态变更时、语言切换时调用）
-        /// 避免每次属性访问都查资源字典
-        /// </summary>
         private void RefreshLocalizedText()
         {
             LocalizedAxisName = string.IsNullOrEmpty(_name)
@@ -427,19 +393,15 @@ namespace MotionControl.ViewModels
             LocalizedHomeStatus = _localizationService?.GetResourceOrDefault(homeKey, homeFallback) ?? homeFallback;
         }
 
-        // ========== IDisposable ==========
-
         public void Dispose()
         {
+            _statusRefreshTimer?.Stop();
+            _statusRefreshTimer = null;
             _statusSubscription?.Dispose();
-            _latestStatusEvent = null;
+            _pendingStatusEvent = null;
         }
     }
 
-    /// <summary>
-    /// 轴状态事件的 IObserver 实现（支持命名回调）
-    /// 用于将 IObservable.Subscribe 转为委托模式
-    /// </summary>
     internal class AxisStatusObserver : IObserver<AxisStateChangedEvent>
     {
         private readonly Action<AxisStateChangedEvent> _onNext;

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -227,35 +228,6 @@ namespace MotionControl.Behaviors
             state.MotionService = motionService;
             state.AxisId = axisId;
 
-            // 安全区域检查：在点亮 LED / 启动 Jog 前读取最新互锁配置与实时轴位置
-            var safetyMonitor = GetSafetyZoneMonitor(button);
-            if (safetyMonitor != null)
-            {
-                double currentPosition;
-                try
-                {
-                    currentPosition = motionService.GetAxisPosition(axisId);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[SafeJog] 获取轴{axisId}当前位置失败，跳过安全检查: {ex.Message}");
-                    currentPosition = 0;
-                }
-
-                double jogOffset = safetyMonitor.JogEstimateOffset > 0 ? safetyMonitor.JogEstimateOffset : 10.0;
-                double targetPosition = positiveDirection
-                    ? currentPosition + jogOffset
-                    : currentPosition - jogOffset;
-
-                var (allowed, reason) = safetyMonitor.CheckMoveAllowed(axisId, targetPosition);
-                if (!allowed)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[SafeJog] 安全互锁阻止Jog | 轴:{axisId} | 方向:{(positiveDirection ? "正向" : "负向")} | 原因:{reason}");
-                    state.IsJogging = false;
-                    return;
-                }
-            }
-
             if (!button.IsEnabled)
             {
                 state.IsJogging = false;
@@ -274,15 +246,52 @@ namespace MotionControl.Behaviors
             if (button.DataContext is SingleAxisViewModel vmSpeed && speed <= 0)
                 speed = vmSpeed.Speed;
 
-            try
+            var safetyMonitor = GetSafetyZoneMonitor(button);
+
+            // 读卡与 Jog 下发在后台执行，避免 UI 线程与 5ms 轮询争抢卡锁导致 Jog 失灵
+            Task.Run(() =>
             {
-                motionService.JogStart(axisId, positiveDirection, speed);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SafeJog] Jog start failed for axis {axisId}: {ex.Message}");
-                StopJog(button, state);
-            }
+                try
+                {
+                    if (!state.IsJogging) return;
+
+                    if (safetyMonitor != null)
+                    {
+                        double currentPosition;
+                        try
+                        {
+                            currentPosition = motionService.GetAxisPosition(axisId);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SafeJog] 获取轴{axisId}当前位置失败，跳过安全检查: {ex.Message}");
+                            currentPosition = 0;
+                        }
+
+                        double jogOffset = safetyMonitor.JogEstimateOffset > 0 ? safetyMonitor.JogEstimateOffset : 10.0;
+                        double targetPosition = positiveDirection
+                            ? currentPosition + jogOffset
+                            : currentPosition - jogOffset;
+
+                        var (allowed, reason) = safetyMonitor.CheckMoveAllowed(axisId, targetPosition);
+                        if (!allowed)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SafeJog] 安全互锁阻止Jog | 轴:{axisId} | 方向:{(positiveDirection ? "正向" : "负向")} | 原因:{reason}");
+                            button.Dispatcher.BeginInvoke(() => StopJog(button, state));
+                            return;
+                        }
+                    }
+
+                    if (!state.IsJogging) return;
+
+                    motionService.JogStart(axisId, positiveDirection, speed);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SafeJog] Jog start failed for axis {axisId}: {ex.Message}");
+                    button.Dispatcher.BeginInvoke(() => StopJog(button, state));
+                }
+            });
         }
 
         /// <summary>

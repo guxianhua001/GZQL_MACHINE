@@ -78,7 +78,41 @@ namespace MotionControl.Services
             {
                 _observers.Add(observer);
             }
+
+            // 新订阅者立即收到各轴缓存快照，避免 UI 等待首次变化
+            PushCachedAxisStatesToObserver(observer);
             return new UnsubscribeAction(this, observer);
+        }
+
+        /// <summary>向单个订阅者推送当前轴缓存（Subscribe 时调用）</summary>
+        private void PushCachedAxisStatesToObserver(IObserver<AxisStateChangedEvent> observer)
+        {
+            foreach (var kv in _axisStates)
+            {
+                int axisId = kv.Key;
+                if (!_axisPollSnapshots.TryGetValue(axisId, out var snap) || !snap.IsInitialized)
+                    continue;
+
+                try
+                {
+                    observer.OnNext(new AxisStateChangedEvent
+                    {
+                        AxisId = axisId,
+                        Name = kv.Value.Name,
+                        Position = snap.Position,
+                        IsMoving = snap.IsMoving,
+                        IsAlarmed = snap.IsAlarmed,
+                        IsServoOn = snap.IsServoOn,
+                        IsMEL = snap.IsMEL,
+                        IsORG = snap.IsORG,
+                        IsPEL = snap.IsPEL,
+                        IsASTP = snap.IsASTP,
+                        IsHomeOk = snap.IsHomeOk,
+                        StatusWord = snap.StatusWord
+                    });
+                }
+                catch { /* 忽略 */ }
+            }
         }
 
         // 内部类：取消订阅
@@ -533,7 +567,7 @@ namespace MotionControl.Services
             _pollThread = new Thread(() => PollLoop(intervalMs, _pollCts.Token))
             {
                 IsBackground = true,
-                Priority = ThreadPriority.Highest // 提升优先级
+                Priority = ThreadPriority.AboveNormal
             };
             _isPolling = true;
             _pollThread.Start();
@@ -573,12 +607,7 @@ namespace MotionControl.Services
                 long elapsed = stopwatch.ElapsedMilliseconds;
                 long waitMs = intervalMs - elapsed;
                 if (waitMs > 0)
-                {
-                    // 自旋等待 + 短时间 sleep 提高精度
-                    if (waitMs >= 2)
-                        Thread.Sleep((int)(waitMs - 1));
-                    while (stopwatch.ElapsedMilliseconds < intervalMs) ; // 自旋
-                }
+                    Thread.Sleep((int)Math.Min(waitMs, intervalMs));
             }
         }
 
@@ -664,7 +693,7 @@ namespace MotionControl.Services
                 kv.Value.IsAlarmed = isALM;
                 kv.Value.IsEnabled = isServoOn;
 
-                if (!snap.IsInitialized || snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
+                if (!snap.IsInitialized || isMoving || snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
                 {
                     snap.Update(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io);
 
