@@ -312,7 +312,7 @@ namespace MotionControl.Card
         }
 
         /// <summary>
-        /// 读取轴运动状态字（dmc_get_stop_reason，与旧项目 GetMotionSts 一致）
+        /// 读取轴运动状态字（dmc_get_stop_reason）
         /// ASTP 等读 m_MotionSts；伺服使能 IsSVON 改走 GetEtherCatSts
         /// </summary>
         public override int GetMotionSts(int axisId, ref int status)
@@ -346,7 +346,7 @@ namespace MotionControl.Card
 
         /// <summary>
         /// 读取 EtherCAT 轴状态机（nmc_get_axis_state_machine）
-        /// 旧项目 IsSVON：GetEtherCatSts 后 sts==4 表示伺服使能
+        /// IsSVON：GetEtherCatSts 后 sts==4 表示伺服使能
         /// </summary>
         public override int GetEtherCatSts(int axisId, ref int status)
         {

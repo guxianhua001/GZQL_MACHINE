@@ -591,7 +591,7 @@ namespace MotionControl.Services
                     int motionSts = 0;
                     card.GetMotionSts(axisId, ref motionSts);
 
-                    // 伺服使能：GetEtherCatSts，旧项目 IsSVON 判断 sts==4
+                    // 伺服使能：GetEtherCatSts IsSVON 判断 sts==4
                     int etherCatSts = 0;
                     card.GetEtherCatSts(axisId, ref etherCatSts);
                     bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
