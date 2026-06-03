@@ -9,6 +9,7 @@ v2026.06.02 — EtherCAT 总线复位与状态栏展示
 3. MotionService 约 1s 轮询 nmc_get_errcode，发布 EtherCatBusStatusChangedEvent
 4. SystemStateService.CanStart 增加总线健康检查；MainWindow 底部状态栏展示 EtherCAT 状态
 5. Leisai_Define 补全轴状态机 0~7 常量；EtherCatStatusHelper 多语言资源键
+6. 修复 MainWindow 错过初始化事件仍显示「模拟模式」：IsSimulationMode 判定 + 主动 Refresh + StartPolling 强制发布
 
 v2026.06.02 — SingleAxisControlView 状态指示灯刷新修复（修正）
 -------------------------------------------------------------------------------

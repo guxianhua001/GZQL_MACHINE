@@ -1,6 +1,7 @@
 using ModuleCore.Common.Authority;
 using ModuleCore.Models;
 using MotionControl.Events;
+using MotionControl.Interfaces;
 using MotionControl.Models;
 using Prism.Commands;
 using Prism.Events;
@@ -93,6 +94,7 @@ namespace ModuleCore.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private readonly IAppSettingService _appConfig;
         private readonly ILoggerService _logger;
+        private readonly IMotionService _motionService;
         private SubscriptionToken _refreshToken;
         private SubscriptionToken _secsCommandToken;
         public MainWindowViewModel(IDialogService dialogService,
@@ -101,6 +103,7 @@ namespace ModuleCore.ViewModels
                                    IEventAggregator eventAggregator,
                                    IAppSettingService appConfig,
                                    ILoggerService logger,
+                                   IMotionService motionService,
                                    ILocalizationService localizationService)
             : base(localizationService, eventAggregator)
         {
@@ -108,6 +111,7 @@ namespace ModuleCore.ViewModels
             _dialogService = dialogService;
             _appConfig = appConfig;
             _logger = logger;
+            _motionService = motionService;
             Model = container.Resolve<LoginModel>();
             Navigate = container.Resolve<NavigateModel>();
             RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
@@ -150,9 +154,10 @@ namespace ModuleCore.ViewModels
             // 订阅系统状态变化事件，驱动IsSystemRunning属性更新
             _eventAggregator.GetEvent<StationStateChangedEvent>().Subscribe(OnStationStateChanged, ThreadOption.PublisherThread, false);
 
-            // EtherCAT 总线状态（MotionService 轮询发布）
+            // EtherCAT 总线状态（MotionService 轮询发布；构造时主动拉取，避免错过 InitializeAsync 事件）
             _eventAggregator.GetEvent<EtherCatBusStatusChangedEvent>().Subscribe(OnEtherCatBusStatusChanged, ThreadOption.UIThread);
-            UpdateEtherCatStatusDisplay(new EtherCatBusStatusPayload { ErrorCode = 0, IsSimulation = true });
+            RefreshEtherCatBusStatus();
+            Application.Current?.Dispatcher.BeginInvoke(RefreshEtherCatBusStatus, DispatcherPriority.Loaded);
 
             InitializeCommands(); // 初始化命令
             LoadDefaultView(appConfig, container); // 加载默认视图
@@ -638,6 +643,19 @@ namespace ModuleCore.ViewModels
             UpdateEtherCatStatusDisplay(payload);
         }
 
+        /// <summary>从 MotionService 读取当前总线状态（真实硬件时 IsSimulation=false）</summary>
+        private void RefreshEtherCatBusStatus()
+        {
+            if (_motionService == null)
+                return;
+
+            UpdateEtherCatStatusDisplay(new EtherCatBusStatusPayload
+            {
+                ErrorCode = _motionService.GetEtherCatBusErrorCode(),
+                IsSimulation = _motionService.IsSimulationMode
+            });
+        }
+
         private void UpdateEtherCatStatusDisplay(EtherCatBusStatusPayload payload)
         {
             _lastEtherCatErrorCode = payload.ErrorCode;
@@ -697,6 +715,6 @@ namespace ModuleCore.ViewModels
         }
 
         private int _lastEtherCatErrorCode;
-        private bool _etherCatIsSimulation = true;
+        private bool _etherCatIsSimulation;
     }
 }
