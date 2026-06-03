@@ -1,6 +1,22 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.03 — 多工站位置编辑器轴控与安全确认
+-------------------------------------------------------------------------------
+
+1. MultiStationPositionEditorViewModel：示教/前往改为直接调用 IMotionService（GetAxisPosition / MoveAbsAsync / StopAxis）
+2. 示教前弹出 Yes/No 确认框；前往前弹出三选一：单轴顺序移动 / 多轴同时启动 / 取消
+3. 多轴同时启动：各轴并行 MoveAbsAsync（Task.WhenAll），非插补联动
+4. 新增多语言资源键 MultiStationPos_*
+
+v2026.06.03 — 指示灯延迟根因修复（第五轮）
+-------------------------------------------------------------------------------
+
+1. 移除 DispatcherTimer：运动中每 10ms 重置 Timer 导致 UI 长期不刷新（50/150ms 均无效）
+2. 改为每轴单次 BeginInvoke(DataBind) 合并，IO 与位置同步 Apply
+3. 轮询：IO/状态变化立即 Publish；运动中纯位置限频 50ms（去掉 isMoving 无条件 Publish）
+4. IsServoOn 改读 dmc_axis_io_status 的 SVON 位（与 MEL/ORG 同源），不再依赖慢 EtherCAT 状态机
+
 v2026.06.03 — UI 刷新合并 100ms（6 轴页）
 -------------------------------------------------------------------------------
 

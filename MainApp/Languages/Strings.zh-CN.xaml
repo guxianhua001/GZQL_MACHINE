@@ -2773,6 +2773,15 @@
     <sys:String x:Key="PositionEditor_Goto">前往</sys:String>
     <sys:String x:Key="PositionEditor_Up">上移</sys:String>
     <sys:String x:Key="PositionEditor_Down">下移</sys:String>
+    <sys:String x:Key="MultiStationPos_ConfirmTeachTitle">确认示教</sys:String>
+    <sys:String x:Key="MultiStationPos_ConfirmTeachMessage">确定要将当前机械位置示教到位置「{0}」吗？这将覆盖选中行的轴坐标。</sys:String>
+    <sys:String x:Key="MultiStationPos_ConfirmGotoTitle">确认前往</sys:String>
+    <sys:String x:Key="MultiStationPos_ConfirmGotoMessage">确定要前往位置「{0}」吗？请选择移动方式：</sys:String>
+    <sys:String x:Key="MultiStationPos_GotoSingleAxis">单轴顺序移动</sys:String>
+    <sys:String x:Key="MultiStationPos_GotoSimultaneous">多轴同时启动</sys:String>
+    <sys:String x:Key="MultiStationPos_TeachFailed">示教失败: {0}</sys:String>
+    <sys:String x:Key="MultiStationPos_GotoFailed">前往失败: {0}</sys:String>
+    <sys:String x:Key="MultiStationPos_NoAxisValues">选中行没有有效的轴坐标，无法前往。</sys:String>
     <sys:String x:Key="Index">序号</sys:String>
     <sys:String x:Key="Name">名称</sys:String>
     <sys:String x:Key="Value">值</sys:String>

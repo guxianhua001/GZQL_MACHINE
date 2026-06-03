@@ -1,7 +1,10 @@
 using Core.Abstraction;
+using Core.Models;
 using Core.Services;
 using Core.Utilities;
 using Moq;
+using MotionControl.Interfaces;
+using MotionControl.Models;
 using Prism.Events;
 using Prism.Services.Dialogs;
 using Recipe.Interfaces;
@@ -20,8 +23,9 @@ namespace MotionControl.Tests.PositionMotionController
         private readonly Mock<IStationRegistry> _stationRegistryMock;
         private readonly Mock<ILoggerService> _loggerMock;
         private readonly Mock<IDialogService> _dialogServiceMock;
+        private readonly Mock<IRecipeDialogService> _recipeDialogMock;
         private readonly Mock<IEventAggregator> _eaMock;
-        private readonly Mock<IPositionMotionController> _motionControllerMock;
+        private readonly Mock<IMotionService> _motionServiceMock;
         private readonly Mock<IStationParameterProvider> _stationMock;
         private readonly Mock<Core.Abstraction.ILocalizationService> _localizationMock;
 
@@ -32,13 +36,17 @@ namespace MotionControl.Tests.PositionMotionController
             _stationRegistryMock = new Mock<IStationRegistry>();
             _loggerMock = new Mock<ILoggerService>();
             _dialogServiceMock = new Mock<IDialogService>();
+            _recipeDialogMock = new Mock<IRecipeDialogService>();
             _eaMock = new Mock<IEventAggregator>();
-            _motionControllerMock = new Mock<IPositionMotionController>();
+            _motionServiceMock = new Mock<IMotionService>();
 
             _stationMock = new Mock<IStationParameterProvider>();
             _localizationMock = new Mock<Core.Abstraction.ILocalizationService>();
             _localizationMock.Setup(l => l.GetResource(It.IsAny<string>(), It.IsAny<object[]>()))
                 .Returns((string key, object[] args) => string.Format(key, args));
+            _localizationMock.Setup(l => l.GetResourceOrDefault(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns((string key, string fallback) => fallback ?? key);
+
             _stationMock.Setup(s => s.StationIdentifier).Returns("TestStation");
             _stationMock.Setup(s => s.CurrentPoolName).Returns("TestPool");
             _stationMock.Setup(s => s.CurrentRecipeName).Returns("Default");
@@ -47,12 +55,28 @@ namespace MotionControl.Tests.PositionMotionController
             _stationRegistryMock.Setup(r => r.GetAllStations())
                 .Returns(new List<IStationParameterProvider> { _stationMock.Object });
             _axisConfigMock.Setup(a => a.GetAxesForStation(It.IsAny<string>()))
-                .Returns(new List<Core.Models.AxisDefinition>
+                .Returns(new List<AxisDefinition>
                 {
                     new() { Name = "X" },
                     new() { Name = "Y" }
                 });
-            _motionControllerMock.Setup(m => m.CanExecuteMotion(It.IsAny<string>())).Returns(true);
+            _motionServiceMock.Setup(m => m.GetTaskConfigurations())
+                .Returns(new List<TaskConfig> { new() { TaskId = 1, Type = "TestStation" } });
+            _motionServiceMock.Setup(m => m.GetAxisConfigurations())
+                .Returns(new List<AxisConfig>
+                {
+                    new() { Name = "X", LogicalId = 1, TaskId = 1 },
+                    new() { Name = "Y", LogicalId = 2, TaskId = 1 }
+                });
+
+            _dialogServiceMock
+                .Setup(d => d.ShowDialog("ConfirmationDialog", It.IsAny<IDialogParameters>(), It.IsAny<System.Action<IDialogResult>>()))
+                .Callback<string, IDialogParameters, System.Action<IDialogResult>>((_, __, cb) =>
+                    cb(new DialogResult(ButtonResult.Yes)));
+
+            _recipeDialogMock
+                .Setup(r => r.ShowConfirmationDialogAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()))
+                .ReturnsAsync("多轴同时启动");
         }
 
         private void SetupEventAggregator()
@@ -77,24 +101,26 @@ namespace MotionControl.Tests.PositionMotionController
                 _stationRegistryMock.Object,
                 _loggerMock.Object,
                 _dialogServiceMock.Object,
+                _recipeDialogMock.Object,
                 _eaMock.Object,
-                _motionControllerMock.Object,
+                _motionServiceMock.Object,
                 _localizationMock.Object);
         }
 
         #region T11-T12: TeachCommand Tests
 
         [Fact]
-        public void TeachCommand_有选中行且可用时调用TeachAsync()
+        public void TeachCommand_有选中行且可用时读取轴位置()
         {
             var vm = CreateViewModel();
             SetSelectedRow(vm, "P1", 10.0, 20.0);
-            _motionControllerMock.Setup(m => m.TeachAsync("TestStation"))
-                .ReturnsAsync(new Dictionary<string, double> { ["X"] = 100.0, ["Y"] = 200.0 });
+            _motionServiceMock.Setup(m => m.GetAxisPosition(1)).Returns(100.0);
+            _motionServiceMock.Setup(m => m.GetAxisPosition(2)).Returns(200.0);
 
             vm.TeachCommand.Execute(null);
 
-            _motionControllerMock.Verify(m => m.TeachAsync("TestStation"), Times.Once());
+            _motionServiceMock.Verify(m => m.GetAxisPosition(1), Times.Once());
+            _motionServiceMock.Verify(m => m.GetAxisPosition(2), Times.Once());
         }
 
         [Fact]
@@ -104,7 +130,7 @@ namespace MotionControl.Tests.PositionMotionController
 
             vm.TeachCommand.Execute(null);
 
-            _motionControllerMock.Verify(m => m.TeachAsync(It.IsAny<string>()), Times.Never());
+            _motionServiceMock.Verify(m => m.GetAxisPosition(It.IsAny<int>()), Times.Never());
         }
 
         #endregion
@@ -112,13 +138,12 @@ namespace MotionControl.Tests.PositionMotionController
         #region T13: Teach完成后更新DataTable
 
         [Fact]
-        public async Task TeachCommand_完成后更新DataTable当行数据()
+        public void TeachCommand_完成后更新DataTable当行数据()
         {
             var vm = CreateViewModel();
             SetSelectedRow(vm, "P1", 0.0, 0.0);
-
-            _motionControllerMock.Setup(m => m.TeachAsync("TestStation"))
-                .ReturnsAsync(new Dictionary<string, double> { ["X"] = 100.5, ["Y"] = 200.3 });
+            _motionServiceMock.Setup(m => m.GetAxisPosition(1)).Returns(100.5);
+            _motionServiceMock.Setup(m => m.GetAxisPosition(2)).Returns(200.3);
 
             vm.TeachCommand.Execute(null);
 
@@ -131,7 +156,7 @@ namespace MotionControl.Tests.PositionMotionController
         #region T14: ReplayCommand Tests
 
         [Fact]
-        public async Task ReplayCommand_调用GotoAsync传入正确的位置和速度()
+        public async Task ReplayCommand_多轴同时启动模式并行调用MoveAbsAsync()
         {
             var vm = CreateViewModel();
             vm.SelectedSpeed = 15.0;
@@ -139,10 +164,30 @@ namespace MotionControl.Tests.PositionMotionController
 
             vm.ReplayCommand.Execute(null);
 
-            _motionControllerMock.Verify(m => m.GotoAsync(
-                "TestStation",
-                It.Is<Dictionary<string, double>>(d => d["X"] == 50.0 && d["Y"] == 60.0),
-                15.0), Times.Once());
+            await Task.Delay(100);
+
+            _motionServiceMock.Verify(m => m.MoveAbsAsync(1, 50.0, 15.0, default), Times.Once());
+            _motionServiceMock.Verify(m => m.MoveAbsAsync(2, 60.0, 15.0, default), Times.Once());
+            _motionServiceMock.Verify(m => m.MoveLineAbsAsync(It.IsAny<int>(), It.IsAny<int[]>(), It.IsAny<double[]>(), It.IsAny<double>(), default), Times.Never());
+        }
+
+        [Fact]
+        public async Task ReplayCommand_单轴顺序模式调用MoveAbsAsync()
+        {
+            _recipeDialogMock
+                .Setup(r => r.ShowConfirmationDialogAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()))
+                .ReturnsAsync("单轴顺序移动");
+
+            var vm = CreateViewModel();
+            vm.SelectedSpeed = 15.0;
+            SetSelectedRow(vm, "P1", 50.0, 60.0);
+
+            vm.ReplayCommand.Execute(null);
+
+            await Task.Delay(100);
+
+            _motionServiceMock.Verify(m => m.MoveAbsAsync(1, 50.0, 15.0, default), Times.Once());
+            _motionServiceMock.Verify(m => m.MoveAbsAsync(2, 60.0, 15.0, default), Times.Once());
         }
 
         #endregion
@@ -150,14 +195,15 @@ namespace MotionControl.Tests.PositionMotionController
         #region T15: StopCommand Tests
 
         [Fact]
-        public void StopCommand_调用Stop方法()
+        public void StopCommand_调用StopAxis()
         {
             var vm = CreateViewModel();
             SetSelectedRow(vm, "P1", 10.0, 20.0);
 
             vm.StopCommand.Execute(null);
 
-            _motionControllerMock.Verify(m => m.Stop("TestStation"), Times.Once());
+            _motionServiceMock.Verify(m => m.StopAxis(1), Times.Once());
+            _motionServiceMock.Verify(m => m.StopAxis(2), Times.Once());
         }
 
         [Fact]
@@ -167,7 +213,8 @@ namespace MotionControl.Tests.PositionMotionController
 
             vm.StopCommand.Execute(null);
 
-            _motionControllerMock.Verify(m => m.Stop("TestStation"), Times.Once());
+            _motionServiceMock.Verify(m => m.StopAxis(1), Times.Once());
+            _motionServiceMock.Verify(m => m.StopAxis(2), Times.Once());
         }
 
         [Fact]

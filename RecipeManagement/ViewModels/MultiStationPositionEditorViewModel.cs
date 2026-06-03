@@ -5,6 +5,7 @@ using Core.Services;
 using Core.Utilities;
 using Framework.Dialogs;
 using MaterialDesignThemes.Wpf;
+using MotionControl.Interfaces;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Mvvm;
@@ -32,9 +33,12 @@ namespace Recipe.ViewModels
         private readonly IStationRegistry _stationRegistry;
         private readonly ILoggerService _logger;
         private readonly IDialogService _dialogService;
+        private readonly IRecipeDialogService _recipeDialogService;
         private readonly IEventAggregator _eventAggregator;
-        private readonly IPositionMotionController _motionController;
+        private readonly IMotionService _motionService;
         private readonly Core.Abstraction.ILocalizationService _localization;
+
+        private const double DefaultVelocity = 10.0;
 
         private StationItem _selectedStation;
         private DataRowView _selectedRow;
@@ -121,8 +125,9 @@ namespace Recipe.ViewModels
             IStationRegistry stationRegistry,
             ILoggerService loggerService,
             IDialogService dialogService,
+            IRecipeDialogService recipeDialogService,
             IEventAggregator eventAggregator,
-            IPositionMotionController motionController,
+            IMotionService motionService,
             Core.Abstraction.ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
@@ -130,8 +135,9 @@ namespace Recipe.ViewModels
             _stationRegistry = stationRegistry;
             _logger = loggerService;
             _dialogService = dialogService;
+            _recipeDialogService = recipeDialogService;
             _eventAggregator = eventAggregator;
-            _motionController = motionController;
+            _motionService = motionService;
             _localization = localization;
 
             Stations = new ObservableCollection<StationItem>();
@@ -384,10 +390,10 @@ namespace Recipe.ViewModels
 
         #region Teach & Replay & Stop
         /// <summary>
-        /// 示教/Goto 需选中行且运动控制器允许执行；选中行或工站变化时需刷新按钮使能
+        /// 示教/Goto 需选中行且已选择工站；选中行或工站变化时需刷新按钮使能
         /// </summary>
         private bool CanExecuteHardwareOperation()
-            => SelectedRow != null && _motionController.CanExecuteMotion(_currentStationIdentifier);
+            => SelectedRow != null && !string.IsNullOrEmpty(_currentStationIdentifier);
 
         private void RaiseHardwareCommandCanExecuteChanged()
         {
@@ -396,7 +402,25 @@ namespace Recipe.ViewModels
         }
 
         /// <summary>
-        /// 从 DataTable 当前行提取轴位置字典，供 Replay/Goto 使用
+        /// 根据工站标识与轴名称解析逻辑轴号（hwcfg TaskId + AxisConfig）
+        /// </summary>
+        private int FindAxisLogicalId(string stationIdentifier, string axisName)
+        {
+            if (string.IsNullOrEmpty(stationIdentifier) || string.IsNullOrEmpty(axisName))
+                return -1;
+
+            var taskConfig = _motionService.GetTaskConfigurations()
+                .FirstOrDefault(tc => tc.Type == stationIdentifier);
+            if (taskConfig == null)
+                return -1;
+
+            var axisConfig = _motionService.GetAxisConfigurations()
+                .FirstOrDefault(a => a.TaskId == taskConfig.TaskId && a.Name == axisName);
+            return axisConfig?.LogicalId ?? -1;
+        }
+
+        /// <summary>
+        /// 从 DataTable 当前行提取轴位置字典，供 Goto 使用
         /// </summary>
         private Dictionary<string, double> ExtractAxisPositionsFromRow(DataRowView row)
         {
@@ -413,16 +437,49 @@ namespace Recipe.ViewModels
             return result;
         }
 
+        /// <summary>
+        /// 弹出 Yes/No 确认框（示教前安全确认）
+        /// </summary>
+        private Task<bool> ShowYesNoConfirmationAsync(string title, string message)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            _dialogService.ShowDialog("ConfirmationDialog",
+                new DialogParameters { { "title", title }, { "message", message } },
+                result => tcs.TrySetResult(result.Result == ButtonResult.Yes));
+            return tcs.Task;
+        }
+
+        private string Loc(string key, string fallback)
+            => _localization.GetResourceOrDefault(key, fallback);
+
         private async void Teach()
         {
             if (SelectedRow == null || !CanExecuteHardwareOperation()) return;
+
+            var positionName = SelectedRow["PositionName"]?.ToString() ?? string.Empty;
+            var confirmed = await ShowYesNoConfirmationAsync(
+                Loc("MultiStationPos_ConfirmTeachTitle", "确认示教"),
+                _localization.GetResource("MultiStationPos_ConfirmTeachMessage", positionName));
+            if (!confirmed) return;
+
             try
             {
-                var result = await _motionController.TeachAsync(_currentStationIdentifier);
-                foreach (var kvp in result)
+                var axes = _axisConfig.GetAxesForStation(_currentStationIdentifier);
+                foreach (var axis in axes)
                 {
-                    if (PositionsTable.Columns.Contains(kvp.Key))
-                        SelectedRow[kvp.Key] = kvp.Value;
+                    var axisId = FindAxisLogicalId(_currentStationIdentifier, axis.Name);
+                    if (axisId < 0) continue;
+
+                    try
+                    {
+                        var position = _motionService.GetAxisPosition(axisId);
+                        if (PositionsTable.Columns.Contains(axis.Name))
+                            SelectedRow[axis.Name] = position;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn($"Teach: 读取轴 {axis.Name}(ID={axisId}) 位置失败: {ex.Message}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -439,11 +496,39 @@ namespace Recipe.ViewModels
         private async void Replay()
         {
             if (SelectedRow == null || !CanExecuteHardwareOperation()) return;
+
+            var positionName = SelectedRow["PositionName"]?.ToString() ?? string.Empty;
+            var targetPositions = ExtractAxisPositionsFromRow(SelectedRow);
+            if (targetPositions.Count == 0)
+            {
+                await _dialogService.ShowDialogAsync("NotificationDialog",
+                    new DialogParameters {
+                        { "message", Loc("MultiStationPos_NoAxisValues", "选中行没有有效的轴坐标，无法前往。") },
+                        { "icon", PackIconKind.Warning }
+                    });
+                return;
+            }
+
+            var btnSingle = Loc("MultiStationPos_GotoSingleAxis", "单轴顺序移动");
+            var btnSimultaneous = Loc("MultiStationPos_GotoSimultaneous", "多轴同时启动");
+            var btnCancel = Loc("Cancel", "取消");
+
+            var choice = await _recipeDialogService.ShowConfirmationDialogAsync(
+                Loc("MultiStationPos_ConfirmGotoTitle", "确认前往"),
+                _localization.GetResource("MultiStationPos_ConfirmGotoMessage", positionName),
+                new[] { btnSingle, btnSimultaneous, btnCancel });
+
+            if (string.IsNullOrEmpty(choice) || choice == btnCancel) return;
+
             try
             {
                 IsMoving = true;
-                var targetPositions = ExtractAxisPositionsFromRow(SelectedRow);
-                await _motionController.GotoAsync(_currentStationIdentifier, targetPositions, SelectedSpeed);
+                var velocity = SelectedSpeed > 0 ? SelectedSpeed : DefaultVelocity;
+
+                if (choice == btnSingle)
+                    await GotoSingleAxisSequentialAsync(targetPositions, velocity);
+                else if (choice == btnSimultaneous)
+                    await GotoSimultaneousAsync(targetPositions, velocity);
             }
             catch (Exception ex)
             {
@@ -460,18 +545,60 @@ namespace Recipe.ViewModels
             }
         }
 
+        /// <summary>
+        /// 单轴顺序移动：逐轴绝对定位，前一轴到位后再动下一轴（工业手动调试常用）
+        /// </summary>
+        private async Task GotoSingleAxisSequentialAsync(Dictionary<string, double> targetPositions, double velocity)
+        {
+            foreach (var kvp in targetPositions)
+            {
+                var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
+                if (axisId >= 0)
+                    await _motionService.MoveAbsAsync(axisId, kvp.Value, velocity);
+            }
+        }
+
+        /// <summary>
+        /// 多轴同时启动：各轴并行下发 MoveAbsAsync，非插补联动
+        /// </summary>
+        private async Task GotoSimultaneousAsync(Dictionary<string, double> targetPositions, double velocity)
+        {
+            var moveTasks = new List<Task>();
+
+            foreach (var kvp in targetPositions)
+            {
+                var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
+                if (axisId >= 0)
+                    moveTasks.Add(_motionService.MoveAbsAsync(axisId, kvp.Value, velocity));
+            }
+
+            if (moveTasks.Count > 0)
+                await Task.WhenAll(moveTasks);
+        }
+
+        /// <summary>
+        /// 停止当前工站所有轴（安全操作，始终可用）
+        /// </summary>
         private void Stop()
         {
             if (string.IsNullOrEmpty(_currentStationIdentifier)) return;
-            try
+
+            foreach (var axis in _axisConfig.GetAxesForStation(_currentStationIdentifier))
             {
-                _motionController.Stop(_currentStationIdentifier);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Stop failed: {ex.Message}");
+                var axisId = FindAxisLogicalId(_currentStationIdentifier, axis.Name);
+                if (axisId < 0) continue;
+
+                try
+                {
+                    _motionService.StopAxis(axisId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Stop axis {axis.Name}(ID={axisId}) failed: {ex.Message}");
+                }
             }
         }
+
         private void Undo() => _ = LoadPositionsForCurrentStationAsync();
         #endregion
 
@@ -616,7 +743,7 @@ namespace Recipe.ViewModels
             _stationRegisteredToken?.Dispose();
             if (_isMoving)
             {
-                _motionController.Stop(_currentStationIdentifier);
+                Stop();
                 _isMoving = false;
             }
         }

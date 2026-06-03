@@ -772,14 +772,20 @@ namespace MotionControl.Services
                 int motionSts = 0;
                 cardResolved.GetMotionSts(pidResolved, ref motionSts);
 
-                int etherCatSts = 0;
-                cardResolved.GetEtherCatSts(pidResolved, ref etherCatSts);
-                bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
+                // 优先 IO 位（与 MEL/ORG 同源，响应快）；EtherCAT 状态机仅作补充
+                bool isServoOn = (io & Leisai_Define.MIO_SVON) != 0;
                 bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;
                 bool isORG = (io & Leisai_Define.MIO_ORG) != 0;
                 bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;
                 bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;
-                bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
+                bool isAstpFromIo = (io & Leisai_Define.MIO_ASTP) != 0;
+                bool isASTP = isAstpFromIo || MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
+                if (!isServoOn)
+                {
+                    int etherCatSts = 0;
+                    cardResolved.GetEtherCatSts(pidResolved, ref etherCatSts);
+                    isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
+                }
 
                 PublishAxisAlarmTransition(logicalId, kv.Value, isALM);
 
@@ -796,7 +802,7 @@ namespace MotionControl.Services
                 kv.Value.IsAlarmed = isALM;
                 kv.Value.IsEnabled = isServoOn;
 
-                if (!snap.IsInitialized || isMoving || snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
+                if (snap.ShouldPublish(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
                 {
                     snap.Update(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io);
 
@@ -839,19 +845,35 @@ namespace MotionControl.Services
         private sealed class AxisPollSnapshot
         {
             private const double PositionEpsilon = 0.0005;
+            private const int MovingPositionPublishMinMs = 50;
             public bool IsInitialized;
             public double Position;
             public bool IsMoving, IsAlarmed, IsServoOn, IsMEL, IsORG, IsPEL, IsASTP, IsHomeOk;
             public int StatusWord;
+            public long LastPositionPublishTick;
 
-            public bool HasChanged(double pos, bool moving, bool alm, bool servo, bool mel, bool org, bool pel, bool astp, bool homeOk, int io) =>
-                Math.Abs(pos - Position) > PositionEpsilon
-                || moving != IsMoving || alm != IsAlarmed || servo != IsServoOn
-                || mel != IsMEL || org != IsORG || pel != IsPEL || astp != IsASTP
-                || homeOk != IsHomeOk || io != StatusWord;
+            /// <summary>IO/状态变化立即发布；运动中纯位置变化限频 50ms，避免 Timer 被不断重置</summary>
+            public bool ShouldPublish(double pos, bool moving, bool alm, bool servo, bool mel, bool org, bool pel, bool astp, bool homeOk, int io)
+            {
+                if (!IsInitialized) return true;
+
+                if (moving != IsMoving || alm != IsAlarmed || servo != IsServoOn
+                    || mel != IsMEL || org != IsORG || pel != IsPEL || astp != IsASTP
+                    || homeOk != IsHomeOk || io != StatusWord)
+                    return true;
+
+                if (Math.Abs(pos - Position) <= PositionEpsilon) return false;
+                if (!moving) return true;
+
+                long now = Environment.TickCount64;
+                return now - LastPositionPublishTick >= MovingPositionPublishMinMs;
+            }
 
             public void Update(double pos, bool moving, bool alm, bool servo, bool mel, bool org, bool pel, bool astp, bool homeOk, int io)
             {
+                if (Math.Abs(pos - Position) > PositionEpsilon)
+                    LastPositionPublishTick = Environment.TickCount64;
+
                 IsInitialized = true;
                 Position = pos;
                 IsMoving = moving;

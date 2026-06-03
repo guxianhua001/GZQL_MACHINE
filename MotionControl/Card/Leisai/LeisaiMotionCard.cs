@@ -303,6 +303,9 @@ namespace MotionControl.Card
                     if (MotionConvert.BitEnable(sts, 1 << 4)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_ORG);
                     if (MotionConvert.BitEnable(sts, 1 << 6)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SPEL);
                     if (MotionConvert.BitEnable(sts, 1 << 7)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SMEL);
+                    // 伺服使能/急停有效：走 IO 位比 EtherCAT 状态机响应更快，供 UI 指示灯使用
+                    if (MotionConvert.BitEnable(sts, 1 << 12)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_SVON);
+                    if (MotionConvert.BitEnable(sts, 1 << 13)) MotionConvert.SetBits(ref result, Leisai_Define.MIO_ASTP);
 
                     status = result;
                     return 0;
