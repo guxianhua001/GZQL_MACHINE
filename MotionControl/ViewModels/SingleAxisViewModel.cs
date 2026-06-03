@@ -31,6 +31,8 @@ namespace MotionControl.ViewModels
         private AxisStateChangedEvent _pendingStatusEvent;
         /// <summary>面板关闭时不刷新 UI，降低 Dispatcher 负载</summary>
         private bool _uiRefreshEnabled = true;
+        /// <summary>避免 6 轴并发时重复 BeginInvoke 排队</summary>
+        private int _refreshScheduleFlag;
 
         /// <summary>允许执行回零：未回零、断使能再上使能、急停/报警复位后可回零；回零成功后置 false</summary>
         private bool _allowHome = true;
@@ -187,7 +189,7 @@ namespace MotionControl.ViewModels
             SyncInitialStatusFromService();
         }
 
-        /// <summary>订阅轮询事件，16ms 防抖合并刷新（在 UI 线程 Timer 中应用，避免 BeginInvoke 丢失/死循环）</summary>
+        /// <summary>订阅轮询事件，100ms 合并刷新（6 轴页减少 Dispatcher 排队，体感更流畅）</summary>
         private void SubscribeToStatusEvents()
         {
             var observable = (_motionService as IObservable<AxisStateChangedEvent>)
@@ -195,7 +197,7 @@ namespace MotionControl.ViewModels
 
             _statusRefreshTimer = new DispatcherTimer(DispatcherPriority.Normal, Application.Current.Dispatcher)
             {
-                Interval = TimeSpan.FromMilliseconds(16)
+                Interval = TimeSpan.FromMilliseconds(100)
             };
             _statusRefreshTimer.Tick += OnStatusRefreshTimerTick;
 
@@ -205,15 +207,13 @@ namespace MotionControl.ViewModels
                     if (e.AxisId != _axisId || !_uiRefreshEnabled) return;
                     _pendingStatusEvent = e;
 
-                    // 指示灯/IO 立即刷新（Normal 优先级，避免 Background 排队 ~1s）
-                    Application.Current?.Dispatcher.BeginInvoke(() =>
-                    {
-                        if (!_uiRefreshEnabled) return;
-                        ApplyIndicatorsFromEvent(e);
-                    }, DispatcherPriority.Normal);
+                    // 每轴同一时刻只投递一次 Timer 调度，6 轴并发时不 flooding Dispatcher
+                    if (Interlocked.CompareExchange(ref _refreshScheduleFlag, 1, 0) != 0)
+                        return;
 
                     Application.Current?.Dispatcher.BeginInvoke(() =>
                     {
+                        Interlocked.Exchange(ref _refreshScheduleFlag, 0);
                         if (!_uiRefreshEnabled) return;
                         _statusRefreshTimer.Stop();
                         _statusRefreshTimer.Start();
@@ -244,7 +244,7 @@ namespace MotionControl.ViewModels
                     _statusRefreshTimer?.Stop();
                     _pendingStatusEvent = null;
                 }
-            }, DispatcherPriority.Background);
+            }, DispatcherPriority.Normal);
         }
 
         /// <summary>构造后立即从 MotionService 缓存拉一次，避免等首次变化才显示</summary>
@@ -267,10 +267,10 @@ namespace MotionControl.ViewModels
             if (evt == null || evt.AxisId != _axisId) return;
 
             _pendingStatusEvent = null;
-            Position = evt.Position;
+            ApplyStatusFromEvent(evt);
         }
 
-        /// <summary>状态灯/IO 字段：轮询变化后立即刷新</summary>
+        /// <summary>状态灯/IO + 位置：Timer 合并后一次 Apply</summary>
         private void ApplyIndicatorsFromEvent(AxisStateChangedEvent e)
         {
             bool homeChanged = IsHomeOk != e.IsHomeOk;
