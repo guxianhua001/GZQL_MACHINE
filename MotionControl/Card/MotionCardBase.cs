@@ -22,6 +22,7 @@ namespace MotionControl.Card
         public abstract int GetMotionSts(int axisId, ref int status);
         public abstract int GetEtherCatSts(int axisId, ref int status);
         public abstract int ClearAlarm(int axisId);
+        public abstract int ClearPosition(int axisId);
         public abstract int SetDo(int port, int value);
         public abstract int GetDi(int port, ref int value);
         public abstract int GetDo(int port, ref int value);

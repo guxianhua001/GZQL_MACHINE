@@ -140,6 +140,7 @@ namespace MotionControl.ViewModels
             set => SetProperty(ref _isASTP, value);
         }
 
+        /// <summary>回零完成（CheckHomeDone==1，由轮询事件或归零命令后刷新）</summary>
         private bool _isHomeOk;
         public bool IsHomeOk
         {
@@ -322,6 +323,9 @@ namespace MotionControl.ViewModels
             try
             {
                 await _motionService.HomeAxisAsync(_axisId);
+                // 回零完成后立即刷新 IsHomeOk（轮询周期内 UI 也能及时显示）
+                IsHomeOk = await _motionService.CheckHomeDoneAsync(_axisId) == 1;
+                RefreshLocalizedText();
             }
             catch (Exception ex)
             {

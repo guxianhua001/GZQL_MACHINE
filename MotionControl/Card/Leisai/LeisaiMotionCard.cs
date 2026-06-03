@@ -376,6 +376,20 @@ namespace MotionControl.Card
             }
         }
 
+        /// <summary>指令位置与编码器位置清零（与旧项目一致：先 position 再 encoder）</summary>
+        public override int ClearPosition(int axisId)
+        {
+            lock (_lockObj)
+            {
+                try
+                {
+                    LTDMC.dmc_set_position_unit(_cardId, (ushort)axisId, 0);
+                    return LTDMC.dmc_set_encoder_unit(_cardId, (ushort)axisId, 0);
+                }
+                catch { return -1; }
+            }
+        }
+
         public override int SetDo(int port, int value)
         {
             lock (_lockObj)
@@ -490,6 +504,7 @@ namespace MotionControl.Card
             }
         }
 
+        /// <summary>设置指令位置与编码器反馈为同一值（非清零场景可指定任意位置）</summary>
         public int SetPosition(int axisId, double position)
         {
             lock (_lockObj)

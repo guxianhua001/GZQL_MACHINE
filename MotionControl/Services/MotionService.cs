@@ -368,9 +368,14 @@ namespace MotionControl.Services
             });
         }
         
-        /// <summary> 清除轴位置（归零） </summary>
+        /// <summary>位置清零：写卡 dmc_set_position_unit / dmc_set_encoder_unit 为 0，并同步缓存</summary>
         public void ClearPosition(int axisId)
         {
+            var card = GetCardForAxis(axisId);
+            int ret = card.ClearPosition(axisId);
+            if (ret != 0)
+                throw new InvalidOperationException($"轴 {axisId} 位置清零失败，错误码: {ret}");
+
             if (_axisStates.TryGetValue(axisId, out var state))
                 state.ActualPosition = 0;
         }
@@ -614,6 +619,8 @@ namespace MotionControl.Services
                     bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;      // 正极限
                     bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;  // 报警/急停
                     bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);    // 其它轴急停（ASTP 灯）
+                    // 回零完成：dmc_get_home_result，1=已回零（与旧项目 IsHomeOk / CheckHomeDone 一致）
+                    bool isHomeOk = card.CheckHomeDone(axisId) == 1;
 
                     // 更新内部状态
                     kv.Value.ActualPosition = newPos;
@@ -634,7 +641,7 @@ namespace MotionControl.Services
                         IsORG = isORG,
                         IsPEL = isPEL,
                         IsASTP = isASTP,
-                        IsHomeOk = isORG,  // 简化：以 ORG 作为回零完成标志
+                        IsHomeOk = isHomeOk,
                         StatusWord = io
                     });
                 }

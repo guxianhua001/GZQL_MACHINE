@@ -38,7 +38,7 @@ namespace MotionControl.Events
         /// <summary> 急停信号状态（ASTP）</summary>
         public bool IsASTP { get; set; }
 
-        /// <summary> 回零完成标志 </summary>
+        /// <summary>回零完成标志（CheckHomeDone/dmc_get_home_result == 1，非 ORG 传感器）</summary>
         public bool IsHomeOk { get; set; }
 
         /// <summary> 状态字（原始IO状态）</summary>

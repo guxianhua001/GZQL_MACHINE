@@ -54,6 +54,7 @@ namespace MotionControl.Card
         }
 
         public override int ClearAlarm(int axisId) => 0;
+        public override int ClearPosition(int axisId) => 0;
         public override int SetDo(int port, int value)
         {
             _doStates[port] = value;

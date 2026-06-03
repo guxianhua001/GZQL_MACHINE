@@ -1,6 +1,18 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.02 — 单轴回零状态 IsHomeOk（CheckHomeDone）
+-------------------------------------------------------------------------------
+
+1. MotionService 轮询：IsHomeOk 改为 card.CheckHomeDone(axisId)==1（dmc_get_home_result），不再用 ORG 传感器
+2. 单轴归零完成后立即 CheckHomeDoneAsync 刷新 LocalizedHomeStatus
+
+v2026.06.02 — 雷赛卡位置清零（单轴 Clear）
+-------------------------------------------------------------------------------
+
+1. IMotionCard / MotionCardBase 新增 ClearPosition；LeisaiMotionCard 调用 dmc_set_position_unit、dmc_set_encoder_unit 置 0
+2. MotionService.ClearPosition 写卡并校验返回值，同步轴状态缓存；VirtualMotionCard 模拟成功
+
 v2026.06.02 — 单轴回原点 API（仅轴号）
 -------------------------------------------------------------------------------
 

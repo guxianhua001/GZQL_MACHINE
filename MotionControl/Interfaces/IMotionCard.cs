@@ -27,6 +27,9 @@ namespace MotionControl.Interfaces
         int GetEtherCatSts(int axisId, ref int status);
         int ClearAlarm(int axisId);
 
+        /// <summary>指令位置与编码器位置清零（dmc_set_position_unit / dmc_set_encoder_unit 置 0）</summary>
+        int ClearPosition(int axisId);
+
         int SetDo(int port, int value);
         int GetDi(int port, ref int value);
         int GetDo(int port, ref int value);
