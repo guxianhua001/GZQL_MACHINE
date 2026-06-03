@@ -5,7 +5,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:models="clr-namespace:Framework.Models;assembly=Framework"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             MinWidth="360">
+             Width="560">
     <StackPanel Margin="20">
         <!-- 图标 + 标题行 -->
         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
@@ -33,7 +33,6 @@
                     <Button Command="{Binding ClickCommand}"
                             Background="{Binding BackgroundBrush}"
                             MinHeight="40" FontSize="14" Margin="3,0"
-                            MaxWidth="160"
                             Style="{DynamicResource MaterialDesignRaisedButton}">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <materialDesign:PackIcon Kind="{Binding IconKind}"
@@ -43,8 +42,7 @@
                             <TextBlock Text="{Binding Text}" Foreground="White"
                                        VerticalAlignment="Center"
                                        TextWrapping="Wrap"
-                                       TextAlignment="Center"
-                                       MaxWidth="120" />
+                                       TextAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </DataTemplate>
