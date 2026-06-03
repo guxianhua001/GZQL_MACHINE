@@ -71,6 +71,7 @@
             <TabControl Grid.Row="1"
                         Style="{DynamicResource MaterialDesignNavigationRailTabControl}"
                         TabStripPlacement="Right"
+                        SelectedItem="{Binding SelectedStation, Mode=TwoWay}"
                         Background="{DynamicResource MaterialDesignPaper}">
                 
                 <!-- 动态生成工站 TabItem -->

@@ -64,7 +64,9 @@ namespace MotionControl.Services
         private const int FastPollIntervalMs = 10;
         private const int SlowPollIntervalMs = 100;
         private int _outputSlowCounter;
-        private int _homeResultPollPhase;
+        private int _inputSlowCounter;
+        /// <summary>回零状态慢轮询游标：每周期只查 1 根轴，避免 CheckHomeDone 拖慢整轮采样</summary>
+        private int _homePollCursor;
 
         /// <summary>上一周期轴采样缓存，仅变化时发布事件，降低 UI 与订阅开销</summary>
         private readonly Dictionary<int, AxisPollSnapshot> _axisPollSnapshots = new();
@@ -641,14 +643,19 @@ namespace MotionControl.Services
                 int intervalMs = _pollIntervalMs;
                 bool panelOpen = _axisPanelState?.IsPanelOpen ?? false;
 
-                CheckCriticalAlarms();
-
                 if (panelOpen)
                 {
-                    PollAxesStatus(readHomeResult: (_homeResultPollPhase++ & 1) == 0);
-                    int slowFactor = Math.Max(1, intervalMs >= 50 ? 4 : 40);
+                    PollVisibleAxesStatus();
+                    CheckCriticalAlarms(skipVisibleAxes: true);
+                    int slowFactor = Math.Max(1, intervalMs >= 50 ? 4 : 20);
                     if ((_outputSlowCounter++ % slowFactor) == 0)
                         PollOutputsSlow();
+                    if ((_inputSlowCounter++ % 10) == 0)
+                        PollInputsSlow();
+                }
+                else
+                {
+                    CheckCriticalAlarms(skipVisibleAxes: false);
                 }
 
                 if ((_busPollCounter++ % Math.Max(1, 1000 / intervalMs)) == 0)
@@ -661,12 +668,17 @@ namespace MotionControl.Services
             }
         }
 
-        /// <summary> 仅检查所有轴的报警和急停信号，不读取位置；检测到报警时触发AlarmModule报警记录 </summary>
-        private void CheckCriticalAlarms()
+        /// <summary> 检查轴报警/急停；面板打开时可跳过当前 Tab 可见轴（已在 PollVisibleAxesStatus 中处理） </summary>
+        private void CheckCriticalAlarms(bool skipVisibleAxes)
         {
+            HashSet<int> visibleSet = null;
+            if (skipVisibleAxes && _axisPanelState?.VisibleLogicalAxisIds is { Count: > 0 } visibleIds)
+                visibleSet = new HashSet<int>(visibleIds);
+
             foreach (var kv in _axisStates)
             {
                 int logicalId = kv.Key;
+                if (visibleSet != null && visibleSet.Contains(logicalId)) continue;
                 if (!_axisCardMap.TryGetValue(logicalId, out var card)) continue;
                 int pid = ToPhysicalAxisId(logicalId);
 
@@ -675,29 +687,40 @@ namespace MotionControl.Services
                 bool alarm = (io & Leisai_Define.MIO_ALM) != 0 ||
                              (io & Leisai_Define.MIO_EMG) != 0;
 
-                if (alarm != kv.Value.IsAlarmed)
-                {
-                    kv.Value.IsAlarmed = alarm;
-                    _ea.GetEvent<AxisAlarmEvent>().Publish(new AxisAlarmPayload
-                    {
-                        AxisId = logicalId,
-                        IsAlarm = alarm
-                    });
-
-                    // 检测到新报警时，触发报警记录到AlarmModule
-                    if (alarm)
-                    {
-                        _ = _alarmService.TriggerAlarmAsync(
-                            "AXIS_ALARM",
-                            AlarmLevel.Serious,
-                            $"轴{logicalId}报警信号触发",
-                            source: $"Axis{logicalId}",
-                            type: AlarmType.HardwareFault);
-                    }
-                }
+                PublishAxisAlarmTransition(logicalId, kv.Value, alarm);
             }
 
-            // 关键 I/O 也可在此快速检查（如安全门、光栅）
+            // 关键 I/O 在面板关闭时在此快检；面板打开时改由 PollInputsSlow 慢检
+            if (!skipVisibleAxes)
+                PollInputsSlow();
+        }
+
+        /// <summary>轴报警状态变化时发布事件并记录</summary>
+        private void PublishAxisAlarmTransition(int logicalId, AxisState state, bool alarm)
+        {
+            if (alarm == state.IsAlarmed) return;
+
+            state.IsAlarmed = alarm;
+            _ea.GetEvent<AxisAlarmEvent>().Publish(new AxisAlarmPayload
+            {
+                AxisId = logicalId,
+                IsAlarm = alarm
+            });
+
+            if (alarm)
+            {
+                _ = _alarmService.TriggerAlarmAsync(
+                    "AXIS_ALARM",
+                    AlarmLevel.Serious,
+                    $"轴{logicalId}报警信号触发",
+                    source: $"Axis{logicalId}",
+                    type: AlarmType.HardwareFault);
+            }
+        }
+
+        /// <summary>DI 慢采样（面板打开时约 100ms 一次）</summary>
+        private void PollInputsSlow()
+        {
             foreach (var kv in _inputs)
             {
                 if (!_ioCardMap.TryGetValue(kv.Key, out var card)) continue;
@@ -706,25 +729,51 @@ namespace MotionControl.Services
                 kv.Value.Value = (val != 0);
             }
         }
-        /// <summary>轴状态快采样（不含 DO 回读）；仅变化时发布，减轻 UI 延迟</summary>
-        private void PollAxesStatus(bool readHomeResult)
+
+        /// <summary>
+        /// 面板打开时：仅对当前 Tab 可见轴做快采样（位置/IO/伺服），合并报警检测，单次 GetMotionIO。
+        /// 非可见轴仍走 CheckCriticalAlarms 的报警检测。
+        /// </summary>
+        private void PollVisibleAxesStatus()
         {
+            var visibleIds = _axisPanelState?.VisibleLogicalAxisIds;
+            bool restrictVisible = visibleIds != null && visibleIds.Count > 0;
+            HashSet<int> visibleSet = restrictVisible ? new HashSet<int>(visibleIds) : null;
+
+            int axisIndex = 0;
+            int axisCount = _axisStates.Count;
+            int homePollTarget = axisCount > 0 ? _homePollCursor % axisCount : -1;
+
             foreach (var kv in _axisStates)
             {
                 int logicalId = kv.Key;
-                var (card, pid) = ResolveAxis(logicalId);
+                if (!_axisCardMap.TryGetValue(logicalId, out var card))
+                {
+                    axisIndex++;
+                    continue;
+                }
 
-                double newPos = card.GetPosition(pid);
-                bool isMoving = card.CheckDone(pid) == 0;
+                int pid = ToPhysicalAxisId(logicalId);
+                bool isVisible = !restrictVisible || visibleSet.Contains(logicalId);
+
+                if (!isVisible)
+                {
+                    axisIndex++;
+                    continue;
+                }
+
+                var (cardResolved, pidResolved) = (card, pid);
+                double newPos = cardResolved.GetPosition(pidResolved);
+                bool isMoving = cardResolved.CheckDone(pidResolved) == 0;
 
                 int io = 0;
-                card.GetMotionIO(pid, ref io);
+                cardResolved.GetMotionIO(pidResolved, ref io);
 
                 int motionSts = 0;
-                card.GetMotionSts(pid, ref motionSts);
+                cardResolved.GetMotionSts(pidResolved, ref motionSts);
 
                 int etherCatSts = 0;
-                card.GetEtherCatSts(pid, ref etherCatSts);
+                cardResolved.GetEtherCatSts(pidResolved, ref etherCatSts);
                 bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
                 bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;
                 bool isORG = (io & Leisai_Define.MIO_ORG) != 0;
@@ -732,12 +781,15 @@ namespace MotionControl.Services
                 bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;
                 bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
 
+                PublishAxisAlarmTransition(logicalId, kv.Value, isALM);
+
                 if (!_axisPollSnapshots.TryGetValue(logicalId, out var snap))
                     snap = _axisPollSnapshots[logicalId] = new AxisPollSnapshot();
 
                 bool isHomeOk = snap.IsHomeOk;
-                if (readHomeResult || isMoving)
-                    isHomeOk = card.CheckHomeDone(pid) == 1;
+                // 运动中或轮询到本轴时才读回零状态，避免每轮全轴 CheckHomeDone 拖至 ~1s
+                if (isMoving || axisIndex == homePollTarget)
+                    isHomeOk = cardResolved.CheckHomeDone(pidResolved) == 1;
 
                 kv.Value.ActualPosition = newPos;
                 kv.Value.IsMoving = isMoving;
@@ -764,7 +816,12 @@ namespace MotionControl.Services
                         StatusWord = io
                     });
                 }
+
+                axisIndex++;
             }
+
+            if (axisCount > 0)
+                _homePollCursor = (_homePollCursor + 1) % axisCount;
         }
 
         /// <summary>DO 慢采样（约 200ms @5ms 周期），避免拖慢轴状态刷新</summary>

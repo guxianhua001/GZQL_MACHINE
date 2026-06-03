@@ -193,7 +193,7 @@ namespace MotionControl.ViewModels
             var observable = (_motionService as IObservable<AxisStateChangedEvent>)
                 ?? throw new InvalidOperationException("IMotionService does not implement IObservable<AxisStateChangedEvent>");
 
-            _statusRefreshTimer = new DispatcherTimer(DispatcherPriority.Background, Application.Current.Dispatcher)
+            _statusRefreshTimer = new DispatcherTimer(DispatcherPriority.Normal, Application.Current.Dispatcher)
             {
                 Interval = TimeSpan.FromMilliseconds(16)
             };
@@ -204,12 +204,20 @@ namespace MotionControl.ViewModels
                 {
                     if (e.AxisId != _axisId || !_uiRefreshEnabled) return;
                     _pendingStatusEvent = e;
+
+                    // 指示灯/IO 立即刷新（Normal 优先级，避免 Background 排队 ~1s）
+                    Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        if (!_uiRefreshEnabled) return;
+                        ApplyIndicatorsFromEvent(e);
+                    }, DispatcherPriority.Normal);
+
                     Application.Current?.Dispatcher.BeginInvoke(() =>
                     {
                         if (!_uiRefreshEnabled) return;
                         _statusRefreshTimer.Stop();
                         _statusRefreshTimer.Start();
-                    }, DispatcherPriority.Background);
+                    }, DispatcherPriority.Normal);
                 },
                 onError: ex => System.Diagnostics.Debug.WriteLine($"Axis {_axisId} status error: {ex.Message}")
             ));
@@ -259,15 +267,15 @@ namespace MotionControl.ViewModels
             if (evt == null || evt.AxisId != _axisId) return;
 
             _pendingStatusEvent = null;
-            ApplyStatusFromEvent(evt);
+            Position = evt.Position;
         }
 
-        private void ApplyStatusFromEvent(AxisStateChangedEvent e)
+        /// <summary>状态灯/IO 字段：轮询变化后立即刷新</summary>
+        private void ApplyIndicatorsFromEvent(AxisStateChangedEvent e)
         {
             bool homeChanged = IsHomeOk != e.IsHomeOk;
             bool servoChanged = IsServoOn != e.IsServoOn;
 
-            Position = e.Position;
             IsMoving = e.IsMoving;
             IsAlarmed = e.IsAlarmed;
             IsALM = e.IsAlarmed;
@@ -281,6 +289,12 @@ namespace MotionControl.ViewModels
             ApplyHomeAllowanceRules(e);
             if (homeChanged) RefreshLocalizedText();
             if (servoChanged) HomeCommand.RaiseCanExecuteChanged();
+        }
+
+        private void ApplyStatusFromEvent(AxisStateChangedEvent e)
+        {
+            ApplyIndicatorsFromEvent(e);
+            Position = e.Position;
         }
 
         private bool CanExecuteHome() => _allowHome && IsServoOn;

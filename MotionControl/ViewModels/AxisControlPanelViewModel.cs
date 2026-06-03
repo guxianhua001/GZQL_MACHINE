@@ -24,6 +24,18 @@ namespace MotionControl.ViewModels
         // 按工站分组的 Tab 列表
         public ObservableCollection<StationAxisViewModel> Stations { get; } = new();
 
+        /// <summary>当前选中的工站 Tab，用于限定快轮询范围</summary>
+        private StationAxisViewModel _selectedStation;
+        public StationAxisViewModel SelectedStation
+        {
+            get => _selectedStation;
+            set
+            {
+                if (SetProperty(ref _selectedStation, value))
+                    UpdateVisibleAxesForPolling();
+            }
+        }
+
         // 全局紧急停止命令
         public DelegateCommand GlobalEmergencyStopCommand { get; }
 
@@ -41,6 +53,15 @@ namespace MotionControl.ViewModels
 
             // 加载配置并初始化工站
             InitializeStations();
+            SelectedStation = Stations.FirstOrDefault();
+        }
+
+        /// <summary>通知 MotionService 仅快采样当前 Tab 下的轴</summary>
+        private void UpdateVisibleAxesForPolling()
+        {
+            if (_axisPanelState == null) return;
+            var ids = SelectedStation?.Axes.Select(a => a.AxisId).ToList() ?? new List<int>();
+            _axisPanelState.SetVisibleLogicalAxisIds(ids);
         }
 
         /// <summary>
