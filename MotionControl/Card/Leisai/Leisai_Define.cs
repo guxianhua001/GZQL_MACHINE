@@ -39,7 +39,8 @@ namespace MotionControl.Card
         public const int AXIS_SM_SWITCH_ON_DISABLED = 1;    // 启动禁止
         public const int AXIS_SM_READY_TO_SWITCH_ON = 2;    // 准备启动
         public const int AXIS_SM_SWITCHED_ON = 3;           // 已启动
-        /// <summary> 操作使能（旧项目 IsSVON 判断 sts==4） </summary>
+
+        /// <summary> 操作使能 </summary>
         public const int AXIS_SM_OPERATION_ENABLED = 4;
         public const int AXIS_SM_QUICK_STOP = 5;           // 停止
         public const int AXIS_SM_FAULT_REACTION = 6;        // 错误触发
