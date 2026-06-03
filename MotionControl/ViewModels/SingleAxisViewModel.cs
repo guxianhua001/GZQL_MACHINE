@@ -39,6 +39,9 @@ namespace MotionControl.ViewModels
         // 待处理的最新事件
         private AxisStateChangedEvent _pendingEvent;
 
+        /// <summary>允许执行回零：未回零、断使能再上使能、急停/报警复位后可回零；回零成功后置 false</summary>
+        private bool _allowHome = true;
+
         // Jog 状态（由 SafeJogBehavior 控制）
         private bool _isJogging;
         public bool IsJogging
@@ -191,7 +194,7 @@ namespace MotionControl.ViewModels
             // 初始化命令
             MovePositiveCommand = new DelegateCommand(() => ExecuteMoveRelative(_stepSize));
             MoveNegativeCommand = new DelegateCommand(() => ExecuteMoveRelative(-_stepSize));
-            HomeCommand = new DelegateCommand(ExecuteHome);
+            HomeCommand = new DelegateCommand(ExecuteHome, CanExecuteHome);
             StopCommand = new DelegateCommand(ExecuteStop);
             ClearPositionCommand = new DelegateCommand(ExecuteClearPosition);
             ClearAlarmCommand = new DelegateCommand(ExecuteClearAlarm);
@@ -214,10 +217,10 @@ namespace MotionControl.ViewModels
             var observable = (_motionService as IObservable<AxisStateChangedEvent>) 
                 ?? throw new InvalidOperationException("IMotionService does not implement IObservable<AxisStateChangedEvent>");
 
-            // 初始化防抖计时器（50ms 间隔，避免频繁刷新 UI）
+            // UI 防抖（20ms；硬件轮询约 10ms/周期，总延迟约 10+20≈30ms）
             _debounceTimer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(50)
+                Interval = TimeSpan.FromMilliseconds(20)
             };
             _debounceTimer.Tick += OnDebounceTick;
 
@@ -258,19 +261,14 @@ namespace MotionControl.ViewModels
         /// </summary>
         private async Task UpdateStatusFromEventAsync(AxisStateChangedEvent e)
         {
-            // 非阻塞尝试获取锁：若上一更新未完成，跳过本次（不排队）
-            if (!await _updateLock.WaitAsync(0))
-                return;
-
+            await _updateLock.WaitAsync();
             try
             {
-                // 在 UI 线程更新属性
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     Position = e.Position;
                     IsMoving = e.IsMoving;
                     IsAlarmed = e.IsAlarmed;
-                    // XAML 报警灯绑定 IsALM，与 IsAlarmed 同步
                     IsALM = e.IsAlarmed;
                     IsServoOn = e.IsServoOn;
                     IsMEL = e.IsMEL;
@@ -279,7 +277,7 @@ namespace MotionControl.ViewModels
                     IsASTP = e.IsASTP;
                     IsHomeOk = e.IsHomeOk;
 
-                    // 更新缓存的本地化文本
+                    ApplyHomeAllowanceRules(e);
                     RefreshLocalizedText();
                 });
             }
@@ -287,6 +285,24 @@ namespace MotionControl.ViewModels
             {
                 _updateLock.Release();
             }
+        }
+
+        /// <summary>回零按钮可用：已允许回零且伺服 ON（断使能→再上使能后 _allowHome 为 true）</summary>
+        private bool CanExecuteHome() => _allowHome && IsServoOn;
+
+        /// <summary>根据回零/使能/急停状态更新是否允许再次回零</summary>
+        private void ApplyHomeAllowanceRules(AxisStateChangedEvent e)
+        {
+            if (!e.IsHomeOk || e.IsAlarmed || e.IsASTP)
+                SetAllowHome(true);
+            HomeCommand.RaiseCanExecuteChanged();
+        }
+
+        private void SetAllowHome(bool allow)
+        {
+            if (_allowHome == allow) return;
+            _allowHome = allow;
+            HomeCommand.RaiseCanExecuteChanged();
         }
 
         // 补充属性：IsMoving（用于内部逻辑）
@@ -320,11 +336,18 @@ namespace MotionControl.ViewModels
 
         private async void ExecuteHome()
         {
+            if (!CanExecuteHome())
+            {
+                ShowError(GetLocalizedText("AxisError_HomeNotAllowed",
+                    "当前不可回零：请确认未初始化、或断使能再上使能、或急停/报警复位后再试。"));
+                return;
+            }
+
             try
             {
                 await _motionService.HomeAxisAsync(_axisId);
-                // 回零完成后立即刷新 IsHomeOk（轮询周期内 UI 也能及时显示）
                 IsHomeOk = await _motionService.CheckHomeDoneAsync(_axisId) == 1;
+                SetAllowHome(false);
                 RefreshLocalizedText();
             }
             catch (Exception ex)
@@ -371,6 +394,7 @@ namespace MotionControl.ViewModels
             try
             {
                 _motionService.ClearAlarm(_axisId);
+                SetAllowHome(true);
             }
             catch (Exception ex)
             {
@@ -383,9 +407,16 @@ namespace MotionControl.ViewModels
             try
             {
                 if (enable)
+                {
                     _motionService.EnableAxis(_axisId);
+                    HomeCommand.RaiseCanExecuteChanged();
+                }
                 else
+                {
                     _motionService.DisableAxis(_axisId);
+                    // 断使能后允许再次回零（需再上使能且 CanExecuteHome 检查伺服 ON）
+                    SetAllowHome(true);
+                }
             }
             catch (Exception ex)
             {

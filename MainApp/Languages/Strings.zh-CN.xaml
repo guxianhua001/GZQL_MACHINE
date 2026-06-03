@@ -871,6 +871,7 @@
     <sys:String x:Key="HomeButton">轴归零</sys:String>
     <sys:String x:Key="HomeStatus_Initialized">已初始化</sys:String>
     <sys:String x:Key="HomeStatus_NotInitialized">未初始化</sys:String>
+    <sys:String x:Key="AxisError_HomeNotAllowed">当前不可回零：请确认未初始化，或断使能再上使能，或急停/报警复位后再试。</sys:String>
     <sys:String x:Key="ImportPreview_AutoPath_Description">扫描工件 → 生成路径</sys:String>
     <sys:String x:Key="ImportPreview_AutoPath_Status_Waiting">状态: 等待扫描</sys:String>
     <sys:String x:Key="ImportPreview_AutoPath_Title">2.2 自动路径生成</sys:String>

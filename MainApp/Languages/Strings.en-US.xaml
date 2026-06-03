@@ -877,6 +877,7 @@
     <sys:String x:Key="HomeButton">Home</sys:String>
     <sys:String x:Key="HomeStatus_Initialized">Initialized</sys:String>
     <sys:String x:Key="HomeStatus_NotInitialized">Not Initialized</sys:String>
+    <sys:String x:Key="AxisError_HomeNotAllowed">Homing not allowed: axis not initialized, or cycle servo off/on, or reset after E-stop/alarm.</sys:String>
     <sys:String x:Key="ImportPreview_AutoPath_Description">Scan Part → Generate Path</sys:String>
     <sys:String x:Key="ImportPreview_AutoPath_Status_Waiting">Status: Waiting for scan</sys:String>
     <sys:String x:Key="ImportPreview_AutoPath_Title">2.2 Auto-Path Generation</sys:String>

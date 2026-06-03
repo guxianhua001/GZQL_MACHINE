@@ -60,7 +60,6 @@ namespace MotionControl.Services
         private CancellationTokenSource _pollCts;
         private readonly ManualResetEventSlim _stopEvent = new ManualResetEventSlim(false);
         private bool _isPolling;
-        private double _pollingInProgress;
         private readonly object _lock = new();
 
         // ========== IObservable<AxisStateChangedEvent> 实现 ==========
@@ -325,7 +324,19 @@ namespace MotionControl.Services
         private static void WaitHomeComplete(IMotionCard card, int axisId, CancellationToken token)
         {
             var spinWait = new SpinWait();
-            // 1：等待回零流程结束（搜索原点、找Z相等）
+            // 1a：若卡内已为“已回零(1)”，须先观察到回零进行中(0)，避免再次回零时立即误判完成
+            if (card.CheckHomeDone(axisId) == 1)
+            {
+                var waitStart = System.Diagnostics.Stopwatch.StartNew();
+                while (card.CheckHomeDone(axisId) == 1 && waitStart.ElapsedMilliseconds < 3000)
+                {
+                    token.ThrowIfCancellationRequested();
+                    Thread.Sleep(1);
+                }
+            }
+
+            // 1b：等待回零流程结束（dmc_get_home_result == 1）
+            var waitDone = System.Diagnostics.Stopwatch.StartNew();
             while (true)
             {
                 token.ThrowIfCancellationRequested();
@@ -337,6 +348,13 @@ namespace MotionControl.Services
                     throw new RecoverableException(
                         message: $"轴 {axisId} 回原点失败，错误码: {homeStatus}",
                         suggestedAction: "请检查原点传感器是否正常、回零方向是否正确、未撞限位，复位后重试。"
+                    );
+                }
+                if (waitDone.ElapsedMilliseconds > 120_000)
+                {
+                    throw new RecoverableException(
+                        message: $"轴 {axisId} 回原点超时",
+                        suggestedAction: "请检查使能、限位与原点信号，断使能再上使能或急停复位后重试。"
                     );
                 }
                 spinWait.SpinOnce();
@@ -518,11 +536,8 @@ namespace MotionControl.Services
                 // 仅执行快速报警检查（不浪费时间在位置读取）
                 CheckCriticalAlarms();
 
-                // 每 N 次快速循环执行一次完整轮询（如每 3 次 = 30 ms）
-                if ((_fastCycleCount++ % 3) == 0)
-                {
-                    PollFullStatus();
-                }
+                // 每周期完整采样（intervalMs=10 时约 10ms/轴状态；原每 3 周期≈30ms 且跳帧可致数秒延迟）
+                PollFullStatus();
 
                 // 约 1s 检查一次 EtherCAT 总线（10ms × 100）
                 if ((_busPollCounter++ % 100) == 0)
@@ -540,7 +555,8 @@ namespace MotionControl.Services
                 }
             }
         }
-        private int _fastCycleCount = 0;
+        /// <summary>完整状态轮询互斥锁（避免重入；不跳过周期，防止长时间无 UI 刷新）</summary>
+        private readonly object _fullPollLock = new();
 
         /// <summary> 仅检查所有轴的报警和急停信号，不读取位置；检测到报警时触发AlarmModule报警记录 </summary>
         private void CheckCriticalAlarms()
@@ -588,10 +604,7 @@ namespace MotionControl.Services
         }
         private void PollFullStatus()
         {
-            if (Interlocked.CompareExchange(ref _pollingInProgress, 1, 0) != 0)
-                return;
-
-            try
+            lock (_fullPollLock)
             {
                 foreach (var kv in _axisStates)
                 {
@@ -619,7 +632,7 @@ namespace MotionControl.Services
                     bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;      // 正极限
                     bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;  // 报警/急停
                     bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);    // 其它轴急停（ASTP 灯）
-                    // 回零完成：dmc_get_home_result，1=已回零（与旧项目 IsHomeOk / CheckHomeDone 一致）
+                    // 回零完成：dmc_get_home_result，1=已回零
                     bool isHomeOk = card.CheckHomeDone(axisId) == 1;
 
                     // 更新内部状态
@@ -653,10 +666,6 @@ namespace MotionControl.Services
                     card.GetDo(kv.Value.Port, ref raw);
                     kv.Value.Value = (raw != 0);
                 }
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _pollingInProgress, 0);
             }
         }
 
