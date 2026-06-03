@@ -160,6 +160,27 @@ namespace MotionControl.Tests.PositionMotionController
             _motionControllerMock.Verify(m => m.Stop("TestStation"), Times.Once());
         }
 
+        [Fact]
+        public void StopCommand_无选中行时仍可调用()
+        {
+            var vm = CreateViewModel();
+
+            vm.StopCommand.Execute(null);
+
+            _motionControllerMock.Verify(m => m.Stop("TestStation"), Times.Once());
+        }
+
+        [Fact]
+        public void TeachCommand_选中行后CanExecute为true()
+        {
+            var vm = CreateViewModel();
+            Assert.False(vm.TeachCommand.CanExecute(null));
+
+            SetSelectedRow(vm, "P1", 10.0, 20.0);
+
+            Assert.True(vm.TeachCommand.CanExecute(null));
+        }
+
         #endregion
 
         #region Helper Methods

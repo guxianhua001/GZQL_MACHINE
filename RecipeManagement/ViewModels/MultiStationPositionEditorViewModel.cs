@@ -62,6 +62,7 @@ namespace Recipe.ViewModels
                 if (SetProperty(ref _selectedStation, value))
                 {
                     _currentStationIdentifier = value?.Identifier;
+                    RaiseHardwareCommandCanExecuteChanged();
                     _ = LoadPositionsForCurrentStationAsync();
                 }
             }
@@ -82,6 +83,7 @@ namespace Recipe.ViewModels
                     (DeletePositionCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     (MoveUpCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     (MoveDownCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    RaiseHardwareCommandCanExecuteChanged();
                 }
             }
         }
@@ -152,7 +154,8 @@ namespace Recipe.ViewModels
             DeletePositionCommand = new DelegateCommand(DeleteSelected, CanDeleteSelected);
             TeachCommand = new DelegateCommand(Teach, CanExecuteHardwareOperation);
             UndoCommand = new DelegateCommand(Undo);
-            StopCommand = new DelegateCommand(Stop, CanExecuteHardwareOperation);
+            // STOP 为安全操作，始终可用，不绑定选中行或运动前置条件
+            StopCommand = new DelegateCommand(Stop);
             ReplayCommand = new DelegateCommand(Replay, CanExecuteHardwareOperation);
             MoveUpCommand = new DelegateCommand(MoveUp, CanMoveUp);
             MoveDownCommand = new DelegateCommand(MoveDown, CanMoveDown);
@@ -306,6 +309,10 @@ namespace Recipe.ViewModels
                 _currentStationNode = CreateEmptyStationNode();
                 PositionsTable = CreateEmptyTable();
             }
+            finally
+            {
+                Application.Current?.Dispatcher.Invoke(RaiseHardwareCommandCanExecuteChanged);
+            }
         }
 
         /// <summary>
@@ -376,8 +383,17 @@ namespace Recipe.ViewModels
         #endregion
 
         #region Teach & Replay & Stop
+        /// <summary>
+        /// 示教/Goto 需选中行且运动控制器允许执行；选中行或工站变化时需刷新按钮使能
+        /// </summary>
         private bool CanExecuteHardwareOperation()
             => SelectedRow != null && _motionController.CanExecuteMotion(_currentStationIdentifier);
+
+        private void RaiseHardwareCommandCanExecuteChanged()
+        {
+            (TeachCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (ReplayCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+        }
 
         /// <summary>
         /// 从 DataTable 当前行提取轴位置字典，供 Replay/Goto 使用
