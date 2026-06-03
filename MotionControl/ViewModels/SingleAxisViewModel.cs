@@ -11,13 +11,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace MotionControl.ViewModels
 {
     /// <summary>
     /// 单个轴的 ViewModel
-    /// 采用事件驱动模式监控轴状态（替代 DispatcherTimer 轮询）
-    /// 使用 SemaphoreSlim 防止重入
+    /// 采用事件驱动模式监控轴状态；UI 合并刷新，无额外防抖延迟
     /// </summary>
     public class SingleAxisViewModel : BindableBase, IDisposable
     {
@@ -27,17 +27,9 @@ namespace MotionControl.ViewModels
         private readonly string _name;
         private readonly string _direction;
 
-        // 事件订阅
         private IDisposable _statusSubscription;
-        
-        // 防抖计时器（替代 Rx.Throttle）
-        private System.Windows.Threading.DispatcherTimer _debounceTimer;
-        
-        // 重入保护锁（非阻塞模式）
-        private readonly SemaphoreSlim _updateLock = new(1, 1);
-        
-        // 待处理的最新事件
-        private AxisStateChangedEvent _pendingEvent;
+        private volatile AxisStateChangedEvent _latestStatusEvent;
+        private int _uiUpdateScheduled;
 
         /// <summary>允许执行回零：未回零、断使能再上使能、急停/报警复位后可回零；回零成功后置 false</summary>
         private bool _allowHome = true;
@@ -207,83 +199,67 @@ namespace MotionControl.ViewModels
 
         // ========== 事件驱动状态监控 ==========
 
-        /// <summary>
-        /// 订阅轴状态变更事件（核心：替代定时器轮询）
-        /// 手动过滤当前轴事件 + DispatcherTimer 防抖
-        /// </summary>
+        /// <summary>订阅轴状态：轮询线程推送后尽快合并刷新 UI（无 20ms 防抖）</summary>
         private void SubscribeToStatusEvents()
         {
-            // 将 IObservable 转换为可观察序列
-            var observable = (_motionService as IObservable<AxisStateChangedEvent>) 
+            var observable = (_motionService as IObservable<AxisStateChangedEvent>)
                 ?? throw new InvalidOperationException("IMotionService does not implement IObservable<AxisStateChangedEvent>");
 
-            // UI 防抖（20ms；硬件轮询约 10ms/周期，总延迟约 10+20≈30ms）
-            _debounceTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(20)
-            };
-            _debounceTimer.Tick += OnDebounceTick;
-
-            // 订阅事件：手动过滤 + 防抖
             _statusSubscription = observable.Subscribe(new AxisStatusObserver(
                 onNext: e =>
                 {
-                    if (e.AxisId == _axisId)
+                    if (e.AxisId != _axisId) return;
+                    _latestStatusEvent = e;
+                    if (Interlocked.CompareExchange(ref _uiUpdateScheduled, 1, 0) != 0)
+                        return;
+
+                    var dispatcher = Application.Current?.Dispatcher;
+                    if (dispatcher == null)
                     {
-                        _pendingEvent = e;
-                        _debounceTimer.Stop();
-                        _debounceTimer.Start();
+                        Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+                        return;
                     }
+
+                    dispatcher.BeginInvoke(ApplyLatestStatusToUi, DispatcherPriority.Normal);
                 },
                 onError: ex => System.Diagnostics.Debug.WriteLine($"Axis {_axisId} status error: {ex.Message}")
             ));
         }
 
-        /// <summary>
-        /// 防抖计时器触发：处理缓存的最新事件
-        /// </summary>
-        private void OnDebounceTick(object sender, EventArgs e)
+        /// <summary>在 UI 线程应用最新轴状态（合并同一调度周期内的多次采样）</summary>
+        private void ApplyLatestStatusToUi()
         {
-            _debounceTimer.Stop();
-            
-            if (_pendingEvent != null)
-            {
-                var evt = _pendingEvent;
-                _pendingEvent = null;
-                
-                // 异步更新状态
-                _ = UpdateStatusFromEventAsync(evt);
-            }
-        }
-
-        /// <summary>
-        /// 从事件更新轴状态（异步、防重入）
-        /// </summary>
-        private async Task UpdateStatusFromEventAsync(AxisStateChangedEvent e)
-        {
-            await _updateLock.WaitAsync();
             try
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    Position = e.Position;
-                    IsMoving = e.IsMoving;
-                    IsAlarmed = e.IsAlarmed;
-                    IsALM = e.IsAlarmed;
-                    IsServoOn = e.IsServoOn;
-                    IsMEL = e.IsMEL;
-                    IsORG = e.IsORG;
-                    IsPEL = e.IsPEL;
-                    IsASTP = e.IsASTP;
-                    IsHomeOk = e.IsHomeOk;
+                var e = _latestStatusEvent;
+                if (e == null || e.AxisId != _axisId) return;
 
-                    ApplyHomeAllowanceRules(e);
-                    RefreshLocalizedText();
-                });
+                bool homeChanged = IsHomeOk != e.IsHomeOk;
+                bool servoChanged = IsServoOn != e.IsServoOn;
+
+                Position = e.Position;
+                IsMoving = e.IsMoving;
+                IsAlarmed = e.IsAlarmed;
+                IsALM = e.IsAlarmed;
+                IsServoOn = e.IsServoOn;
+                IsMEL = e.IsMEL;
+                IsORG = e.IsORG;
+                IsPEL = e.IsPEL;
+                IsASTP = e.IsASTP;
+                IsHomeOk = e.IsHomeOk;
+
+                ApplyHomeAllowanceRules(e);
+                if (homeChanged) RefreshLocalizedText();
+                if (servoChanged) HomeCommand.RaiseCanExecuteChanged();
             }
             finally
             {
-                _updateLock.Release();
+                Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+                if (_latestStatusEvent != null
+                    && Interlocked.CompareExchange(ref _uiUpdateScheduled, 1, 0) == 0)
+                {
+                    Application.Current?.Dispatcher.BeginInvoke(ApplyLatestStatusToUi, DispatcherPriority.Normal);
+                }
             }
         }
 
@@ -295,7 +271,6 @@ namespace MotionControl.ViewModels
         {
             if (!e.IsHomeOk || e.IsAlarmed || e.IsASTP)
                 SetAllowHome(true);
-            HomeCommand.RaiseCanExecuteChanged();
         }
 
         private void SetAllowHome(bool allow)
@@ -322,11 +297,11 @@ namespace MotionControl.ViewModels
 
         // ========== 命令实现 ==========
 
-        private async void ExecuteMoveRelative(double distance)
+        private void ExecuteMoveRelative(double distance)
         {
             try
             {
-                await _motionService.MoveRelAsync(_axisId, distance, Speed);
+                _motionService.MoveRelStart(_axisId, distance, Speed);
             }
             catch (Exception ex)
             {
@@ -454,10 +429,8 @@ namespace MotionControl.ViewModels
 
         public void Dispose()
         {
-            _debounceTimer?.Stop();
-            _debounceTimer = null;
             _statusSubscription?.Dispose();
-            _updateLock?.Dispose();
+            _latestStatusEvent = null;
         }
     }
 

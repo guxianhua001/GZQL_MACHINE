@@ -55,8 +55,13 @@ namespace MotionControl.Services
         /// <inheritdoc />
         public int GetEtherCatBusErrorCode() => _lastBusErrorCode == int.MinValue ? ReadEtherCatBusErrorCode() : _lastBusErrorCode;
 
-        // 高精度轮询线程 (轮询间隔10ms)
+        // 高精度轮询线程（单轴操作页建议 5ms）
         private Thread _pollThread;
+        private int _outputSlowCounter;
+        private int _homeResultPollPhase;
+
+        /// <summary>上一周期轴采样缓存，仅变化时发布事件，降低 UI 与订阅开销</summary>
+        private readonly Dictionary<int, AxisPollSnapshot> _axisPollSnapshots = new();
         private CancellationTokenSource _pollCts;
         private readonly ManualResetEventSlim _stopEvent = new ManualResetEventSlim(false);
         private bool _isPolling;
@@ -281,6 +286,22 @@ namespace MotionControl.Services
             }, token);
         }
 
+        /// <inheritdoc />
+        public void MoveRelStart(int axisId, double distance, double velocity)
+        {
+            var card = GetCardForAxis(axisId);
+            double startPos = card.GetPosition(axisId);
+            double targetPos = startPos + distance;
+            var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
+            if (!allowed)
+            {
+                _logger.Error($"[安全互锁] 轴{axisId}相对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
+            }
+
+            ThreadPool.QueueUserWorkItem(_ => card.MoveRel(axisId, distance, velocity));
+        }
+
         public async Task MoveLineAbsAsync(int coordId, int[] axisIds, double[] positions, double velocity, CancellationToken token = default)
         {
             var card = GetCardForAxis(axisIds[0]);
@@ -501,7 +522,7 @@ namespace MotionControl.Services
         }
 
         // ---------- 轮询 ----------
-        public void StartPolling(int intervalMs = 10) // 默认 10 ms 快周期
+        public void StartPolling(int intervalMs = 5) // 默认 5ms，单轴操作及时性
         {
             if (_isPolling) return;
             _pollCts = new CancellationTokenSource();
@@ -536,11 +557,12 @@ namespace MotionControl.Services
                 // 仅执行快速报警检查（不浪费时间在位置读取）
                 CheckCriticalAlarms();
 
-                // 每周期完整采样（intervalMs=10 时约 10ms/轴状态；原每 3 周期≈30ms 且跳帧可致数秒延迟）
-                PollFullStatus();
+                PollAxesStatus(readHomeResult: (_homeResultPollPhase++ & 1) == 0);
+                if ((_outputSlowCounter++ % 40) == 0)
+                    PollOutputsSlow();
 
-                // 约 1s 检查一次 EtherCAT 总线（10ms × 100）
-                if ((_busPollCounter++ % 100) == 0)
+                // 约 1s 检查 EtherCAT 总线（5ms × 200）
+                if ((_busPollCounter++ % 200) == 0)
                     PublishEtherCatBusStatus();
 
                 // 精确等待到下一个周期起点
@@ -602,7 +624,8 @@ namespace MotionControl.Services
                 kv.Value.Value = (val != 0);
             }
         }
-        private void PollFullStatus()
+        /// <summary>轴状态快采样（不含 DO 回读）；仅变化时发布，减轻 UI 延迟</summary>
+        private void PollAxesStatus(bool readHomeResult)
         {
             lock (_fullPollLock)
             {
@@ -610,38 +633,42 @@ namespace MotionControl.Services
                 {
                     int axisId = kv.Key;
                     var card = GetCardForAxis(axisId);
-                    
-                    // 读取位置和运动状态
+
                     double newPos = card.GetPosition(axisId);
                     bool isMoving = card.CheckDone(axisId) == 0;
-                         
-                    // IO 状态字：极限/原点/报警（dmc_axis_io_status）
+
                     int io = 0;
                     card.GetMotionIO(axisId, ref io);
 
-                    // 运动状态字：ASTP（GetMotionSts → m_MotionSts）
                     int motionSts = 0;
                     card.GetMotionSts(axisId, ref motionSts);
 
-                    // 伺服使能：GetEtherCatSts IsSVON 判断 sts==4
                     int etherCatSts = 0;
                     card.GetEtherCatSts(axisId, ref etherCatSts);
                     bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
-                    bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;      // 负极限
-                    bool isORG = (io & Leisai_Define.MIO_ORG) != 0;      // 原点
-                    bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;      // 正极限
-                    bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;  // 报警/急停
-                    bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);    // 其它轴急停（ASTP 灯）
-                    // 回零完成：dmc_get_home_result，1=已回零
-                    bool isHomeOk = card.CheckHomeDone(axisId) == 1;
+                    bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;
+                    bool isORG = (io & Leisai_Define.MIO_ORG) != 0;
+                    bool isPEL = (io & Leisai_Define.MIO_PEL) != 0;
+                    bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;
+                    bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
 
-                    // 更新内部状态
+                    if (!_axisPollSnapshots.TryGetValue(axisId, out var snap))
+                        snap = _axisPollSnapshots[axisId] = new AxisPollSnapshot();
+
+                    bool isHomeOk = snap.IsHomeOk;
+                    if (readHomeResult || isMoving)
+                        isHomeOk = card.CheckHomeDone(axisId) == 1;
+
                     kv.Value.ActualPosition = newPos;
                     kv.Value.IsMoving = isMoving;
                     kv.Value.IsAlarmed = isALM;
                     kv.Value.IsEnabled = isServoOn;
 
-                    // 发布轴状态变更事件（事件驱动，替代定时器轮询）
+                    if (!snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
+                        continue;
+
+                    snap.Update(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io);
+
                     PublishAxisStateChanged(new AxisStateChangedEvent
                     {
                         AxisId = axisId,
@@ -658,14 +685,46 @@ namespace MotionControl.Services
                         StatusWord = io
                     });
                 }
-                // 输出回读也可以在这里慢速进行
-                foreach (var kv in _outputs)
-                {
-                    if (!_ioCardMap.TryGetValue(kv.Key, out var card)) continue;
-                    int raw = 0;
-                    card.GetDo(kv.Value.Port, ref raw);
-                    kv.Value.Value = (raw != 0);
-                }
+            }
+        }
+
+        /// <summary>DO 慢采样（约 200ms @5ms 周期），避免拖慢轴状态刷新</summary>
+        private void PollOutputsSlow()
+        {
+            foreach (var kv in _outputs)
+            {
+                if (!_ioCardMap.TryGetValue(kv.Key, out var card)) continue;
+                int raw = 0;
+                card.GetDo(kv.Value.Port, ref raw);
+                kv.Value.Value = (raw != 0);
+            }
+        }
+
+        private sealed class AxisPollSnapshot
+        {
+            private const double PositionEpsilon = 0.0005;
+            public double Position;
+            public bool IsMoving, IsAlarmed, IsServoOn, IsMEL, IsORG, IsPEL, IsASTP, IsHomeOk;
+            public int StatusWord;
+
+            public bool HasChanged(double pos, bool moving, bool alm, bool servo, bool mel, bool org, bool pel, bool astp, bool homeOk, int io) =>
+                Math.Abs(pos - Position) > PositionEpsilon
+                || moving != IsMoving || alm != IsAlarmed || servo != IsServoOn
+                || mel != IsMEL || org != IsORG || pel != IsPEL || astp != IsASTP
+                || homeOk != IsHomeOk || io != StatusWord;
+
+            public void Update(double pos, bool moving, bool alm, bool servo, bool mel, bool org, bool pel, bool astp, bool homeOk, int io)
+            {
+                Position = pos;
+                IsMoving = moving;
+                IsAlarmed = alm;
+                IsServoOn = servo;
+                IsMEL = mel;
+                IsORG = org;
+                IsPEL = pel;
+                IsASTP = astp;
+                IsHomeOk = homeOk;
+                StatusWord = io;
             }
         }
 
