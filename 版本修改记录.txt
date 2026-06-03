@@ -9,13 +9,12 @@ v2026.06.03 — 多工站位置编辑器轴控与安全确认
 3. 多轴同时启动：各轴并行 MoveAbsAsync（Task.WhenAll），非插补联动
 4. 新增多语言资源键 MultiStationPos_*
 
-v2026.06.03 — 指示灯延迟根因修复（第五轮）
+v2026.06.03 — 回退第五轮（恢复 100ms Timer 刷新）
 -------------------------------------------------------------------------------
 
-1. 移除 DispatcherTimer：运动中每 10ms 重置 Timer 导致 UI 长期不刷新（50/150ms 均无效）
-2. 改为每轴单次 BeginInvoke(DataBind) 合并，IO 与位置同步 Apply
-3. 轮询：IO/状态变化立即 Publish；运动中纯位置限频 50ms（去掉 isMoving 无条件 Publish）
-4. IsServoOn 改读 dmc_axis_io_status 的 SVON 位（与 MEL/ORG 同源），不再依赖慢 EtherCAT 状态机
+1. 恢复 SingleAxisViewModel DispatcherTimer(100ms) 合并刷新
+2. 恢复 MotionService isMoving/HasChanged 发布策略与 EtherCAT 读伺服状态
+3. 撤销 LeisaiMotionCard IO 位 SVON/ASTP 映射（第五轮导致状态不刷新）
 
 v2026.06.03 — UI 刷新合并 100ms（6 轴页）
 -------------------------------------------------------------------------------
