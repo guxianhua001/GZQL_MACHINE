@@ -21,6 +21,7 @@ namespace MotionControl.ViewModels
     {
         private readonly IMotionService _motionService;
         private readonly ILocalizationService _localizationService;
+        private readonly IAxisOperationPanelState _axisPanelState;
         private readonly int _axisId;
         private readonly string _name;
         private readonly string _direction;
@@ -28,6 +29,8 @@ namespace MotionControl.ViewModels
         private IDisposable _statusSubscription;
         private DispatcherTimer _statusRefreshTimer;
         private AxisStateChangedEvent _pendingStatusEvent;
+        /// <summary>面板关闭时不刷新 UI，降低 Dispatcher 负载</summary>
+        private bool _uiRefreshEnabled = true;
 
         /// <summary>允许执行回零：未回零、断使能再上使能、急停/报警复位后可回零；回零成功后置 false</summary>
         private bool _allowHome = true;
@@ -149,7 +152,8 @@ namespace MotionControl.ViewModels
             AxisConfig axisConfig,
             IMotionService motionService,
             ILocalizationService localizationService,
-            ISafetyZoneMonitor safetyZoneMonitor = null)
+            ISafetyZoneMonitor safetyZoneMonitor = null,
+            IAxisOperationPanelState axisPanelState = null)
         {
             _axisId = axisConfig.LogicalId;
             _name = axisConfig.Name;
@@ -157,6 +161,13 @@ namespace MotionControl.ViewModels
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _localizationService = localizationService;
             SafetyZoneMonitor = safetyZoneMonitor;
+            _axisPanelState = axisPanelState;
+
+            if (_axisPanelState != null)
+            {
+                _uiRefreshEnabled = _axisPanelState.IsPanelOpen;
+                _axisPanelState.PanelOpenChanged += OnAxisPanelOpenChanged;
+            }
 
             var distances = new[] { 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20 };
             foreach (var d in distances) DistanceOptions.Add(d);
@@ -191,16 +202,41 @@ namespace MotionControl.ViewModels
             _statusSubscription = observable.Subscribe(new AxisStatusObserver(
                 onNext: e =>
                 {
-                    if (e.AxisId != _axisId) return;
+                    if (e.AxisId != _axisId || !_uiRefreshEnabled) return;
                     _pendingStatusEvent = e;
                     Application.Current?.Dispatcher.BeginInvoke(() =>
                     {
+                        if (!_uiRefreshEnabled) return;
                         _statusRefreshTimer.Stop();
                         _statusRefreshTimer.Start();
                     }, DispatcherPriority.Background);
                 },
                 onError: ex => System.Diagnostics.Debug.WriteLine($"Axis {_axisId} status error: {ex.Message}")
             ));
+        }
+
+        /// <summary>面板打开时恢复刷新并同步最新缓存；关闭时停止 Timer</summary>
+        private void OnAxisPanelOpenChanged(bool isOpen)
+        {
+            _uiRefreshEnabled = isOpen;
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (isOpen)
+                {
+                    SyncInitialStatusFromService();
+                    var evt = _pendingStatusEvent;
+                    if (evt != null && evt.AxisId == _axisId)
+                    {
+                        _pendingStatusEvent = null;
+                        ApplyStatusFromEvent(evt);
+                    }
+                }
+                else
+                {
+                    _statusRefreshTimer?.Stop();
+                    _pendingStatusEvent = null;
+                }
+            }, DispatcherPriority.Background);
         }
 
         /// <summary>构造后立即从 MotionService 缓存拉一次，避免等首次变化才显示</summary>
@@ -395,6 +431,8 @@ namespace MotionControl.ViewModels
 
         public void Dispose()
         {
+            if (_axisPanelState != null)
+                _axisPanelState.PanelOpenChanged -= OnAxisPanelOpenChanged;
             _statusRefreshTimer?.Stop();
             _statusRefreshTimer = null;
             _statusSubscription?.Dispose();

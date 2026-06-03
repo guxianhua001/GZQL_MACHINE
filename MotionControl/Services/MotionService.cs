@@ -35,10 +35,13 @@ namespace MotionControl.Services
         private readonly IADValueConverter _adConverter;
         /// <summary> 安全区域监控器：运动前安全互锁检查，防止轴进入危险区域 </summary>
         private readonly ISafetyZoneMonitor _safetyZoneMonitor;
+        private readonly IAxisOperationPanelState _axisPanelState;
         private MotionSystemConfig _config;
 
         private List<IMotionCard> _cards = new();
         private Dictionary<int, AxisState> _axisStates = new();
+        /// <summary>逻辑轴号 → 卡物理轴号(actAxisId)</summary>
+        private Dictionary<int, int> _logicalToPhysicalAxis = new();
         private Dictionary<int, IoState> _inputs = new();
         private Dictionary<int, IoState> _outputs = new();
         private Dictionary<int, IMotionCard> _axisCardMap = new();
@@ -55,8 +58,11 @@ namespace MotionControl.Services
         /// <inheritdoc />
         public int GetEtherCatBusErrorCode() => _lastBusErrorCode == int.MinValue ? ReadEtherCatBusErrorCode() : _lastBusErrorCode;
 
-        // 高精度轮询线程（单轴操作页建议 5ms）
+        // 高精度轮询线程；面板关闭时 100ms，打开时 10ms
         private Thread _pollThread;
+        private volatile int _pollIntervalMs = 100;
+        private const int FastPollIntervalMs = 10;
+        private const int SlowPollIntervalMs = 100;
         private int _outputSlowCounter;
         private int _homeResultPollPhase;
 
@@ -161,7 +167,8 @@ namespace MotionControl.Services
 
         public MotionService(IMotionCardFactory cardFactory, IHardwareConfigLoader configLoader,
                              IEventAggregator ea, ILoggerService logger, IAlarmService alarmService,
-                             IADValueConverter adConverter, ISafetyZoneMonitor safetyZoneMonitor)
+                             IADValueConverter adConverter, ISafetyZoneMonitor safetyZoneMonitor,
+                             IAxisOperationPanelState axisPanelState)
         {
             _cardFactory = cardFactory;
             _configLoader = configLoader;
@@ -170,6 +177,20 @@ namespace MotionControl.Services
             _alarmService = alarmService;
             _adConverter = adConverter;
             _safetyZoneMonitor = safetyZoneMonitor;
+            _axisPanelState = axisPanelState;
+
+            if (_axisPanelState != null)
+            {
+                _pollIntervalMs = _axisPanelState.IsPanelOpen ? FastPollIntervalMs : SlowPollIntervalMs;
+                _axisPanelState.PanelOpenChanged += OnAxisPanelOpenChanged;
+            }
+        }
+
+        /// <summary>面板开关时切换轮询频率</summary>
+        private void OnAxisPanelOpenChanged(bool isOpen)
+        {
+            _pollIntervalMs = isOpen ? FastPollIntervalMs : SlowPollIntervalMs;
+            _logger.Info($"轴操作面板{(isOpen ? "打开" : "关闭")}，轮询间隔 {_pollIntervalMs}ms");
         }
 
         // ---------- 初始化 ----------
@@ -234,6 +255,7 @@ namespace MotionControl.Services
             foreach (var ax in config.Axes)
             {
                 _axisStates[ax.LogicalId] = new AxisState { AxisId = ax.LogicalId, Name = ax.Name };
+                _logicalToPhysicalAxis[ax.LogicalId] = ax.AxisId;
                 var card = _cards.FirstOrDefault(c => c.CardId == ax.CardId);
                 if (card != null)
                     _axisCardMap[ax.LogicalId] = card;
@@ -270,22 +292,37 @@ namespace MotionControl.Services
         }
 
         // ---------- 轴操作（通过映射路由到对应卡） ----------
-        private IMotionCard GetCardForAxis(int axisId)
+        private IMotionCard GetCardForAxis(int logicalAxisId)
         {
-            if (_axisCardMap.TryGetValue(axisId, out var card))
+            if (_axisCardMap.TryGetValue(logicalAxisId, out var card))
                 return card;
-            throw new InvalidOperationException($"Axis {axisId} not mapped to any card");
+            throw new InvalidOperationException($"Axis {logicalAxisId} not mapped to any card");
         }
 
-        public void EnableAxis(int axisId) => GetCardForAxis(axisId).SetServo(axisId, true);
-        public void DisableAxis(int axisId) => GetCardForAxis(axisId).SetServo(axisId, false);
+        /// <summary>逻辑轴号转卡物理轴号；未映射时回退为原值</summary>
+        private int ToPhysicalAxisId(int logicalAxisId)
+            => _logicalToPhysicalAxis.TryGetValue(logicalAxisId, out int physical) ? physical : logicalAxisId;
+
+        private (IMotionCard card, int physicalId) ResolveAxis(int logicalAxisId)
+            => (GetCardForAxis(logicalAxisId), ToPhysicalAxisId(logicalAxisId));
+
+        public void EnableAxis(int axisId)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            card.SetServo(pid, true);
+        }
+
+        public void DisableAxis(int axisId)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            card.SetServo(pid, false);
+        }
 
         public async Task MoveAbsAsync(int axisId, double position, double velocity, CancellationToken token = default)
         {
-            var card = GetCardForAxis(axisId);
+            var (card, pid) = ResolveAxis(axisId);
             await Task.Run(() =>
             {
-                // 安全互锁检查：运动前校验目标位置是否在允许的安全区域内
                 var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, position);
                 if (!allowed)
                 {
@@ -293,21 +330,19 @@ namespace MotionControl.Services
                     throw new SafetyViolationException($"轴{axisId}绝对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
-                card.MoveAbs(axisId, position, velocity);
-                WaitForDone(card, axisId, position, token); // 传入目标位置和令牌
+                card.MoveAbs(pid, position, velocity);
+                WaitForDone(card, pid, position, token);
             }, token);
         }
 
         public async Task MoveRelAsync(int axisId, double distance, double velocity, CancellationToken token = default)
         {
-            var card = GetCardForAxis(axisId);
+            var (card, pid) = ResolveAxis(axisId);
             await Task.Run(() =>
             {
-                // 相对运动必须先读取当前位置，计算出绝对目标位置，才能做最终校验
-                double startPos = card.GetPosition(axisId);
+                double startPos = card.GetPosition(pid);
                 double targetPos = startPos + distance;
 
-                // 安全互锁检查：用计算出的绝对目标位置进行安全区域校验
                 var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
                 if (!allowed)
                 {
@@ -315,19 +350,18 @@ namespace MotionControl.Services
                     throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
-                card.MoveRel(axisId, distance, velocity);
-                WaitForDone(card, axisId, targetPos, token); // 传入计算出的绝对目标位置
+                card.MoveRel(pid, distance, velocity);
+                WaitForDone(card, pid, targetPos, token);
             }, token);
         }
 
         /// <inheritdoc />
         public Task MoveRelStartAsync(int axisId, double distance, double velocity)
         {
-            // 读卡与安全互锁均在后台执行，避免与 5ms 轮询争抢 Leisai 卡锁导致 UI 卡顿
             return Task.Run(() =>
             {
-                var card = GetCardForAxis(axisId);
-                double startPos = card.GetPosition(axisId);
+                var (card, pid) = ResolveAxis(axisId);
+                double startPos = card.GetPosition(pid);
                 double targetPos = startPos + distance;
                 var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
                 if (!allowed)
@@ -336,16 +370,16 @@ namespace MotionControl.Services
                     throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
-                card.MoveRel(axisId, distance, velocity);
+                card.MoveRel(pid, distance, velocity);
             });
         }
 
         public async Task MoveLineAbsAsync(int coordId, int[] axisIds, double[] positions, double velocity, CancellationToken token = default)
         {
             var card = GetCardForAxis(axisIds[0]);
+            var physicalIds = axisIds.Select(ToPhysicalAxisId).ToArray();
             await Task.Run(() =>
             {
-                // 安全互锁检查：插补运动前校验所有参与轴的目标位置是否均在安全区域内
                 var (allowed, reason) = _safetyZoneMonitor.CheckInterpolationMoveAllowed(axisIds, positions);
                 if (!allowed)
                 {
@@ -353,8 +387,8 @@ namespace MotionControl.Services
                     throw new SafetyViolationException($"插补移动被安全策略拒绝: {reason}", axisIds[0], reason);
                 }
 
-                card.MoveLineAbs(coordId, axisIds, positions, velocity);
-                foreach (var id in axisIds) WaitForCoordDone(card, id, axisIds, positions, token);
+                card.MoveLineAbs(coordId, physicalIds, positions, velocity);
+                WaitForCoordDone(card, coordId, physicalIds, positions, token);
             });
         }
 
@@ -369,87 +403,109 @@ namespace MotionControl.Services
         /// <summary>执行回零并等待完成；applyHomeMode=false 时仅 GoHome，沿用卡内已配置参数</summary>
         private async Task RunHomeAsync(int axisId, bool applyHomeMode, int mode, double minVel, double maxVel, CancellationToken token)
         {
-            var card = GetCardForAxis(axisId);
+            var (card, pid) = ResolveAxis(axisId);
             await Task.Run(() =>
             {
                 if (applyHomeMode)
-                    card.SetHomeMode(axisId, mode, minVel, maxVel);
-                card.GoHome(axisId);
-                WaitHomeComplete(card, axisId, token);
+                    card.SetHomeMode(pid, mode, minVel, maxVel);
+                card.GoHome(pid);
+                WaitHomeComplete(card, pid, axisId, token);
             }, token);
         }
 
-        /// <summary>等待回零流程结束并确认轴已停止</summary>
-        private static void WaitHomeComplete(IMotionCard card, int axisId, CancellationToken token)
+        /// <summary>等待回零流程结束；pid 为物理轴号，logicalId 仅用于日志</summary>
+        private static void WaitHomeComplete(IMotionCard card, int pid, int logicalId, CancellationToken token)
         {
             var spinWait = new SpinWait();
-            // 1a：若卡内已为“已回零(1)”，须先观察到回零进行中(0)，避免再次回零时立即误判完成
-            if (card.CheckHomeDone(axisId) == 1)
+            if (card.CheckHomeDone(pid) == 1)
             {
                 var waitStart = System.Diagnostics.Stopwatch.StartNew();
-                while (card.CheckHomeDone(axisId) == 1 && waitStart.ElapsedMilliseconds < 3000)
+                while (card.CheckHomeDone(pid) == 1 && waitStart.ElapsedMilliseconds < 3000)
                 {
                     token.ThrowIfCancellationRequested();
                     Thread.Sleep(1);
                 }
             }
 
-            // 1b：等待回零流程结束（dmc_get_home_result == 1）
             var waitDone = System.Diagnostics.Stopwatch.StartNew();
             while (true)
             {
                 token.ThrowIfCancellationRequested();
-                int homeStatus = card.CheckHomeDone(axisId);
+                int homeStatus = card.CheckHomeDone(pid);
                 if (homeStatus == 1)
                     break;
                 if (homeStatus < 0)
                 {
                     throw new RecoverableException(
-                        message: $"轴 {axisId} 回原点失败，错误码: {homeStatus}",
+                        message: $"轴 {logicalId} 回原点失败，错误码: {homeStatus}",
                         suggestedAction: "请检查原点传感器是否正常、回零方向是否正确、未撞限位，复位后重试。"
                     );
                 }
                 if (waitDone.ElapsedMilliseconds > 120_000)
                 {
                     throw new RecoverableException(
-                        message: $"轴 {axisId} 回原点超时",
+                        message: $"轴 {logicalId} 回原点超时",
                         suggestedAction: "请检查使能、限位与原点信号，断使能再上使能或急停复位后重试。"
                     );
                 }
                 spinWait.SpinOnce();
             }
-            // 2：回零结束后等待运动彻底停止
             while (true)
             {
                 token.ThrowIfCancellationRequested();
-                if (card.CheckDone(axisId) == 1)
+                if (card.CheckDone(pid) == 1)
                     break;
                 spinWait.SpinOnce();
             }
         }
 
         public void JogStart(int axisId, bool positive, double speed)
-            => GetCardForAxis(axisId).MoveJog(axisId, positive ? 0 : 1, speed);
-        public void JogStop(int axisId) => GetCardForAxis(axisId).Stop(axisId);
-        public void StopAxis(int axisId) => GetCardForAxis(axisId).Stop(axisId);
-        public void EmergencyStop(int axisId) => GetCardForAxis(axisId).EStop(axisId);
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            int ret = card.MoveJog(pid, positive ? 0 : 1, speed);
+            if (ret != 0)
+                _logger.Warn($"JogStart 失败 | 逻辑轴:{axisId} 物理轴:{pid} 返回值:{ret}");
+        }
+
+        public void JogStop(int axisId)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            card.Stop(pid);
+        }
+
+        public void StopAxis(int axisId)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            card.Stop(pid);
+        }
+
+        public void EmergencyStop(int axisId)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            card.EStop(pid);
+        }
+
         public Interfaces.IAxis GetAxisState(int axisId) => _axisStates.TryGetValue(axisId, out var s) ? s : null;
-        public void ClearAlarm(int axisId) => GetCardForAxis(axisId).ClearAlarm(axisId);
+
+        public void ClearAlarm(int axisId)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            card.ClearAlarm(pid);
+        }
 
         public async Task<int> CheckHomeDoneAsync(int axisId)
         {
             return await Task.Run(() =>
             {
-                var card = GetCardForAxis(axisId);
-                return card.CheckHomeDone(axisId);
+                var (card, pid) = ResolveAxis(axisId);
+                return card.CheckHomeDone(pid);
             });
         }
-        
-        /// <summary>位置清零：写卡 dmc_set_position_unit / dmc_set_encoder_unit 为 0，并同步缓存</summary>
+
         public void ClearPosition(int axisId)
         {
-            var card = GetCardForAxis(axisId);
-            int ret = card.ClearPosition(axisId);
+            var (card, pid) = ResolveAxis(axisId);
+            int ret = card.ClearPosition(pid);
             if (ret != 0)
                 throw new InvalidOperationException($"轴 {axisId} 位置清零失败，错误码: {ret}");
 
@@ -457,42 +513,33 @@ namespace MotionControl.Services
                 state.ActualPosition = 0;
         }
 
-        /// <summary>
-        /// 获取轴当前位置（直接读卡，实时性高，用于位置触发等场景）
-        /// </summary>
         public double GetAxisPosition(int axisId)
         {
-            var card = GetCardForAxis(axisId);
-            return card.GetPosition(axisId);
+            var (card, pid) = ResolveAxis(axisId);
+            return card.GetPosition(pid);
         }
 
         /// <summary>
         /// 等待轴运动完成，并校验最终位置是否在误差允许范围内
         /// </summary>
         /// <param name="card">运动卡实例</param>
-        /// <param name="axisId">逻辑轴号</param>
-        /// <param name="targetPosition">目标位置</param>
-        /// <param name="token">取消令牌（用于急停快速响应）</param>
-        /// <param name="tolerance">位置误差容忍度（根据你的机械精度设定，如0.01mm）</param>
-        private void WaitForDone(IMotionCard card, int axisId, double targetPosition, CancellationToken token, double tolerance = 0.05)
+        /// <param name="physicalAxisId">卡物理轴号</param>
+        private void WaitForDone(IMotionCard card, int physicalAxisId, double targetPosition, CancellationToken token, double tolerance = 0.05)
         {
             var spinWait = new SpinWait();
             while (true)
             {
-                // 检查急停/停止取消信号，实现微秒级响应
                 token.ThrowIfCancellationRequested();
-                // 检查运动是否完成
-                int done = card.CheckDone(axisId);
+                int done = card.CheckDone(physicalAxisId);
                 if (done == 1)
                     break;
-                spinWait.SpinOnce();  // 超高速等待，不占满CPU
+                spinWait.SpinOnce();
             }
-            double actualPosition = card.GetPosition(axisId);
+            double actualPosition = card.GetPosition(physicalAxisId);
             if (Math.Abs(actualPosition - targetPosition) > tolerance)
             {
-                // 如果位置不对，说明发生了碰撞、限位或伺服异常，主动抛出可恢复异常
                 throw new RecoverableException(
-                    message: $"轴 {axisId} 运动未到位。目标: {targetPosition:F3}, 实际: {actualPosition:F3}",
+                    message: $"轴 {physicalAxisId} 运动未到位。目标: {targetPosition:F3}, 实际: {actualPosition:F3}",
                     suggestedAction: "请检查轴是否撞击限位、伺服是否报警或存在机械卡死，复位后重试。"
                 );
             }
@@ -560,18 +607,18 @@ namespace MotionControl.Services
         }
 
         // ---------- 轮询 ----------
-        public void StartPolling(int intervalMs = 5) // 默认 5ms，单轴操作及时性
+        public void StartPolling(int intervalMs = SlowPollIntervalMs)
         {
             if (_isPolling) return;
+            _pollIntervalMs = _axisPanelState?.IsPanelOpen == true ? FastPollIntervalMs : intervalMs;
             _pollCts = new CancellationTokenSource();
-            _pollThread = new Thread(() => PollLoop(intervalMs, _pollCts.Token))
+            _pollThread = new Thread(() => PollLoop(_pollCts.Token))
             {
                 IsBackground = true,
                 Priority = ThreadPriority.AboveNormal
             };
             _isPolling = true;
             _pollThread.Start();
-            // 轮询启动后立即刷新总线状态（避免 UI 订阅晚于 InitializeAsync 发布）
             PublishEtherCatBusStatus(force: true);
         }
 
@@ -584,26 +631,29 @@ namespace MotionControl.Services
             _isPolling = false;
         }
 
-        private void PollLoop(int intervalMs, CancellationToken token)
+        private void PollLoop(CancellationToken token)
         {
             var stopwatch = new System.Diagnostics.Stopwatch();
 
             while (!token.IsCancellationRequested)
             {
                 stopwatch.Restart();
+                int intervalMs = _pollIntervalMs;
+                bool panelOpen = _axisPanelState?.IsPanelOpen ?? false;
 
-                // 仅执行快速报警检查（不浪费时间在位置读取）
                 CheckCriticalAlarms();
 
-                PollAxesStatus(readHomeResult: (_homeResultPollPhase++ & 1) == 0);
-                if ((_outputSlowCounter++ % 40) == 0)
-                    PollOutputsSlow();
+                if (panelOpen)
+                {
+                    PollAxesStatus(readHomeResult: (_homeResultPollPhase++ & 1) == 0);
+                    int slowFactor = Math.Max(1, intervalMs >= 50 ? 4 : 40);
+                    if ((_outputSlowCounter++ % slowFactor) == 0)
+                        PollOutputsSlow();
+                }
 
-                // 约 1s 检查 EtherCAT 总线（5ms × 200）
-                if ((_busPollCounter++ % 200) == 0)
+                if ((_busPollCounter++ % Math.Max(1, 1000 / intervalMs)) == 0)
                     PublishEtherCatBusStatus();
 
-                // 精确等待到下一个周期起点
                 long elapsed = stopwatch.ElapsedMilliseconds;
                 long waitMs = intervalMs - elapsed;
                 if (waitMs > 0)
@@ -616,11 +666,12 @@ namespace MotionControl.Services
         {
             foreach (var kv in _axisStates)
             {
-                int axisId = kv.Key;
-                if (!_axisCardMap.TryGetValue(axisId, out var card)) continue;
+                int logicalId = kv.Key;
+                if (!_axisCardMap.TryGetValue(logicalId, out var card)) continue;
+                int pid = ToPhysicalAxisId(logicalId);
 
                 int io = 0;
-                card.GetMotionIO(axisId, ref io);
+                card.GetMotionIO(pid, ref io);
                 bool alarm = (io & Leisai_Define.MIO_ALM) != 0 ||
                              (io & Leisai_Define.MIO_EMG) != 0;
 
@@ -629,7 +680,7 @@ namespace MotionControl.Services
                     kv.Value.IsAlarmed = alarm;
                     _ea.GetEvent<AxisAlarmEvent>().Publish(new AxisAlarmPayload
                     {
-                        AxisId = axisId,
+                        AxisId = logicalId,
                         IsAlarm = alarm
                     });
 
@@ -639,8 +690,8 @@ namespace MotionControl.Services
                         _ = _alarmService.TriggerAlarmAsync(
                             "AXIS_ALARM",
                             AlarmLevel.Serious,
-                            $"轴{axisId}报警信号触发",
-                            source: $"Axis{axisId}",
+                            $"轴{logicalId}报警信号触发",
+                            source: $"Axis{logicalId}",
                             type: AlarmType.HardwareFault);
                     }
                 }
@@ -660,20 +711,20 @@ namespace MotionControl.Services
         {
             foreach (var kv in _axisStates)
             {
-                int axisId = kv.Key;
-                var card = GetCardForAxis(axisId);
+                int logicalId = kv.Key;
+                var (card, pid) = ResolveAxis(logicalId);
 
-                double newPos = card.GetPosition(axisId);
-                bool isMoving = card.CheckDone(axisId) == 0;
+                double newPos = card.GetPosition(pid);
+                bool isMoving = card.CheckDone(pid) == 0;
 
                 int io = 0;
-                card.GetMotionIO(axisId, ref io);
+                card.GetMotionIO(pid, ref io);
 
                 int motionSts = 0;
-                card.GetMotionSts(axisId, ref motionSts);
+                card.GetMotionSts(pid, ref motionSts);
 
                 int etherCatSts = 0;
-                card.GetEtherCatSts(axisId, ref etherCatSts);
+                card.GetEtherCatSts(pid, ref etherCatSts);
                 bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
                 bool isMEL = (io & Leisai_Define.MIO_MEL) != 0;
                 bool isORG = (io & Leisai_Define.MIO_ORG) != 0;
@@ -681,12 +732,12 @@ namespace MotionControl.Services
                 bool isALM = (io & Leisai_Define.MIO_ALM) != 0 || (io & Leisai_Define.MIO_EMG) != 0;
                 bool isASTP = MotionConvert.BitEnable(motionSts, Leisai_Define.MTS_OTHER);
 
-                if (!_axisPollSnapshots.TryGetValue(axisId, out var snap))
-                    snap = _axisPollSnapshots[axisId] = new AxisPollSnapshot();
+                if (!_axisPollSnapshots.TryGetValue(logicalId, out var snap))
+                    snap = _axisPollSnapshots[logicalId] = new AxisPollSnapshot();
 
                 bool isHomeOk = snap.IsHomeOk;
                 if (readHomeResult || isMoving)
-                    isHomeOk = card.CheckHomeDone(axisId) == 1;
+                    isHomeOk = card.CheckHomeDone(pid) == 1;
 
                 kv.Value.ActualPosition = newPos;
                 kv.Value.IsMoving = isMoving;
@@ -699,7 +750,7 @@ namespace MotionControl.Services
 
                     PublishAxisStateChanged(new AxisStateChangedEvent
                     {
-                        AxisId = axisId,
+                        AxisId = logicalId,
                         Name = kv.Value.Name,
                         Position = newPos,
                         IsMoving = isMoving,

@@ -95,6 +95,7 @@ namespace ModuleCore.ViewModels
         private readonly IAppSettingService _appConfig;
         private readonly ILoggerService _logger;
         private readonly IMotionService _motionService;
+        private readonly IAxisOperationPanelState _axisPanelState;
         private SubscriptionToken _refreshToken;
         private SubscriptionToken _secsCommandToken;
         public MainWindowViewModel(IDialogService dialogService,
@@ -104,6 +105,7 @@ namespace ModuleCore.ViewModels
                                    IAppSettingService appConfig,
                                    ILoggerService logger,
                                    IMotionService motionService,
+                                   IAxisOperationPanelState axisPanelState,
                                    ILocalizationService localizationService)
             : base(localizationService, eventAggregator)
         {
@@ -112,6 +114,7 @@ namespace ModuleCore.ViewModels
             _appConfig = appConfig;
             _logger = logger;
             _motionService = motionService;
+            _axisPanelState = axisPanelState;
             Model = container.Resolve<LoginModel>();
             Navigate = container.Resolve<NavigateModel>();
             RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
@@ -524,7 +527,11 @@ namespace ModuleCore.ViewModels
         public bool IsAxisPanelOpen
         {
             get => _isAxisPanelOpen;
-            set => SetProperty(ref _isAxisPanelOpen, value);
+            set
+            {
+                if (SetProperty(ref _isAxisPanelOpen, value))
+                    _axisPanelState?.SetPanelOpen(value);
+            }
         }
 
         #region 工业控制按钮组 - 命令与状态属性

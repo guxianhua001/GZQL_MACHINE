@@ -1,6 +1,14 @@
 ﻿GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.03 — 单轴 Jog/CPU/逻辑轴号修复（第三轮）
+-------------------------------------------------------------------------------
+
+1. MotionService：逻辑轴(setAxisId)→物理轴(actAxisId)映射，Jog/移动/读位置统一 ResolveAxis
+2. SafeJog：恢复同步 JogStart（异步 Stop 先于 Start 导致无动作）；安全互锁用轮询缓存位置
+3. 轴操作面板关闭：停止 UI 刷新 + 轮询降为 100ms；打开时 10ms 快轮询（IAxisOperationPanelState）
+4. MainWindow IsAxisPanelOpen 联动 SetPanelOpen，关闭 Drawer 后 CPU 不再空转
+
 v2026.06.03 — 单轴状态/Jog 稳定性修复（第二轮）
 -------------------------------------------------------------------------------
 

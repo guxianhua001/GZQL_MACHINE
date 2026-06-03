@@ -19,6 +19,7 @@ namespace MotionControl.ViewModels
         private readonly IMotionService _motionService;
         private readonly ILocalizationService _localizationService;
         private readonly ISafetyZoneMonitor _safetyZoneMonitor;
+        private readonly IAxisOperationPanelState _axisPanelState;
 
         // 按工站分组的 Tab 列表
         public ObservableCollection<StationAxisViewModel> Stations { get; } = new();
@@ -28,11 +29,13 @@ namespace MotionControl.ViewModels
 
         public AxisControlPanelViewModel(IMotionService motionService, 
                                         ILocalizationService localizationService,
-                                        ISafetyZoneMonitor safetyZoneMonitor = null)
+                                        ISafetyZoneMonitor safetyZoneMonitor = null,
+                                        IAxisOperationPanelState axisPanelState = null)
         {
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _localizationService = localizationService;
             _safetyZoneMonitor = safetyZoneMonitor;
+            _axisPanelState = axisPanelState;
 
             GlobalEmergencyStopCommand = new DelegateCommand(ExecuteGlobalEmergencyStop);
 
@@ -73,7 +76,7 @@ namespace MotionControl.ViewModels
 
                     var stationVM = new StationAxisViewModel(
                         stationId, taskName, taskGroup,
-                        _motionService, _localizationService, _safetyZoneMonitor);
+                        _motionService, _localizationService, _safetyZoneMonitor, _axisPanelState);
                     Stations.Add(stationVM);
                 }
 
@@ -120,7 +123,7 @@ namespace MotionControl.ViewModels
             string defaultName = _localizationService?.GetResourceOrDefault("DefaultStationName", "All Axes") ?? "All Axes";
             var defaultStation = new StationAxisViewModel(
                 0, defaultName, axes, 
-                _motionService, _localizationService, _safetyZoneMonitor);
+                _motionService, _localizationService, _safetyZoneMonitor, _axisPanelState);
             Stations.Add(defaultStation);
         }
 
