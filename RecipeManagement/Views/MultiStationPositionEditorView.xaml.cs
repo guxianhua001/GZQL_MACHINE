@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -46,16 +46,16 @@ namespace Recipe.Views
                 if (e.Column is DataGridTextColumn axisColumn)
                 {
                     axisColumn.MinWidth = 80;
-                    // 也可以使用固定宽度： axisColumn.Width = 80;
                 }
             }
 
-            // 禁用用户排序（可选）
+            // 禁用用户排序
             e.Column.CanUserSort = false;
         }
 
         /// <summary>
         /// 单元格切换时通知 ViewModel 更新选中轴列（供单轴 GOTO 使用）
+        /// 通过 DisplayIndex 映射到 DataTable 列，避开 Header/SortMemberPath/Binding 不可靠问题
         /// </summary>
         private void PositionsDataGrid_CurrentCellChanged(object sender, EventArgs e)
         {
@@ -63,10 +63,19 @@ namespace Recipe.Views
                 return;
 
             var cell = grid.CurrentCell;
-            if (cell.Column is DataGridTextColumn textColumn && textColumn.Binding is Binding binding)
-                vm.SetSelectedAxisColumn(binding.Path.Path);
-            else
-                vm.SetSelectedAxisColumn(null);
+            if (!cell.IsValid || cell.Column == null)
+            {
+                vm.SetSelectedAxisColumn(-1);
+                return;
+            }
+
+            // DataTable Columns: [PositionName, IsReadOnly, X, Y, ..., Comment]
+            // DataGrid Columns:    [PositionName, X, Y, ..., Comment]  (IsReadOnly hidden)
+            // 因此 DataGrid DisplayIndex >= 1 时，DataTable 索引 = DisplayIndex + 1
+            var gridIdx = cell.Column.DisplayIndex;
+            var tableIdx = gridIdx == 0 ? 0 : gridIdx + 1; // 跳过隐藏的 IsReadOnly
+
+            vm.SetSelectedAxisColumn(tableIdx);
         }
     }
 }

@@ -457,21 +457,20 @@ namespace Recipe.ViewModels
         }
 
         /// <summary>
-        /// 表格单元格切换时更新选中轴列（仅工站轴列有效）
+        /// 表格单元格切换时更新选中轴列（供单轴 GOTO 使用）
+        /// 仅在有效轴列时更新，失焦/无效时不覆盖（避免点击按钮时清空）
         /// </summary>
-        public void SetSelectedAxisColumn(string columnName)
+        public void SetSelectedAxisColumn(int tableColumnIndex)
         {
-            if (string.IsNullOrEmpty(columnName) ||
-                columnName is "PositionName" or "Comment" or "IsReadOnly" ||
-                string.IsNullOrEmpty(_currentStationIdentifier))
-            {
-                SelectedAxisColumnName = null;
-                return;
-            }
+            if (PositionsTable == null || tableColumnIndex < 0 || tableColumnIndex >= PositionsTable.Columns.Count)
+                return; // 失焦等场景不覆盖
 
-            var isAxis = _axisConfig.GetAxesForStation(_currentStationIdentifier)
-                .Any(a => a.Name == columnName);
-            SelectedAxisColumnName = isAxis ? columnName : null;
+            var columnName = PositionsTable.Columns[tableColumnIndex].ColumnName;
+            // 非轴列也不覆盖，保留上一次有效选择
+            if (columnName is "PositionName" or "Comment" or "IsReadOnly")
+                return;
+
+            SelectedAxisColumnName = columnName;
         }
 
         /// <summary>
