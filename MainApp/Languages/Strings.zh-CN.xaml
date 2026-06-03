@@ -2782,6 +2782,7 @@
     <sys:String x:Key="MultiStationPos_TeachFailed">示教失败: {0}</sys:String>
     <sys:String x:Key="MultiStationPos_GotoFailed">前往失败: {0}</sys:String>
     <sys:String x:Key="MultiStationPos_AxisNotHomed">以下轴未回零，无法移动: {0}&#x0a;请先执行回零操作。</sys:String>
+    <sys:String x:Key="MultiStationPos_AxisNotEnabled">以下轴伺服未使能，无法移动: {0}&#x0a;请先使能伺服。</sys:String>
     <sys:String x:Key="MultiStationPos_NoAxisValues">选中行没有有效的轴坐标，无法前往。</sys:String>
     <sys:String x:Key="MultiStationPos_SelectAxisCell">请先在表格中选中要移动的轴列单元格。</sys:String>
     <sys:String x:Key="MultiStationPos_NoAxisValue">选中轴列没有有效的目标坐标。</sys:String>

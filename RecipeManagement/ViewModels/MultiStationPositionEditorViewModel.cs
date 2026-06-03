@@ -566,6 +566,8 @@ namespace Recipe.ViewModels
 
             // 回零检查：未回零的轴不允许移动
             var notHomedAxes = new List<string>();
+            // 伺服使能检查：未使能的轴不允许移动
+            var notEnabledAxes = new List<string>();
             foreach (var kvp in targetPositions)
             {
                 var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
@@ -574,6 +576,10 @@ namespace Recipe.ViewModels
                     var homeResult = await _motionService.CheckHomeDoneAsync(axisId);
                     if (homeResult != 1)
                         notHomedAxes.Add(kvp.Key);
+
+                    var axisState = _motionService.GetAxisState(axisId);
+                    if (axisState != null && !axisState.IsEnabled)
+                        notEnabledAxes.Add(kvp.Key);
                 }
             }
 
@@ -583,6 +589,17 @@ namespace Recipe.ViewModels
                 await _dialogService.ShowDialogAsync("NotificationDialog",
                     new DialogParameters {
                         { "message", _localization.GetResource("MultiStationPos_AxisNotHomed", axisList) },
+                        { "icon", PackIconKind.AlertCircleOutline }
+                    });
+                return;
+            }
+
+            if (notEnabledAxes.Count > 0)
+            {
+                var axisList = string.Join(", ", notEnabledAxes);
+                await _dialogService.ShowDialogAsync("NotificationDialog",
+                    new DialogParameters {
+                        { "message", _localization.GetResource("MultiStationPos_AxisNotEnabled", axisList) },
                         { "icon", PackIconKind.AlertCircleOutline }
                     });
                 return;
