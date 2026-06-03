@@ -564,6 +564,30 @@ namespace Recipe.ViewModels
 
             if (choiceIndex == null || choiceIndex == 2) return;
 
+            // 回零检查：未回零的轴不允许移动
+            var notHomedAxes = new List<string>();
+            foreach (var kvp in targetPositions)
+            {
+                var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
+                if (axisId >= 0)
+                {
+                    var homeResult = await _motionService.CheckHomeDoneAsync(axisId);
+                    if (homeResult != 1)
+                        notHomedAxes.Add(kvp.Key);
+                }
+            }
+
+            if (notHomedAxes.Count > 0)
+            {
+                var axisList = string.Join(", ", notHomedAxes);
+                await _dialogService.ShowDialogAsync("NotificationDialog",
+                    new DialogParameters {
+                        { "message", _localization.GetResource("MultiStationPos_AxisNotHomed", axisList) },
+                        { "icon", PackIconKind.AlertCircleOutline }
+                    });
+                return;
+            }
+
             try
             {
                 IsMoving = true;
