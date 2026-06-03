@@ -23,6 +23,13 @@ namespace MotionControl.Models
 
         /// <summary>安全高度阈值（mm），当前位置低于此值视为未在安全区域</summary>
         public double SafeHeight { get; set; } = 50.0;
+
+        /// <summary>
+        /// Z轴方向模式：
+        /// false（默认）= Z越往上值越大，安全=高位=大值，判断 pos &lt; SafeHeight 为不安全
+        /// true = Z越往下值越大，安全=高位=小值，判断 pos &gt; SafeHeight 为不安全
+        /// </summary>
+        public bool InvertedDirection { get; set; } = false;
     }
 
     /// <summary>

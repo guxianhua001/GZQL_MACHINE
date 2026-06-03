@@ -3021,6 +3021,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ Safe Height (mm)</sys:String>
     <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ Safe Height (mm)</sys:String>
     <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInverted">Z-axis Direction Inverted</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInvertedTip">Check if Z value increases downward (inverts safe height logic); uncheck if Z value increases upward (default)</sys:String>
     <sys:String x:Key="SafetyRule_HeightLockPlane">Height axis [{1}] not safe; {0} move blocked</sys:String>
     <sys:String x:Key="SafetyRule_MissingAxis">Unknown axis; safety interlock denied</sys:String>
     <sys:String x:Key="SafetyRule_InvalidInterpolation">Invalid interpolation parameters</sys:String>

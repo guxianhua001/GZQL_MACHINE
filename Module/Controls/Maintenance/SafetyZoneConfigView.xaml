@@ -116,7 +116,13 @@
                             <TextBlock Text="{lang:Lang SafetyZone_SafeHeightZ3}" Style="{StaticResource ParamLabel}"/>
                             <materialDesign:DecimalUpDown Value="{Binding SafeHeightZ3}"
                                                           ValueStep="1" Minimum="0" Maximum="500"
-                                                          Margin="0,0,0,8"/>
+                                                          Margin="0,0,0,4"/>
+
+                            <!-- Z轴方向反转：Z越往下值越大时勾选 -->
+                            <CheckBox Content="{lang:Lang SafetyZone_ZAxisInverted}"
+                                      IsChecked="{Binding ZAxisInverted}"
+                                      Margin="0,4,0,8"
+                                      ToolTip="{lang:Lang SafetyZone_ZAxisInvertedTip}"/>
 
                             <!-- X 危险区下限/上限 -->
                             <TextBlock Text="{lang:Lang SafetyZone_DangerXMin}" Style="{StaticResource ParamLabel}"/>

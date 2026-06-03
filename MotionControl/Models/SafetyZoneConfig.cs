@@ -125,6 +125,29 @@ namespace MotionControl.Models
             entry.SafeHeight = safeHeight;
         }
 
+        /// <summary>设置指定高度轴的方向反转标志</summary>
+        public void SetInvertedDirectionForAxis(string axisName, bool inverted)
+        {
+            var rule = GetOrCreateHeightLockPlaneRule();
+            var entry = rule.HeightAxes.FirstOrDefault(h =>
+                string.Equals(h.AxisName, axisName, System.StringComparison.Ordinal));
+            if (entry == null)
+            {
+                entry = new HeightAxisSafeConfig { AxisName = axisName };
+                rule.HeightAxes.Add(entry);
+            }
+            entry.InvertedDirection = inverted;
+        }
+
+        /// <summary>读取指定高度轴的方向反转标志</summary>
+        public bool GetInvertedDirectionForAxis(string axisName, bool defaultValue = false)
+        {
+            var rule = Rules.FirstOrDefault(r => r.Type == SafetyInterlockRuleType.HeightLockPlane);
+            var entry = rule?.HeightAxes?.FirstOrDefault(h =>
+                string.Equals(h.AxisName, axisName, System.StringComparison.Ordinal));
+            return entry?.InvertedDirection ?? defaultValue;
+        }
+
         public SafetyZoneConfig Clone()
         {
             return new SafetyZoneConfig
@@ -152,7 +175,8 @@ namespace MotionControl.Models
             HeightAxes = r.HeightAxes?.Select(h => new HeightAxisSafeConfig
             {
                 AxisName = h.AxisName,
-                SafeHeight = h.SafeHeight
+                SafeHeight = h.SafeHeight,
+                InvertedDirection = h.InvertedDirection
             }).ToList() ?? new List<HeightAxisSafeConfig>(),
             LockedAxes = r.LockedAxes?.ToList() ?? new List<string>()
         };

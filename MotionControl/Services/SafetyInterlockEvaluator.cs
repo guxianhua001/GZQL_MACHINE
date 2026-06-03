@@ -76,7 +76,7 @@ namespace MotionControl.Services
                     var pos = getPositionByName(ha.AxisName);
                     bool isLow = pos == null
                         ? config.FailClosedOnMissingAxis
-                        : pos.Value < ha.SafeHeight;
+                        : IsBelowSafeHeight(pos.Value, ha);
 
                     if (isLow && !result.Any(x => string.Equals(x, ha.AxisName, StringComparison.Ordinal)))
                         result.Add(ha.AxisName);
@@ -164,7 +164,7 @@ namespace MotionControl.Services
                     continue;
 
                 var pos = getPositionByName(ha.AxisName);
-                bool isLow = pos == null ? failClosed : pos.Value < ha.SafeHeight;
+                bool isLow = pos == null ? failClosed : IsBelowSafeHeight(pos.Value, ha);
                 if (isLow)
                     lowAxes.Add(ha.AxisName);
             }
@@ -184,7 +184,7 @@ namespace MotionControl.Services
                     if (string.IsNullOrWhiteSpace(ha.AxisName))
                         return false;
                     var pos = getPositionByName(ha.AxisName);
-                    return pos == null ? failClosed : pos.Value < ha.SafeHeight;
+                    return pos == null ? failClosed : IsBelowSafeHeight(pos.Value, ha);
                 }),
                 _ => false
             };
@@ -203,6 +203,18 @@ namespace MotionControl.Services
             }
 
             return args != null && args.Length > 0 ? string.Format(key, args) : key;
+        }
+
+        /// <summary>
+        /// 判断当前位置是否低于安全高度（未在安全区域）
+        /// 常规方向（InvertedDirection=false）：Z越往上值越大，pos &lt; SafeHeight 为不安全
+        /// 反转方向（InvertedDirection=true）：Z越往下值越大，pos &gt; SafeHeight 为不安全
+        /// </summary>
+        private static bool IsBelowSafeHeight(double position, HeightAxisSafeConfig ha)
+        {
+            return ha.InvertedDirection
+                ? position > ha.SafeHeight   // 反转：值越大越往下，超过安全高度=不安全
+                : position < ha.SafeHeight;   // 常规：值越小越往下，低于安全高度=不安全
         }
     }
 }

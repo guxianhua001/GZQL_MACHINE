@@ -3021,6 +3021,8 @@
     <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ 安全高度 (mm)</sys:String>
     <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ 安全高度 (mm)</sys:String>
     <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ 安全高度 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInverted">Z轴方向反转</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInvertedTip">勾选表示Z越往下值越大（安全高度逻辑取反）；不勾选表示Z越往上值越大（默认）</sys:String>
     <sys:String x:Key="SafetyRule_HeightLockPlane">垂直轴 [{1}] 未达安全高度，禁止 {0} 移动</sys:String>
     <sys:String x:Key="SafetyRule_MissingAxis">无法识别运动轴，安全互锁拒绝运动</sys:String>
     <sys:String x:Key="SafetyRule_InvalidInterpolation">插补参数无效</sys:String>

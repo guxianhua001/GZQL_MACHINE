@@ -36,7 +36,7 @@ namespace MotionControl.Services
                     return SafetyZoneConfig.CreateDefaultForCurrentMachine();
                 }
 
-                var json = File.ReadAllText(ConfigFilePath);
+                var json = File.ReadAllText(ConfigFilePath, System.Text.Encoding.UTF8);
                 var config = JsonConvert.DeserializeObject<SafetyZoneConfig>(json);
                 if (config == null)
                     return SafetyZoneConfig.CreateDefaultForCurrentMachine();
@@ -59,7 +59,8 @@ namespace MotionControl.Services
             EnsureConfigDirectory();
             config.SchemaVersion = 2;
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
-            File.WriteAllText(ConfigFilePath, json);
+            // 指定 UTF-8 无 BOM 编码，避免 Unicode 下标字符（₁₂₃）被损坏
+            File.WriteAllText(ConfigFilePath, json, new System.Text.UTF8Encoding(false));
             _logger.Info("[安全互锁] 配置已保存");
         }
 

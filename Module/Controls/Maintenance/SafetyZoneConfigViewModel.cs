@@ -78,6 +78,24 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>Z轴方向反转（Z越往下值越大时勾选）</summary>
+        private bool _zAxisInverted;
+        public bool ZAxisInverted
+        {
+            get => _zAxisInverted;
+            set
+            {
+                if (SetProperty(ref _zAxisInverted, value))
+                {
+                    // 三个Z轴共用同一方向设置
+                    _config.SetInvertedDirectionForAxis(AxisDz1, value);
+                    _config.SetInvertedDirectionForAxis(AxisDz2, value);
+                    _config.SetInvertedDirectionForAxis(AxisDz3, value);
+                    SyncConfigToMonitor();
+                }
+            }
+        }
+
         private double _dangerZoneXMin;
         public double DangerZoneXMin
         {
@@ -322,6 +340,7 @@ namespace Module.ViewModels
             SafeHeightZ1 = cfg.GetSafeHeightForAxis(AxisDz1);
             SafeHeightZ2 = cfg.GetSafeHeightForAxis(AxisDz2);
             SafeHeightZ3 = cfg.GetSafeHeightForAxis(AxisDz3);
+            ZAxisInverted = cfg.GetInvertedDirectionForAxis(AxisDz1);
 
             var dx = cfg.DangerZones.FirstOrDefault(z => z.AxisName == "Dx");
             var dy = cfg.DangerZones.FirstOrDefault(z => z.AxisName == "Dy");
