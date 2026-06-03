@@ -17,7 +17,7 @@ namespace Module.ViewModels
     /// <summary>
     /// 安全区域配置 ViewModel：编辑 JSON 规则（高度轴锁平面轴），实时显示互锁状态
     /// </summary>
-    public class SafetyZoneConfigViewModel : BindableBase
+    public class SafetyZoneConfigViewModel : BindableBase, IDisposable
     {
         private readonly ISafetyZoneMonitor _safetyZoneMonitor;
         private readonly ISafetyZoneConfigLoader _configLoader;
@@ -198,6 +198,24 @@ namespace Module.ViewModels
         public bool IsPlaneMovementLocked { get => _isPlaneMovementLocked; set => SetProperty(ref _isPlaneMovementLocked, value); }
         private bool _isPlaneMovementLocked;
 
+        /// <summary>X轴行程范围下限（画布显示用，用户可设置）</summary>
+        public double XRangeMin { get => _xRangeMin; set => SetProperty(ref _xRangeMin, value); }
+        private double _xRangeMin = -50;
+        /// <summary>X轴行程范围上限（画布显示用，用户可设置）</summary>
+        public double XRangeMax { get => _xRangeMax; set => SetProperty(ref _xRangeMax, value); }
+        private double _xRangeMax = 250;
+
+        /// <summary>Y轴行程范围下限（画布显示用，用户可设置）</summary>
+        public double YRangeMin { get => _yRangeMin; set => SetProperty(ref _yRangeMin, value); }
+        private double _yRangeMin = -50;
+        /// <summary>Y轴行程范围上限（画布显示用，用户可设置）</summary>
+        public double YRangeMax { get => _yRangeMax; set => SetProperty(ref _yRangeMax, value); }
+        private double _yRangeMax = 250;
+
+        /// <summary>画布尺寸（供MultiBinding使用）</summary>
+        public double CanvasWidth => 400;
+        public double CanvasHeight => 300;
+
         #endregion
 
         #region 告警
@@ -297,6 +315,10 @@ namespace Module.ViewModels
         {
             try
             {
+                // 将画布行程范围写入配置
+                _config.CanvasRangeX = new AxisDangerZoneConfig { AxisName = "CanvasX", Min = XRangeMin, Max = XRangeMax };
+                _config.CanvasRangeY = new AxisDangerZoneConfig { AxisName = "CanvasY", Min = YRangeMin, Max = YRangeMax };
+
                 _configLoader.Save(_config.Clone());
                 SyncConfigToMonitor();
                 _logger.Info("[安全区域] 配置已保存");
@@ -349,6 +371,44 @@ namespace Module.ViewModels
             DangerZoneYMin = dy?.Min ?? 0;
             DangerZoneYMax = dy?.Max ?? 200;
             Enabled = cfg.Enabled;
+
+            // 画布行程范围：从配置读取，若未设置则根据危险区自动计算
+            var rangeX = cfg.CanvasRangeX;
+            var rangeY = cfg.CanvasRangeY;
+            if (rangeX != null)
+            {
+                XRangeMin = rangeX.Min;
+                XRangeMax = rangeX.Max;
+            }
+            else
+            {
+                AutoCalcCanvasRange();
+            }
+            if (rangeY != null)
+            {
+                YRangeMin = rangeY.Min;
+                YRangeMax = rangeY.Max;
+            }
+            else
+            {
+                AutoCalcCanvasRange();
+            }
+        }
+
+        /// <summary>
+        /// 根据危险区配置自动计算画布XY行程范围，扩展20%边距
+        /// </summary>
+        private void AutoCalcCanvasRange()
+        {
+            double xSpan = DangerZoneXMax - DangerZoneXMin;
+            double ySpan = DangerZoneYMax - DangerZoneYMin;
+            double xMargin = Math.Max(xSpan * 0.2, 20); // 至少20mm边距
+            double yMargin = Math.Max(ySpan * 0.2, 20);
+
+            XRangeMin = DangerZoneXMin - xMargin;
+            XRangeMax = DangerZoneXMax + xMargin;
+            YRangeMin = DangerZoneYMin - yMargin;
+            YRangeMax = DangerZoneYMax + yMargin;
         }
 
         private void SetDangerZone(string axisName, double? min = null, double? max = null)
@@ -374,6 +434,17 @@ namespace Module.ViewModels
             {
                 _logger.Warn($"[安全区域] 同步配置失败: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 离开页面时停止刷新轴位置，释放定时器和事件订阅
+        /// </summary>
+        public void Dispose()
+        {
+            _refreshTimer?.Dispose();
+            _refreshTimer = null;
+
+            _eventAggregator.GetEvent<SafetyViolationEvent>().Unsubscribe(OnSafetyViolation);
         }
     }
 }

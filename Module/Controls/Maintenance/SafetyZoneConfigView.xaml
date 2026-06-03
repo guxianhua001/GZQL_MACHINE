@@ -22,6 +22,7 @@
 
             <!-- 安全区域可视化转换器 -->
             <converters:PositionToCanvasConverter x:Key="PositionToCanvasConverter" />
+            <converters:DangerZoneRectConverter x:Key="DangerZoneRectConverter" />
             <converters:SafeZoneWidthConverter x:Key="SafeZoneWidthConverter" />
             <converters:SafeZoneHeightConverter x:Key="SafeZoneHeightConverter" />
             <converters:Z1FillWidthConverter x:Key="Z1FillWidthConverter" />
@@ -47,7 +48,7 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-        <materialDesign:Card UniformCornerRadius="8" Margin="8">
+        <materialDesign:Card UniformCornerRadius="8" Margin="8" MinWidth="700">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -59,8 +60,8 @@
                 <Border Grid.Row="0" Background="{DynamicResource PrimaryHueLightBrush}" Padding="12,8"
                         BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="Shield" Width="24" Height="24"
-                                                 Foreground="{DynamicResource PrimaryHueDarkBrush}"
+                        <materialDesign:PackIcon Kind="Shield" Width="24" Height="24" 
+                                                 Foreground="{DynamicResource PrimaryBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,10,0"/>
                         <TextBlock Text="{lang:Lang SafetyZone_Title}" FontSize="18" FontWeight="Medium"
                                    Foreground="{DynamicResource PrimaryHueDarkBrush}" VerticalAlignment="Center"/>
@@ -166,40 +167,148 @@
                                 <TextBlock Text="{lang:Lang SafetyZone_Visualization}"/>
                             </StackPanel>
                         </GroupBox.Header>
-                        <StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                            <StackPanel>
 
-                            <!-- X-Y 区域画布 -->
+                            <!-- X-Y 区域画布：行程范围 + 危险区红色矩形 + 当前位置圆点 -->
                             <Border Background="#FAFAFA" CornerRadius="4" Padding="8"
                                     BorderBrush="#E0E0E0" BorderThickness="1" HorizontalAlignment="Left">
-                                <Canvas Width="400" Height="300" ClipToBounds="True">
+                                <Canvas Width="400" Height="300" ClipToBounds="True"
+                                        x:Name="SafetyCanvas">
 
-                                    <!-- 坐标轴标签 -->
-                                    <TextBlock Text="X+" FontSize="10" Foreground="#9E9E9E"
-                                               Canvas.Left="375" Canvas.Top="150"/>
-                                    <TextBlock Text="X-" FontSize="10" Foreground="#9E9E9E"
-                                               Canvas.Left="5" Canvas.Top="150"/>
-                                    <TextBlock Text="Y+" FontSize="10" Foreground="#9E9E9E"
-                                               Canvas.Left="195" Canvas.Top="5"/>
-                                    <TextBlock Text="Y-" FontSize="10" Foreground="#9E9E9E"
-                                               Canvas.Left="195" Canvas.Top="280"/>
-
-                                    <!-- 安全区域（绿色矩形）—— 绑定危险区边界反向计算安全区范围 -->
-                                    <Rectangle Fill="#C8E6C9" Stroke="#43A047" StrokeThickness="1"
-                                               Canvas.Left="{Binding DangerZoneXMin, Converter={StaticResource PositionToCanvasConverter}, ConverterParameter=XMin}"
-                                               Canvas.Top="{Binding DangerZoneYMin, Converter={StaticResource PositionToCanvasConverter}, ConverterParameter=YMin}"
-                                               Width="{Binding ., Converter={StaticResource SafeZoneWidthConverter}}"
-                                               Height="{Binding ., Converter={StaticResource SafeZoneHeightConverter}}"/>
-
-                                    <!-- 危险区域（红色矩形）—— X轴左右两侧 + Y轴上下两侧的联合危险区 -->
-                                    <Rectangle Fill="#FFCDD2" Stroke="#E53935" StrokeThickness="1" Opacity="0.5"
+                                    <!-- 行程范围背景（浅灰） -->
+                                    <Rectangle Fill="#F5F5F5" Stroke="#BDBDBD" StrokeThickness="1"
                                                Canvas.Left="0" Canvas.Top="0"
                                                Width="400" Height="300"/>
 
-                                    <!-- 当前位置标记点 -->
-                                    <Ellipse Width="12" Height="12" Fill="#FF9800" Stroke="#E65100" StrokeThickness="2"
-                                             Canvas.Left="{Binding CurrentX, Converter={StaticResource PositionToCanvasConverter}}"
-                                             Canvas.Top="{Binding CurrentY, Converter={StaticResource PositionToCanvasConverter}}">
+                                    <!-- X轴危险区红色矩形 -->
+                                    <Rectangle Fill="#FFCDD2" Stroke="#E53935" StrokeThickness="1.5" Opacity="0.6">
+                                        <Canvas.Left>
+                                            <MultiBinding Converter="{StaticResource DangerZoneRectConverter}" ConverterParameter="Left">
+                                                <Binding Path="DangerZoneXMin"/>
+                                                <Binding Path="DangerZoneXMax"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding Converter="{StaticResource DangerZoneRectConverter}" ConverterParameter="Top">
+                                                <Binding Path="DangerZoneYMin"/>
+                                                <Binding Path="DangerZoneYMax"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Canvas.Top>
+                                        <Rectangle.Width>
+                                            <MultiBinding Converter="{StaticResource DangerZoneRectConverter}" ConverterParameter="Width">
+                                                <Binding Path="DangerZoneXMin"/>
+                                                <Binding Path="DangerZoneXMax"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Rectangle.Width>
+                                        <Rectangle.Height>
+                                            <MultiBinding Converter="{StaticResource DangerZoneRectConverter}" ConverterParameter="Height">
+                                                <Binding Path="DangerZoneYMin"/>
+                                                <Binding Path="DangerZoneYMax"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Rectangle.Height>
+                                    </Rectangle>
 
+                                    <!-- 危险区标签 -->
+                                    <TextBlock Text="DANGER" FontSize="9" Foreground="#E53935" Opacity="0.6"
+                                               FontWeight="Bold" HorizontalAlignment="Center">
+                                        <Canvas.Left>
+                                            <MultiBinding Converter="{StaticResource DangerZoneRectConverter}" ConverterParameter="Left">
+                                                <Binding Path="DangerZoneXMin"/>
+                                                <Binding Path="DangerZoneXMax"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding Converter="{StaticResource DangerZoneRectConverter}" ConverterParameter="Top">
+                                                <Binding Path="DangerZoneYMin"/>
+                                                <Binding Path="DangerZoneYMax"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Canvas.Top>
+                                    </TextBlock>
+
+                                    <!-- 坐标轴刻度标签 -->
+                                    <TextBlock FontSize="9" Foreground="#9E9E9E" Text="{Binding XRangeMin, StringFormat=F0}">
+                                        <Canvas.Left>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}">
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>278</Canvas.Top>
+                                    </TextBlock>
+                                    <TextBlock FontSize="9" Foreground="#9E9E9E" Text="{Binding XRangeMax, StringFormat=F0}">
+                                        <Canvas.Left>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}">
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>278</Canvas.Top>
+                                    </TextBlock>
+                                    <TextBlock FontSize="9" Foreground="#9E9E9E" Text="{Binding YRangeMin, StringFormat=F0}">
+                                        <Canvas.Left>2</Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}">
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Canvas.Top>
+                                    </TextBlock>
+                                    <TextBlock FontSize="9" Foreground="#9E9E9E" Text="{Binding YRangeMax, StringFormat=F0}">
+                                        <Canvas.Left>2</Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}">
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Canvas.Top>
+                                    </TextBlock>
+
+                                    <!-- 当前位置标记圆点 -->
+                                    <Ellipse Width="14" Height="14" StrokeThickness="2"
+                                             Stroke="#E65100">
+                                        <Canvas.Left>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}">
+                                                <Binding Path="CurrentX"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}">
+                                                <Binding Path="CurrentY"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Canvas.Top>
                                         <Ellipse.Style>
                                             <Style TargetType="Ellipse">
                                                 <Setter Property="Fill" Value="#FF9800"/>
@@ -216,9 +325,23 @@
                                     </Ellipse>
 
                                     <!-- 当前位置坐标文本 -->
-                                    <TextBlock FontSize="9" FontFamily="Consolas" Foreground="#424242"
-                                               Canvas.Left="{Binding CurrentX, Converter={StaticResource PositionToCanvasConverter}, ConverterParameter=LabelX}"
-                                               Canvas.Top="{Binding CurrentY, Converter={StaticResource PositionToCanvasConverter}, ConverterParameter=LabelY}">
+                                    <TextBlock FontSize="9" FontFamily="Consolas" Foreground="#424242">
+                                        <Canvas.Left>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}" ConverterParameter="LabelX">
+                                                <Binding Path="CurrentX"/>
+                                                <Binding Path="XRangeMin"/>
+                                                <Binding Path="XRangeMax"/>
+                                                <Binding Path="CanvasWidth"/>
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding Converter="{StaticResource PositionToCanvasConverter}" ConverterParameter="LabelY">
+                                                <Binding Path="CurrentY"/>
+                                                <Binding Path="YRangeMin"/>
+                                                <Binding Path="YRangeMax"/>
+                                                <Binding Path="CanvasHeight"/>
+                                            </MultiBinding>
+                                        </Canvas.Top>
                                         <TextBlock.Text>
                                             <MultiBinding StringFormat="({0:F1},{1:F1})">
                                                 <Binding Path="CurrentX"/>
@@ -350,7 +473,46 @@
                                 </StackPanel>
                             </Grid>
 
-                        </StackPanel>
+                            <!-- 画布行程范围设置 -->
+                            <Separator Margin="0,12,0,8"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <materialDesign:PackIcon Kind="AspectRatio" Width="16" Height="16"
+                                                         Foreground="#00838F" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{lang:Lang SafetyZone_CanvasRange}" FontWeight="SemiBold" FontSize="12"
+                                           Foreground="#00838F" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang SafetyZone_XRangeMin}" Style="{StaticResource ParamLabel}" Margin="0,0,4,0"/>
+                                <materialDesign:DecimalUpDown Grid.Row="0" Grid.Column="1" Value="{Binding XRangeMin}"
+                                                              ValueStep="1" Minimum="-5000" Maximum="5000"
+                                                              Margin="0,0,4,4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{lang:Lang SafetyZone_XRangeMax}" Style="{StaticResource ParamLabel}" Margin="4,0,4,0"/>
+                                <materialDesign:DecimalUpDown Grid.Row="0" Grid.Column="3" Value="{Binding XRangeMax}"
+                                                              ValueStep="1" Minimum="-5000" Maximum="5000"
+                                                              Margin="0,0,0,4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang SafetyZone_YRangeMin}" Style="{StaticResource ParamLabel}" Margin="0,0,4,0"/>
+                                <materialDesign:DecimalUpDown Grid.Row="1" Grid.Column="1" Value="{Binding YRangeMin}"
+                                                              ValueStep="1" Minimum="-5000" Maximum="5000"
+                                                              Margin="0,0,4,4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{lang:Lang SafetyZone_YRangeMax}" Style="{StaticResource ParamLabel}" Margin="4,0,4,0"/>
+                                <materialDesign:DecimalUpDown Grid.Row="1" Grid.Column="3" Value="{Binding YRangeMax}"
+                                                              ValueStep="1" Minimum="-5000" Maximum="5000"
+                                                              Margin="0,0,0,4"/>
+                            </Grid>
+
+                            </StackPanel>
+                        </ScrollViewer>
                     </GroupBox>
                 </Grid>
 

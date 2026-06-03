@@ -5,46 +5,56 @@ using System.Windows.Data;
 namespace Module.Converters
 {
     /// <summary>
-    /// 将物理坐标转换为Canvas画布像素坐标
-    /// 支持X/Y轴位置映射，以及标签偏移量计算
+    /// 将物理坐标映射到Canvas画布像素坐标
+    /// 支持动态坐标范围，根据XY行程自动缩放
+    /// 绑定参数：[0]Position, [1]RangeMin, [2]RangeMax, [3]CanvasSize
     /// </summary>
-    public class PositionToCanvasConverter : IValueConverter
+    public class PositionToCanvasConverter : IMultiValueConverter
     {
-        private const double CanvasWidth = 400;
-        private const double CanvasHeight = 300;
-        private const double CoordinateRange = 200;
-
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            if (!(value is double position))
+            if (values == null || values.Length < 4)
                 return 0.0;
 
-            string param = parameter?.ToString() ?? "Position";
+            // position, rangeMin, rangeMax, canvasSize
+            if (!(values[0] is double position) ||
+                !(values[1] is double rangeMin) ||
+                !(values[2] is double rangeMax) ||
+                !(values[3] is double canvasSize))
+                return 0.0;
 
-            return param switch
-            {
-                "XMin" => MapToCanvasX(position),
-                "YMin" => MapToCanvasY(position),
-                "LabelX" => MapToCanvasX(position) + 15,
-                "LabelY" => MapToCanvasY(position) - 20,
-                _ => MapToCanvasX(position)
-            };
+            string param = parameter?.ToString() ?? "";
+
+            double range = rangeMax - rangeMin;
+            if (range <= 0) range = 1;
+
+            // 留10%边距
+            double margin = canvasSize * 0.05;
+            double drawSize = canvasSize - margin * 2;
+
+            double result = margin + ((position - rangeMin) / range) * drawSize;
+
+            // 标签偏移
+            if (param == "LabelX" || param == "LabelY")
+                result += 15;
+
+            return result;
         }
 
-        /// <summary>
-        /// 将X轴物理坐标映射到Canvas坐标（原点在中心）
-        /// </summary>
-        private static double MapToCanvasX(double x)
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
-            return CanvasWidth / 2 + (x / CoordinateRange) * (CanvasWidth / 2);
+            throw new NotImplementedException();
         }
+    }
 
-        /// <summary>
-        /// 将Y轴物理坐标映射到Canvas坐标（Y轴翻转，原点在中心）
-        /// </summary>
-        private static double MapToCanvasY(double y)
+    /// <summary>
+    /// 旧版单值转换器（兼容保留）
+    /// </summary>
+    public class PositionToCanvasSingleConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return CanvasHeight / 2 - (y / CoordinateRange) * (CanvasHeight / 2);
+            return 0.0;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

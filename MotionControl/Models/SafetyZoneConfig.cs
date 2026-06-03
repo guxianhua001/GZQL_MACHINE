@@ -37,6 +37,12 @@ namespace MotionControl.Models
         /// <summary>各轴危险区边界（状态显示/可视化，可选）</summary>
         public List<AxisDangerZoneConfig> DangerZones { get; set; } = new();
 
+        /// <summary>画布X轴行程范围（可视化显示用，用户可设置）</summary>
+        public AxisDangerZoneConfig CanvasRangeX { get; set; }
+
+        /// <summary>画布Y轴行程范围（可视化显示用，用户可设置）</summary>
+        public AxisDangerZoneConfig CanvasRangeY { get; set; }
+
         #region 旧版字段（仅用于 JSON 迁移，新配置请使用 Rules / DangerZones）
 
         public double? SafeHeightZ1 { get; set; }
@@ -162,7 +168,19 @@ namespace MotionControl.Models
                     AxisName = z.AxisName,
                     Min = z.Min,
                     Max = z.Max
-                }).ToList()
+                }).ToList(),
+                CanvasRangeX = CanvasRangeX != null ? new AxisDangerZoneConfig
+                {
+                    AxisName = CanvasRangeX.AxisName,
+                    Min = CanvasRangeX.Min,
+                    Max = CanvasRangeX.Max
+                } : null,
+                CanvasRangeY = CanvasRangeY != null ? new AxisDangerZoneConfig
+                {
+                    AxisName = CanvasRangeY.AxisName,
+                    Min = CanvasRangeY.Min,
+                    Max = CanvasRangeY.Max
+                } : null
             };
         }
 

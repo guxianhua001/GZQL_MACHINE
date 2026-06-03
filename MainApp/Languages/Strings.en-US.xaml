@@ -3030,6 +3030,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="SafetyZone_DangerXMax">X Danger Max (mm)</sys:String>
     <sys:String x:Key="SafetyZone_DangerYMin">Y Danger Min (mm)</sys:String>
     <sys:String x:Key="SafetyZone_DangerYMax">Y Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_CanvasRange">Canvas Travel Range</sys:String>
+    <sys:String x:Key="SafetyZone_XRangeMin">X Range Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_XRangeMax">X Range Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_YRangeMin">Y Range Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_YRangeMax">Y Range Max (mm)</sys:String>
     <sys:String x:Key="SafetyZone_Save">Save Config</sys:String>
     <sys:String x:Key="SafetyZone_Safe">Safe</sys:String>
     <sys:String x:Key="SafetyZone_Danger">Danger</sys:String>

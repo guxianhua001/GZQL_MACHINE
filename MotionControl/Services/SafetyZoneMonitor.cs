@@ -22,9 +22,13 @@ namespace MotionControl.Services
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILocalizationService _localization;
+        private readonly AlarmModule.Interfaces.IAlarmService _alarmService;
 
         private SafetyZoneConfig _config = SafetyZoneConfig.CreateDefaultForCurrentMachine();
         private readonly object _configLock = new();
+
+        /// <summary>记录已报警的轴，避免重复触发</summary>
+        private readonly HashSet<string> _alarmedAxes = new();
 
         private IMotionService Motion => _motionLazy.Value;
 
@@ -42,12 +46,14 @@ namespace MotionControl.Services
             Lazy<IMotionService> motionService,
             ILoggerService logger,
             IEventAggregator eventAggregator,
-            ILocalizationService localization = null)
+            ILocalizationService localization = null,
+            AlarmModule.Interfaces.IAlarmService alarmService = null)
         {
             _motionLazy = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
             _localization = localization;
+            _alarmService = alarmService;
         }
 
         /// <inheritdoc/>
@@ -142,7 +148,49 @@ namespace MotionControl.Services
             status.IsZ1BelowSafeHeight = status.LowHeightAxisNames.Contains("Dz₁");
             status.ActiveRules = SafetyInterlockEvaluator.GetActiveRuleIds(configSnapshot, getPos);
 
+            // 检测危险区状态并触发报警
+            CheckDangerZoneAlarms(status);
+
             return status;
+        }
+
+        /// <summary>
+        /// 检测平面轴是否进入危险区，触发/消除报警
+        /// 进入危险区：触发 General 级报警（左下角 Toast 弹窗）
+        /// 离开危险区：消除对应报警
+        /// </summary>
+        private void CheckDangerZoneAlarms(SafetyStatus status)
+        {
+            if (_alarmService == null) return;
+
+            // 检查平面轴（Dx/Dy）是否在危险区内
+            var dangerAxes = new List<string>();
+            foreach (var kvp in status.DangerZoneFlags)
+            {
+                if (kvp.Value && !_alarmedAxes.Contains(kvp.Key))
+                {
+                    dangerAxes.Add(kvp.Key);
+                    _alarmedAxes.Add(kvp.Key);
+                }
+                else if (!kvp.Value && _alarmedAxes.Contains(kvp.Key))
+                {
+                    // 离开危险区，从已报警集合移除
+                    _alarmedAxes.Remove(kvp.Key);
+                }
+            }
+
+            // 触发报警
+            foreach (var axisName in dangerAxes)
+            {
+                status.CurrentPositions.TryGetValue(axisName, out var pos);
+                _ = _alarmService.TriggerAlarmAsync(
+                    $"SAFETY_DANGER_ZONE_{axisName}",
+                    AlarmModule.Models.AlarmLevel.General,
+                    $"轴 {axisName} 进入危险区域 (位置: {pos:F1}mm)，平面移动已被安全互锁锁定",
+                    source: axisName,
+                    type: AlarmModule.Models.AlarmType.ParameterOutOfLimit,
+                    triggerValue: pos);
+            }
         }
 
         /// <inheritdoc/>

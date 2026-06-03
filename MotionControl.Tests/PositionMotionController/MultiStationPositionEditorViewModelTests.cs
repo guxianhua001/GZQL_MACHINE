@@ -157,10 +157,13 @@ namespace MotionControl.Tests.PositionMotionController
         public void SetSelectedAxisColumn_工站轴列名有效()
         {
             var vm = CreateViewModel();
-            vm.SetSelectedAxisColumn("X");
+            // SetSelectedAxisColumn 接受 DataTable 列索引
+            // 索引2对应X轴（0=PositionName, 1=IsReadOnly隐藏, 2=X）
+            vm.SetSelectedAxisColumn(2);
             Assert.Equal("X", vm.SelectedAxisColumnName);
 
-            vm.SetSelectedAxisColumn("PositionName");
+            // 索引0对应PositionName，非轴列
+            vm.SetSelectedAxisColumn(0);
             Assert.Null(vm.SelectedAxisColumnName);
         }
 
