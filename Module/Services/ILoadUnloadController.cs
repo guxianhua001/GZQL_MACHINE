@@ -13,12 +13,13 @@ namespace Module.Services
 
     public interface ILoadUnloadController
     {
+        // 平台真空控制（Stage）：从 hwconfig 读取 IO 地址
         Task ChuckVacuumOnAsync();
         Task ChuckVacuumOffAsync();
-        Task<bool> ChuckVacuumCheckAsync();
+
+        // 夹爪真空控制
         Task GripperVacuumOnAsync();
         Task GripperVacuumOffAsync();
-        Task<bool> GripperVacuumCheckAsync();
 
         Task MoveToPickPositionAsync();
         Task MoveToScanPositionAsync();
@@ -28,7 +29,6 @@ namespace Module.Services
 
         Task ClampAsync();
         Task ReleaseAsync();
-        Task MoveGripperToAngleAsync(double angle);
 
         Task AutoPickUpAsync();
         Task AutoScanAsync();

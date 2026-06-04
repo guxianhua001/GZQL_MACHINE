@@ -1533,6 +1533,10 @@
     <sys:String x:Key="LoadUnload_Button_ExecutePositioning">执行</sys:String>
     <sys:String x:Key="LoadUnload_Button_Edit">编辑</sys:String>
     <sys:String x:Key="LoadUnload_3DLineScan">3D线扫描</sys:String>
+        <sys:String x:Key="Stage_Vacuum_Control_Title">平台真空控制(Stage)</sys:String>
+        <sys:String x:Key="LoadUnload_StageVacuumOn">开真空</sys:String>
+        <sys:String x:Key="LoadUnload_StageVacuumOff">破真空</sys:String>
+        <sys:String x:Key="LoadUnload_OpenGripperPanel">电爪操作面板</sys:String>
     <sys:String x:Key="Auto_PickUp_Label">自动上料</sys:String>
     <sys:String x:Key="Stage_Alignment_Label">载台对准</sys:String>
     <sys:String x:Key="Auto_Scan_Label">自动扫描</sys:String>

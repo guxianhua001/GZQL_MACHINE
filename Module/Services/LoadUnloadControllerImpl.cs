@@ -6,6 +6,7 @@ using MotionControl.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Module.Services
@@ -41,80 +42,50 @@ namespace Module.Services
             _logger = logger;
         }
 
-        #region 真空控制
+        #region 平台真空控制（转发给 LoadingTask）
 
+        /// <summary>
+        /// 开平台真空：委托给 LoadingTask.StageVacuumOnAsync
+        /// </summary>
         public async Task ChuckVacuumOnAsync()
         {
             var ops = ResolveOps();
-            await ops.ExecuteManualProcess("载台真空开", async () =>
-            {
-                ops.WriteDO(GetDoId("PlatVacValve"), true);
-                ops.WriteDO(GetDoId("PlatBreakVacValve"), false);
-                await ops.TriggerCylinderAsync(GetDoId("PlatVacValve"), true,
-                    GetDiId("PlatVacSensor"), 3000);
-            });
+            await ops.StageVacuumOnAsync();
             _chuckVacuumStatus = VacuumStatus.On;
         }
 
+        /// <summary>
+        /// 破平台真空：委托给 LoadingTask.StageVacuumOffAsync
+        /// </summary>
         public async Task ChuckVacuumOffAsync()
         {
             var ops = ResolveOps();
-            await ops.ExecuteManualProcess("载台真空关", async () =>
-            {
-                ops.WriteDO(GetDoId("PlatVacValve"), false);
-                ops.WriteDO(GetDoId("PlatBreakVacValve"), true);
-                await Task.Delay(200);
-                ops.WriteDO(GetDoId("PlatBreakVacValve"), false);
-            });
+            await ops.StageVacuumOffAsync();
             _chuckVacuumStatus = VacuumStatus.Off;
         }
 
-        public async Task<bool> ChuckVacuumCheckAsync()
-        {
-            _chuckVacuumStatus = VacuumStatus.Checking;
-            try
-            {
-                var ops = ResolveOps();
-                bool result = await ops.ExecuteManualProcess("载台真空检测", async () =>
-                {
-                    await Task.CompletedTask;
-                }).ContinueWith(t => ops.ReadDI(GetDiId("PlatVacSensor")));
-                _chuckVacuumStatus = result ? VacuumStatus.On : VacuumStatus.Off;
-                return result;
-            }
-            catch
-            {
-                _chuckVacuumStatus = VacuumStatus.Unknown;
-                return false;
-            }
-        }
+        #endregion
 
+        #region 夹爪真空控制（转发给 LoadingTask）
+
+        /// <summary>
+        /// 开夹爪真空：委托给 LoadingTask.GripperVacuumOnAsync
+        /// </summary>
         public async Task GripperVacuumOnAsync()
         {
             var ops = ResolveOps();
-            await ops.ExecuteManualProcess("夹爪真空开", async () =>
-            {
-                ops.WriteDO(GetDoId("GripperVacValve"), true);
-                await Task.Delay(200);
-            });
+            await ops.GripperVacuumOnAsync();
             _gripperVacuumStatus = VacuumStatus.On;
         }
 
+        /// <summary>
+        /// 关夹爪真空：委托给 LoadingTask.GripperVacuumOffAsync
+        /// </summary>
         public async Task GripperVacuumOffAsync()
         {
             var ops = ResolveOps();
-            await ops.ExecuteManualProcess("夹爪真空关", async () =>
-            {
-                ops.WriteDO(GetDoId("GripperVacValve"), false);
-                await Task.Delay(200);
-            });
+            await ops.GripperVacuumOffAsync();
             _gripperVacuumStatus = VacuumStatus.Off;
-        }
-
-        public async Task<bool> GripperVacuumCheckAsync()
-        {
-            var ops = ResolveOps();
-            return await Task.Run(() => ops.ReadDI(GetDiId("GripperVacSensor")));
         }
 
         #endregion
@@ -197,74 +168,36 @@ namespace Module.Services
             await _gripperService.ReleaseAsync(0);
         }
 
-        public async Task MoveGripperToAngleAsync(double angle)
-        {
-            await _gripperService.MoveToPositionAsync(angle, 10);
-        }
-
         #endregion
 
-        #region 自动流程
+        #region 自动流程（转发给 LoadingTask）
 
+        /// <summary>
+        /// 自动取料：委托给 LoadingTask.AutoPickUpFlowAsync
+        /// </summary>
         public async Task AutoPickUpAsync()
         {
             var ops = ResolveOps();
-            var axisY = ops.FindAxisIdByName("Y");
-            var axisRx = ops.FindAxisIdByName("Rx");
-            var axisRz = ops.FindAxisIdByName("Rz");
-
-            await ops.ExecuteManualProcess("自动取料", async () =>
-            {
-                ops.WriteDO(GetDoId("PlatVacValve"), true);
-                ops.WriteDO(GetDoId("PlatBreakVacValve"), false);
-                await ops.TriggerCylinderAsync(GetDoId("PlatVacValve"), true,
-                    GetDiId("PlatVacSensor"), 3000);
-
-                if (axisY >= 0) await ops.ExecuteMoveAsync(axisY, "取料位", DefaultVelocity);
-
-                await ops.TriggerCylinderAsync(GetDoId("PlatVacValve"), true,
-                    GetDiId("PlatVacSensor"), 3000);
-
-                if (axisY >= 0) await ops.ExecuteMoveAsync(axisY, "待机位", DefaultVelocity);
-                if (axisRx >= 0) await ops.ExecuteMoveAsync(axisRx, "装配位1", DefaultVelocity);
-                if (axisRz >= 0) await ops.ExecuteMoveAsync(axisRz, "装配位1", DefaultVelocity);
-            });
+            await ops.AutoPickUpFlowAsync(CancellationToken.None);
             _chuckVacuumStatus = VacuumStatus.On;
         }
 
+        /// <summary>
+        /// 自动扫描：委托给 LoadingTask.AutoScanFlowAsync
+        /// </summary>
         public async Task AutoScanAsync()
         {
             var ops = ResolveOps();
-            var axisY = ops.FindAxisIdByName("Y");
-
-            await ops.ExecuteManualProcess("自动扫描", async () =>
-            {
-                if (axisY >= 0) await ops.ExecuteMoveAsync(axisY, "3D扫描位", DefaultVelocity);
-                await Task.Delay(500);
-                if (axisY >= 0) await ops.ExecuteMoveAsync(axisY, "待机位", DefaultVelocity);
-            });
+            await ops.AutoScanFlowAsync(CancellationToken.None);
         }
 
+        /// <summary>
+        /// 自动下料：委托给 LoadingTask.AutoUnloadFlowAsync
+        /// </summary>
         public async Task AutoUnloadAsync()
         {
             var ops = ResolveOps();
-            var axisY = ops.FindAxisIdByName("Y");
-            var axisRx = ops.FindAxisIdByName("Rx");
-            var axisRz = ops.FindAxisIdByName("Rz");
-
-            await ops.ExecuteManualProcess("自动下料", async () =>
-            {
-                if (axisY >= 0) await ops.ExecuteMoveAsync(axisY, "出料位", DefaultVelocity);
-
-                ops.WriteDO(GetDoId("PlatVacValve"), false);
-                ops.WriteDO(GetDoId("PlatBreakVacValve"), true);
-                await Task.Delay(200);
-                ops.WriteDO(GetDoId("PlatBreakVacValve"), false);
-
-                if (axisY >= 0) await ops.ExecuteMoveAsync(axisY, "待机位", DefaultVelocity);
-                if (axisRx >= 0) await ops.ExecuteMoveAsync(axisRx, "待机位", DefaultVelocity);
-                if (axisRz >= 0) await ops.ExecuteMoveAsync(axisRz, "待机位", DefaultVelocity);
-            });
+            await ops.AutoUnloadFlowAsync(CancellationToken.None);
             _chuckVacuumStatus = VacuumStatus.Off;
         }
 
@@ -384,20 +317,6 @@ namespace Module.Services
         {
             try { return ResolveOps(); }
             catch { return null; }
-        }
-
-        private int GetDoId(string portName)
-        {
-            var outputs = _motion.GetOutputConfigurations();
-            var config = outputs.FirstOrDefault(o => o.Name == portName);
-            return config?.LogicalId ?? -1;
-        }
-
-        private int GetDiId(string portName)
-        {
-            var inputs = _motion.GetInputConfigurations();
-            var config = inputs.FirstOrDefault(o => o.Name == portName);
-            return config?.LogicalId ?? -1;
         }
 
         #endregion

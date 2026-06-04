@@ -61,11 +61,11 @@ namespace MotionControl.Tests.LoadUnloadController
         #region T1: ChuckVacuumOnAsync
 
         [Fact]
-        public async Task T1_ChuckVacuumOnAsync_正常调用写入DO并等待DI()
+        public async Task T1_ChuckVacuumOnAsync_委托给LoadingTask()
         {
             var ctrl = CreateController();
             await ctrl.ChuckVacuumOnAsync();
-            Assert.True(_testStation.DoWriteLog.Contains("10=True"));
+            Assert.Contains("StageVacuumOn", _testStation.FlowLog);
         }
 
         #endregion
@@ -73,11 +73,11 @@ namespace MotionControl.Tests.LoadUnloadController
         #region T2: ChuckVacuumOffAsync
 
         [Fact]
-        public async Task T2_ChuckVacuumOffAsync_正常调用写入DO()
+        public async Task T2_ChuckVacuumOffAsync_委托给LoadingTask()
         {
             var ctrl = CreateController();
             await ctrl.ChuckVacuumOffAsync();
-            Assert.True(_testStation.DoWriteLog.Contains("10=False"));
+            Assert.Contains("StageVacuumOff", _testStation.FlowLog);
         }
 
         #endregion
@@ -123,12 +123,11 @@ namespace MotionControl.Tests.LoadUnloadController
         #region T6: AutoPickUpAsync
 
         [Fact]
-        public async Task T6_AutoPickUpAsync_按序执行完整流程()
+        public async Task T6_AutoPickUpAsync_委托给LoadingTask()
         {
             var ctrl = CreateController();
             await ctrl.AutoPickUpAsync();
-            Assert.Contains("ExecuteMove:1,取料位", _testStation.MoveLog);
-            Assert.Contains("ExecuteMove:1,待机位", _testStation.MoveLog);
+            Assert.Contains("AutoPickUp", _testStation.FlowLog);
         }
 
         #endregion
@@ -183,6 +182,7 @@ namespace MotionControl.Tests.LoadUnloadController
             public List<string> DoWriteLog { get; } = new();
             public List<string> MoveLog { get; } = new();
             public List<string> HomeLog { get; } = new();
+            public List<string> FlowLog { get; } = new();
 
             private readonly Dictionary<string, int> _axisMap = new()
             {
@@ -230,6 +230,17 @@ namespace MotionControl.Tests.LoadUnloadController
             {
                 return true;
             }
+
+            // 新增接口方法：测试桩实现（记录调用日志）
+            public Task StageVacuumOnAsync(CancellationToken token = default) { FlowLog.Add("StageVacuumOn"); return Task.CompletedTask; }
+            public Task StageVacuumOffAsync(CancellationToken token = default) { FlowLog.Add("StageVacuumOff"); return Task.CompletedTask; }
+            public bool IsStageVacuumOn() => true;
+            public Task GripperVacuumOnAsync(CancellationToken token = default) { FlowLog.Add("GripperVacuumOn"); return Task.CompletedTask; }
+            public Task GripperVacuumOffAsync(CancellationToken token = default) { FlowLog.Add("GripperVacuumOff"); return Task.CompletedTask; }
+            public bool IsGripperVacuumOn() => true;
+            public Task AutoPickUpFlowAsync(CancellationToken token) { FlowLog.Add("AutoPickUp"); return Task.CompletedTask; }
+            public Task AutoScanFlowAsync(CancellationToken token) { FlowLog.Add("AutoScan"); return Task.CompletedTask; }
+            public Task AutoUnloadFlowAsync(CancellationToken token) { FlowLog.Add("AutoUnload"); return Task.CompletedTask; }
         }
 
         #endregion

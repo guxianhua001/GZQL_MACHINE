@@ -91,17 +91,6 @@ namespace MotionControl.Tests
         }
 
         [Fact]
-        public async Task MoveGripperToAngleAsync_CallsMoveToPosition()
-        {
-            var controller = CreateController(out _, out _, out var gripper, out _, out _, out _);
-            gripper.Setup(g => g.MoveToPositionAsync(90.0, 10, default)).Returns(Task.CompletedTask);
-
-            await controller.MoveGripperToAngleAsync(90.0);
-
-            gripper.Verify(g => g.MoveToPositionAsync(90.0, 10, default), Times.Once);
-        }
-
-        [Fact]
         public async Task GetAxisReadyStatusAsync_NoStation_ReturnsAllFalse()
         {
             var controller = CreateController(out _, out _, out _, out _, out _, out _);

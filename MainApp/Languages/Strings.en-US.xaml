@@ -1548,6 +1548,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="LoadUnload_Button_ExecutePositioning">Execute</sys:String>
     <sys:String x:Key="LoadUnload_Button_Edit">Edit</sys:String>
     <sys:String x:Key="LoadUnload_3DLineScan">3D Line Scan</sys:String>
+        <sys:String x:Key="Stage_Vacuum_Control_Title">Stage Vacuum Control</sys:String>
+        <sys:String x:Key="LoadUnload_StageVacuumOn">Vacuum On</sys:String>
+        <sys:String x:Key="LoadUnload_StageVacuumOff">Vacuum Off</sys:String>
+        <sys:String x:Key="LoadUnload_OpenGripperPanel">Gripper Panel</sys:String>
     <sys:String x:Key="Auto_PickUp_Label">Auto Pick Up</sys:String>
     <sys:String x:Key="Stage_Alignment_Label">Stage Alignment</sys:String>
     <sys:String x:Key="Auto_Scan_Label">Auto Scan</sys:String>

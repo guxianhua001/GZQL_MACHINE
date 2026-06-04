@@ -48,6 +48,10 @@ namespace Module.ViewModels
         private System.Windows.Media.Brush _gripperVacuumStatusColor = System.Windows.Media.Brushes.Red;
         private string _realTimePositions;
         private string _gripperStatus;
+        private double _rxPosition;
+        private double _rzPosition;
+        private double _yPosition;
+        private double _ryPosition;
         private ObservableCollection<string> _assySites = new ObservableCollection<string>
         {
             "ASSY_001", "ASSY_002", "ASSY_003", "ASSY_004", "ASSY_005", "ASSY_006"
@@ -109,6 +113,30 @@ namespace Module.ViewModels
             get => _realTimePositions;
             set => SetProperty(ref _realTimePositions, value);
         }
+        /// <summary> Rx 轴实时位置 </summary>
+        public double RxPosition
+        {
+            get => _rxPosition;
+            set => SetProperty(ref _rxPosition, value);
+        }
+        /// <summary> Rz 轴实时位置 </summary>
+        public double RzPosition
+        {
+            get => _rzPosition;
+            set => SetProperty(ref _rzPosition, value);
+        }
+        /// <summary> Y 轴实时位置 </summary>
+        public double YPosition
+        {
+            get => _yPosition;
+            set => SetProperty(ref _yPosition, value);
+        }
+        /// <summary> Ry 轴实时位置 </summary>
+        public double RyPosition
+        {
+            get => _ryPosition;
+            set => SetProperty(ref _ryPosition, value);
+        }
         public string GripperStatus
         {
             get => _gripperStatus;
@@ -146,25 +174,21 @@ namespace Module.ViewModels
         #region 命令属性
         public ICommand VacuumOnCommand { get; private set; }
         public ICommand VacuumOffCommand { get; private set; }
-        public ICommand VacuumCheckCommand { get; private set; }
         public ICommand HomeAllCommand { get; private set; }
         public ICommand GoToPickCommand { get; private set; }
         public ICommand GoToScanCommand { get; private set; }
         public ICommand GoToUnloadCommand { get; private set; }
         public ICommand MoveToSelectedSiteCommand { get; private set; }
         public ICommand EditSitePositionCommand { get; private set; }
-        public ICommand GripperOperationCommand { get; private set; }
-        public ICommand GoToGripAngleCommand { get; private set; }
+        public ICommand OpenGripperPanelCommand { get; private set; }
         public ICommand ClampCommand { get; private set; }
         public ICommand ReleaseCommand { get; private set; }
-        public ICommand EditGripperParameterCommand { get; private set; }
         public ICommand AutoPickUpCommand { get; private set; }
         public ICommand AutoScanCommand { get; private set; }
         public ICommand View3DScanDataCommand { get; private set; }
         public ICommand AutoUnloadCommand { get; private set; }
         public ICommand GripperVacuumOnCommand { get; private set; }
         public ICommand GripperVacuumOffCommand { get; private set; }
-        public ICommand GripperVacuumCheckCommand { get; private set; }
         public ICommand OpenStageAlignCommand { get; private set; }
         public ICommand EmergencyStopCommand { get; private set; }
         #endregion
@@ -196,25 +220,21 @@ namespace Module.ViewModels
         {
             VacuumOnCommand = ExecuteAsyncOperation(ChuckVacuumOnAction);
             VacuumOffCommand = ExecuteAsyncOperation(ChuckVacuumOffAction);
-            VacuumCheckCommand = ExecuteAsyncOperation(ChuckVacuumCheckAction);
             HomeAllCommand = ExecuteAsyncOperation(PlatformHomeAction);
             GoToPickCommand = ExecuteAsyncOperation(MoveToPickPositionAction);
             GoToScanCommand = ExecuteAsyncOperation(MoveToScanPositionAction);
             GoToUnloadCommand = ExecuteAsyncOperation(MoveToUnloadPositionAction);
             MoveToSelectedSiteCommand = ExecuteAsyncOperation(MoveToSelectedSiteAction);
             EditSitePositionCommand = ExecuteAsyncOperation(EditSitePositionAction);
-            GripperOperationCommand = ExecuteAsyncOperation(GripperOperationAction);
-            GoToGripAngleCommand = ExecuteAsyncOperation(GoToGripAngleAction);
+            OpenGripperPanelCommand = new DelegateCommand(OnOpenGripperPanel);
             ClampCommand = ExecuteAsyncOperation(ClampAction);
             ReleaseCommand = ExecuteAsyncOperation(ReleaseAction);
-            EditGripperParameterCommand = ExecuteAsyncOperation(EditGripperParameterAction);
             AutoPickUpCommand = ExecuteAsyncOperation(AutoPickUpAction);
             AutoScanCommand = ExecuteAsyncOperation(AutoScanAction);
             View3DScanDataCommand = ExecuteAsyncOperation(View3DScanDataAction);
             AutoUnloadCommand = ExecuteAsyncOperation(AutoUnloadAction);
             GripperVacuumOnCommand = ExecuteAsyncOperation(GripperVacuumOnAction);
             GripperVacuumOffCommand = ExecuteAsyncOperation(GripperVacuumOffAction);
-            GripperVacuumCheckCommand = ExecuteAsyncOperation(GripperVacuumCheckAction);
             OpenStageAlignCommand = new DelegateCommand(OnOpenStageAlign);
             EmergencyStopCommand = new DelegateCommand(OnEmergencyStop);
         }
@@ -243,9 +263,15 @@ namespace Module.ViewModels
                 RzAxisReady = axisStatus.TryGetValue("Rz", out var rz) && rz;
                 RyAxisReady = axisStatus.TryGetValue("Ry", out var ry) && ry;
 
+                // 逐轴更新实时位置
                 var positions = await _controller.GetRealTimePositionsAsync();
-                RealTimePositions = $"Rx:{GetPosition(positions, "Rx"):F2} Rz:{GetPosition(positions, "Rz"):F2} Y:{GetPosition(positions, "Y"):F2} Ry:{GetPosition(positions, "Ry"):F2}";
+                RxPosition = GetPosition(positions, "Rx");
+                RzPosition = GetPosition(positions, "Rz");
+                YPosition = GetPosition(positions, "Y");
+                RyPosition = GetPosition(positions, "Ry");
+                RealTimePositions = $"Rx:{RxPosition:F2} Rz:{RzPosition:F2} Y:{YPosition:F2} Ry:{RyPosition:F2}";
 
+                // 通过定时器轮询真空反馈 DI 状态，自动更新指示灯
                 var vacStatus = _controller.GetVacuumStatus();
                 VacuumStatusText = vacStatus == VacuumStatus.On
                     ? _localization.GetResourceOrDefault("LoadUnload_Status_Active", "Active")
@@ -363,17 +389,6 @@ namespace Module.ViewModels
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_VacuumOff", "Turning vacuum OFF"), false);
         }
 
-        private async Task ChuckVacuumCheckAction()
-        {
-            UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_VacuumCheck", "Checking vacuum"), true);
-            var result = await _controller.ChuckVacuumCheckAsync();
-            VacuumStatusText = result
-                ? _localization.GetResourceOrDefault("LoadUnload_Status_Active", "Active")
-                : _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
-            VacuumStatusColor = result ? Brushes.Green : Brushes.Red;
-            UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_VacuumCheck", "Checking vacuum"), false);
-        }
-
         private async Task PlatformHomeAction()
         {
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_HomeAll", "Homing platform"), true);
@@ -427,21 +442,15 @@ namespace Module.ViewModels
             await Task.CompletedTask;
         }
 
-        private async Task GripperOperationAction()
+        /// <summary>
+        /// 弹出电爪操作面板对话框
+        /// </summary>
+        private void OnOpenGripperPanel()
         {
-            var stepDesc = _localization.GetResourceOrDefault("LoadUnload_Step_GripperOp", "Gripper operation");
-            UpdateStepStatus(stepDesc, true);
-            await _controller.ClampAsync();
-            await Task.Delay(200);
-            await _controller.ReleaseAsync();
-            UpdateStepStatus(stepDesc, false);
-        }
-
-        private async Task GoToGripAngleAction()
-        {
-            UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_GripAngle", "Moving gripper to angle"), true);
-            await _controller.MoveGripperToAngleAsync(90.0);
-            UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_GripAngle", "Moving gripper to angle"), false);
+            _dialogService.ShowDialog("GripperControlView", null, result =>
+            {
+                UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_GripperPanelClosed", "Gripper panel closed"));
+            });
         }
 
         private async Task ClampAction()
@@ -456,22 +465,6 @@ namespace Module.ViewModels
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_Release", "Releasing gripper"), true);
             await _controller.ReleaseAsync();
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_Release", "Releasing gripper"), false);
-        }
-
-        private async Task EditGripperParameterAction()
-        {
-            var stepDesc = _localization.GetResourceOrDefault("LoadUnload_Step_EditGripper", "Editing gripper parameters");
-            UpdateStepStatus(stepDesc, true);
-            _dialogService.ShowDialog("NotificationDialog", new DialogParameters
-            {
-                { "title", _localization.GetResourceOrDefault("Gripper_Control_Title", "Gripper Control") },
-                { "message", _localization.GetResourceOrDefault("LoadUnload_Msg_EditGripper", "Edit gripper parameters") },
-                { "icon", PackIconKind.Pencil }
-            }, result =>
-            {
-                UpdateStepStatus(stepDesc, false);
-            });
-            await Task.CompletedTask;
         }
 
         private async Task AutoPickUpAction()
@@ -530,18 +523,6 @@ namespace Module.ViewModels
             await _controller.GripperVacuumOffAsync();
             GripperVacuumStatusText = _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
             GripperVacuumStatusColor = Brushes.Red;
-            UpdateStepStatus(stepDesc, false);
-        }
-
-        private async Task GripperVacuumCheckAction()
-        {
-            var stepDesc = _localization.GetResourceOrDefault("LoadUnload_Step_GripperVacCheck", "Checking gripper vacuum");
-            UpdateStepStatus(stepDesc, true);
-            var result = await _controller.GripperVacuumCheckAsync();
-            GripperVacuumStatusText = result
-                ? _localization.GetResourceOrDefault("LoadUnload_Status_Active", "Active")
-                : _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
-            GripperVacuumStatusColor = result ? Brushes.Green : Brushes.Red;
             UpdateStepStatus(stepDesc, false);
         }
 
