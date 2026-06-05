@@ -210,17 +210,10 @@ namespace Module.Services
             var ops = ResolveOpsOrNull();
             var result = new Dictionary<string, bool>();
 
-            foreach (var axisName in new[] { "Y", "Rx", "Rz", "Ry" })
+            foreach (var axisName in StationAndCrossStationAxes)
             {
-                if (ops != null)
-                {
-                    var axisId = ops.FindAxisIdByName(axisName);
-                    result[axisName] = axisId >= 0 && await ops.IsAxisHomedAsync(axisId);
-                }
-                else
-                {
-                    result[axisName] = false;
-                }
+                var axisId = ResolveAxisId(ops, axisName);
+                result[axisName] = axisId >= 0 && ops != null && await ops.IsAxisHomedAsync(axisId);
             }
 
             return result;
@@ -231,20 +224,13 @@ namespace Module.Services
             var ops = ResolveOpsOrNull();
             var result = new Dictionary<string, double>();
 
-            foreach (var axisName in new[] { "Y", "Rx", "Rz", "Ry" })
+            foreach (var axisName in StationAndCrossStationAxes)
             {
-                if (ops != null)
+                var axisId = ResolveAxisId(ops, axisName);
+                if (axisId >= 0)
                 {
-                    var axisId = ops.FindAxisIdByName(axisName);
-                    if (axisId >= 0)
-                    {
-                        try { result[axisName] = _motion.GetAxisPosition(axisId); }
-                        catch { result[axisName] = 0; }
-                    }
-                    else
-                    {
-                        result[axisName] = 0;
-                    }
+                    try { result[axisName] = _motion.GetAxisPosition(axisId); }
+                    catch { result[axisName] = 0; }
                 }
                 else
                 {
@@ -255,8 +241,42 @@ namespace Module.Services
             return result;
         }
 
-        public VacuumStatus GetVacuumStatus() => _chuckVacuumStatus;
-        public VacuumStatus GetGripperVacuumStatus() => _gripperVacuumStatus;
+        /// <summary>
+        /// 平台真空状态：优先读 DI 反馈信号，工站不可用时回退到软件缓存
+        /// </summary>
+        public VacuumStatus GetVacuumStatus()
+        {
+            var ops = ResolveOpsOrNull();
+            if (ops != null)
+            {
+                try { return ops.IsStageVacuumOn() ? VacuumStatus.On : VacuumStatus.Off; }
+                catch { /* DI 读取失败，回退到缓存值 */ }
+            }
+            return _chuckVacuumStatus;
+        }
+
+        /// <summary>
+        /// 夹爪真空状态：优先读 DI 反馈信号，工站不可用时回退到软件缓存
+        /// </summary>
+        public VacuumStatus GetGripperVacuumStatus()
+        {
+            var ops = ResolveOpsOrNull();
+            if (ops != null)
+            {
+                try { return ops.IsGripperVacuumOn() ? VacuumStatus.On : VacuumStatus.Off; }
+                catch { /* DI 读取失败，回退到缓存值 */ }
+            }
+            return _gripperVacuumStatus;
+        }
+
+        /// <summary>
+        /// 获取夹爪实时位置，从 IGripperService 硬件读取
+        /// </summary>
+        public double GetGripperPosition()
+        {
+            try { return _gripperService.GetCurrentPosition(); }
+            catch { return 0; }
+        }
 
         public bool CanExecuteMotion()
         {
@@ -280,11 +300,10 @@ namespace Module.Services
         public void StopMotion()
         {
             var ops = ResolveOpsOrNull();
-            if (ops == null) return;
 
-            foreach (var axisName in new[] { "Y", "Rx", "Rz", "Ry" })
+            foreach (var axisName in StationAndCrossStationAxes)
             {
-                var axisId = ops.FindAxisIdByName(axisName);
+                var axisId = ResolveAxisId(ops, axisName);
                 if (axisId >= 0)
                 {
                     try { _motion.StopAxis(axisId); }
@@ -296,6 +315,41 @@ namespace Module.Services
         #endregion
 
         #region 私有方法
+
+        /// <summary>
+        /// 工站本地轴 + 需要跨工站引用的轴名称列表
+        /// Ry 轴属于装配工站(AssemblyStation)，上下料工站通过全局配置引用
+        /// </summary>
+        private static readonly string[] StationAndCrossStationAxes = { "Y", "Rx", "Rz", "Ry" };
+
+        /// <summary>
+        /// 仅属于其他工站的轴名称集合，查找时直接走全局配置，跳过本工站搜索以避免 Warn 日志
+        /// </summary>
+        private static readonly HashSet<string> CrossStationOnlyAxes = new(StringComparer.Ordinal) { "Ry" };
+
+        /// <summary>
+        /// 解析轴ID：跨工站轴直接查全局配置，本工站轴优先从 StationTaskBase 查找
+        /// 解决 Ry 等跨工站轴在 StationTaskBase.FindAxisIdByName 中因 TaskId 过滤而产生 Warn 的问题
+        /// </summary>
+        private int ResolveAxisId(ILoadUnloadStationOperations ops, string axisName)
+        {
+            // 跨工站轴：直接从全局轴配置查找，避免在本工站搜索时产生 Warn 日志
+            if (CrossStationOnlyAxes.Contains(axisName))
+            {
+                var globalConfig = _motion.GetAxisConfigurations()
+                    .FirstOrDefault(a => string.Equals(a.Name, axisName, StringComparison.Ordinal));
+                return globalConfig?.LogicalId ?? -1;
+            }
+
+            // 本工站轴：优先从工站已发现的轴中查找
+            if (ops != null)
+            {
+                var localId = ops.FindAxisIdByName(axisName);
+                if (localId >= 0) return localId;
+            }
+
+            return -1;
+        }
 
         private ILoadUnloadStationOperations ResolveOps()
         {

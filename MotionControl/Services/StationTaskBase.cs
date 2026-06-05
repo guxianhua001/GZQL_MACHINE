@@ -447,6 +447,34 @@ namespace StationTasks.Tasks
         public bool ReadDI(int logicalId) => _motion.ReadDi(logicalId);
         public void WriteDO(int logicalId, bool value) => _motion.WriteDo(logicalId, value);
 
+        /// <summary>
+        /// 从 hwconfig 解析 DO 端口逻辑 ID（按端口名称查找输出配置）
+        /// </summary>
+        /// <param name="portName">hwconfig 中定义的 DO 端口名称</param>
+        /// <returns>逻辑 ID，未找到返回 -1</returns>
+        protected int GetDoLogicalId(string portName)
+        {
+            var outputs = Motion.GetOutputConfigurations();
+            var config = outputs.FirstOrDefault(o => o.Name == portName);
+            if (config == null)
+                Logger.Warn($"[{TaskName}] 未找到 DO 端口配置 '{portName}'");
+            return config?.LogicalId ?? -1;
+        }
+
+        /// <summary>
+        /// 从 hwconfig 解析 DI 端口逻辑 ID（按端口名称查找输入配置）
+        /// </summary>
+        /// <param name="portName">hwconfig 中定义的 DI 端口名称</param>
+        /// <returns>逻辑 ID，未找到返回 -1</returns>
+        protected int GetDiLogicalId(string portName)
+        {
+            var inputs = Motion.GetInputConfigurations();
+            var config = inputs.FirstOrDefault(o => o.Name == portName);
+            if (config == null)
+                Logger.Warn($"[{TaskName}] 未找到 DI 端口配置 '{portName}'");
+            return config?.LogicalId ?? -1;
+        }
+
         // ---------- 信号交互 ----------
         /// <summary>
         /// 向指定工位发送信号

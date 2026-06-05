@@ -30,6 +30,7 @@
         <conv:BoolToInverseBackgroundConverter x:Key="BoolToBgInvConv"/>
         <conv:BoolToInverseVisibilityConverter x:Key="BoolToCollapsedConv"/>
         <conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVis"/>
+        <conv:CanvasOffsetConverter x:Key="CanvasOffsetConverter"/>
 
         <!-- 结果数值展示卡片 -->
         <Style x:Key="ResultBorder" TargetType="Border">
@@ -245,7 +246,7 @@
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <Button Command="{Binding DataContext.TeachFitPointCommand,
-                                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                             CommandParameter="{Binding Index}"
                                                             Style="{StaticResource SecondaryActionButton}"
                                                             Padding="6,2" FontSize="9"
@@ -325,7 +326,111 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- SectionCard 3: 公式说明 -->
+                        <!-- SectionCard 3: 拟合点与回转中心可视化画布 -->
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <materialDesign:PackIcon Kind="ChartScatterPlot" Width="18" Height="18"
+                                                           Foreground="#1565C0" VerticalAlignment="Center"
+                                                           DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{lang:Lang CAD_RotationCenter_VisualTitle}" FontWeight="Bold" FontSize="13"
+                                               Foreground="#1A2332" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <!-- 图例 -->
+                                <WrapPanel Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                        <Ellipse Width="8" Height="8" Fill="#1976D2" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang CAD_RotationCenter_LegendFit}" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                        <Line X1="0" Y1="4" X2="10" Y2="4" Stroke="#E53935" StrokeThickness="2" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang CAD_RotationCenter_LegendCenter}" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="10" Height="10" Stroke="#1976D2" StrokeThickness="1" StrokeDashArray="3 2" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang CAD_RotationCenter_LegendCircle}" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </WrapPanel>
+                                <!-- 画布 -->
+                                <Border Background="#FAFAFA" CornerRadius="5" BorderBrush="#E0E0E0" BorderThickness="1">
+                                    <Canvas x:Name="RotationCenterCanvas" Height="260" ClipToBounds="True"
+                                            SizeChanged="RotationCenterCanvas_SizeChanged">
+                                        <!-- 拟合圆（虚线） -->
+                                        <Ellipse Canvas.Left="{Binding CircleCanvasLeft}"
+                                                 Canvas.Top="{Binding CircleCanvasTop}"
+                                                 Width="{Binding CircleDiameter}"
+                                                 Height="{Binding CircleDiameter}"
+                                                 Stroke="#1976D2" StrokeThickness="1.5" StrokeDashArray="4 3" Fill="Transparent">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasRotationCenterVisual}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <!-- 回转中心十字线 -->
+                                        <Line X1="{Binding CenterScreenX, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=-12}"
+                                              Y1="{Binding CenterScreenY}"
+                                              X2="{Binding CenterScreenX, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=12}"
+                                              Y2="{Binding CenterScreenY}"
+                                              Stroke="#E53935" StrokeThickness="2"/>
+                                        <Line X1="{Binding CenterScreenX}"
+                                              Y1="{Binding CenterScreenY, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=-12}"
+                                              X2="{Binding CenterScreenX}"
+                                              Y2="{Binding CenterScreenY, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=12}"
+                                              Stroke="#E53935" StrokeThickness="2"/>
+                                        <!-- 回转中心坐标标签 -->
+                                        <Border Canvas.Left="{Binding CenterScreenX, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=14}"
+                                                Canvas.Top="{Binding CenterScreenY, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=-18}"
+                                                Background="White" CornerRadius="3" Padding="4,1" BorderBrush="#E53935" BorderThickness="0.5">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasRotationCenterVisual}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock FontSize="9" Foreground="#E53935" FontWeight="Medium">
+                                                <Run Text="M("/><Run Text="{Binding Mox, StringFormat=F1, Mode=OneWay}"/><Run Text=", "/><Run Text="{Binding Moy, StringFormat=F1, Mode=OneWay}"/><Run Text=")"/>
+                                            </TextBlock>
+                                        </Border>
+                                        <!-- 拟合点 -->
+                                        <ItemsControl ItemsSource="{Binding VisualFitPoints}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Width="30" Height="30">
+                                                        <Ellipse Width="8" Height="8" Fill="#1976D2" Stroke="White" StrokeThickness="1.5"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Label}" FontSize="8" Foreground="#1976D2" FontWeight="Medium"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,0,0,0"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="{Binding ScreenX, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=-15}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding ScreenY, Converter={StaticResource CanvasOffsetConverter}, ConverterParameter=-15}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                        </ItemsControl>
+                                    </Canvas>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- SectionCard 4: 公式说明 -->
                         <Border Style="{StaticResource SectionCard}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,8">
@@ -336,7 +441,7 @@
                                                Foreground="#1A2332" VerticalAlignment="Center"/>
                                 </DockPanel>
                                 <Border Background="#F5F5F5" CornerRadius="5" Padding="12,10">
-                                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#555" LineHeight="16">
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#CE93D8" LineHeight="16">
                                         <Run Text="{DynamicResource CAD_Fit_Algorithm_Desc}"/><LineBreak/>
                                         <Run Text="{DynamicResource CAD_Fit_Principle}"/><LineBreak/>
                                         <Run Text="{DynamicResource CAD_Fit_Note}"/>
@@ -360,6 +465,29 @@
                 </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
                     <StackPanel>
+
+                        <!-- 模式切换: 1点平移 / N点仿射 -->
+                        <Border Background="#FFF8E1" CornerRadius="5" Padding="10,8" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,10">
+                            <DockPanel>
+                                <materialDesign:PackIcon Kind="SwapHorizontal" Width="16" Height="16"
+                                                       Foreground="#F57F17" VerticalAlignment="Center"
+                                                       DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                <TextBlock Text="{lang:Lang CAD_AffineMode_Toggle}" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" Foreground="#F57F17" Margin="0,0,10,0"/>
+                                <ToggleButton IsChecked="{Binding UseAffineCalibration}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#888" Margin="8,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{lang:Lang CadAlignment_OnePointMode}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding UseAffineCalibration}" Value="True">
+                                                    <Setter Property="Text" Value="{lang:Lang CAD_AffineMode_Title}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DockPanel>
+                        </Border>
 
                         <!-- SectionCard 1: P1 坐标输入 -->
                         <Border Style="{StaticResource SectionCard}">
@@ -458,6 +586,137 @@
                                         <Run Text="{DynamicResource CAD_Tip_Global_Offset}"/><LineBreak/>
                                         <Run Text="{DynamicResource CAD_Tip_No_Move}"/>
                                     </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- SectionCard 4: N点仿射标定模式 (当 UseAffineCalibration=true 时显示) -->
+                        <Border Style="{StaticResource SectionCard}"
+                                Visibility="{Binding UseAffineCalibration, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <materialDesign:PackIcon Kind="GridLarge" Width="18" Height="18"
+                                                           Foreground="#7B1FA2" VerticalAlignment="Center"
+                                                           DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{lang:Lang CAD_AffineMode_Title}" FontWeight="Bold" FontSize="13"
+                                               Foreground="#1A2332" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <Border Background="#F3E5F5" CornerRadius="5" Padding="10,6" BorderBrush="#CE93D8" BorderThickness="1" Margin="0,0,0,10">
+                                    <TextBlock Text="{lang:Lang CAD_AffineMode_Hint}" TextWrapping="Wrap" FontSize="11" Foreground="#6A1B9A" LineHeight="15"/>
+                                </Border>
+                                <DataGrid ItemsSource="{Binding AffineCalibrationPoints}"
+                                          AutoGenerateColumns="False" CanUserAddRows="False"
+                                          materialDesign:DataGridAssist.CellPadding="4,2"
+                                          MaxHeight="220" FontSize="10.5"
+                                          BorderThickness="1" BorderBrush="#E0E0E0"
+                                          RowBackground="White" AlternatingRowBackground="#FAFBFD">
+                                    <DataGrid.ColumnHeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="Background" Value="#F5F6F8"/>
+                                            <Setter Property="Foreground" Value="#555"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="FontSize" Value="10.5"/>
+                                            <Setter Property="Padding" Value="8,5"/>
+                                        </Style>
+                                    </DataGrid.ColumnHeaderStyle>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="{lang:Lang CadAlignment_PointName}" Binding="{Binding Name}" Width="50" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="CAD_X" Binding="{Binding CadX, StringFormat=N3}" Width="*"/>
+                                        <DataGridTextColumn Header="CAD_Y" Binding="{Binding CadY, StringFormat=N3}" Width="*"/>
+                                        <DataGridTextColumn Header="{lang:Lang CAD_Machine_X}" Binding="{Binding MachineX, StringFormat=N3}" Width="*"/>
+                                        <DataGridTextColumn Header="{lang:Lang CAD_Machine_Y}" Binding="{Binding MachineY, StringFormat=N3}" Width="*"/>
+                                        <DataGridTextColumn Header="{lang:Lang CAD_Affine_Residual}" Binding="{Binding Residual, StringFormat=N4}" Width="65" IsReadOnly="True"/>
+                                        <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_Actions}" Width="70">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Command="{Binding DataContext.TeachAffineMachineCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource SecondaryActionButton}"
+                                                            Padding="4,2" FontSize="9">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <materialDesign:PackIcon Kind="CrosshairsGps" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{lang:Lang CadAlignment_Teach}" VerticalAlignment="Center" FontSize="9" Margin="3,0,0,0"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,8">
+                                    <Button Command="{Binding AddAffineCalibrationPointCommand}" Style="{StaticResource SecondaryActionButton}" Padding="8,3">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="PlusCircleOutline" Width="14" Height="14" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{lang:Lang CadAlignment_AddPoint}" VerticalAlignment="Center" FontSize="10" Margin="4,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Text="{lang:Lang CAD_Affine_NeedMin3}" VerticalAlignment="Center" FontSize="10" Foreground="#888" Margin="12,0,0,0"/>
+                                </StackPanel>
+                                <Border Background="#F3E5F5" CornerRadius="5" Padding="12,8" BorderBrush="#CE93D8" BorderThickness="1"
+                                        Visibility="{Binding Step2Done, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock Text="{lang:Lang CAD_Affine_Params}" FontWeight="SemiBold" FontSize="11" Foreground="#4A148C" Margin="0,0,0,6"/>
+                                        <WrapPanel>
+                                            <StackPanel Margin="0,0,10,6">
+                                                <TextBlock Text="A" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineA, StringFormat=N6}" HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,10,6">
+                                                <TextBlock Text="B" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineB, StringFormat=N6}" HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,10,6">
+                                                <TextBlock Text="C" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineC, StringFormat=N6}" HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,10,6">
+                                                <TextBlock Text="D" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineD, StringFormat=N6}" HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,10,6">
+                                                <TextBlock Text="Tx" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineTx, StringFormat=N3}" HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,10,6">
+                                                <TextBlock Text="Ty" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineTy, StringFormat=N3}" HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </WrapPanel>
+                                        <WrapPanel Margin="0,4,0,0">
+                                            <StackPanel Margin="0,0,14,0">
+                                                <TextBlock Text="{lang:Lang CAD_Affine_RMS}" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock Text="{Binding AffineRmsError, StringFormat=N4}" HorizontalAlignment="Right" FontWeight="Bold" FontSize="11" Foreground="#C62828"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,14,0">
+                                                <TextBlock Text="θ (equiv)" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="85">
+                                                    <TextBlock HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A">
+                                                        <Run Text="{Binding AffineRotDeg, StringFormat=N3}"/><Run Text="°"/>
+                                                    </TextBlock>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <TextBlock Text="{lang:Lang CadAlignment_QualityLabel}" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="110">
+                                                    <TextBlock Text="{Binding AffineQualityText}" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="11" Foreground="#2E7D32"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </WrapPanel>
+                                    </StackPanel>
                                 </Border>
                             </StackPanel>
                         </Border>
@@ -840,6 +1099,15 @@
                                             <TextBlock Text="{lang:Lang CadAlignment_UseStep3Target}" FontSize="10" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
+                                    <!-- X/Y/θ角度取反开关 -->
+                                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                                        <ToggleButton IsChecked="{Binding InvertXAngle}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang CAD_InvertXAngle}" FontSize="10" Foreground="#888" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                        <ToggleButton IsChecked="{Binding InvertYAngle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <TextBlock Text="{lang:Lang CAD_InvertYAngle}" FontSize="10" Foreground="#888" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                        <ToggleButton IsChecked="{Binding InvertThetaAngle}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <TextBlock Text="{lang:Lang CAD_InvertThetaAngle}" FontSize="10" Foreground="#888" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
                                 </StackPanel>
                                 <!-- 目标位坐标显示 -->
                                 <Grid Margin="0,0,0,10">

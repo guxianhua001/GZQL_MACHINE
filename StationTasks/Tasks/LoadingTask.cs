@@ -93,7 +93,7 @@ namespace StationTasks.Tasks
             {
                 WriteDO(doOn, true);
                 WriteDO(doOff, false);
-                await TriggerCylinderAsync(doOn, true, diFeedback, timeout);
+                //await TriggerCylinderAsync(doOn, true, diFeedback, timeout);
             });
             Logger.Info($"[{TaskName}] 平台真空已开启");
         }
@@ -249,30 +249,6 @@ namespace StationTasks.Tasks
                 if (AxisRz >= 0) await ExecuteMoveAsync(AxisRz, "待机位", DefaultVelocity);
             });
             Logger.Info($"[{TaskName}] 自动下料流程完成");
-        }
-
-        #endregion
-
-        #region IO 地址解析（从 hwconfig 动态读取）
-
-        /// <summary>
-        /// 从 hwconfig 解析 DO 端口逻辑 ID
-        /// </summary>
-        private int GetDoLogicalId(string portName)
-        {
-            var outputs = Motion.GetOutputConfigurations();
-            var config = outputs.FirstOrDefault(o => o.Name == portName);
-            return config?.LogicalId ?? -1;
-        }
-
-        /// <summary>
-        /// 从 hwconfig 解析 DI 端口逻辑 ID
-        /// </summary>
-        private int GetDiLogicalId(string portName)
-        {
-            var inputs = Motion.GetInputConfigurations();
-            var config = inputs.FirstOrDefault(o => o.Name == portName);
-            return config?.LogicalId ?? -1;
         }
 
         #endregion

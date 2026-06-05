@@ -1965,6 +1965,32 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CAD_Error_Rule_3">③ Rotation center O is derived from 4-point fitting, accuracy depends on point distribution</sys:String>
     <sys:String x:Key="CAD_Error_Rule_4">④ Global offset = P1 machine coord − P1 CAD coord, translation only, no rotation</sys:String>
     <sys:String x:Key="CAD_Error_Rule_5">⑤ Gripper offset requires teaching current position first, then calculate difference with target</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Title">N-Point Affine Calibration</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Toggle">Calibration Mode</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Hint">Teach at least 3 non-collinear CAD–Machine point pairs. RMS&lt;0.05mm = Good, &lt;0.1mm = Acceptable</sys:String>
+    <sys:String x:Key="CAD_Affine_Params">Affine Parameters</sys:String>
+    <sys:String x:Key="CAD_Affine_RMS">RMS Error</sys:String>
+    <sys:String x:Key="CAD_Affine_Residual">Residual</sys:String>
+    <sys:String x:Key="CAD_Affine_QualityGood">Good (&lt;0.05mm)</sys:String>
+    <sys:String x:Key="CAD_Affine_QualityOK">Acceptable (&lt;0.1mm)</sys:String>
+    <sys:String x:Key="CAD_Affine_QualityBad">Deviation too large</sys:String>
+    <sys:String x:Key="CAD_Affine_NeedMin3">Need at least 3 point pairs</sys:String>
+    <sys:String x:Key="CAD_Affine_SolveFailed">Affine solve failed: {0}</sys:String>
+    <sys:String x:Key="CAD_Affine_Done">Affine calibration done RMS={0}mm [{1}]</sys:String>
+    <sys:String x:Key="CAD_Affine_InvalidParam">Invalid teach parameter</sys:String>
+    <sys:String x:Key="CAD_Affine_TeachDone">{0} taught: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_VisualTitle">Fit Points &amp; Rotation Center</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_LegendFit">Fit Points</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_LegendCenter">Rotation Center</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_LegendCircle">Fitted Circle</sys:String>
+    <sys:String x:Key="CAD_InvertXAngle">Invert X</sys:String>
+    <sys:String x:Key="CAD_InvertYAngle">Invert Y</sys:String>
+    <sys:String x:Key="CAD_InvertThetaAngle">Invert θ</sys:String>
+    <sys:String x:Key="CadAlignment_OnePointMode">1-Point Offset Mode</sys:String>
+    <sys:String x:Key="CadAlignment_QualityLabel">Quality</sys:String>
+    <sys:String x:Key="CadAlignment_PointName">Name</sys:String>
+    <sys:String x:Key="CadAlignment_AddPoint">Add Point</sys:String>
+    <sys:String x:Key="CadAlignment_Teach">Teach</sys:String>
     <sys:String x:Key="CAD_Fit_X">Fit X</sys:String>
     <sys:String x:Key="CAD_Fit_Y">Fit Y</sys:String>
     <sys:String x:Key="CAD_Formula_Relative">dx = Xm − Mox , dy = Ym − Moy</sys:String>
@@ -2055,6 +2081,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadAlignment_Step4_Hint">Translate+Rotate</sys:String>
     <sys:String x:Key="CadAlignment_Step5_Hint">Final Assembly</sys:String>
     <sys:String x:Key="CAD_Fit_Coord_Get">Got {0} coord: ({1}, {2})</sys:String>
+        <sys:String x:Key="CAD_Fit_AxisNotFound">Dx/Dy axis config not found, please check hardware config</sys:String>
     <sys:String x:Key="CAD_Fit_Need3Points">At least 3 points required for circle fit</sys:String>
     <sys:String x:Key="CAD_Fit_Degenerate">Degenerate fit: points collinear or coincident</sys:String>
     <sys:String x:Key="CAD_Fit_Center_Done">Fit done: center({0}, {1}), radius={2}</sys:String>

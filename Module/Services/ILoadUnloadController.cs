@@ -38,6 +38,10 @@ namespace Module.Services
         Task<Dictionary<string, double>> GetRealTimePositionsAsync();
         VacuumStatus GetVacuumStatus();
         VacuumStatus GetGripperVacuumStatus();
+
+        /// <summary> 获取夹爪实时位置（mm） </summary>
+        double GetGripperPosition();
+
         bool CanExecuteMotion();
 
         void StopMotion();

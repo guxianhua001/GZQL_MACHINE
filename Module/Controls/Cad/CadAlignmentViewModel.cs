@@ -58,6 +58,59 @@ namespace Module.ViewModels
     }
 
     /// <summary>
+    /// 仿射标定点模型——用于步骤2的N点仿射标定，存储CAD坐标与对应的机械示教坐标
+    /// </summary>
+    public class AffineCalibrationPoint : BindableBase
+    {
+        public int Index { get; set; }
+
+        private string _name = "";
+        /// <summary>点名标识（如 P1, P2, P3）</summary>
+        public string Name { get => _name; set => SetProperty(ref _name, value); }
+
+        private double _cadX;
+        /// <summary>CAD图纸X坐标</summary>
+        public double CadX { get => _cadX; set => SetProperty(ref _cadX, value); }
+
+        private double _cadY;
+        /// <summary>CAD图纸Y坐标</summary>
+        public double CadY { get => _cadY; set => SetProperty(ref _cadY, value); }
+
+        private double _machineX;
+        /// <summary>机械示教X坐标</summary>
+        public double MachineX { get => _machineX; set => SetProperty(ref _machineX, value); }
+
+        private double _machineY;
+        /// <summary>机械示教Y坐标</summary>
+        public double MachineY { get => _machineY; set => SetProperty(ref _machineY, value); }
+
+        private double _residual;
+        /// <summary>该点的标定残差(mm)，标定计算后填充</summary>
+        public double Residual { get => _residual; set => SetProperty(ref _residual, value); }
+    }
+
+    /// <summary>
+    /// 回转中心可视化点位——用于Step1画布显示拟合点与回转中心位置
+    /// </summary>
+    public class VisualFitPoint : BindableBase
+    {
+        /// <summary>数据X坐标（机械坐标）</summary>
+        public double DataX { get; set; }
+        /// <summary>数据Y坐标（机械坐标）</summary>
+        public double DataY { get; set; }
+        /// <summary>显示标签（角度名称）</summary>
+        public string Label { get; set; } = "";
+
+        private double _screenX;
+        /// <summary>画布屏幕X坐标</summary>
+        public double ScreenX { get => _screenX; set => SetProperty(ref _screenX, value); }
+
+        private double _screenY;
+        /// <summary>画布屏幕Y坐标</summary>
+        public double ScreenY { get => _screenY; set => SetProperty(ref _screenY, value); }
+    }
+
+    /// <summary>
     /// 5步CAD对位标准流程ViewModel：
     /// ① 回转中心（四点圆拟合）→ ② 全局偏移（ΔX/ΔY）→ ③ 旋转角度（CAD向量方向角）
     /// → ④ 坐标变换（先平移后旋转）→ ⑤ 夹爪定位（最终组装位置）
@@ -100,6 +153,14 @@ namespace Module.ViewModels
                 new() { Index = 3, AngleLabel = "270°", FitX = 91.67, FitY = 242.28 },
             };
 
+            // 初始化仿射标定点集合（默认3个示例点，用户在实际流程中重新示教）
+            AffineCalibrationPoints = new ObservableCollection<AffineCalibrationPoint>
+            {
+                new() { Index = 0, Name = "P1", CadX = 70.92, CadY = 62.42, MachineX = -42.58, MachineY = 80.68 },
+                new() { Index = 1, Name = "P2", CadX = 93.41, CadY = 62.38, MachineX = 0, MachineY = 0 },
+                new() { Index = 2, Name = "P3", CadX = 82.0,  CadY = 40.0,  MachineX = 0, MachineY = 0 },
+            };
+
             if (CorrespondencePoints.Count > 0)
             {
                 P1Cx = CorrespondencePoints[0].CadX;
@@ -131,6 +192,9 @@ namespace Module.ViewModels
             ShowBaselineSegmentCommand = new DelegateCommand(OnShowBaselineSegment, () => HasBaselineSelected);
             ShowTargetlineSegmentCommand = new DelegateCommand(OnShowTargetlineSegment, () => HasTargetlineSelected);
             WriteToGlobalVariablesCommand = new DelegateCommand(OnWriteToGlobalVariables, () => Step5Done);
+            AddAffineCalibrationPointCommand = new DelegateCommand(OnAddAffineCalibrationPoint);
+            DeleteAffineCalibrationPointCommand = new DelegateCommand<AffineCalibrationPoint>(OnDeleteAffineCalibrationPoint);
+            TeachAffineMachineCoordCommand = new DelegateCommand<object>(OnTeachAffineMachineCoord);
             SaveConfigCommand = new DelegateCommand(async () => await SaveConfigToFileAsync());
             LoadConfigCommand = new DelegateCommand(async () => await LoadConfigFromFileAsync());
             UnlinkGripperXCommand = new DelegateCommand(() => { IsGripperXLinked = false; FinalGripperXLinkedVar = ""; });
@@ -229,9 +293,126 @@ namespace Module.ViewModels
         private bool _step1Done;
         public bool Step1Done { get => _step1Done; set => SetProperty(ref _step1Done, value); }
 
+        // ——— 回转中心可视化属性 ———
+
+        /// <summary>拟合点在画布上的屏幕坐标集合（绑定到 ItemsControl）</summary>
+        public ObservableCollection<VisualFitPoint> VisualFitPoints { get; } = new ObservableCollection<VisualFitPoint>();
+
+        private double _centerScreenX;
+        /// <summary>回转中心在画布上的X坐标</summary>
+        public double CenterScreenX { get => _centerScreenX; set => SetProperty(ref _centerScreenX, value); }
+
+        private double _centerScreenY;
+        /// <summary>回转中心在画布上的Y坐标</summary>
+        public double CenterScreenY { get => _centerScreenY; set => SetProperty(ref _centerScreenY, value); }
+
+        private double _circleScreenRadius;
+        /// <summary>拟合圆在画布上的屏幕半径</summary>
+        public double CircleScreenRadius { get => _circleScreenRadius; set => SetProperty(ref _circleScreenRadius, value); }
+
+        private double _circleCanvasLeft;
+        /// <summary>拟合圆在画布上的左边缘X</summary>
+        public double CircleCanvasLeft { get => _circleCanvasLeft; set => SetProperty(ref _circleCanvasLeft, value); }
+
+        private double _circleCanvasTop;
+        /// <summary>拟合圆在画布上的上边缘Y</summary>
+        public double CircleCanvasTop { get => _circleCanvasTop; set => SetProperty(ref _circleCanvasTop, value); }
+
+        private double _circleDiameter;
+        /// <summary>拟合圆在画布上的直径（像素）</summary>
+        public double CircleDiameter { get => _circleDiameter; set => SetProperty(ref _circleDiameter, value); }
+
+        /// <summary>画布可视区域是否有数据</summary>
+        public bool HasRotationCenterVisual => Step1Done && FitPoints != null && FitPoints.Count >= 3;
+
+        /// <summary>
+        /// 根据画布尺寸重新计算拟合点和回转中心的屏幕坐标
+        /// 坐标映射: 数据空间 → 画布像素（等比例缩放、Y轴翻转、居中布局）
+        /// </summary>
+        public void UpdateRotationCenterVisual(double canvasWidth, double canvasHeight)
+        {
+            if (canvasWidth < 10 || canvasHeight < 10 || FitPoints == null || FitPoints.Count < 1)
+                return;
+
+            const double padding = 30; // 画布边距像素
+            double w = canvasWidth - 2 * padding;
+            double h = canvasHeight - 2 * padding;
+            if (w < 10 || h < 10) return;
+
+            // 计算数据范围
+            double minX = double.MaxValue, maxX = double.MinValue;
+            double minY = double.MaxValue, maxY = double.MinValue;
+            foreach (var fp in FitPoints)
+            {
+                if (fp.FitX < minX) minX = fp.FitX;
+                if (fp.FitX > maxX) maxX = fp.FitX;
+                if (fp.FitY < minY) minY = fp.FitY;
+                if (fp.FitY > maxY) maxY = fp.FitY;
+            }
+            // 包含回转中心
+            if (Step1Done)
+            {
+                if (Mox < minX) minX = Mox;
+                if (Mox > maxX) maxX = Mox;
+                if (Moy < minY) minY = Moy;
+                if (Moy > maxY) maxY = Moy;
+                // 包含拟合圆边界
+                if (Mox - FitRadius < minX) minX = Mox - FitRadius;
+                if (Mox + FitRadius > maxX) maxX = Mox + FitRadius;
+                if (Moy - FitRadius < minY) minY = Moy - FitRadius;
+                if (Moy + FitRadius > maxY) maxY = Moy + FitRadius;
+            }
+
+            double rangeX = maxX - minX;
+            double rangeY = maxY - minY;
+            if (rangeX < 0.1) rangeX = 1;
+            if (rangeY < 0.1) rangeY = 1;
+
+            // 等比例缩放
+            double scaleX = w / rangeX;
+            double scaleY = h / rangeY;
+            double scale = Math.Min(scaleX, scaleY);
+
+            // 居中偏移（Y轴翻转）
+            double offsetX = padding + (w - rangeX * scale) / 2;
+            double offsetY = padding + (h - rangeY * scale) / 2;
+
+            // 更新拟合点屏幕坐标
+            VisualFitPoints.Clear();
+            foreach (var fp in FitPoints)
+            {
+                double sx = offsetX + (fp.FitX - minX) * scale;
+                double sy = canvasHeight - (offsetY + (fp.FitY - minY) * scale); // Y翻转
+                VisualFitPoints.Add(new VisualFitPoint
+                {
+                    DataX = fp.FitX,
+                    DataY = fp.FitY,
+                    Label = fp.AngleLabel,
+                    ScreenX = sx,
+                    ScreenY = sy
+                });
+            }
+
+            // 更新回转中心和拟合圆
+            if (Step1Done)
+            {
+                double cx = offsetX + (Mox - minX) * scale;
+                double cy = canvasHeight - (offsetY + (Moy - minY) * scale);
+                CenterScreenX = cx;
+                CenterScreenY = cy;
+                double r = FitRadius * scale;
+                CircleScreenRadius = r;
+                CircleCanvasLeft = cx - r;
+                CircleCanvasTop = cy - r;
+                CircleDiameter = 2 * r;
+            }
+
+            RaisePropertyChanged(nameof(HasRotationCenterVisual));
+        }
+
         #endregion
 
-        #region 步骤2 — 全局偏移
+        #region 步骤2 — 全局偏移（支持1点平移和N点仿射两种模式）
 
         private double _p1Mx;
         public double P1Mx { get => _p1Mx; set => SetProperty(ref _p1Mx, value); }
@@ -253,6 +434,65 @@ namespace Module.ViewModels
 
         private bool _step2Done;
         public bool Step2Done { get => _step2Done; set => SetProperty(ref _step2Done, value); }
+
+        // ── N点仿射标定模式 ──
+
+        /// <summary>是否启用N点仿射标定（false=1点平移默认模式，true=N点仿射模式）</summary>
+        private bool _useAffineCalibration;
+        public bool UseAffineCalibration
+        {
+            get => _useAffineCalibration;
+            set => SetProperty(ref _useAffineCalibration, value);
+        }
+
+        /// <summary>仿射标定点集合（用户示教的CAD-机械对应点，至少3个）</summary>
+        private ObservableCollection<AffineCalibrationPoint> _affineCalibrationPoints;
+        public ObservableCollection<AffineCalibrationPoint> AffineCalibrationPoints
+        {
+            get => _affineCalibrationPoints;
+            set => SetProperty(ref _affineCalibrationPoints, value);
+        }
+
+        // ── 仿射标定结果显示属性 ──
+
+        private double _affineA;
+        /// <summary>仿射参数A（Mx对Cx的系数）</summary>
+        public double AffineA { get => _affineA; set => SetProperty(ref _affineA, value); }
+
+        private double _affineB;
+        /// <summary>仿射参数B（Mx对Cy的系数）</summary>
+        public double AffineB { get => _affineB; set => SetProperty(ref _affineB, value); }
+
+        private double _affineC;
+        /// <summary>仿射参数C（My对Cx的系数）</summary>
+        public double AffineC { get => _affineC; set => SetProperty(ref _affineC, value); }
+
+        private double _affineD;
+        /// <summary>仿射参数D（My对Cy的系数）</summary>
+        public double AffineD { get => _affineD; set => SetProperty(ref _affineD, value); }
+
+        private double _affineTx;
+        /// <summary>X方向平移量Tx</summary>
+        public double AffineTx { get => _affineTx; set => SetProperty(ref _affineTx, value); }
+
+        private double _affineTy;
+        /// <summary>Y方向平移量Ty</summary>
+        public double AffineTy { get => _affineTy; set => SetProperty(ref _affineTy, value); }
+
+        private double _affineRmsError;
+        /// <summary>仿射标定RMS均方根误差(mm)</summary>
+        public double AffineRmsError { get => _affineRmsError; set => SetProperty(ref _affineRmsError, value); }
+
+        private string _affineQualityText = "";
+        /// <summary>仿射标定质量评级文本</summary>
+        public string AffineQualityText { get => _affineQualityText; set => SetProperty(ref _affineQualityText, value); }
+
+        private double _affineRotDeg;
+        /// <summary>仿射等效旋转角度(度)</summary>
+        public double AffineRotDeg { get => _affineRotDeg; set => SetProperty(ref _affineRotDeg, value); }
+
+        /// <summary>仿射标定结果对象（供 ExecuteTransform 使用）</summary>
+        private AffineCalibrationResult _affineResult;
 
         #endregion
 
@@ -308,6 +548,26 @@ namespace Module.ViewModels
 
         private double _thetaDeg;
         public double ThetaDeg { get => _thetaDeg; set { SetProperty(ref _thetaDeg, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
+
+        private bool _invertXAngle;
+        /// <summary>X方向角度取反开关，启用后旋转时dx取反</summary>
+        public bool InvertXAngle { get => _invertXAngle; set => SetProperty(ref _invertXAngle, value); }
+
+        private bool _invertYAngle;
+        /// <summary>Y方向角度取反开关，启用后旋转时dy取反</summary>
+        public bool InvertYAngle { get => _invertYAngle; set => SetProperty(ref _invertYAngle, value); }
+
+        private bool _invertThetaAngle;
+        /// <summary>角度θ取反开关，启用后旋转角度θ变为-θ</summary>
+        public bool InvertThetaAngle { get => _invertThetaAngle; set => SetProperty(ref _invertThetaAngle, value); }
+
+        /// <summary>实际使用的旋转角度（考虑θ取反开关）</summary>
+        private double EffectiveThetaDeg => _invertThetaAngle ? -_thetaDeg : _thetaDeg;
+
+        /// <summary>获取X方向有效偏移（考虑取反开关）</summary>
+        private double Ex(double dx) => _invertXAngle ? -dx : dx;
+        /// <summary>获取Y方向有效偏移（考虑取反开关）</summary>
+        private double Ey(double dy) => _invertYAngle ? -dy : dy;
 
         private bool _step3Done;
         public bool Step3Done { get => _step3Done; set { SetProperty(ref _step3Done, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
@@ -570,6 +830,12 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         public ICommand ShowBaselineSegmentCommand { get; private set; }
         public ICommand ShowTargetlineSegmentCommand { get; private set; }
         public ICommand WriteToGlobalVariablesCommand { get; private set; }
+        /// <summary>添加仿射标定点命令</summary>
+        public ICommand AddAffineCalibrationPointCommand { get; private set; }
+        /// <summary>删除仿射标定点命令</summary>
+        public ICommand DeleteAffineCalibrationPointCommand { get; private set; }
+        /// <summary>示教仿射标定点机械坐标命令</summary>
+        public ICommand TeachAffineMachineCoordCommand { get; private set; }
         public DelegateCommand SaveConfigCommand { get; }
         public DelegateCommand LoadConfigCommand { get; }
 
@@ -584,6 +850,9 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
         /// <summary>请求画布结束批量恢复渲染——执行一次完整重绘</summary>
         public event Action BatchUpdateEndRequested;
+
+        /// <summary>请求更新回转中心可视化画布（拟合后触发，View订阅后传入画布尺寸）</summary>
+        public event Action RotationCenterVisualUpdateRequested;
 
 #endregion
 
@@ -601,26 +870,39 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         }
 
         /// <summary>
-        /// 示教单个拟合点：根据行索引获取对应角度的实测坐标
-        /// 模拟从运动控制器读取当前机械坐标（实际项目中应替换为真实控制器接口调用）
+        /// 示教单个拟合点：从运动控制器读取 Dx/Dy 轴实时位置作为拟合坐标
+        /// FitX 对应 Dx 轴，FitY 对应 Dy 轴
         /// </summary>
         private void OnTeachFitPoint(int rowIndex)
         {
             if (rowIndex < 0 || rowIndex >= FitPoints.Count) return;
             var fp = FitPoints[rowIndex];
 
-            // 模拟：读取当前机械坐标（实际应从运动控制器读取）
-            // 这里用默认数据模拟示教结果：基于角度偏移生成合理坐标
-            double baseAngle = rowIndex * 90.0;
-            double rad = baseAngle * Math.PI / 180.0;
-            double cx = 100.0, cy = 175.0, r = 75.0;
-            double teachX = cx + r * Math.Cos(rad);
-            double teachY = cy + r * Math.Sin(rad);
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var axisConfigs = motionService.GetAxisConfigurations();
 
-            fp.FitX = Math.Round(teachX, 3);
-            fp.FitY = Math.Round(teachY, 3);
+                // 从 hwcfg.xml 动态解析 Dx/Dy 轴逻辑 ID
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
 
-            StatusMessage = string.Format(L("CAD_Fit_Coord_Get"), fp.AngleLabel, fp.FitX.ToString("F3"), fp.FitY.ToString("F3"));
+                if (dxConfig == null || dyConfig == null)
+                {
+                    StatusMessage = L("CAD_Fit_AxisNotFound");
+                    return;
+                }
+
+                // 读取 Dx/Dy 轴实时位置
+                fp.FitX = Math.Round(motionService.GetAxisPosition(dxConfig.LogicalId), 3);
+                fp.FitY = Math.Round(motionService.GetAxisPosition(dyConfig.LogicalId), 3);
+
+                StatusMessage = string.Format(L("CAD_Fit_Coord_Get"), fp.AngleLabel, fp.FitX.ToString("F3"), fp.FitY.ToString("F3"));
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("CAD_Teach_Failed"), ex.Message);
+            }
         }
 
         /// <summary>
@@ -674,29 +956,178 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             FitRadius = r;
             Step1Done = true;
             StatusMessage = string.Format(L("CAD_Fit_Center_Done"), a.ToString("F3"), b.ToString("F3"), r.ToString("F3"));
+
+            // 通知View更新回转中心可视化画布
+            RotationCenterVisualUpdateRequested?.Invoke();
         }
 
         private void OnFitRotationCenter() => FitRotationCenter();
 
         #endregion
 
-        #region 核心2：计算全局偏移量 ΔX/ΔY
+        #region 核心2：计算全局偏移量 ΔX/ΔY （支持1点平移和N点仿射两种模式）
 
         /// <summary>
-        /// 根据P1机械坐标与CAD坐标之差计算全局平移偏移量
-        /// ΔX = P1_Mx - P1_Cx,  ΔY = P1_My - P1_Cy
+        /// 根据当前模式计算全局偏移：
+        /// - 1点平移模式：ΔX = P1_Mx - P1_Cx,  ΔY = P1_My - P1_Cy
+        /// - N点仿射模式：调用 ComputeAffineCalibration() 求解6参数仿射变换
         /// </summary>
         private void ComputeGlobalOffset()
         {
+            if (_useAffineCalibration)
+            {
+                ComputeAffineCalibration();
+                return;
+            }
+
+            // 1点平移模式（默认，向后兼容）
             DeltaX = P1Mx - P1Cx;
             DeltaY = P1My - P1Cy;
+            _affineResult = null; // 清除仿射结果
             Step2Done = true;
             UpdateMachineCoordinates();
             UpdateTransformedCoordText();
             StatusMessage = string.Format(L("CAD_Offset_Done"), DeltaX.ToString("F3"), DeltaY.ToString("F3"));
         }
 
+        /// <summary>
+        /// N点仿射标定计算：从 AffineCalibrationPoints 提取 CAD 和 机械坐标对，
+        /// 调用 AffineCalibrationService.Solve() 求解6个仿射参数，并显示结果
+        /// </summary>
+        private void ComputeAffineCalibration()
+        {
+            // 检查最少点数
+            if (AffineCalibrationPoints == null || AffineCalibrationPoints.Count < 3)
+            {
+                StatusMessage = L("CAD_Affine_NeedMin3");
+                return;
+            }
+
+            // 提取坐标对
+            var cadPts = new List<(double Cx, double Cy)>();
+            var mechPts = new List<(double Mx, double My)>();
+            foreach (var pt in AffineCalibrationPoints)
+            {
+                cadPts.Add((pt.CadX, pt.CadY));
+                mechPts.Add((pt.MachineX, pt.MachineY));
+            }
+
+            try
+            {
+                _affineResult = AffineCalibrationService.Solve(cadPts, mechPts);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("CAD_Affine_SolveFailed"), ex.Message);
+                return;
+            }
+
+            // 填充结果显示属性
+            AffineA  = Math.Round(_affineResult.A,  6);
+            AffineB  = Math.Round(_affineResult.B,  6);
+            AffineC  = Math.Round(_affineResult.C,  6);
+            AffineD  = Math.Round(_affineResult.D,  6);
+            AffineTx = Math.Round(_affineResult.Tx, 3);
+            AffineTy = Math.Round(_affineResult.Ty, 3);
+            AffineRmsError = _affineResult.RmsError;
+            AffineRotDeg = Math.Round(_affineResult.EquivalentRotationDeg, 3);
+
+            // 质量评级（多语言）
+            if (_affineResult.RmsError < 0.05)
+                AffineQualityText = L("CAD_Affine_QualityGood");
+            else if (_affineResult.RmsError < 0.10)
+                AffineQualityText = L("CAD_Affine_QualityOK");
+            else
+                AffineQualityText = L("CAD_Affine_QualityBad");
+
+            // 将残差写回每个标定点
+            for (int i = 0; i < AffineCalibrationPoints.Count && i < _affineResult.Residuals.Count; i++)
+            {
+                AffineCalibrationPoints[i].Residual = Math.Round(_affineResult.Residuals[i], 4);
+            }
+
+            // 仿射模式下同步 DeltaX/DeltaY（用第一个点计算，用于兼容显示）
+            if (AffineCalibrationPoints.Count > 0)
+            {
+                DeltaX = AffineCalibrationPoints[0].MachineX - AffineCalibrationPoints[0].CadX;
+                DeltaY = AffineCalibrationPoints[0].MachineY - AffineCalibrationPoints[0].CadY;
+            }
+
+            Step2Done = true;
+            UpdateMachineCoordinates();
+            UpdateTransformedCoordText();
+            StatusMessage = string.Format(L("CAD_Affine_Done"), AffineRmsError.ToString("F4"), AffineQualityText);
+        }
+
         private void OnComputeGlobalOffset() => ComputeGlobalOffset();
+
+        #endregion
+
+        #region 仿射标定点管理（添加/删除/示教）
+
+        /// <summary>添加新的仿射标定点（自动命名和索引）</summary>
+        private void OnAddAffineCalibrationPoint()
+        {
+            int idx = AffineCalibrationPoints.Count;
+            AffineCalibrationPoints.Add(new AffineCalibrationPoint
+            {
+                Index = idx,
+                Name = $"P{idx + 1}",
+                CadX = 0,
+                CadY = 0,
+                MachineX = 0,
+                MachineY = 0
+            });
+        }
+
+        /// <summary>删除指定的仿射标定点（重新索引）</summary>
+        private void OnDeleteAffineCalibrationPoint(AffineCalibrationPoint point)
+        {
+            if (point == null || AffineCalibrationPoints.Count <= 3)
+            {
+                StatusMessage = L("CAD_Affine_NeedMin3");
+                return;
+            }
+            AffineCalibrationPoints.Remove(point);
+            // 重新索引
+            for (int i = 0; i < AffineCalibrationPoints.Count; i++)
+            {
+                AffineCalibrationPoints[i].Index = i;
+                AffineCalibrationPoints[i].Name = $"P{i + 1}";
+            }
+        }
+
+        /// <summary>
+        /// 示教指定仿射标定点的机械坐标（从运动控制器实时读取）
+        /// CommandParameter: AffineCalibrationPoint 实例或索引(int)
+        /// </summary>
+        private void OnTeachAffineMachineCoord(object parameter)
+        {
+            AffineCalibrationPoint target = null;
+            if (parameter is AffineCalibrationPoint pt)
+                target = pt;
+            else if (parameter is int idx && idx >= 0 && idx < AffineCalibrationPoints.Count)
+                target = AffineCalibrationPoints[idx];
+
+            if (target == null)
+            {
+                StatusMessage = L("CAD_Affine_InvalidParam");
+                return;
+            }
+
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                target.MachineX = Math.Round(motionService.GetAxisPosition(8), 3);
+                target.MachineY = Math.Round(motionService.GetAxisPosition(6), 3);
+                StatusMessage = string.Format(L("CAD_Affine_TeachDone"), target.Name,
+                    target.MachineX.ToString("F3"), target.MachineY.ToString("F3"));
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format(L("CAD_Teach_Failed"), ex.Message);
+            }
+        }
 
         #endregion
 
@@ -876,7 +1307,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                     return;
                 }
 
-                CadFilePath = System.IO.Path.GetFileName(dialog.FileName);
+                CadFilePath = dialog.FileName; // 存储完整路径以便自动加载恢复
                 HasCadDrawingLoaded = true;
 
                 RebuildCanvasDisplayEntities();
@@ -900,6 +1331,61 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             {
                 StatusMessage = $"DXF 导入失败: {ex.Message}";
                 CadPickStatus = L("CAD_Import_Failed");
+            }
+        }
+
+        /// <summary>
+        /// 静默导入DXF文件（不弹窗，不重置线段选取），用于配置加载后自动恢复图形和点位
+        /// </summary>
+        private void ImportDxfSilent(string fullPath)
+        {
+            if (string.IsNullOrEmpty(fullPath) || !System.IO.File.Exists(fullPath)) return;
+
+            try
+            {
+                if (_dxfImportHelper != null)
+                {
+                    var importResult = _dxfImportHelper.Import(fullPath, DxfImportOptions.ForAlignment);
+                    _dxfParseResult = importResult.ParseResult;
+
+                    CadEntities.Clear();
+                    foreach (var entity in importResult.DisplayEntities)
+                        CadEntities.Add(entity);
+
+                    ImportedCadPoints.Clear();
+                    for (int i = 0; i < importResult.ExtractedPoints.Count; i++)
+                    {
+                        var pt = importResult.ExtractedPoints[i];
+                        ImportedCadPoints.Add(new CadPoint
+                        {
+                            Id = pt.Id ?? (i + 1).ToString(),
+                            X = Math.Round(pt.X, 3),
+                            Y = Math.Round(pt.Y, 3),
+                            Z = Math.Round(pt.Z, 3),
+                            AssySite = ""
+                        });
+                    }
+                }
+                else
+                {
+                    OnImportDxfLegacy(fullPath);
+                }
+
+                if (ImportedCadPoints.Count == 0 && CadEntities.Count == 0) return;
+
+                CadFilePath = fullPath;
+                HasCadDrawingLoaded = true;
+
+                RebuildCanvasDisplayEntities();
+                FitToAllRequested?.Invoke();
+                UpdateCadPointRoles();
+                UpdateMachineCoordinates();
+
+                StatusMessage = $"DXF 自动恢复：{ImportedCadPoints.Count} 个点，来源: {System.IO.Path.GetFileName(fullPath)}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"DXF 自动恢复失败: {ex.Message}";
             }
         }
 
@@ -1194,7 +1680,11 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             RaisePropertyChanged(nameof(HasStep3TransformResult));
         }
 
-        /// <summary>格式化单个点位的变换坐标显示文本（原始CAD坐标 → 平移后机械坐标）</summary>
+        /// <summary>
+        /// 格式化单个点位的变换坐标显示文本（原始CAD坐标 → 机械坐标）
+        /// - 仿射模式: 使用6参数仿射变换 Mx = A·Cx + B·Cy + Tx
+        /// - 1点平移模式: 使用简单偏移 Mx = Cx + ΔX
+        /// </summary>
         private string FormatPointTransformText(int pointIndex)
         {
             if (pointIndex < 0 || pointIndex >= ImportedCadPoints.Count) return "";
@@ -1203,8 +1693,20 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             if (!Step2Done) return string.Format("原始: {0}", original);
 
-            double xm = pt.X + DeltaX;
-            double ym = pt.Y + DeltaY;
+            double xm, ym;
+            if (_useAffineCalibration && _affineResult != null)
+            {
+                // 仿射模式: 使用矩阵运算
+                var (mx, my) = AffineCalibrationService.Transform(_affineResult, pt.X, pt.Y);
+                xm = mx;
+                ym = my;
+            }
+            else
+            {
+                // 1点平移模式
+                xm = pt.X + DeltaX;
+                ym = pt.Y + DeltaY;
+            }
             string machine = string.Format("({0}, {1})", xm.ToString("F2"), ym.ToString("F2"));
 
             return string.Format("原始: {0}\n机械: {1}", original, machine);
@@ -1418,15 +1920,56 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             return Math.Max(diagonal * 0.02, 1.0); // 至少1单位
         }
 
-        /// <summary>更新所有导入点位的机械坐标（CAD坐标 + 全局偏移量）</summary>
+        /// <summary>
+        /// 更新所有导入CAD点的机械坐标：
+        /// - 仿射模式: 先仿射变换得到机械坐标，再绕回转中心旋转θ
+        /// - 1点平移模式: 使用简单偏移 Mx = Cx + ΔX
+        /// </summary>
         private void UpdateMachineCoordinates()
         {
+            // 未完成步骤2：清空所有坐标
+            if (!Step2Done)
+            {
+                foreach (var pt in ImportedCadPoints)
+                {
+                    pt.OffsetX = null;
+                    pt.OffsetY = null;
+                    pt.MachineX = null;
+                    pt.MachineY = null;
+                }
+                return;
+            }
+
+            if (_useAffineCalibration && _affineResult != null)
+            {
+                // 仿射模式: 先仿射变换得到机械坐标，再绕回转中心旋转θ
+                double thetaRad = EffectiveThetaDeg * Math.PI / 180.0;
+                double cosT = Math.Cos(thetaRad);
+                double sinT = Math.Sin(thetaRad);
+
+                foreach (var pt in ImportedCadPoints)
+                {
+                    var (mx, my) = AffineCalibrationService.Transform(_affineResult, pt.X, pt.Y);
+                    double dx = mx - Mox;
+                    double dy = my - Moy;
+                    double edx = Ex(dx), edy = Ey(dy);
+                    double rotX = edx * cosT - edy * sinT + Mox;
+                    double rotY = edx * sinT + edy * cosT + Moy;
+                    pt.OffsetX = Math.Round(rotX, 3);
+                    pt.OffsetY = Math.Round(rotY, 3);
+                    pt.MachineX = Math.Round(rotX, 3);
+                    pt.MachineY = Math.Round(rotY, 3);
+                }
+                return;
+            }
+
+            // 1点平移模式
             foreach (var pt in ImportedCadPoints)
             {
-                pt.OffsetX = Step2Done ? Math.Round(pt.X + DeltaX, 3) : null;
-                pt.OffsetY = Step2Done ? Math.Round(pt.Y + DeltaY, 3) : null;
-                pt.MachineX = Step2Done ? Math.Round(pt.X + DeltaX, 3) : null;
-                pt.MachineY = Step2Done ? Math.Round(pt.Y + DeltaY, 3) : null;
+                pt.OffsetX = Math.Round(pt.X + DeltaX, 3);
+                pt.OffsetY = Math.Round(pt.Y + DeltaY, 3);
+                pt.MachineX = Math.Round(pt.X + DeltaX, 3);
+                pt.MachineY = Math.Round(pt.Y + DeltaY, 3);
             }
         }
 
@@ -1592,8 +2135,20 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (HasCadDrawingLoaded && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
             {
                 var pt = ImportedCadPoints[TargetStartIndex];
-                double xm = pt.X + DeltaX;
-                double ym = pt.Y + DeltaY;
+
+                double xm, ym;
+                if (_useAffineCalibration && _affineResult != null)
+                {
+                    // 仿射模式: 使用矩阵运算
+                    var (mx, my) = AffineCalibrationService.Transform(_affineResult, pt.X, pt.Y);
+                    xm = mx;
+                    ym = my;
+                }
+                else
+                {
+                    xm = pt.X + DeltaX;
+                    ym = pt.Y + DeltaY;
+                }
 
                 Step4TargetCadText = string.Format("#{0} ({1}, {2})", pt.Id, pt.X.ToString("F2"), pt.Y.ToString("F2"));
                 Step4TargetOffsetText = string.Format("({0}, {1})", xm.ToString("F2"), ym.ToString("F2"));
@@ -1610,8 +2165,18 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 TransformSelectedIndex = targetPointStartIdx;
 
                 var pt = CorrespondencePoints[targetPointStartIdx];
-                TransXm = pt.CadX + DeltaX;
-                TransYm = pt.CadY + DeltaY;
+
+                if (_useAffineCalibration && _affineResult != null)
+                {
+                    var (mx, my) = AffineCalibrationService.Transform(_affineResult, pt.CadX, pt.CadY);
+                    TransXm = mx;
+                    TransYm = my;
+                }
+                else
+                {
+                    TransXm = pt.CadX + DeltaX;
+                    TransYm = pt.CadY + DeltaY;
+                }
 
                 Step4TargetCadText = string.Format("{0} ({1}, {2})", pt.Name, pt.CadX.ToString("F2"), pt.CadY.ToString("F2"));
                 Step4TargetOffsetText = string.Format("({0}, {1})", TransXm.ToString("F2"), TransYm.ToString("F2"));
@@ -1624,10 +2189,9 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         #region 核心4：单点坐标变换（先平移后旋转）
 
         /// <summary>
-        /// 对选中索引对应的CAD点执行先平移后旋转的坐标变换：
-        /// 1. 平移：Xm = CadX + ΔX, Ym = CadY + ΔY
-        /// 2. 相对中心偏移：dx = Xm - Mox, dy = Ym - Moy
-        /// 3. 绕回转中心旋转θ角：
+        /// 对选中索引对应的CAD点执行坐标变换：
+        /// - 仿射模式: ①仿射变换得到机械坐标 ②绕回转中心(Mox,Moy)旋转θ得到最终结果
+        /// - 1点平移模式: ①平移得到机械坐标 ②绕回转中心(Mox,Moy)旋转θ得到最终结果
         ///    X_new = dx·cosθ - dy·sinθ + Mox
         ///    Y_new = dx·sinθ + dy·cosθ + Moy
         /// 同时将结果写入选中点的 RotatedX/Y 属性
@@ -1640,7 +2204,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 return;
             }
 
-            double xm, ym, cadX, cadY;
+            double cadX, cadY;
             string pointName;
 
             if (_useStep3TargetForTransform && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
@@ -1649,8 +2213,6 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 pointName = $"#{pt.Id}";
                 cadX = pt.X;
                 cadY = pt.Y;
-                xm = cadX + DeltaX;
-                ym = cadY + DeltaY;
             }
             else
             {
@@ -1664,21 +2226,63 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 pointName = cp.Name;
                 cadX = cp.CadX;
                 cadY = cp.CadY;
-                xm = cadX + DeltaX;
-                ym = cadY + DeltaY;
             }
-            double dx = xm - Mox;
-            double dy = ym - Moy;
-            double thetaRad = ThetaDeg * Math.PI / 180.0;
-            double cosT = Math.Cos(thetaRad);
-            double sinT = Math.Sin(thetaRad);
 
-            TransXm = xm;
-            TransYm = ym;
-            TransDx = dx;
-            TransDy = dy;
-            TransResultX = dx * cosT - dy * sinT + Mox;
-            TransResultY = dx * sinT + dy * cosT + Moy;
+            // 仿射模式: 先仿射变换得到机械坐标，再绕回转中心旋转θ
+            if (_useAffineCalibration && _affineResult != null)
+            {
+                // ① 仿射变换 → 机械坐标
+                var (mx, my) = AffineCalibrationService.Transform(_affineResult, cadX, cadY);
+                TransXm = Math.Round(mx, 3);
+                TransYm = Math.Round(my, 3);
+
+                // ② 相对回转中心偏移
+                double dx = mx - Mox;
+                double dy = my - Moy;
+                TransDx = Math.Round(dx, 3);
+                TransDy = Math.Round(dy, 3);
+
+                // ③ 绕回转中心旋转θ角得到最终结果
+                double thetaRad = EffectiveThetaDeg * Math.PI / 180.0;
+                double cosT = Math.Cos(thetaRad);
+                double sinT = Math.Sin(thetaRad);
+                double edx = Ex(dx), edy = Ey(dy);
+                TransResultX = edx * cosT - edy * sinT + Mox;
+                TransResultY = edx * sinT + edy * cosT + Moy;
+
+                // 【调试日志】输出所有中间计算值
+                System.Diagnostics.Debug.WriteLine($"=== 坐标变换调试 ===");
+                System.Diagnostics.Debug.WriteLine($"输入CAD坐标: ({cadX}, {cadY})");
+                System.Diagnostics.Debug.WriteLine($"仿射参数: A={_affineResult.A:F6}, B={_affineResult.B:F6}, C={_affineResult.C:F6}, D={_affineResult.D:F6}, Tx={_affineResult.Tx:F6}, Ty={_affineResult.Ty:F6}");
+                System.Diagnostics.Debug.WriteLine($"仿射变换后机械坐标: mx={mx:F6}, my={my:F6}");
+                System.Diagnostics.Debug.WriteLine($"回转中心: Mox={Mox:F6}, Moy={Moy:F6}");
+                System.Diagnostics.Debug.WriteLine($"相对偏移: dx={dx:F6}, dy={dy:F6}");
+                System.Diagnostics.Debug.WriteLine($"取反开关: X={InvertXAngle}, Y={InvertYAngle}, θ={InvertThetaAngle}");
+                System.Diagnostics.Debug.WriteLine($"取反后偏移: edx={edx:F6}, edy={edy:F6}");
+                System.Diagnostics.Debug.WriteLine($"旋转角度: ThetaDeg={ThetaDeg:F6}, EffectiveThetaDeg={EffectiveThetaDeg:F6}");
+                System.Diagnostics.Debug.WriteLine($"cosθ={cosT:F6}, sinθ={sinT:F6}");
+                System.Diagnostics.Debug.WriteLine($"最终结果: X={TransResultX:F6}, Y={TransResultY:F6}");
+                System.Diagnostics.Debug.WriteLine($"===================");
+            }
+            else
+            {
+                // 1点平移模式: 先平移后旋转
+                double xm = cadX + DeltaX;
+                double ym = cadY + DeltaY;
+                double dx = xm - Mox;
+                double dy = ym - Moy;
+                double thetaRad = EffectiveThetaDeg * Math.PI / 180.0;
+                double cosT = Math.Cos(thetaRad);
+                double sinT = Math.Sin(thetaRad);
+                double edx = Ex(dx), edy = Ey(dy);
+
+                TransXm = xm;
+                TransYm = ym;
+                TransDx = dx;
+                TransDy = dy;
+                TransResultX = edx * cosT - edy * sinT + Mox;
+                TransResultY = edx * sinT + edy * cosT + Moy;
+            }
 
             if (_useStep3TargetForTransform && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
             {
@@ -1703,7 +2307,9 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         #region 核心4-扩展：批量坐标变换
 
         /// <summary>
-        /// 遍历CorrespondencePoints中索引>=2的所有点(P3~P6)，逐个执行与ExecuteTransform相同的变换逻辑，
+        /// 批量坐标变换：遍历CorrespondencePoints中索引>=2的所有点(P3~P6)
+        /// - 仿射模式: ①仿射变换得到机械坐标 ②绕回转中心旋转θ
+        /// - 1点平移模式: ①平移得到机械坐标 ②绕回转中心旋转θ
         /// 将结果写入每个点的RotatedX/Y/Z属性
         /// </summary>
         private void ExecuteBatchTransform()
@@ -1714,23 +2320,49 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 return;
             }
 
-            double thetaRad = ThetaDeg * Math.PI / 180.0;
-            double cosT = Math.Cos(thetaRad);
-            double sinT = Math.Sin(thetaRad);
             int transformedCount = 0;
 
-            for (int i = 2; i < CorrespondencePoints.Count; i++)
+            if (_useAffineCalibration && _affineResult != null)
             {
-                var cp = CorrespondencePoints[i];
-                double xm = cp.CadX + DeltaX;
-                double ym = cp.CadY + DeltaY;
-                double dx = xm - Mox;
-                double dy = ym - Moy;
+                // 仿射模式: 先仿射变换得到机械坐标，再绕回转中心旋转θ
+                double thetaRad = EffectiveThetaDeg * Math.PI / 180.0;
+                double cosT = Math.Cos(thetaRad);
+                double sinT = Math.Sin(thetaRad);
 
-                cp.RotatedX = dx * cosT - dy * sinT + Mox;
-                cp.RotatedY = dx * sinT + dy * cosT + Moy;
-                cp.RotatedZ = cp.CadZ;
-                transformedCount++;
+                for (int i = 2; i < CorrespondencePoints.Count; i++)
+                {
+                    var cp = CorrespondencePoints[i];
+                    var (mx, my) = AffineCalibrationService.Transform(_affineResult, cp.CadX, cp.CadY);
+                    double dx = mx - Mox;
+                    double dy = my - Moy;
+                    double edx = Ex(dx), edy = Ey(dy);
+                    cp.RotatedX = edx * cosT - edy * sinT + Mox;
+                    cp.RotatedY = edx * sinT + edy * cosT + Moy;
+                    cp.RotatedZ = cp.CadZ;
+                    transformedCount++;
+                }
+            }
+            else
+            {
+                // 1点平移模式: 先平移后旋转
+                double thetaRad = EffectiveThetaDeg * Math.PI / 180.0;
+                double cosT = Math.Cos(thetaRad);
+                double sinT = Math.Sin(thetaRad);
+
+                for (int i = 2; i < CorrespondencePoints.Count; i++)
+                {
+                    var cp = CorrespondencePoints[i];
+                    double xm = cp.CadX + DeltaX;
+                    double ym = cp.CadY + DeltaY;
+                    double dx = xm - Mox;
+                    double dy = ym - Moy;
+                    double edx = Ex(dx), edy = Ey(dy);
+
+                    cp.RotatedX = edx * cosT - edy * sinT + Mox;
+                    cp.RotatedY = edx * sinT + edy * cosT + Moy;
+                    cp.RotatedZ = cp.CadZ;
+                    transformedCount++;
+                }
             }
 
             Step4Done = true;
@@ -1975,19 +2607,45 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         {
             return new Dictionary<string, object>
             {
+                // Step1 回转中心
                 ["Mox"] = Mox,
                 ["Moy"] = Moy,
                 ["FitRadius"] = FitRadius,
                 ["Step1Done"] = Step1Done,
                 ["FitPoints"] = FitPoints.Select(p => new { p.Index, p.AngleLabel, p.FitX, p.FitY }).ToList(),
+
+                // Step2 全局偏移
                 ["P1Mx"] = P1Mx, ["P1My"] = P1My,
                 ["P1Cx"] = P1Cx, ["P1Cy"] = P1Cy,
                 ["DeltaX"] = DeltaX, ["DeltaY"] = DeltaY,
                 ["Step2Done"] = Step2Done,
+                ["UseAffineCalibration"] = UseAffineCalibration,
+                ["AffineCalibrationPoints"] = AffineCalibrationPoints?.Select(p => new
+                {
+                    p.Index, p.Name, p.CadX, p.CadY, p.MachineX, p.MachineY
+                }).ToList(),
+                ["AffineA"] = AffineA, ["AffineB"] = AffineB,
+                ["AffineC"] = AffineC, ["AffineD"] = AffineD,
+                ["AffineTx"] = AffineTx, ["AffineTy"] = AffineTy,
+                ["AffineRmsError"] = AffineRmsError,
+                ["AffineRotDeg"] = AffineRotDeg,
+                ["AffineQualityText"] = AffineQualityText,
+
+                // Step3 旋转角度
                 ["ThetaDeg"] = ThetaDeg,
                 ["Step3Done"] = Step3Done,
+                ["BaseStartIndex"] = BaseStartIndex,
+                ["BaseEndIndex"] = BaseEndIndex,
+                ["TargetStartIndex"] = TargetStartIndex,
+                ["TargetEndIndex"] = TargetEndIndex,
+
+                // Step4 坐标变换
                 ["TransResultX"] = TransResultX, ["TransResultY"] = TransResultY,
                 ["Step4Done"] = Step4Done,
+                ["TransformSelectedIndex"] = TransformSelectedIndex,
+                ["TargetPairIndex"] = TargetPairIndex,
+
+                // Step5 夹爪定位
                 ["GripperOffX"] = GripperOffX, ["GripperOffY"] = GripperOffY,
                 ["TeachX"] = TeachX, ["TeachY"] = TeachY, ["TeachRy"] = TeachRy, ["TeachZ"] = TeachZ,
                 ["UseCalculatedOffset"] = UseCalculatedOffset,
@@ -1996,16 +2654,60 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["IsGripperXLinked"] = IsGripperXLinked, ["IsGripperYLinked"] = IsGripperYLinked,
                 ["CadFilePath"] = CadFilePath,
                 ["Step5Done"] = Step5Done,
+                ["InvertXAngle"] = InvertXAngle,
+                ["InvertYAngle"] = InvertYAngle,
+                ["InvertThetaAngle"] = InvertThetaAngle,
             };
         }
 
         /// <summary>将字典配置应用到当前ViewModel属性</summary>
         private void ApplyConfig(Dictionary<string, object> config)
         {
+            // ── 第1步：先导入DXF图形（必须在加载点位索引之前，因为DXF导入会清空 ImportedCadPoints） ──
+            string savedCadFilePath = "";
+            if (config.TryGetValue("CadFilePath", out var cfp)) savedCadFilePath = cfp?.ToString() ?? "";
+
+            if (!string.IsNullOrEmpty(savedCadFilePath))
+            {
+                // 尝试完整路径
+                string resolvedPath = savedCadFilePath;
+                if (!System.IO.File.Exists(resolvedPath))
+                {
+                    // 回退：如果是旧配置只保存了文件名，在常见目录中查找
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory ?? System.IO.Directory.GetCurrentDirectory();
+                    var searchDirs = new[]
+                    {
+                        System.IO.Path.Combine(baseDir, "Config", "LibreCAD"),
+                        System.IO.Path.Combine(baseDir, "Config"),
+                        baseDir
+                    };
+                    string fileName = System.IO.Path.GetFileName(savedCadFilePath);
+                    foreach (var dir in searchDirs)
+                    {
+                        var candidate = System.IO.Path.Combine(dir, fileName);
+                        if (System.IO.File.Exists(candidate))
+                        {
+                            resolvedPath = candidate;
+                            break;
+                        }
+                    }
+                }
+
+                if (System.IO.File.Exists(resolvedPath))
+                {
+                    ImportDxfSilent(resolvedPath);
+                }
+            }
+
+            // ── 第2步：加载所有配置参数（点位已就绪，索引可正确引用） ──
+
+            // Step1 回转中心
             if (config.TryGetValue("Mox", out var mox)) Mox = Convert.ToDouble(mox);
             if (config.TryGetValue("Moy", out var moy)) Moy = Convert.ToDouble(moy);
             if (config.TryGetValue("FitRadius", out var fr)) FitRadius = Convert.ToDouble(fr);
             if (config.TryGetValue("Step1Done", out var s1)) Step1Done = Convert.ToBoolean(s1);
+
+            // Step2 全局偏移
             if (config.TryGetValue("P1Mx", out var p1mx)) P1Mx = Convert.ToDouble(p1mx);
             if (config.TryGetValue("P1My", out var p1my)) P1My = Convert.ToDouble(p1my);
             if (config.TryGetValue("P1Cx", out var p1cx)) P1Cx = Convert.ToDouble(p1cx);
@@ -2013,11 +2715,33 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("DeltaX", out var dx)) DeltaX = Convert.ToDouble(dx);
             if (config.TryGetValue("DeltaY", out var dy)) DeltaY = Convert.ToDouble(dy);
             if (config.TryGetValue("Step2Done", out var s2)) Step2Done = Convert.ToBoolean(s2);
+            if (config.TryGetValue("UseAffineCalibration", out var uac)) UseAffineCalibration = Convert.ToBoolean(uac);
+            if (config.TryGetValue("AffineA", out var aa)) AffineA = Convert.ToDouble(aa);
+            if (config.TryGetValue("AffineB", out var ab)) AffineB = Convert.ToDouble(ab);
+            if (config.TryGetValue("AffineC", out var ac)) AffineC = Convert.ToDouble(ac);
+            if (config.TryGetValue("AffineD", out var ad)) AffineD = Convert.ToDouble(ad);
+            if (config.TryGetValue("AffineTx", out var atx)) AffineTx = Convert.ToDouble(atx);
+            if (config.TryGetValue("AffineTy", out var aty)) AffineTy = Convert.ToDouble(aty);
+            if (config.TryGetValue("AffineRmsError", out var are)) AffineRmsError = Convert.ToDouble(are);
+            if (config.TryGetValue("AffineRotDeg", out var ard)) AffineRotDeg = Convert.ToDouble(ard);
+            if (config.TryGetValue("AffineQualityText", out var aqt)) AffineQualityText = aqt?.ToString() ?? "";
+
+            // Step3 旋转角度
             if (config.TryGetValue("ThetaDeg", out var td)) ThetaDeg = Convert.ToDouble(td);
             if (config.TryGetValue("Step3Done", out var s3)) Step3Done = Convert.ToBoolean(s3);
+            if (config.TryGetValue("BaseStartIndex", out var bsi)) BaseStartIndex = Convert.ToInt32(bsi);
+            if (config.TryGetValue("BaseEndIndex", out var bei)) BaseEndIndex = Convert.ToInt32(bei);
+            if (config.TryGetValue("TargetStartIndex", out var tsi)) TargetStartIndex = Convert.ToInt32(tsi);
+            if (config.TryGetValue("TargetEndIndex", out var tei)) TargetEndIndex = Convert.ToInt32(tei);
+
+            // Step4 坐标变换
             if (config.TryGetValue("TransResultX", out var trx)) TransResultX = Convert.ToDouble(trx);
             if (config.TryGetValue("TransResultY", out var try_)) TransResultY = Convert.ToDouble(try_);
             if (config.TryGetValue("Step4Done", out var s4)) Step4Done = Convert.ToBoolean(s4);
+            if (config.TryGetValue("TransformSelectedIndex", out var tsi2)) TransformSelectedIndex = Convert.ToInt32(tsi2);
+            if (config.TryGetValue("TargetPairIndex", out var tpi)) TargetPairIndex = Convert.ToInt32(tpi);
+
+            // Step5 夹爪定位
             if (config.TryGetValue("GripperOffX", out var gox)) GripperOffX = Convert.ToDouble(gox);
             if (config.TryGetValue("GripperOffY", out var goy)) GripperOffY = Convert.ToDouble(goy);
             if (config.TryGetValue("TeachX", out var tx)) TeachX = Convert.ToDouble(tx);
@@ -2031,9 +2755,13 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("FinalGripperYLinkedVar", out var fgyv)) FinalGripperYLinkedVar = fgyv?.ToString() ?? "";
             if (config.TryGetValue("IsGripperXLinked", out var igxl)) IsGripperXLinked = Convert.ToBoolean(igxl);
             if (config.TryGetValue("IsGripperYLinked", out var igyl)) IsGripperYLinked = Convert.ToBoolean(igyl);
-            if (config.TryGetValue("CadFilePath", out var cfp)) CadFilePath = cfp?.ToString() ?? "";
+            if (config.TryGetValue("CadFilePath", out var cfp2)) CadFilePath = cfp2?.ToString() ?? "";
             if (config.TryGetValue("Step5Done", out var s5)) Step5Done = Convert.ToBoolean(s5);
+            if (config.TryGetValue("InvertXAngle", out var ixa)) InvertXAngle = Convert.ToBoolean(ixa);
+            if (config.TryGetValue("InvertYAngle", out var iya)) InvertYAngle = Convert.ToBoolean(iya);
+            if (config.TryGetValue("InvertThetaAngle", out var ita)) InvertThetaAngle = Convert.ToBoolean(ita);
 
+            // 拟合点集合
             if (config.TryGetValue("FitPoints", out var fpsObj))
             {
                 var fpsJson = JsonConvert.SerializeObject(fpsObj);
@@ -2046,9 +2774,33 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 }
             }
 
+            // 仿射标定点集合
+            if (config.TryGetValue("AffineCalibrationPoints", out var acpObj))
+            {
+                var acpJson = JsonConvert.SerializeObject(acpObj);
+                var acpList = JsonConvert.DeserializeObject<List<AffineCalibrationPoint>>(acpJson);
+                if (acpList != null)
+                {
+                    AffineCalibrationPoints.Clear();
+                    foreach (var ap in acpList)
+                        AffineCalibrationPoints.Add(ap);
+                }
+            }
+
+            // ── 第3步：恢复仿射标定结果（依赖AffineCalibrationPoints已加载） ──
+            if (UseAffineCalibration && AffineCalibrationPoints != null && AffineCalibrationPoints.Count >= 3)
+            {
+                ComputeAffineCalibration();
+            }
+
+            // ── 第4步：刷新所有UI状态（点位已就绪，索引有效） ──
             UpdateStepStates(CurrentStep);
             UpdateMachineCoordinates();
             UpdateTransformedCoordText();
+            UpdateLineSegmentDisplayText();
+
+            // 触发回转中心可视化更新
+            RotationCenterVisualUpdateRequested?.Invoke();
         }
 
         /// <summary>将当前配置文件路径保存到配方池扩展数据</summary>
@@ -2063,11 +2815,12 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             catch { }
         }
 
-        /// <summary>启动时自动加载配置（优先从配方池恢复，其次加载默认配置文件）</summary>
+        /// <summary>启动时自动加载配置（优先从配方池恢复，其次加载最近保存的配置文件）</summary>
         private async Task TryAutoLoadConfigAsync()
         {
             try
             {
+                // 优先从配方池获取上次保存的文件路径
                 var poolName = _recipePoolService.CurrentPoolName ?? "Default";
                 var extData = await _recipePoolService.GetExtensionDataAsync<object>(poolName, "CadAlignment_CurrentFile");
                 if (extData != null)
@@ -2081,10 +2834,23 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                     }
                 }
 
+                // 回退：查找配置目录中最近修改的 CadAlignment_*.json 文件
                 var configDir = GetConfigDirectory();
                 var defaultPath = System.IO.Path.Combine(configDir, "CadAlignment_Default.json");
                 if (System.IO.File.Exists(defaultPath))
+                {
                     await LoadConfigFromPathAsync(defaultPath);
+                    return;
+                }
+
+                // 查找最新的带时间戳的配置文件
+                var latestFile = System.IO.Directory.GetFiles(configDir, "CadAlignment_*.json")
+                    .OrderByDescending(f => System.IO.File.GetLastWriteTimeUtc(f))
+                    .FirstOrDefault();
+                if (latestFile != null)
+                {
+                    await LoadConfigFromPathAsync(latestFile);
+                }
             }
             catch { }
         }

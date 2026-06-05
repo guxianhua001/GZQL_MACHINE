@@ -1,6 +1,7 @@
 using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
+using Framework.Mvvm;
 using MaterialDesignThemes.Wpf;
 using Module.Services;
 using ModuleCore.Common.Authority;
@@ -20,7 +21,10 @@ using System.Windows.Media;
 
 namespace Module.ViewModels
 {
-    public class LoadUnloadViewModel : BindableBase
+    /// <summary>
+    /// 上下料 ViewModel：实现 IDestructible，离开页面时自动停止定时器刷新
+    /// </summary>
+    public class LoadUnloadViewModel : ViewModelBase
     {
         private readonly IDialogService _dialogService;
         private readonly IEventAggregator _eventAggregator;
@@ -29,6 +33,12 @@ namespace Module.ViewModels
         private readonly ILocalizationService _localization;
         private readonly ILoggerService _logger;
         private LoginModel _loginModel { get; set; }
+
+        /// <summary> 实时状态刷新定时器，页面销毁时停止 </summary>
+        private System.Windows.Threading.DispatcherTimer _statusTimer;
+
+        /// <summary> 防止 UpdateRealTimeStatus 异步重入的标志位 </summary>
+        private volatile bool _isUpdatingStatus;
 
         private bool _isMoving;
         public bool IsMoving
@@ -247,14 +257,40 @@ namespace Module.ViewModels
             RealTimePositions = _localization.GetResourceOrDefault("LoadUnload_DefaultPosition", "Rx:0.00 Rz:0.00 Y:0.00 Ry:0.00");
             GripperStatus = _localization.GetResourceOrDefault("LoadUnload_DefaultGripperStatus", "0% (0N)");
             UpdateRealTimeStatus();
-            var timer = new System.Windows.Threading.DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(500);
-            timer.Tick += (s, e) => UpdateRealTimeStatus();
-            timer.Start();
+
+            // 实时刷新定时器，保存引用以便离开页面时停止
+            _statusTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _statusTimer.Tick += (s, e) => UpdateRealTimeStatus();
+            _statusTimer.Start();
         }
 
+        /// <summary>
+        /// 页面销毁时停止定时器并取消事件订阅，防止内存泄漏
+        /// </summary>
+        public override void Destroy()
+        {
+            _statusTimer?.Stop();
+            _statusTimer = null;
+
+            if (_loginModel != null)
+                _loginModel.PropertyChanged -= LoginModel_PropertyChanged;
+
+            base.Destroy();
+        }
+
+        /// <summary>
+        /// 异步刷新轴回零状态和实时位置，带重入保护防止并发硬件查询
+        /// DispatcherTimer 的 Tick 为 async void，必须防止上一轮 await 未完成时下一轮叠加
+        /// </summary>
         private async void UpdateRealTimeStatus()
         {
+            // 重入保护：上一轮尚未完成时跳过本次，避免硬件查询拥堵
+            if (_isUpdatingStatus) return;
+            _isUpdatingStatus = true;
+
             try
             {
                 var axisStatus = await _controller.GetAxisReadyStatusAsync();
@@ -283,9 +319,17 @@ namespace Module.ViewModels
                     ? _localization.GetResourceOrDefault("LoadUnload_Status_Active", "Active")
                     : _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
                 GripperVacuumStatusColor = gripVacStatus == VacuumStatus.On ? Brushes.Green : Brushes.Red;
+
+                // 实时夹爪位置（从 IGripperService 硬件读取）
+                var gripperPos = _controller.GetGripperPosition();
+                GripperStatus = $"{gripperPos:F1} mm";
             }
             catch
             {
+            }
+            finally
+            {
+                _isUpdatingStatus = false;
             }
         }
 
@@ -303,6 +347,11 @@ namespace Module.ViewModels
             return dict.TryGetValue(key, out var val) ? val : 0;
         }
 
+        /// <summary>
+        /// 异步操作包装器：管理 IsMoving 状态和异常处理
+        /// 注意：WPF 场景下不使用 ConfigureAwait(false)，确保 IsMoving 在 UI 线程设置，
+        /// 避免 PropertyChanged 在非 UI 线程触发导致绑定失效
+        /// </summary>
         private DelegateCommand ExecuteAsyncOperation(Func<Task> execute, Func<bool> canExecute = null)
         {
             return new DelegateCommand(
@@ -321,7 +370,7 @@ namespace Module.ViewModels
                     IsMoving = true;
                     try
                     {
-                        await execute().ConfigureAwait(false);
+                        await execute();
                     }
                     catch (Exception ex)
                     {
@@ -389,11 +438,16 @@ namespace Module.ViewModels
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_VacuumOff", "Turning vacuum OFF"), false);
         }
 
+        /// <summary>
+        /// 平台回零：完成后立即刷新轴状态指示器，不等待下一轮定时器
+        /// </summary>
         private async Task PlatformHomeAction()
         {
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_HomeAll", "Homing platform"), true);
             await _controller.HomeAllAsync();
             UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_HomeAll", "Homing platform"), false);
+            // 回零完成后立即刷新轴状态，确保指示器同步更新
+            UpdateRealTimeStatus();
         }
 
         private async Task MoveToPickPositionAction()

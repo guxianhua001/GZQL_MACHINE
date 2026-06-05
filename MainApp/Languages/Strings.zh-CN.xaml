@@ -1965,6 +1965,32 @@
     <sys:String x:Key="CAD_Error_Rule_3">③ 旋转中心 O 由四点拟合得出，精度取决于点位分布</sys:String>
     <sys:String x:Key="CAD_Error_Rule_4">④ 全局偏移 = P1机械坐标 − P1图纸坐标，仅平移无旋转</sys:String>
     <sys:String x:Key="CAD_Error_Rule_5">⑤ 夹爪偏移需先示教当前位置，再与目标点做差值</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Title">N点仿射标定</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Toggle">标定模式</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Hint">至少示教3个不共线的 CAD–机械对应点，RMS&lt;0.05mm 为优良，&lt;0.1mm 为合格</sys:String>
+    <sys:String x:Key="CAD_Affine_Params">仿射参数</sys:String>
+    <sys:String x:Key="CAD_Affine_RMS">RMS误差</sys:String>
+    <sys:String x:Key="CAD_Affine_Residual">残差</sys:String>
+    <sys:String x:Key="CAD_Affine_QualityGood">优良(&lt;0.05mm)</sys:String>
+    <sys:String x:Key="CAD_Affine_QualityOK">合格(&lt;0.1mm)</sys:String>
+    <sys:String x:Key="CAD_Affine_QualityBad">偏差过大</sys:String>
+    <sys:String x:Key="CAD_Affine_NeedMin3">至少需要3对对应点</sys:String>
+    <sys:String x:Key="CAD_Affine_SolveFailed">仿射求解失败: {0}</sys:String>
+    <sys:String x:Key="CAD_Affine_Done">仿射标定完成 RMS={0}mm [{1}]</sys:String>
+    <sys:String x:Key="CAD_Affine_InvalidParam">无效的示教参数</sys:String>
+    <sys:String x:Key="CAD_Affine_TeachDone">{0} 示教完成: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_VisualTitle">拟合点与回转中心</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_LegendFit">拟合点</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_LegendCenter">回转中心</sys:String>
+    <sys:String x:Key="CAD_RotationCenter_LegendCircle">拟合圆</sys:String>
+    <sys:String x:Key="CAD_InvertXAngle">X取反</sys:String>
+    <sys:String x:Key="CAD_InvertYAngle">Y取反</sys:String>
+    <sys:String x:Key="CAD_InvertThetaAngle">θ取反</sys:String>
+    <sys:String x:Key="CadAlignment_OnePointMode">1点偏移模式</sys:String>
+    <sys:String x:Key="CadAlignment_QualityLabel">质量</sys:String>
+    <sys:String x:Key="CadAlignment_PointName">点名</sys:String>
+    <sys:String x:Key="CadAlignment_AddPoint">添加点</sys:String>
+    <sys:String x:Key="CadAlignment_Teach">示教</sys:String>
     <sys:String x:Key="CAD_Fit_X">拟合X</sys:String>
     <sys:String x:Key="CAD_Fit_Y">拟合Y</sys:String>
     <sys:String x:Key="CAD_Formula_Relative">dx = Xm − Mox , dy = Ym − Moy</sys:String>
@@ -2055,6 +2081,7 @@
     <sys:String x:Key="CadAlignment_Step4_Hint">平移+旋转</sys:String>
     <sys:String x:Key="CadAlignment_Step5_Hint">最终组装</sys:String>
     <sys:String x:Key="CAD_Fit_Coord_Get">已获取{0}坐标: ({1}, {2})</sys:String>
+        <sys:String x:Key="CAD_Fit_AxisNotFound">未找到 Dx/Dy 轴配置，请检查硬件配置文件</sys:String>
     <sys:String x:Key="CAD_Fit_Need3Points">至少需要3个点才能拟合圆</sys:String>
     <sys:String x:Key="CAD_Fit_Degenerate">拟合退化：点共线或重合，无法确定圆心</sys:String>
     <sys:String x:Key="CAD_Fit_Center_Done">拟合完成: 中心({0}, {1}), 半径={2}</sys:String>

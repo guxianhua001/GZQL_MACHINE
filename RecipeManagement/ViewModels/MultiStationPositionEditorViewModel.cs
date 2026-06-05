@@ -583,16 +583,16 @@ namespace Recipe.ViewModels
                 }
             }
 
-            if (notHomedAxes.Count > 0)
-            {
-                var axisList = string.Join(", ", notHomedAxes);
-                await _dialogService.ShowDialogAsync("NotificationDialog",
-                    new DialogParameters {
-                        { "message", _localization.GetResource("MultiStationPos_AxisNotHomed", axisList) },
-                        { "icon", PackIconKind.AlertCircleOutline }
-                    });
-                return;
-            }
+            //if (notHomedAxes.Count > 0)
+            //{
+            //    var axisList = string.Join(", ", notHomedAxes);
+            //    await _dialogService.ShowDialogAsync("NotificationDialog",
+            //        new DialogParameters {
+            //            { "message", _localization.GetResource("MultiStationPos_AxisNotHomed", axisList) },
+            //            { "icon", PackIconKind.AlertCircleOutline }
+            //        });
+            //    return;
+            //}
 
             if (notEnabledAxes.Count > 0)
             {

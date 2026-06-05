@@ -31,6 +31,7 @@ namespace Module.Views
         private Action<double, double> _canvasClickHandler;
         private Action _fitAllHandler;
         private Action<double, double, double, double> _fitToSegmentHandler;
+        private Action _rotationCenterVisualHandler;
         private bool _canvasEventsSubscribed;
 
         public CadAlignmentView()
@@ -67,6 +68,10 @@ namespace Module.Views
                 vm.BatchUpdateStartRequested += () => _canvas.BeginBatchUpdate();
                 vm.BatchUpdateEndRequested += () => _canvas.EndBatchUpdate();
 
+                // 订阅回转中心可视化更新事件
+                _rotationCenterVisualHandler = () => UpdateRotationCenterCanvas();
+                vm.RotationCenterVisualUpdateRequested += _rotationCenterVisualHandler;
+
                 _canvasEventsSubscribed = true;
             }
         }
@@ -90,7 +95,31 @@ namespace Module.Views
             _canvasClickHandler = null;
             _fitAllHandler = null;
             _fitToSegmentHandler = null;
+            _rotationCenterVisualHandler = null;
             _canvasEventsSubscribed = false;
+        }
+
+        /// <summary>
+        /// 回转中心可视化画布尺寸变更时，重新计算屏幕坐标
+        /// </summary>
+        private void RotationCenterCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateRotationCenterCanvas();
+        }
+
+        /// <summary>
+        /// 调用ViewModel的UpdateRotationCenterVisual方法，传入画布实际尺寸
+        /// </summary>
+        private void UpdateRotationCenterCanvas()
+        {
+            if (DataContext is CadAlignmentViewModel vm)
+            {
+                var canvas = FindName("RotationCenterCanvas") as Canvas;
+                if (canvas != null && canvas.ActualWidth > 0 && canvas.ActualHeight > 0)
+                {
+                    vm.UpdateRotationCenterVisual(canvas.ActualWidth, canvas.ActualHeight);
+                }
+            }
         }
 
         /// <summary>

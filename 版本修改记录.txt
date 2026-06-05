@@ -1,6 +1,92 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.04 — CAD对位拟合点示教改为真实轴位置（Dx/Dy）
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - CadAlignmentViewModel.OnTeachFitPoint 使用模拟数据（固定圆心+半径+角度偏移），
+     未读取实际硬件轴位置
+
+2. 修复内容
+   - 移除模拟坐标生成逻辑（cx=100, cy=175, r=75 的圆轨迹模拟）
+   - 改为通过 IMotionService.GetAxisPosition 读取 Dx/Dy 轴实时位置
+   - FitX 对应 Dx 轴逻辑ID（从 hwcfg.xml 动态解析）
+   - FitY 对应 Dy 轴逻辑ID（从 hwcfg.xml 动态解析）
+   - 轴配置未找到时提示“未找到 Dx/Dy 轴配置”
+
+3. 修改文件
+   - Module\Controls\Cad\CadAlignmentViewModel.cs
+   - MainApp\Languages\Strings.zh-CN.xaml（新增 CAD_Fit_AxisNotFound）
+   - MainApp\Languages\Strings.en-US.xaml（新增 CAD_Fit_AxisNotFound）
+
+
+v2026.06.04 — 上下料工站夹爪位置实时显示 + 真空反馈信号修复
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - 夹爪控制区域始终显示 "0% (0N)"，未实时显示夹爪位置
+   - 平台真空状态仅反映按钮操作后的软件缓存，未读取 DI 反馈信号
+   - 夹爪真空状态同上，与实际硬件反馈不同步
+
+2. 修复内容
+   - GetVacuumStatus 改为通过 ops.IsStageVacuumOn() 读取 DI 反馈信号，
+     工站不可用时回退到软件缓存值
+   - GetGripperVacuumStatus 改为通过 ops.IsGripperVacuumOn() 读取 DI 反馈信号
+   - 新增 ILoadUnloadController.GetGripperPosition() 接口，从 IGripperService 读取实时位置
+   - UpdateRealTimeStatus 定时器每轮刷新夹爪位置显示
+
+3. 修改文件
+   - Module\Services\ILoadUnloadController.cs
+   - Module\Services\LoadUnloadControllerImpl.cs
+   - Module\Controls\Loading\LoadUnloadViewModel.cs
+
+
+v2026.06.04 — 上下料工站轴状态同步修复（初始化后状态未刷新）
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - 轴初始化（回零）完成后，上下料页面的轴状态指示器未及时刷新为绿色
+   - IsMoving 状态在非 UI 线程设置，导致绑定失效，操作按钮无法恢复可用
+
+2. 修复内容
+   - UpdateRealTimeStatus 增加 volatile 重入保护标志，防止 async void 在 200ms 定时器下并发叠加
+   - ExecuteAsyncOperation 移除 ConfigureAwait(false)，确保 IsMoving 在 UI 线程设置，
+     PropertyChanged 事件正确触发绑定更新
+   - PlatformHomeAction 回零完成后立即调用 UpdateRealTimeStatus 刷新轴状态，
+     不再等待下一轮定时器
+
+3. 修改文件
+   - Module\Controls\Loading\LoadUnloadViewModel.cs
+
+
+v2026.06.04 — 上下料工站跨工站引用 Ry 轴（Warn 日志修复）
+-------------------------------------------------------------------------------
+
+1. 问题根因
+   - LoadingStation 硬件配置仅包含 Y(9)/Rx(10)/Rz(11) 三个轴
+   - Ry 轴属于装配工站(AssemblyStation)，不在上下料工站的 TaskId 范围内
+   - StationTaskBase.FindAxisIdByName 基于 TaskId 过滤已发现的轴，
+     因此查找 Ry 时始终返回 -1 并输出 Warn 日志
+
+2. LoadUnloadControllerImpl 跨工站轴查找机制
+   - 新增 CrossStationOnlyAxes 集合（HashSet<string>），标记仅属于其他工站的轴名称（当前为 "Ry"）
+   - 新增 StationAndCrossStationAxes 数组，统一管理本工站轴 + 跨工站引用轴
+   - 新增 ResolveAxisId(ops, axisName) 私有方法：
+     * 跨工站轴 → 直接通过 IMotionService.GetAxisConfigurations() 全局查找 LogicalId
+     * 本工站轴 → 优先从 StationTaskBase.FindAxisIdByName 查找
+   - GetAxisReadyStatusAsync / GetRealTimePositionsAsync / StopMotion 三个方法
+     统一改用 ResolveAxisId 替代直接调用 ops.FindAxisIdByName
+
+3. 效果
+   - 消除 "未找到名称为 'Ry' 的轴配置" Warn 日志
+   - Ry 轴回零状态、实时位置可正常读取
+   - 急停时 Ry 轴也能被正确停止
+   - 架构清晰：跨工站引用通过全局配置，本工站轴通过 TaskId 局部查找
+
+修改文件:
+  - Module\Services\LoadUnloadControllerImpl.cs
+
 v2026.06.03 — CustomDialog 多功能自定义弹窗
 -------------------------------------------------------------------------------
 
