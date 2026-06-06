@@ -1364,7 +1364,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             try
             {
-                // ✅ 使用统一的 DXF 导入服务（与 CadPointEditorViewModel 共享相同逻辑）
+                // 使用统一的 DXF 导入服务（与 CadPointEditorViewModel 共享相同逻辑）
                 if (_dxfImportHelper != null)
                 {
                     var importResult = _dxfImportHelper.Import(dialog.FileName, DxfImportOptions.ForAlignment);
@@ -1408,6 +1408,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
                 RebuildCanvasDisplayEntities();
                 FitToAllRequested?.Invoke();
+                // 导入后立即用当前偏移量更新图像坐标（FitToAll回调会再次更新）
+                UpdateImageCoordinates();
 
                 BaseStartIndex = BaseEndIndex = -1;
                 TargetStartIndex = TargetEndIndex = -1;
@@ -1474,6 +1476,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
                 RebuildCanvasDisplayEntities();
                 FitToAllRequested?.Invoke();
+                // 静默恢复后立即用当前偏移量更新图像坐标（FitToAll回调会再次更新）
+                UpdateImageCoordinates();
                 UpdateCadPointRoles();
                 UpdateMachineCoordinates();
 
@@ -1731,19 +1735,19 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
             finally
             {
-                // ✅ 优化：请求画布结束批量更新，恢复渲染，执行一次完整重绘
+                // 请求画布结束批量更新，恢复渲染，执行一次完整重绘
                 BatchUpdateEndRequested?.Invoke();
             }
         }
 
         /// <summary>根据当前选取索引更新每个CAD点位的AssySite角色标记，并重建图形叠加层和X标记</summary>
         /// <remarks>
-        /// ✅ 性能优化：批量更新模式 - 抑制中间状态的UI刷新
+        /// 批量更新模式 - 抑制中间状态的UI刷新
         /// 所有数据修改完成后统一触发一次UI更新，避免级联刷新风暴
         /// </remarks>
         private void UpdateCadPointRoles()
         {
-            // ✅ 批量更新：先完成所有数据修改
+            // 批量更新：先完成所有数据修改
             foreach (var pt in ImportedCadPoints)
                 pt.AssySite = "";
 
@@ -1756,7 +1760,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (TargetEndIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count)
                 ImportedCadPoints[TargetEndIndex].AssySite = L("CAD_Target_End");
 
-            // ✅ 批量更新：所有数据修改完成后统一触发UI刷新
+            // 批量更新：所有数据修改完成后统一触发UI刷新
             UpdateLineSegmentDisplayText();
             UpdateTransformedCoordText();
             UpdateCanvasPointMarkers(); // 此方法内部会设置CadSelectedSegmentPoints，触发一次绑定更新
@@ -2918,6 +2922,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["BaseEndIndex"] = BaseEndIndex,
                 ["TargetStartIndex"] = TargetStartIndex,
                 ["TargetEndIndex"] = TargetEndIndex,
+                // 产品对齐角度（Tab3新增）
+                ["AlignmentAngle"] = AlignmentAngle,
+                ["IsAlignmentAngleLinked"] = IsAlignmentAngleLinked,
+                ["AlignmentAngleLinkedVar"] = AlignmentAngleLinkedVar,
 
                 // Step4 坐标变换
                 ["TransResultX"] = TransResultX, ["TransResultY"] = TransResultY,
@@ -2937,6 +2945,11 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["InvertXAngle"] = InvertXAngle,
                 ["InvertYAngle"] = InvertYAngle,
                 ["InvertThetaAngle"] = InvertThetaAngle,
+                // Tab5 夹爪定位新增 Z轴基准
+                ["CameraRefX"] = CameraRefX, ["CameraRefY"] = CameraRefY, ["CameraRefZ"] = CameraRefZ,
+                ["GripperRefX"] = GripperRefX, ["GripperRefY"] = GripperRefY, ["GripperRefZ"] = GripperRefZ,
+                ["CameraOffsetX"] = CameraOffsetX, ["CameraOffsetY"] = CameraOffsetY,
+                ["GripperFinalX"] = GripperFinalX, ["GripperFinalY"] = GripperFinalY,
             };
         }
 
@@ -3013,6 +3026,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("BaseEndIndex", out var bei)) BaseEndIndex = Convert.ToInt32(bei);
             if (config.TryGetValue("TargetStartIndex", out var tsi)) TargetStartIndex = Convert.ToInt32(tsi);
             if (config.TryGetValue("TargetEndIndex", out var tei)) TargetEndIndex = Convert.ToInt32(tei);
+            // 产品对齐角度（Tab3新增）
+            if (config.TryGetValue("AlignmentAngle", out var alignAngle)) AlignmentAngle = Convert.ToDouble(alignAngle);
+            if (config.TryGetValue("IsAlignmentAngleLinked", out var iaal)) IsAlignmentAngleLinked = Convert.ToBoolean(iaal);
+            if (config.TryGetValue("AlignmentAngleLinkedVar", out var aalv)) AlignmentAngleLinkedVar = aalv?.ToString() ?? "";
 
             // Step4 坐标变换
             if (config.TryGetValue("TransResultX", out var trx)) TransResultX = Convert.ToDouble(trx);
@@ -3040,6 +3057,17 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("InvertXAngle", out var ixa)) InvertXAngle = Convert.ToBoolean(ixa);
             if (config.TryGetValue("InvertYAngle", out var iya)) InvertYAngle = Convert.ToBoolean(iya);
             if (config.TryGetValue("InvertThetaAngle", out var ita)) InvertThetaAngle = Convert.ToBoolean(ita);
+            // Tab5 夹爪定位新增 Z轴基准
+            if (config.TryGetValue("CameraRefX", out var crx)) CameraRefX = Convert.ToDouble(crx);
+            if (config.TryGetValue("CameraRefY", out var cry)) CameraRefY = Convert.ToDouble(cry);
+            if (config.TryGetValue("CameraRefZ", out var crz)) CameraRefZ = Convert.ToDouble(crz);
+            if (config.TryGetValue("GripperRefX", out var grx)) GripperRefX = Convert.ToDouble(grx);
+            if (config.TryGetValue("GripperRefY", out var gry)) GripperRefY = Convert.ToDouble(gry);
+            if (config.TryGetValue("GripperRefZ", out var grz)) GripperRefZ = Convert.ToDouble(grz);
+            if (config.TryGetValue("CameraOffsetX", out var cox)) CameraOffsetX = Convert.ToDouble(cox);
+            if (config.TryGetValue("CameraOffsetY", out var coy)) CameraOffsetY = Convert.ToDouble(coy);
+            if (config.TryGetValue("GripperFinalX", out var gfx)) GripperFinalX = Convert.ToDouble(gfx);
+            if (config.TryGetValue("GripperFinalY", out var gfy)) GripperFinalY = Convert.ToDouble(gfy);
 
             // 拟合点集合
             if (config.TryGetValue("FitPoints", out var fpsObj))

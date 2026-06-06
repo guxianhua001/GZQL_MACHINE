@@ -31,6 +31,8 @@
         <conv:BoolToInverseVisibilityConverter x:Key="BoolToCollapsedConv"/>
         <conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVis"/>
         <conv:CanvasOffsetConverter x:Key="CanvasOffsetConverter"/>
+        <conv:RoleVisibilityConverter x:Key="RoleVisibilityConverter"/>
+        <conv:RoleTextConverter x:Key="RoleTextConverter"/>
 
         <!-- 结果数值展示卡片 -->
         <Style x:Key="ResultBorder" TargetType="Border">
@@ -776,58 +778,65 @@
                                                 <DataGridTextColumn Header="#" Binding="{Binding Id}" Width="40"/>
                                                 <DataGridTextColumn Header="CAD_X" Binding="{Binding X, StringFormat=F2}" Width="72"/>
                                                 <DataGridTextColumn Header="CAD_Y" Binding="{Binding Y, StringFormat=F2}" Width="72"/>
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Machine_X}" Binding="{Binding MachineX, StringFormat=F2}" Width="80"/>
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Machine_Y}" Binding="{Binding MachineY, StringFormat=F2}" Width="80"/>
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Image_Col}" Binding="{Binding ImageCol, StringFormat=F1}" Width="58"/>
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Image_Row}" Binding="{Binding ImageRow, StringFormat=F1}" Width="58"/>
-                                                <!-- Base_Start 列：显示AssySite值（匹配时显示多语言文本，否则为空） -->
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Base_Start}" Binding="{Binding AssySite}" Width="62">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                            <Setter Property="VerticalAlignment" Value="Center"/>
-                                                            <Setter Property="Foreground" Value="#1565C0"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                            <Setter Property="FontSize" Value="10"/>
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="{lang:Lang CAD_Machine_X}" Binding="{Binding MachineX, StringFormat=F2, TargetNullValue=''}" Width="80"/>
+                                                <DataGridTextColumn Header="{lang:Lang CAD_Machine_Y}" Binding="{Binding MachineY, StringFormat=F2, TargetNullValue=''}" Width="80"/>
+                                                <!-- Img Col / Img Row 列：使用TemplateColumn确保nullable double正确显示 -->
+                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Image_Col}" Width="58">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Text="{Binding ImageCol, StringFormat=F1}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Image_Row}" Width="58">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Text="{Binding ImageRow, StringFormat=F1}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <!-- Base_Start 列：仅在AssySite匹配"基准起点"时显示 -->
+                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Base_Start}" Width="62">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       FontWeight="Bold" FontSize="10" Foreground="#1565C0"
+                                                                       Text="{Binding AssySite, Converter={StaticResource RoleTextConverter}, ConverterParameter=Base_Start}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                                 <!-- Base_End 列 -->
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Base_End}" Binding="{Binding AssySite}" Width="62">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                            <Setter Property="VerticalAlignment" Value="Center"/>
-                                                            <Setter Property="Foreground" Value="#2E7D32"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                            <Setter Property="FontSize" Value="10"/>
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
+                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Base_End}" Width="62">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       FontWeight="Bold" FontSize="10" Foreground="#2E7D32"
+                                                                       Text="{Binding AssySite, Converter={StaticResource RoleTextConverter}, ConverterParameter=Base_End}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                                 <!-- Target_Start 列 -->
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Target_Start}" Binding="{Binding AssySite}" Width="62">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                            <Setter Property="VerticalAlignment" Value="Center"/>
-                                                            <Setter Property="Foreground" Value="#7B1FA2"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                            <Setter Property="FontSize" Value="10"/>
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
+                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Target_Start}" Width="62">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       FontWeight="Bold" FontSize="10" Foreground="#7B1FA2"
+                                                                       Text="{Binding AssySite, Converter={StaticResource RoleTextConverter}, ConverterParameter=Target_Start}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                                 <!-- Target_End 列 -->
-                                                <DataGridTextColumn Header="{lang:Lang CAD_Target_End}" Binding="{Binding AssySite}" Width="62">
-                                                    <DataGridTextColumn.ElementStyle>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                            <Setter Property="VerticalAlignment" Value="Center"/>
-                                                            <Setter Property="Foreground" Value="#C62828"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                            <Setter Property="FontSize" Value="10"/>
-                                                        </Style>
-                                                    </DataGridTextColumn.ElementStyle>
-                                                </DataGridTextColumn>
+                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Target_End}" Width="62">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       FontWeight="Bold" FontSize="10" Foreground="#C62828"
+                                                                       Text="{Binding AssySite, Converter={StaticResource RoleTextConverter}, ConverterParameter=Target_End}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
                                     </DockPanel>
