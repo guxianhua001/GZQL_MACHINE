@@ -617,7 +617,7 @@ namespace MotionControl.Services
             _pollThread = new Thread(() => PollLoop(_pollCts.Token))
             {
                 IsBackground = true,
-                Priority = ThreadPriority.AboveNormal
+                Priority = ThreadPriority.Normal
             };
             _isPolling = true;
             _pollThread.Start();

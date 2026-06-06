@@ -199,6 +199,14 @@ namespace Module.ViewModels
             LoadConfigCommand = new DelegateCommand(async () => await LoadConfigFromFileAsync());
             UnlinkGripperXCommand = new DelegateCommand(() => { IsGripperXLinked = false; FinalGripperXLinkedVar = ""; });
             UnlinkGripperYCommand = new DelegateCommand(() => { IsGripperYLinked = false; FinalGripperYLinkedVar = ""; });
+            UnlinkAlignmentAngleCommand = new DelegateCommand(() => { IsAlignmentAngleLinked = false; AlignmentAngleLinkedVar = ""; });
+            MoveTargetAngleCommand = new DelegateCommand(async () => await OnMoveTargetAngleAsync());
+            LinkAlignmentAngleCommand = new DelegateCommand(OnLinkAlignmentAngle);
+            MoveTargetPositionCommand = new DelegateCommand(async () => await OnMoveTargetPositionAsync());
+            SetCameraRefCommand = new DelegateCommand(OnSetCameraRef);
+            TeachGripperRefCommand = new DelegateCommand(OnTeachGripperRef);
+            CalcCameraOffsetCommand = new DelegateCommand(OnCalcCameraOffset);
+            CalcGripperFinalCommand = new DelegateCommand(OnCalcGripperFinal);
 
             Steps = InitializeSteps();
             _currentStep = 1;
@@ -547,7 +555,7 @@ namespace Module.ViewModels
         public double AlphaTargetDeg { get => _alphaTargetDeg; set => SetProperty(ref _alphaTargetDeg, value); }
 
         private double _thetaDeg;
-        public double ThetaDeg { get => _thetaDeg; set { SetProperty(ref _thetaDeg, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
+        public double ThetaDeg { get => _thetaDeg; set { SetProperty(ref _thetaDeg, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); RaisePropertyChanged(nameof(ProductRotationAngle)); } }
 
         private bool _invertXAngle;
         /// <summary>X方向角度取反开关，启用后旋转时dx取反</summary>
@@ -573,6 +581,37 @@ namespace Module.ViewModels
         public bool Step3Done { get => _step3Done; set { SetProperty(ref _step3Done, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
 
         public bool CanInheritFromStep3 => Step3Done && ThetaDeg != 0;
+
+        // === 产品对齐角度 ===
+        private double _alignmentAngle;
+        /// <summary>产品与CAD图纸的对齐角度（用户输入或从全局变量链接）</summary>
+        public double AlignmentAngle
+        {
+            get => _alignmentAngle;
+            set
+            {
+                if (SetProperty(ref _alignmentAngle, value))
+                    RaisePropertyChanged(nameof(ProductRotationAngle));
+            }
+        }
+
+        /// <summary>产品旋转角度 = 对齐角度 − θ（计算属性）</summary>
+        public double ProductRotationAngle => Math.Round(_alignmentAngle + ThetaDeg, 3);
+
+        /// <summary>对齐角度链接的全局变量名——选择变量时自动读取值</summary>
+        private string _alignmentAngleLinkedVar = "";
+        public string AlignmentAngleLinkedVar
+        {
+            get => _alignmentAngleLinkedVar;
+            set
+            {
+                if (SetProperty(ref _alignmentAngleLinkedVar, value) && !string.IsNullOrWhiteSpace(value))
+                    OnLinkAlignmentAngle();
+            }
+        }
+
+        private bool _isAlignmentAngleLinked;
+        public bool IsAlignmentAngleLinked { get => _isAlignmentAngleLinked; set => SetProperty(ref _isAlignmentAngleLinked, value); }
 
         private bool _hasCadDrawingLoaded;
         public bool HasCadDrawingLoaded
@@ -788,6 +827,47 @@ public ObservableCollection<GlobalVariable> LinkableGlobalVariables => Available
 private bool _step5Done;
 public bool Step5Done { get => _step5Done; set => SetProperty(ref _step5Done, value); }
 
+// === 5步夹爪定位流程属性 ===
+/// <summary>相机基准位X（=最终变换结果X）</summary>
+private double _cameraRefX;
+public double CameraRefX { get => _cameraRefX; set => SetProperty(ref _cameraRefX, value); }
+
+/// <summary>相机基准位Y（=最终变换结果Y）</summary>
+private double _cameraRefY;
+public double CameraRefY { get => _cameraRefY; set => SetProperty(ref _cameraRefY, value); }
+
+/// <summary>相机基准位Z（Dz₁轴位置）</summary>
+private double _cameraRefZ;
+public double CameraRefZ { get => _cameraRefZ; set => SetProperty(ref _cameraRefZ, value); }
+
+/// <summary>夹爪基准位X（示教读取）</summary>
+private double _gripperRefX;
+public double GripperRefX { get => _gripperRefX; set => SetProperty(ref _gripperRefX, value); }
+
+/// <summary>夹爪基准位Y（示教读取）</summary>
+private double _gripperRefY;
+public double GripperRefY { get => _gripperRefY; set => SetProperty(ref _gripperRefY, value); }
+
+/// <summary>夹爪基准位Z（Z轴示教读取）</summary>
+private double _gripperRefZ;
+public double GripperRefZ { get => _gripperRefZ; set => SetProperty(ref _gripperRefZ, value); }
+
+/// <summary>相机偏移量X = 当前相机X - 相机基准X</summary>
+private double _cameraOffsetX;
+public double CameraOffsetX { get => _cameraOffsetX; set => SetProperty(ref _cameraOffsetX, value); }
+
+/// <summary>相机偏移量Y = 当前相机Y - 相机基准Y</summary>
+private double _cameraOffsetY;
+public double CameraOffsetY { get => _cameraOffsetY; set => SetProperty(ref _cameraOffsetY, value); }
+
+/// <summary>夹爪最终位置X = 夹爪基准X + 相机偏移X</summary>
+private double _gripperFinalX;
+public double GripperFinalX { get => _gripperFinalX; set => SetProperty(ref _gripperFinalX, value); }
+
+/// <summary>夹爪最终位置Y = 夹爪基准Y + 相机偏移Y</summary>
+private double _gripperFinalY;
+public double GripperFinalY { get => _gripperFinalY; set => SetProperty(ref _gripperFinalY, value); }
+
 private string _currentFilePath = "";
 public string CurrentFilePath { get => _currentFilePath; set => SetProperty(ref _currentFilePath, value); }
 
@@ -815,6 +895,22 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         public ICommand ExecuteTransformCommand { get; private set; }
         public ICommand ExecuteBatchTransformCommand { get; private set; }
         public ICommand ComputeGripperPositionCommand { get; private set; }
+        /// <summary>移动目标角度命令（将产品旋转角度下发到旋转轴）</summary>
+        public ICommand MoveTargetAngleCommand { get; private set; }
+        /// <summary>链接对齐角度到全局变量命令</summary>
+        public ICommand LinkAlignmentAngleCommand { get; private set; }
+        /// <summary>取消对齐角度全局变量链接</summary>
+        public DelegateCommand UnlinkAlignmentAngleCommand { get; }
+        /// <summary>移动目标位命令（Z轴安全检查 + Dx/Dy移动到变换结果）</summary>
+        public ICommand MoveTargetPositionCommand { get; private set; }
+        /// <summary>设置相机基准位命令（读取Dx/Dy当前位置作为相机基准）</summary>
+        public ICommand SetCameraRefCommand { get; private set; }
+        /// <summary>示教夹爪基准位命令</summary>
+        public ICommand TeachGripperRefCommand { get; private set; }
+        /// <summary>计算相机偏移命令</summary>
+        public ICommand CalcCameraOffsetCommand { get; private set; }
+        /// <summary>计算夹爪最终位置命令</summary>
+        public ICommand CalcGripperFinalCommand { get; private set; }
         public ICommand ShowPrincipleCommand { get; private set; }
         public ICommand ExportDxfCommand { get; private set; }
         public ICommand AddCadPointCommand { get; private set; }
@@ -2491,18 +2587,22 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 var poolId = _recipePoolService.CurrentPoolName ?? "Default";
                 var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
 
+                // 优先使用新5步流程的值（GripperFinalX/Y），否则使用旧流程的值（FinalGripperX/Y）
+                double writeX = GripperFinalX != 0 ? GripperFinalX : FinalGripperX;
+                double writeY = GripperFinalY != 0 ? GripperFinalY : FinalGripperY;
+
                 var vx = string.IsNullOrWhiteSpace(FinalGripperXLinkedVar) ? "GripperFinalX" : FinalGripperXLinkedVar.Trim();
                 var vy = string.IsNullOrWhiteSpace(FinalGripperYLinkedVar) ? "GripperFinalY" : FinalGripperYLinkedVar.Trim();
 
-                UpdateOrAddGlobalVariable(variables, vx, FinalGripperX.ToString("F3"), "夹爪最终位置X");
-                UpdateOrAddGlobalVariable(variables, vy, FinalGripperY.ToString("F3"), "夹爪最终位置Y");
+                UpdateOrAddGlobalVariable(variables, vx, writeX.ToString("F3"), "夹爪最终位置X");
+                UpdateOrAddGlobalVariable(variables, vy, writeY.ToString("F3"), "夹爪最终位置Y");
 
                 for (int i = 0; i < variables.Count; i++)
                     variables[i].Index = i + 1;
 
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
                 StatusMessage = string.Format(L("CAD_Write_Global_Var_Success"),
-                    vx, FinalGripperX.ToString("F3"), vy, FinalGripperY.ToString("F3"));
+                    vx, writeX.ToString("F3"), vy, writeY.ToString("F3"));
             }
             catch (Exception ex)
             {
@@ -2529,6 +2629,186 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 });
             }
         }
+
+        #endregion
+
+        #region 运动控制——移动目标角度 / 移动目标位
+
+        /// <summary>
+        /// 移动目标角度：将产品旋转角度下发到Rz轴（旋转轴）
+        /// </summary>
+        private async Task OnMoveTargetAngleAsync()
+        {
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var axisConfigs = motionService.GetAxisConfigurations();
+                var ryConfig = axisConfigs.FirstOrDefault(a => a.Name == "Rz");
+                if (ryConfig == null)
+                {
+                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Rz轴未找到";
+                    return;
+                }
+
+                double targetAngle = ProductRotationAngle;
+                await motionService.MoveAbsAsync(ryConfig.LogicalId, targetAngle, 10.0);
+                StatusMessage = $"Ry轴已移动到目标角度: {targetAngle:F3}°";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"{L("CAD_Move_Axis_Failed")}: {ex.Message}";
+            }
+        }
+
+        /// <summary>链接对齐角度到全局变量（从全局变量列表中读取值填充AlignmentAngle）</summary>
+        private void OnLinkAlignmentAngle()
+        {
+            if (string.IsNullOrWhiteSpace(AlignmentAngleLinkedVar))
+            {
+                StatusMessage = "请先选择要链接的全局变量";
+                return;
+            }
+
+            var gv = AvailableGlobalVariables.FirstOrDefault(v =>
+                string.Equals(v.Name, AlignmentAngleLinkedVar, StringComparison.OrdinalIgnoreCase));
+            if (gv != null && double.TryParse(gv.Value, out double val))
+            {
+                AlignmentAngle = val;
+                IsAlignmentAngleLinked = true;
+                StatusMessage = $"对齐角度已从全局变量 [{gv.Name}] 读取: {val:F3}°";
+            }
+            else
+            {
+                StatusMessage = $"全局变量 [{AlignmentAngleLinkedVar}] 未找到或值无效";
+            }
+        }
+
+        /// <summary>
+        /// 移动目标位：先弹出Z轴安全确认，再将Dx/Dy移动到变换结果坐标
+        /// </summary>
+        private async Task OnMoveTargetPositionAsync()
+        {
+            // Z轴安全确认
+            var result = System.Windows.MessageBox.Show(
+                L("CAD_Z_Safety_Warning"),
+                "Z轴安全确认",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+            if (result != System.Windows.MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var axisConfigs = motionService.GetAxisConfigurations();
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                if (dxConfig == null || dyConfig == null)
+                {
+                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
+                    return;
+                }
+
+                // 同时移动Dx/Dy两轴
+                var t1 = motionService.MoveAbsAsync(dxConfig.LogicalId, TransResultX, 10.0);
+                var t2 = motionService.MoveAbsAsync(dyConfig.LogicalId, TransResultY, 10.0);
+                await Task.WhenAll(t1, t2);
+
+                StatusMessage = $"Dx/Dy已移动到目标位: X={TransResultX:F3}, Y={TransResultY:F3}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"{L("CAD_Move_Axis_Failed")}: {ex.Message}";
+            }
+        }
+
+        #endregion
+
+        #region 5步夹爪定位流程
+
+        /// <summary>步骤1：设置相机基准位（=最终变换结果TransResultX/Y + Dz₁轴当前位置）</summary>
+        private void OnSetCameraRef()
+        {
+            CameraRefX = TransResultX;
+            CameraRefY = TransResultY;
+            // 读取Dz₁轴位置作为相机基准Z
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var dz1Config = motionService.GetAxisConfigurations().FirstOrDefault(a => a.Name == "Dz1");
+                if (dz1Config != null)
+                    CameraRefZ = Math.Round(motionService.GetAxisPosition(dz1Config.LogicalId), 3);
+            }
+            catch { /* Dz₁轴不存在时保持默认值 */ }
+            StatusMessage = $"相机基准位已设置: X={CameraRefX:F3}, Y={CameraRefY:F3}, Z={CameraRefZ:F3}";
+        }
+
+        /// <summary>步骤2：示教夹爪基准位（读取Dx/Dy/Z当前位置）</summary>
+        private void OnTeachGripperRef()
+        {
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var axisConfigs = motionService.GetAxisConfigurations();
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                var zConfig = axisConfigs.FirstOrDefault(a => a.Name == "Z");
+                if (dxConfig == null || dyConfig == null)
+                {
+                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
+                    return;
+                }
+
+                GripperRefX = Math.Round(motionService.GetAxisPosition(dxConfig.LogicalId), 3);
+                GripperRefY = Math.Round(motionService.GetAxisPosition(dyConfig.LogicalId), 3);
+                if (zConfig != null)
+                    GripperRefZ = Math.Round(motionService.GetAxisPosition(zConfig.LogicalId), 3);
+                StatusMessage = $"夹爪基准位已示教: X={GripperRefX:F3}, Y={GripperRefY:F3}, Z={GripperRefZ:F3}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"示教失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>步骤3：计算相机偏移 = 当前相机位置 - 相机基准位</summary>
+        private void OnCalcCameraOffset()
+        {
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var axisConfigs = motionService.GetAxisConfigurations();
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                if (dxConfig == null || dyConfig == null)
+                {
+                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
+                    return;
+                }
+
+                double currentCamX = Math.Round(motionService.GetAxisPosition(dxConfig.LogicalId), 3);
+                double currentCamY = Math.Round(motionService.GetAxisPosition(dyConfig.LogicalId), 3);
+                CameraOffsetX = Math.Round(currentCamX - CameraRefX, 3);
+                CameraOffsetY = Math.Round(currentCamY - CameraRefY, 3);
+                StatusMessage = $"相机偏移已计算: ΔX={CameraOffsetX:F3}, ΔY={CameraOffsetY:F3}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"计算失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>步骤4：夹爪最终位置 = 夹爪基准位 + 相机偏移</summary>
+        private void OnCalcGripperFinal()
+        {
+            GripperFinalX = Math.Round(GripperRefX + CameraOffsetX, 3);
+            GripperFinalY = Math.Round(GripperRefY + CameraOffsetY, 3);
+            Step5Done = true;
+            (WriteToGlobalVariablesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            StatusMessage = $"夹爪最终位置: X={GripperFinalX:F3}, Y={GripperFinalY:F3}";
+        }
+
+        #endregion
 
         #region 配置文件管理
 
@@ -3091,8 +3371,6 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             sw.WriteLine("  1");
             sw.WriteLine(text);
         }
-
-        #endregion
 
         #endregion
 

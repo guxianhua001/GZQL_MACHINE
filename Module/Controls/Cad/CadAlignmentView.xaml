@@ -466,133 +466,18 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
                     <StackPanel>
 
-                        <!-- 模式切换: 1点平移 / N点仿射 -->
-                        <Border Background="#FFF8E1" CornerRadius="5" Padding="10,8" BorderBrush="#FFE082" BorderThickness="1" Margin="0,0,0,10">
+                        <!-- N点仿射标定模式提示（固定使用仿射模式） -->
+                        <Border Background="#F3E5F5" CornerRadius="5" Padding="10,8" BorderBrush="#CE93D8" BorderThickness="1" Margin="0,0,0,10">
                             <DockPanel>
-                                <materialDesign:PackIcon Kind="SwapHorizontal" Width="16" Height="16"
-                                                       Foreground="#F57F17" VerticalAlignment="Center"
+                                <materialDesign:PackIcon Kind="GridLarge" Width="16" Height="16"
+                                                       Foreground="#7B1FA2" VerticalAlignment="Center"
                                                        DockPanel.Dock="Left" Margin="0,0,8,0"/>
-                                <TextBlock Text="{lang:Lang CAD_AffineMode_Toggle}" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" Foreground="#F57F17" Margin="0,0,10,0"/>
-                                <ToggleButton IsChecked="{Binding UseAffineCalibration}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#888" Margin="8,0,0,0">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="{lang:Lang CadAlignment_OnePointMode}"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding UseAffineCalibration}" Value="True">
-                                                    <Setter Property="Text" Value="{lang:Lang CAD_AffineMode_Title}"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <TextBlock Text="{lang:Lang CAD_AffineMode_Title}" FontSize="11" FontWeight="SemiBold" Foreground="#6A1B9A" VerticalAlignment="Center"/>
                             </DockPanel>
                         </Border>
 
-                        <!-- SectionCard 1: P1 坐标输入 -->
+                        <!-- SectionCard: N点仿射标定模式 -->
                         <Border Style="{StaticResource SectionCard}">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,12">
-                                    <materialDesign:PackIcon Kind="MapMarker" Width="18" Height="18"
-                                                           Foreground="#E65100" VerticalAlignment="Center"
-                                                           DockPanel.Dock="Left" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{lang:Lang CadAlignment_P1CoordTitle}" FontWeight="Bold" FontSize="13"
-                                               Foreground="#1A2332" VerticalAlignment="Center"/>
-                                </DockPanel>
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="120"/>
-                                        <ColumnDefinition Width="20"/>
-                                        <ColumnDefinition Width="120"/>
-                                    </Grid.ColumnDefinitions>
-                                    <!-- 行1: 机械坐标 -->
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang CadAlignment_MachineCoord}" FontSize="11.5"
-                                               VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#555" FontWeight="SemiBold"/>
-                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding P1Mx}" FontSize="11.5"
-                                             materialDesign:HintAssist.Hint="P1Mx" materialDesign:TextFieldAssist.DecorationVisibility="Hidden"/>
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding P1My}" FontSize="11.5"
-                                             materialDesign:HintAssist.Hint="P1My" materialDesign:TextFieldAssist.DecorationVisibility="Hidden"/>
-                                    <!-- 行2: CAD坐标 -->
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang CadAlignment_CADCoord}" FontSize="11.5"
-                                               VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#555" FontWeight="SemiBold"/>
-                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding P1Cx}" FontSize="11.5"
-                                             materialDesign:HintAssist.Hint="P1Cx" materialDesign:TextFieldAssist.DecorationVisibility="Hidden"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding P1Cy}" FontSize="11.5"
-                                             materialDesign:HintAssist.Hint="P1Cy" materialDesign:TextFieldAssist.DecorationVisibility="Hidden"/>
-                                </Grid>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Command="{Binding ComputeGlobalOffsetCommand}"
-                                            Style="{StaticResource PrimaryActionButton}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="ArrowExpandHorizontal" Width="15" Height="15" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{lang:Lang Principle_Step2}" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- SectionCard 2: 偏移结果 -->
-                        <Border Style="{StaticResource SectionCard}">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,10">
-                                    <materialDesign:PackIcon Kind="ArrowLeftRight" Width="18" Height="18"
-                                                           Foreground="#1976D2" VerticalAlignment="Center"
-                                                           DockPanel.Dock="Left" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{lang:Lang CadAlignment_OffsetResultTitle}" FontWeight="Bold" FontSize="13"
-                                               Foreground="#1A2332" VerticalAlignment="Center"/>
-                                </DockPanel>
-                                <WrapPanel Margin="0,0,0,10">
-                                    <StackPanel Margin="0,0,16,0">
-                                        <TextBlock Text="{lang:Lang CadAlignment_LabelDeltaX}" FontSize="10" Foreground="#888" Margin="0,0,0,3"/>
-                                        <Border Style="{StaticResource ResultBorder}" Width="100">
-                                            <TextBlock Text="{Binding DeltaX, StringFormat=N3}" HorizontalAlignment="Right" FontWeight="Medium" FontSize="12" Foreground="#1565C0"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="{lang:Lang CadAlignment_LabelDeltaY}" FontSize="10" Foreground="#888" Margin="0,0,0,3"/>
-                                        <Border Style="{StaticResource ResultBorder}" Width="100">
-                                            <TextBlock Text="{Binding DeltaY, StringFormat=N3}" HorizontalAlignment="Right" FontWeight="Medium" FontSize="12" Foreground="#1565C0"/>
-                                        </Border>
-                                    </StackPanel>
-                                </WrapPanel>
-                                <Border Background="#E3F2FD" CornerRadius="5" Padding="10,6" BorderBrush="#90CAF9" BorderThickness="1">
-                                    <TextBlock Text="{lang:Lang CadAlignment_OffsetNote}" TextWrapping="Wrap" FontSize="11" Foreground="#1565C0" LineHeight="15"/>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- SectionCard 3: 操作提示 -->
-                        <Border Style="{StaticResource SectionCard}">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,8">
-                                    <materialDesign:PackIcon Kind="AlertCircleOutline" Width="18" Height="18"
-                                                           Foreground="#0277BD" VerticalAlignment="Center"
-                                                           DockPanel.Dock="Left" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{lang:Lang CadAlignment_OperationTips}" FontWeight="Bold" FontSize="13"
-                                               Foreground="#1A2332" VerticalAlignment="Center"/>
-                                </DockPanel>
-                                <Border Background="#E3F2FD" CornerRadius="5" Padding="12,10" BorderBrush="#90CAF9" BorderThickness="1">
-                                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#01579B" LineHeight="16">
-                                        <Run Text="{DynamicResource CAD_Tip_Zero_Rz}"/><LineBreak/>
-                                        <Run Text="{DynamicResource CAD_Tip_Machine_Coord}"/><LineBreak/>
-                                        <Run Text="{DynamicResource CAD_Tip_Global_Offset}"/><LineBreak/>
-                                        <Run Text="{DynamicResource CAD_Tip_No_Move}"/>
-                                    </TextBlock>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- SectionCard 4: N点仿射标定模式 (当 UseAffineCalibration=true 时显示) -->
-                        <Border Style="{StaticResource SectionCard}"
-                                Visibility="{Binding UseAffineCalibration, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <materialDesign:PackIcon Kind="GridLarge" Width="18" Height="18"
@@ -705,7 +590,7 @@
                                                 <TextBlock Text="θ (equiv)" FontSize="9" Foreground="#888" Margin="0,0,0,2"/>
                                                 <Border Style="{StaticResource ResultBorder}" Width="85">
                                                     <TextBlock HorizontalAlignment="Right" FontSize="11" Foreground="#6A1B9A">
-                                                        <Run Text="{Binding AffineRotDeg, StringFormat=N3}"/><Run Text="°"/>
+                                                        <Run Text="{Binding AffineRotDeg, StringFormat=N3, Mode=OneWay}"/><Run Text="°"/>
                                                     </TextBlock>
                                                 </Border>
                                             </StackPanel>
@@ -718,6 +603,16 @@
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>
+                                <!-- 计算全局偏移按钮 -->
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                    <Button Command="{Binding ComputeGlobalOffsetCommand}"
+                                            Style="{StaticResource PrimaryActionButton}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ArrowExpandHorizontal" Width="15" Height="15" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{lang:Lang Principle_Step2}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
@@ -885,54 +780,54 @@
                                                 <DataGridTextColumn Header="{lang:Lang CAD_Machine_Y}" Binding="{Binding MachineY, StringFormat=F2}" Width="80"/>
                                                 <DataGridTextColumn Header="{lang:Lang CAD_Image_Col}" Binding="{Binding ImageCol, StringFormat=F1}" Width="58"/>
                                                 <DataGridTextColumn Header="{lang:Lang CAD_Image_Row}" Binding="{Binding ImageRow, StringFormat=F1}" Width="58"/>
-                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Base_Start}" Width="*">
-                                                    <DataGridTemplateColumn.CellTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                       FontWeight="Bold" FontSize="11">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Setter Property="Text" Value=""/>
-                                                                        <Setter Property="Foreground" Value="#1565C0"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding AssySite}" Value="基准起点">
-                                                                                <Setter Property="Text" Value="起点"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding AssySite}" Value="基准终点">
-                                                                                <Setter Property="Text" Value="终点"/>
-                                                                                <Setter Property="Foreground" Value="#2E7D32"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-                                                        </DataTemplate>
-                                                    </DataGridTemplateColumn.CellTemplate>
-                                                </DataGridTemplateColumn>
-                                                <DataGridTemplateColumn Header="{lang:Lang CAD_Target_Start}" Width="*">
-                                                    <DataGridTemplateColumn.CellTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                       FontWeight="Bold" FontSize="11">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Setter Property="Text" Value=""/>
-                                                                        <Setter Property="Foreground" Value="#7B1FA2"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding AssySite}" Value="目标起点">
-                                                                                <Setter Property="Text" Value="起点"/>
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding AssySite}" Value="目标终点">
-                                                                                <Setter Property="Text" Value="终点"/>
-                                                                                <Setter Property="Foreground" Value="#C62828"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-                                                        </DataTemplate>
-                                                    </DataGridTemplateColumn.CellTemplate>
-                                                </DataGridTemplateColumn>
+                                                <!-- Base_Start 列：显示AssySite值（匹配时显示多语言文本，否则为空） -->
+                                                <DataGridTextColumn Header="{lang:Lang CAD_Base_Start}" Binding="{Binding AssySite}" Width="62">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                                            <Setter Property="Foreground" Value="#1565C0"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                            <Setter Property="FontSize" Value="10"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <!-- Base_End 列 -->
+                                                <DataGridTextColumn Header="{lang:Lang CAD_Base_End}" Binding="{Binding AssySite}" Width="62">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                                            <Setter Property="Foreground" Value="#2E7D32"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                            <Setter Property="FontSize" Value="10"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <!-- Target_Start 列 -->
+                                                <DataGridTextColumn Header="{lang:Lang CAD_Target_Start}" Binding="{Binding AssySite}" Width="62">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                                            <Setter Property="Foreground" Value="#7B1FA2"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                            <Setter Property="FontSize" Value="10"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <!-- Target_End 列 -->
+                                                <DataGridTextColumn Header="{lang:Lang CAD_Target_End}" Binding="{Binding AssySite}" Width="62">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                                            <Setter Property="Foreground" Value="#C62828"/>
+                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                            <Setter Property="FontSize" Value="10"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
                                     </DockPanel>
@@ -986,7 +881,7 @@
 
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button Command="{Binding ComputeCadRotationAngleCommand}"
-                                            Style="{StaticResource PrimaryActionButton}">
+                                            Style="{StaticResource PrimaryActionButton}" Margin="0,6,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <materialDesign:PackIcon Kind="AngleAcute" Width="15" Height="15" VerticalAlignment="Center"/>
                                             <TextBlock Text="{lang:Lang Principle_Step3}" Margin="6,0,0,0" VerticalAlignment="Center"/>
@@ -1011,7 +906,7 @@
                                         <TextBlock Text="{lang:Lang CadAlignment_LabelAlphaBaseDeg}" FontSize="10" Foreground="#888" Margin="0,0,0,3"/>
                                         <Border Style="{StaticResource ResultBorder}" Width="100">
                                             <TextBlock HorizontalAlignment="Right" FontWeight="Medium" FontSize="12" Foreground="#1565C0">
-                                                <Run Text="{Binding AlphaBaseDeg, StringFormat=N3}"/><Run Text="°"/>
+                                                <Run Text="{Binding AlphaBaseDeg, StringFormat=N3, Mode=OneWay}"/><Run Text="°"/>
                                             </TextBlock>
                                         </Border>
                                     </StackPanel>
@@ -1019,7 +914,7 @@
                                         <TextBlock Text="{lang:Lang CadAlignment_LabelAlphaTargetDeg}" FontSize="10" Foreground="#888" Margin="0,0,0,3"/>
                                         <Border Style="{StaticResource ResultBorder}" Width="100">
                                             <TextBlock HorizontalAlignment="Right" FontWeight="Medium" FontSize="12" Foreground="#1565C0">
-                                                <Run Text="{Binding AlphaTargetDeg, StringFormat=N3}"/><Run Text="°"/>
+                                                <Run Text="{Binding AlphaTargetDeg, StringFormat=N3, Mode=OneWay}"/><Run Text="°"/>
                                             </TextBlock>
                                         </Border>
                                     </StackPanel>
@@ -1032,12 +927,65 @@
                                                    HorizontalAlignment="Center" FontWeight="Medium" Margin="0,0,0,4"/>
                                         <TextBlock HorizontalAlignment="Center" FontSize="18" FontWeight="ExtraBold"
                                                    Foreground="#1B5E20">
-                                            <Run Text="{Binding ThetaDeg, StringFormat=N3}"/><Run Text="°"/>
+                                            <Run Text="{Binding ThetaDeg, StringFormat=N3, Mode=OneWay}"/><Run Text="°"/>
                                         </TextBlock>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="{lang:Lang CadAlignment_ThetaDirectionHint}" FontSize="11" FontStyle="Italic"
                                            Foreground="#666" HorizontalAlignment="Center"/>
+
+                                <!-- 产品对齐角度 + 移动目标角度 -->
+                                <Border Background="#E3F2FD" CornerRadius="6" Padding="14,10"
+                                        BorderBrush="#90CAF9" BorderThickness="1.5" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="{lang:Lang CAD_Align_Angle_Title}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#1565C0" Margin="0,0,0,8"/>
+                                        <!-- 对齐角度：手动输入 + 全局变量链接 -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="100"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{lang:Lang CAD_Align_Angle_Title}" FontSize="11"
+                                                       Foreground="#555" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                                            <TextBox Grid.Column="1" Text="{Binding AlignmentAngle, UpdateSourceTrigger=PropertyChanged, StringFormat=N3}"
+                                                     FontSize="11" materialDesign:HintAssist.Hint="°" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="°" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="4,0,8,0"/>
+                                            <common:GlobalVariableLinkControl Grid.Column="3"
+                                                DisplayValue="{Binding AlignmentAngle, Mode=OneWay}"
+                                                DisplayForeground="#1565C0"
+                                                IsLinked="{Binding IsAlignmentAngleLinked}"
+                                                UnlinkCommand="{Binding UnlinkAlignmentAngleCommand}"
+                                                LinkedVariableName="{Binding AlignmentAngleLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                ComboBoxWidth="160"/>
+                                        </Grid>
+                                        <!-- 产品旋转角度显示 -->
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <StackPanel Margin="0,0,16,0">
+                                                <TextBlock Text="{lang:Lang CAD_Product_Rotation_Angle}" FontSize="10" Foreground="#888" Margin="0,0,0,3"/>
+                                                <Border Style="{StaticResource ResultBorder}" Width="120">
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <TextBlock Text="{Binding ProductRotationAngle, StringFormat=N3}" FontWeight="Bold" FontSize="12" Foreground="#E65100"/>
+                                                        <TextBlock Text="°" FontWeight="Bold" FontSize="12" Foreground="#E65100"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </WrapPanel>
+                                        <TextBlock Text="{lang:Lang CAD_Align_Angle_Hint}" FontSize="10" Foreground="#666" FontStyle="Italic" Margin="0,0,0,8"/>
+                                        <!-- 移动目标角度按钮 -->
+                                        <Button Command="{Binding MoveTargetAngleCommand}"
+                                                Style="{StaticResource WarningActionButton}"
+                                                HorizontalAlignment="Left">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="AxisArrow" Width="15" Height="15" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang CAD_Move_Target_Angle}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -1130,17 +1078,10 @@
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button Command="{Binding ExecuteTransformCommand}"
-                                            Style="{StaticResource PrimaryActionButton}" Margin="0,0,10,0">
+                                            Style="{StaticResource PrimaryActionButton}">
                                         <StackPanel Orientation="Horizontal">
                                             <materialDesign:PackIcon Kind="SwapHorizontal" Width="15" Height="15" VerticalAlignment="Center"/>
                                             <TextBlock Text="{lang:Lang CadAlignment_SingleTransform}" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Command="{Binding ExecuteBatchTransformCommand}"
-                                            Style="{StaticResource SecondaryActionButton}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="ContentDuplicate" Width="14" Height="14" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{lang:Lang CadAlignment_BatchTransform}" Margin="5,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -1162,12 +1103,12 @@
                                     <TextBlock Text="{lang:Lang CAD_Step1_Unrotated}" FontSize="10.5" Foreground="#777" VerticalAlignment="Center" Width="110" FontWeight="Medium"/>
                                     <Border Style="{StaticResource ResultBorder}" Margin="6,0,6,0">
                                         <TextBlock HorizontalAlignment="Right" FontWeight="Medium" FontSize="11.5" Foreground="#1565C0">
-                                            <Run Text="Xm="/><Run Text="{Binding TransXm, StringFormat=N3}"/>
+                                            <Run Text="Xm="/><Run Text="{Binding TransXm, StringFormat=N3, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
                                     <Border Style="{StaticResource ResultBorder}">
                                         <TextBlock HorizontalAlignment="Right" FontWeight="Medium" FontSize="11.5" Foreground="#1565C0">
-                                            <Run Text="Ym="/><Run Text="{Binding TransYm, StringFormat=N3}"/>
+                                            <Run Text="Ym="/><Run Text="{Binding TransYm, StringFormat=N3, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
                                 </StackPanel>
@@ -1176,12 +1117,12 @@
                                     <TextBlock Text="{lang:Lang CAD_Step2_Relative_Offset}" FontSize="10.5" Foreground="#777" VerticalAlignment="Center" Width="110" FontWeight="Medium"/>
                                     <Border Style="{StaticResource ResultBorder}" Margin="6,0,6,0">
                                         <TextBlock HorizontalAlignment="Right" FontWeight="Medium" FontSize="11.5" Foreground="#1565C0">
-                                            <Run Text="dx="/><Run Text="{Binding TransDx, StringFormat=N3}"/>
+                                            <Run Text="dx="/><Run Text="{Binding TransDx, StringFormat=N3, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
                                     <Border Style="{StaticResource ResultBorder}">
                                         <TextBlock HorizontalAlignment="Right" FontWeight="Medium" FontSize="11.5" Foreground="#1565C0">
-                                            <Run Text="dy="/><Run Text="{Binding TransDy, StringFormat=N3}"/>
+                                            <Run Text="dy="/><Run Text="{Binding TransDy, StringFormat=N3, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
                                 </StackPanel>
@@ -1200,15 +1141,24 @@
                                     <Border Background="#E8F5E9" BorderBrush="#A5D6A7" BorderThickness="1"
                                             CornerRadius="4" Padding="6,3" Margin="6,0,6,0">
                                         <TextBlock HorizontalAlignment="Right" FontWeight="Bold" FontSize="12.5" Foreground="#1B5E20">
-                                            <Run Text="X="/><Run Text="{Binding TransResultX, StringFormat=N3}"/>
+                                            <Run Text="X="/><Run Text="{Binding TransResultX, StringFormat=N3, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
                                     <Border Background="#E8F5E9" BorderBrush="#A5D6A7" BorderThickness="1"
                                             CornerRadius="4" Padding="6,3">
                                         <TextBlock HorizontalAlignment="Right" FontWeight="Bold" FontSize="12.5" Foreground="#1B5E20">
-                                            <Run Text="Y="/><Run Text="{Binding TransResultY, StringFormat=N3}"/>
+                                            <Run Text="Y="/><Run Text="{Binding TransResultY, StringFormat=N3, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
+                                    <!-- 移动目标位按钮 -->
+                                    <Button Command="{Binding MoveTargetPositionCommand}"
+                                            Style="{StaticResource WarningActionButton}"
+                                            Margin="12,0,0,0" Padding="8,3">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{lang:Lang CAD_Move_Target_Position}" Margin="5,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -1251,233 +1201,191 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
                     <StackPanel>
 
-                        <!-- SectionCard 1: 目标点与夹爪偏移（含示教功能） -->
+                        <!-- SectionCard 1: 5步夹爪定位流程 -->
                         <Border Style="{StaticResource SectionCard}">
                             <StackPanel>
-                                <TextBlock Text="{lang:Lang Principle_Step5}" FontSize="12.5" FontWeight="Bold"
-                                           Foreground="#3F51B5" Margin="0,0,0,10"/>
-                                <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
+                                <DockPanel Margin="0,0,0,10">
+                                    <materialDesign:PackIcon Kind="RobotIndustrial" Width="18" Height="18"
+                                                           Foreground="#3F51B5" VerticalAlignment="Center"
+                                                           DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{lang:Lang Principle_Step5}" FontWeight="Bold" FontSize="13"
+                                               Foreground="#1A2332" VerticalAlignment="Center"/>
+                                </DockPanel>
 
-                                <!-- Row 0: 目标点只读 -->
-                                <Border Grid.Row="0" Style="{StaticResource RefCard}" Margin="0,0,0,6">
+                                <!-- ─── 基准点设置区 ─── -->
+                                <Border Background="#E8EAF6" CornerRadius="4" Padding="8,4" Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Target" Width="14" Height="14" Foreground="#283593" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{lang:Lang CAD_Section_Ref_Setup}" FontSize="11" FontWeight="SemiBold" Foreground="#283593" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 步骤1：设置相机基准位 -->
+                                <Border Background="#E3F2FD" CornerRadius="5" Padding="12,8" Margin="0,0,0,6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{lang:Lang CadAlignment_TargetTransformedLabel}" FontSize="11.5"
-                                                   VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#999" FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Column="1" FontSize="11.5" Foreground="#666" VerticalAlignment="Center">
-                                            <Run Text="{Binding TransResultX, StringFormat=F3}"/><Run Text=" / "/><Run Text="{Binding TransResultY, StringFormat=F3}"/>
+                                        <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#1565C0" VerticalAlignment="Center">
+                                            <TextBlock Text="1" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Camera_Ref_Position}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#1565C0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <TextBlock Grid.Column="2" FontSize="11" Foreground="#555" VerticalAlignment="Center">
+                                            <Run Text="X="/><Run Text="{Binding CameraRefX, StringFormat=F3, Mode=OneWay}"/>
+                                            <Run Text="  Y="/><Run Text="{Binding CameraRefY, StringFormat=F3, Mode=OneWay}"/>
+                                            <Run Text="  Z="/><Run Text="{Binding CameraRefZ, StringFormat=F3, Mode=OneWay}"/>
                                         </TextBlock>
+                                        <Button Grid.Column="3" Command="{Binding SetCameraRefCommand}"
+                                                Style="{StaticResource PrimaryActionButton}" Padding="8,3">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Target" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang CAD_Set_Camera_Ref}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
+                                            </StackPanel>
+                                        </Button>
                                     </Grid>
                                 </Border>
 
-                                <!-- Row 1: 分隔线 -->
-                                <Separator Grid.Row="1" Margin="0,4"/>
-
-                                <!-- Row 2: 示教区标题+按钮 -->
-                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,6,0,2">
-                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" Foreground="#1976D2" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{lang:Lang CadAlignment_GripperTeachTitle}" FontWeight="SemiBold" FontSize="11" Foreground="#1976D2" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                                    <Button Command="{Binding TeachGripperPositionCommand}" Style="{StaticResource SecondaryActionButton}" Padding="8,2" Margin="10,0,0,0" FontSize="9.5">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="Target" Width="11" Height="11" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{lang:Lang CadAlignment_TeachCurrentPos}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="9.5"/>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-
-                                <!-- Row 3: 示教坐标输入（4个字段横排） -->
-                                <Grid Grid.Row="3" Margin="0,4,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBox Grid.Column="0" Text="{Binding TeachX, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
-                                             IsReadOnly="True" Background="#F5F5F5" materialDesign:HintAssist.Hint="Teach X"
-                                             Style="{StaticResource MaterialDesignOutlinedTextBox}" FontSize="11"/>
-                                    <TextBox Grid.Column="1" Text="{Binding TeachY, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
-                                             IsReadOnly="True" Background="#F5F5F5" materialDesign:HintAssist.Hint="Teach Y"
-                                             Style="{StaticResource MaterialDesignOutlinedTextBox}" FontSize="11" Margin="6,0,0,0"/>
-                                    <TextBox Grid.Column="2" Text="{Binding TeachRy, UpdateSourceTrigger=PropertyChanged, StringFormat=F4}"
-                                             IsReadOnly="True" Background="#F5F5F5" materialDesign:HintAssist.Hint="Teach Ry"
-                                             Style="{StaticResource MaterialDesignOutlinedTextBox}" FontSize="11" Margin="6,0,0,0"/>
-                                    <TextBox Grid.Column="3" Text="{Binding TeachZ, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
-                                             IsReadOnly="True" Background="#F5F5F5" materialDesign:HintAssist.Hint="Teach Z"
-                                             Style="{StaticResource MaterialDesignOutlinedTextBox}" FontSize="11" Margin="6,0,0,0"/>
-                                </Grid>
-
-                                <!-- Row 4: 分隔线 -->
-                                <Separator Grid.Row="4" Margin="0,4"/>
-
-                                <!-- Row 5: 双偏移量区 -->
-                                <Grid Grid.Row="5" Margin="0,6,0,6">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-
-                                    <!-- 计算偏移（只读）-->
-                                    <Border Grid.Row="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8,6"
-                                            Background="{Binding UseCalculatedOffset, Converter={StaticResource BoolToBgConv}, FallbackValue=#FAFAFA}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <RadioButton Grid.Column="0" GroupName="OffsetMode" IsChecked="{Binding UseCalculatedOffset}"
-                                                         Content="" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                            <TextBlock Grid.Column="1" Text="{lang:Lang CadAlignment_CalcOffsetLabel}" FontWeight="Medium" FontSize="10.5" VerticalAlignment="Center" Foreground="#666"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding CalcOffX, StringFormat='ΔX=\{0:F3\}'}" FontSize="10.5" Foreground="#FF5722" HorizontalAlignment="Right" Margin="8,0,0,0"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding CalcOffY, StringFormat='ΔY=\{0:F3\}'}" FontSize="10.5" Foreground="#FF5722" Margin="8,0,0,0"/>
-                                            <Button Grid.Column="4" Command="{Binding ApplyCalcOffsetCommand}" Style="{StaticResource SecondaryActionButton}"
-                                                    Padding="6,2" FontSize="9" VerticalAlignment="Center" Margin="8,0,0,0"
-                                                    Visibility="{Binding UseCalculatedOffset, Converter={StaticResource BoolToCollapsedConv}}"
-                                                    ToolTip="将计算偏移应用到固定偏移">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <materialDesign:PackIcon Kind="ArrowRight" Width="12" Height="12" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{lang:Lang Application}" FontSize="9" Margin="2,0,0,0" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Button>
-                                        </Grid>
-                                    </Border>
-
-                                    <!-- 固定偏移（可编辑）-->
-                                    <Border Grid.Row="1" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8,4" Margin="0,4,0,0"
-                                            Background="{Binding UseCalculatedOffset, Converter={StaticResource BoolToBgInvConv}, FallbackValue=#FFFFFF}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <RadioButton Grid.Column="0" GroupName="OffsetMode" IsChecked="{Binding UseCalculatedOffset, Converter={StaticResource InverseBooleanConverter}}"
-                                                         Content="" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                            <TextBlock Grid.Column="1" Text="{lang:Lang CadAlignment_FixedOffsetLabel}" FontWeight="Medium" FontSize="10.5" VerticalAlignment="Center" Foreground="#666"/>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                <TextBlock Text="OffX:" FontSize="10" Foreground="#888" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                                <TextBox Text="{Binding GripperOffX, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}"
-                                                         Width="60" FontSize="10.5" Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
-                                                <TextBlock Text="OffY:" FontSize="10" Foreground="#888" VerticalAlignment="Center" Margin="12,0,4,0"/>
-                                                <TextBox Text="{Binding GripperOffY, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}"
-                                                         Width="60" FontSize="10.5" Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                                <!-- 步骤2：示教夹爪基准位 -->
+                                <Border Background="#F3E5F5" CornerRadius="5" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#7B1FA2" VerticalAlignment="Center">
+                                            <TextBlock Text="2" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Gripper_Ref_Position}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#7B1FA2" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <TextBlock Grid.Column="2" FontSize="11" Foreground="#555" VerticalAlignment="Center">
+                                            <Run Text="X="/><Run Text="{Binding GripperRefX, StringFormat=F3, Mode=OneWay}"/>
+                                            <Run Text="  Y="/><Run Text="{Binding GripperRefY, StringFormat=F3, Mode=OneWay}"/>
+                                            <Run Text="  Z="/><Run Text="{Binding GripperRefZ, StringFormat=F3, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <Button Grid.Column="3" Command="{Binding TeachGripperRefCommand}"
+                                                Style="{StaticResource PrimaryActionButton}" Padding="8,3">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang CAD_Teach_Gripper_Ref}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
                                             </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </Grid>
+                                        </Button>
+                                    </Grid>
+                                </Border>
 
-                                <!-- Row 6: 计算按钮 -->
-                                <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Command="{Binding ComputeGripperPositionCommand}"
-                                            Style="{StaticResource WarningActionButton}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="RobotIndustrial" Width="15" Height="15" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{lang:Lang CadAlignment_ComputeGripperPos}" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Command="{Binding WriteToGlobalVariablesCommand}"
-                                            Style="{StaticResource SecondaryActionButton}" Margin="8,0,0,0"
-                                            ToolTip="将夹爪最终位置写入全局变量，供运动控制步骤使用">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="DatabaseExport" Width="14" Height="14" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{lang:Lang CadAlignment_WriteGlobalVar}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
+                                <!-- ─── 位置计算区 ─── -->
+                                <Border Background="#FFF8E1" CornerRadius="4" Padding="8,4" Margin="0,6,0,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CalculatorVariant" Width="14" Height="14" Foreground="#E65100" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{lang:Lang CAD_Section_Position_Calc}" FontSize="11" FontWeight="SemiBold" Foreground="#E65100" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
 
-                                <!-- Row 7: 最终结果 + 链接全局变量 -->
-                                <Grid Grid.Row="7" Margin="0,8,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <!-- Gripper_X -->
-                                    <Border Grid.Column="0" Style="{StaticResource ResultBorder}" Margin="0,0,4,0" Padding="8,6" Width="220">
-                                        <StackPanel>
-                                            <TextBlock Text="{lang:Lang CadAlignment_GripperXLabel}" FontSize="10.5" Foreground="#80CBC4" Margin="0,0,0,3" HorizontalAlignment="Center"/>
-                                            <common:GlobalVariableLinkControl HorizontalAlignment="Center"
-                                                DisplayValue="{Binding FinalGripperX}"
+                                <!-- 步骤3：计算相机偏移 -->
+                                <Border Background="#FFF3E0" CornerRadius="5" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#E65100" VerticalAlignment="Center">
+                                            <TextBlock Text="3" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Camera_Offset}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#E65100" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <TextBlock Grid.Column="2" FontSize="11" Foreground="#555" VerticalAlignment="Center">
+                                            <Run Text="ΔX="/><Run Text="{Binding CameraOffsetX, StringFormat=F3, Mode=OneWay}"/>
+                                            <Run Text="  ΔY="/><Run Text="{Binding CameraOffsetY, StringFormat=F3, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <Button Grid.Column="3" Command="{Binding CalcCameraOffsetCommand}"
+                                                Style="{StaticResource SecondaryActionButton}" Padding="8,3">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="CalculatorVariant" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang CAD_Calc_Camera_Offset}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 步骤4：计算夹爪最终位置 -->
+                                <Border Background="#E8F5E9" CornerRadius="5" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#2E7D32" VerticalAlignment="Center">
+                                            <TextBlock Text="4" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Gripper_Final_Position}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#2E7D32" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock FontSize="11" Foreground="#1B5E20" FontWeight="Bold">
+                                                <Run Text="X="/><Run Text="{Binding GripperFinalX, StringFormat=F3, Mode=OneWay}"/>
+                                                <Run Text="  Y="/><Run Text="{Binding GripperFinalY, StringFormat=F3, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <Button Grid.Column="3" Command="{Binding CalcGripperFinalCommand}"
+                                                Style="{StaticResource WarningActionButton}" Padding="8,3">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="CalculatorVariant" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang CAD_Calc_Gripper_Final}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 步骤5：写入全局变量 -->
+                                <Border Background="#ECEFF1" CornerRadius="5" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#455A64" VerticalAlignment="Center">
+                                            <TextBlock Text="5" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Write_Global_Var}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#455A64" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <!-- 全局变量链接控件 -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <common:GlobalVariableLinkControl
+                                                DisplayValue="{Binding GripperFinalX}"
                                                 DisplayForeground="#2E7D32"
                                                 IsLinked="{Binding IsGripperXLinked}"
                                                 UnlinkCommand="{Binding UnlinkGripperXCommand}"
                                                 LinkedVariableName="{Binding FinalGripperXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                 LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                                ComboBoxWidth="90"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <!-- Gripper_Y -->
-                                    <Border Grid.Column="1" Style="{StaticResource ResultBorder}" Margin="4,0,0,0" Padding="8,6" Width="220">
-                                        <StackPanel>
-                                            <TextBlock Text="{lang:Lang CadAlignment_GripperYLabel}" FontSize="10.5" Foreground="#80CBC4" Margin="0,0,0,3" HorizontalAlignment="Center"/>
-                                            <common:GlobalVariableLinkControl HorizontalAlignment="Center"
-                                                DisplayValue="{Binding FinalGripperY}"
+                                                ComboBoxWidth="160"/>
+                                            <common:GlobalVariableLinkControl Margin="8,0,0,0"
+                                                DisplayValue="{Binding GripperFinalY}"
                                                 DisplayForeground="#2E7D32"
                                                 IsLinked="{Binding IsGripperYLinked}"
                                                 UnlinkCommand="{Binding UnlinkGripperYCommand}"
                                                 LinkedVariableName="{Binding FinalGripperYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                 LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                                ComboBoxWidth="90"/>
+                                                ComboBoxWidth="160"/>
                                         </StackPanel>
-                                    </Border>
-                                </Grid>
-
-                                    <!-- Row 8: 易错规则列表 -->
-                                    <ScrollViewer Grid.Row="8" VerticalScrollBarVisibility="Auto" MaxHeight="120">
-                                        <StackPanel>
-                                            <!-- 标题：易错规则列表 -->
-                                            <TextBlock Text="{lang:Lang CadAlignment_ErrorRulesTitle}" FontSize="11" FontWeight="SemiBold" Foreground="#757575"
-                                                               Margin="0 0 0 6" VerticalAlignment="Center"/>
-
-                                            <!-- 规则卡片 -->
-                                            <WrapPanel>
-                                                <Border Background="#FFFDE7" CornerRadius="4" Padding="10,6" BorderBrush="#FFE082" BorderThickness="1"
-                                                                Margin="0,0,6,6" MinWidth="280">
-                                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#5D4037" LineHeight="15">
-                                                             <Run Text="{lang:Lang CAD_Error_Rule_1}"/>
-                                                    </TextBlock>
-                                                </Border>
-                                                <Border Background="#FFFDE7" CornerRadius="4" Padding="10,6" BorderBrush="#FFE082" BorderThickness="1"
-                                                                Margin="0,0,6,6" MinWidth="280">
-                                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#5D4037" LineHeight="15">
-                                                             <Run Text="{lang:Lang CAD_Error_Rule_2}"/>
-                                                    </TextBlock>
-                                                </Border>
-                                                <Border Background="#FFFDE7" CornerRadius="4" Padding="10,6" BorderBrush="#FFE082" BorderThickness="1"
-                                                              Margin="0,0,6,6" MinWidth="280">
-                                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#5D4037" LineHeight="15">
-                                                             <Run Text="{lang:Lang CAD_Error_Rule_3}"/>
-                                                    </TextBlock>
-                                                </Border>
-                                                <Border Background="#FFFDE7" CornerRadius="4" Padding="10,6" BorderBrush="#FFE082" BorderThickness="1"
-                                                              Margin="0,0,6,6" MinWidth="280">
-                                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#5D4037" LineHeight="15">
-                                                             <Run Text="{lang:Lang CAD_Error_Rule_4}"/>
-                                                    </TextBlock>
-                                                </Border>
-                                                <Border Background="#FFFDE7" CornerRadius="4" Padding="10,6" BorderBrush="#FFE082" BorderThickness="1"
-                                                              MinWidth="280">
-                                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#5D4037" LineHeight="15">
-                                                             <Run Text="{lang:Lang CAD_Error_Rule_5}"/>
-                                                    </TextBlock>
-                                                </Border>
-                                            </WrapPanel>
-                                        </StackPanel>
-                                    </ScrollViewer>
-                                </Grid>
+                                        <Button Grid.Column="3" Command="{Binding WriteToGlobalVariablesCommand}"
+                                                Style="{StaticResource SecondaryActionButton}" Padding="8,3">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="DatabaseExport" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{lang:Lang CAD_Write_Global_Var}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -1574,7 +1482,7 @@
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="FileDocumentOutline" Width="12" Height="12" Foreground="#80CBC4" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                    <TextBlock Text="{Binding CurrentFileName, Mode=OneWay}" Foreground="#90A4AE" FontSize="10" VerticalAlignment="Center" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding CurrentFileName, Mode=OneWay}" Foreground="#90A4AE" FontSize="10" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"/>
                     <Button Command="{Binding LoadConfigCommand}" Style="{StaticResource MaterialDesignFlatButton}" Foreground="#80CBC4" Padding="6,2" materialDesign:ButtonAssist.CornerRadius="4" Margin="6,0,0,0">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="FolderOpen" Width="12" Height="12" VerticalAlignment="Center"/>

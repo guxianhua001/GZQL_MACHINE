@@ -2021,6 +2021,36 @@
     <sys:String x:Key="CadAlignment_FitResultTitle">拟合结果</sys:String>
     <sys:String x:Key="CadAlignment_FixedOffsetLabel">固定偏移</sys:String>
     <sys:String x:Key="CadAlignment_FormulaDesc">公式说明</sys:String>
+    <sys:String x:Key="CAD_Fit_Algorithm_Desc">算法：最小二乘圆拟合，通过4个角度位置的机械坐标计算回转中心(Mox,Moy)和拟合半径。</sys:String>
+    <sys:String x:Key="CAD_Fit_Principle">原理：4点拟合圆方程 (x-Mox)²+(y-Moy)²=R²，求解最优圆心坐标使残差平方和最小。</sys:String>
+    <sys:String x:Key="CAD_Fit_Note">注意：FitRadius应&lt;1mm表示拟合精度高，若过大需重新标定4点位置。</sys:String>
+    <sys:String x:Key="CAD_Formula_Theta">θ = atan2(dy_target, dx_target) − atan2(dy_base, dx_base)</sys:String>
+    <sys:String x:Key="CAD_Formula_Alpha">α = atan2(y2−y1, x2−x1)  （线段方向角）</sys:String>
+    <sys:String x:Key="CAD_Formula_DyDx">dx = x2−x1 , dy = y2−y1  （线段向量分量）</sys:String>
+    <sys:String x:Key="CAD_Formula_Atan2_Range">atan2 返回值范围: (−π, π]，即 (−180°, 180°]</sys:String>
+    <sys:String x:Key="CAD_Formula_RelativeY">dy = Ym − Moy</sys:String>
+    <sys:String x:Key="CAD_Formula_RotateX">X_final = dx·cosθ − dy·sinθ + Mox</sys:String>
+    <sys:String x:Key="CAD_Formula_RotateY">Y_final = dx·sinθ + dy·cosθ + Moy</sys:String>
+    <sys:String x:Key="CAD_Align_Angle_Title">产品对齐角度</sys:String>
+    <sys:String x:Key="CAD_Align_Angle_Hint">产品旋转角度 = 对齐角度 − θ</sys:String>
+    <sys:String x:Key="CAD_Product_Rotation_Angle">产品旋转角度</sys:String>
+    <sys:String x:Key="CAD_Move_Target_Angle">移动目标角度</sys:String>
+    <sys:String x:Key="CAD_Move_Target_Position">移动目标位</sys:String>
+    <sys:String x:Key="CAD_Z_Safety_Warning">运动前请确认Z轴已抬升到安全高度，是否继续？</sys:String>
+    <sys:String x:Key="CAD_Camera_Ref_Position">相机基准位</sys:String>
+    <sys:String x:Key="CAD_Gripper_Ref_Position">夹爪基准位</sys:String>
+    <sys:String x:Key="CAD_Camera_Offset">相机偏移量</sys:String>
+    <sys:String x:Key="CAD_Gripper_Final_Position">夹爪最终位置</sys:String>
+    <sys:String x:Key="CAD_Set_Camera_Ref">设置相机基准位</sys:String>
+    <sys:String x:Key="CAD_Teach_Gripper_Ref">示教夹爪基准位</sys:String>
+    <sys:String x:Key="CAD_Calc_Camera_Offset">计算相机偏移</sys:String>
+    <sys:String x:Key="CAD_Calc_Gripper_Final">计算夹爪最终位置</sys:String>
+    <sys:String x:Key="CAD_Write_Global_Var">写入全局变量</sys:String>
+    <sys:String x:Key="CAD_Section_Ref_Setup">基准点设置</sys:String>
+    <sys:String x:Key="CAD_Section_Position_Calc">位置计算</sys:String>
+    <sys:String x:Key="CAD_Step_Label">步骤</sys:String>
+    <sys:String x:Key="CAD_Move_Axis_Failed">运动轴失败</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Only">当前使用N点仿射标定模式</sys:String>
     <sys:String x:Key="CadAlignment_FormulaRef">公式参考</sys:String>
     <sys:String x:Key="CadAlignment_GripperTeachTitle">夹爪示教</sys:String>
     <sys:String x:Key="CadAlignment_GripperXLabel">夹爪 X</sys:String>

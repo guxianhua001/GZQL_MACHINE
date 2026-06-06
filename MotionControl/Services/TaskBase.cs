@@ -103,7 +103,7 @@ namespace MotionControl.Services
 
         protected virtual Task ExecuteCycleAsync(CancellationToken token) => Task.CompletedTask;
         /// <summary>
-        /// 【优化】纯异步暂停检查，绝不阻塞线程
+        /// 纯异步暂停检查，绝不阻塞线程
         /// </summary>
         protected async Task CheckPauseAsync(CancellationToken token)
         {

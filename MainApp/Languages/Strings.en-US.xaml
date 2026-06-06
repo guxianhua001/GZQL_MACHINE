@@ -2021,6 +2021,36 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadAlignment_FitResultTitle">Fit Result</sys:String>
     <sys:String x:Key="CadAlignment_FixedOffsetLabel">Fixed Offset</sys:String>
     <sys:String x:Key="CadAlignment_FormulaDesc">Formula Description</sys:String>
+    <sys:String x:Key="CAD_Fit_Algorithm_Desc">Algorithm: Least-squares circle fitting through 4 angle positions to calculate rotation center (Mox, Moy) and fit radius.</sys:String>
+    <sys:String x:Key="CAD_Fit_Principle">Principle: 4-point circle equation (x-Mox)²+(y-Moy)²=R², solving for optimal center coordinates minimizing residual sum of squares.</sys:String>
+    <sys:String x:Key="CAD_Fit_Note">Note: FitRadius should be &lt;1mm indicating high fitting accuracy. If too large, recalibrate the 4-point positions.</sys:String>
+    <sys:String x:Key="CAD_Formula_Theta">θ = atan2(dy_target, dx_target) − atan2(dy_base, dx_base)</sys:String>
+    <sys:String x:Key="CAD_Formula_Alpha">α = atan2(y2−y1, x2−x1)  (segment direction angle)</sys:String>
+    <sys:String x:Key="CAD_Formula_DyDx">dx = x2−x1 , dy = y2−y1  (segment vector components)</sys:String>
+    <sys:String x:Key="CAD_Formula_Atan2_Range">atan2 return range: (−π, π], i.e. (−180°, 180°]</sys:String>
+    <sys:String x:Key="CAD_Formula_RelativeY">dy = Ym − Moy</sys:String>
+    <sys:String x:Key="CAD_Formula_RotateX">X_final = dx·cosθ − dy·sinθ + Mox</sys:String>
+    <sys:String x:Key="CAD_Formula_RotateY">Y_final = dx·sinθ + dy·cosθ + Moy</sys:String>
+    <sys:String x:Key="CAD_Align_Angle_Title">Product Alignment Angle</sys:String>
+    <sys:String x:Key="CAD_Align_Angle_Hint">Product rotation = Alignment angle − θ</sys:String>
+    <sys:String x:Key="CAD_Product_Rotation_Angle">Product Rotation Angle</sys:String>
+    <sys:String x:Key="CAD_Move_Target_Angle">Move Target Angle</sys:String>
+    <sys:String x:Key="CAD_Move_Target_Position">Move Target Position</sys:String>
+    <sys:String x:Key="CAD_Z_Safety_Warning">Please confirm Z-axis is raised to safe height before motion. Continue?</sys:String>
+    <sys:String x:Key="CAD_Camera_Ref_Position">Camera Reference Position</sys:String>
+    <sys:String x:Key="CAD_Gripper_Ref_Position">Gripper Reference Position</sys:String>
+    <sys:String x:Key="CAD_Camera_Offset">Camera Offset</sys:String>
+    <sys:String x:Key="CAD_Gripper_Final_Position">Gripper Final Position</sys:String>
+    <sys:String x:Key="CAD_Set_Camera_Ref">Set Camera Reference</sys:String>
+    <sys:String x:Key="CAD_Teach_Gripper_Ref">Teach Gripper Reference</sys:String>
+    <sys:String x:Key="CAD_Calc_Camera_Offset">Calculate Camera Offset</sys:String>
+    <sys:String x:Key="CAD_Calc_Gripper_Final">Calculate Gripper Final Position</sys:String>
+    <sys:String x:Key="CAD_Write_Global_Var">Write Global Variables</sys:String>
+    <sys:String x:Key="CAD_Section_Ref_Setup">Reference Point Setup</sys:String>
+    <sys:String x:Key="CAD_Section_Position_Calc">Position Calculation</sys:String>
+    <sys:String x:Key="CAD_Step_Label">Step</sys:String>
+    <sys:String x:Key="CAD_Move_Axis_Failed">Axis motion failed</sys:String>
+    <sys:String x:Key="CAD_AffineMode_Only">Using N-point affine calibration mode</sys:String>
     <sys:String x:Key="CadAlignment_FormulaRef">Formula Reference</sys:String>
     <sys:String x:Key="CadAlignment_GripperTeachTitle">Gripper Teaching</sys:String>
     <sys:String x:Key="CadAlignment_GripperXLabel">Gripper X</sys:String>
