@@ -5,13 +5,15 @@ namespace Framework.Services
 {
     public class FileDialogService : IFileDialogService
     {
-        public string ShowOpenFileDialog(string filter = null, string title = null)
+        public string ShowOpenFileDialog(string filter = null, string title = null, string initialDirectory = null)
         {
             var dlg = new OpenFileDialog
             {
                 Filter = filter ?? "All files (*.*)|*.*",
                 Title = title ?? "Open File"
             };
+            if (!string.IsNullOrEmpty(initialDirectory) && System.IO.Directory.Exists(initialDirectory))
+                dlg.InitialDirectory = initialDirectory;
             return dlg.ShowDialog() == true ? dlg.FileName : null;
         }
 

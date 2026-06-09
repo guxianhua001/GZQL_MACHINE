@@ -32,12 +32,18 @@ namespace Module.Services
         private CancellationTokenSource _executionCts;
         private bool _isExecuting;
         private StationTaskBase _activeStationTask;
+        /// <summary> 单步模式开关：启用时每个步骤执行后等待用户确认 </summary>
+        private bool _isSingleStepMode;
+        /// <summary> 单步模式下的“下一步”等待令牌，用户点击“下一步”时设置结果解除等待 </summary>
+        private TaskCompletionSource<bool> _stepNextTcs;
 
         // 工序序列文件默认保存目录
         private const string ProcessSequenceDirectory = "Config\\ProcessSequences";
         private const string LastPathKey = "LastProcessSequencePath";
         private const string RecentPathsKey = "RecentProcessSequencePaths";
         private const int MaxRecentFiles = 10;
+        /// <summary> 配置文件保留天数，超过此天数的旧文件在保存时自动清理 </summary>
+        private const int ConfigRetentionDays = 30;
 
         private ObservableCollection<Component> _components = new ObservableCollection<Component>();
         private ObservableCollection<Site> _sites = new ObservableCollection<Site>();
@@ -294,6 +300,20 @@ namespace Module.Services
                     // 获取公式求值器实例，用于条件分支表达式的计算
                     var formulaEvaluator = (IFormulaEvaluator)_containerProvider.Resolve(typeof(IFormulaEvaluator));
                     var executor = new ProcessStepExecutor(stationTask, stationTask.TaskLogger, actions, alarmService, formulaEvaluator, _recipePoolService);
+
+                    // 单步模式：设置门控回调，每步执行后等待用户点击“下一步”
+                    if (_isSingleStepMode)
+                    {
+                        executor.StepGate = async (gateToken) =>
+                        {
+                            _stepNextTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                            using (gateToken.Register(() => _stepNextTcs.TrySetCanceled()))
+                            {
+                                await _stepNextTcs.Task;
+                            }
+                        };
+                    }
+
                     await executor.ExecuteAsync(steps, ct);
                 }, token);
             }
@@ -305,6 +325,7 @@ namespace Module.Services
             {
                 _isExecuting = false;
                 _activeStationTask = null;
+                _stepNextTcs = null;
                 _executionCts?.Dispose();
                 _executionCts = null;
                 if (CurrentTask != null)
@@ -324,38 +345,78 @@ namespace Module.Services
                 ?? ((IEnumerable<IProcessStepAction>)_containerProvider.Resolve(typeof(IEnumerable<IProcessStepAction>))).ToList();
         }
 
-        /// <summary> 停止当前任务 </summary>
+        /// <summary> 停止当前任务，遍历所有工站停止运动中的轴（安全关键） </summary>
         public void StopTask()
         {
             if (CurrentTask == null) return;
             if (_isExecuting)
             {
                 _executionCts?.Cancel();
-                _activeStationTask?.StopAsync();
+                // 解除单步模式等待，避免执行线程永久阻塞
+                _stepNextTcs?.TrySetCanceled();
+                // 遍历所有工站调用 StopAsync（无State守卫）：停止所有轴 + 取消 _cts/_pauseCts
+                foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                    station.StopAsync();
             }
             CurrentTask.Status = TaskItem.TaskStatusEnum.Stopped;
             ResetStepHighlight();
             _logger.Info("[ProcessSequence] 任务已停止");
         }
 
-        /// <summary> 暂停当前任务 </summary>
+        /// <summary> 暂停当前任务，遍历所有工站停止运动轴并取消暂停令牌（安全关键） </summary>
         public void PauseTask()
         {
             if (!_isExecuting || CurrentTask == null) return;
             if (CurrentTask.Status != TaskItem.TaskStatusEnum.Running) return;
+            // 暂停主工站（State: Running → Paused + CancelMotionPause）
             _activeStationTask?.PauseAsync();
+            // 遍历所有工站调用 CancelMotionPause（无State守卫）
+            // 确保跨工站运动轴的 _pauseCts 被取消，WaitForDone 立即感知暂停信号
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.CancelMotionPause();
             CurrentTask.Status = TaskItem.TaskStatusEnum.Paused;
             _logger.Info("[ProcessSequence] 任务已暂停");
         }
 
-        /// <summary> 恢复当前任务 </summary>
+        /// <summary> 恢复当前任务，遍历所有工站重置暂停令牌（跨工站轴恢复通过 RunStep 重试自动完成） </summary>
         public void ResumeTask()
         {
             if (!_isExecuting || CurrentTask == null) return;
             if (CurrentTask.Status != TaskItem.TaskStatusEnum.Paused) return;
+            // 恢复主工站（State: Paused → Running + 重建 _pauseCts + 解除暂停阻塞）
             _activeStationTask?.ResumeAsync();
+            // 遍历所有工站调用 ResetMotionPause（无State守卫）
+            // 确保跨工站工站的 _pauseCts 被重建，ExecuteMoveAsync 重试时 PauseAwareToken 有效
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.ResetMotionPause();
             CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
             _logger.Info("[ProcessSequence] 任务已恢复");
+        }
+
+        /// <summary> 是否启用单步模式（每步执行后等待用户确认再继续） </summary>
+        public bool IsSingleStepMode
+        {
+            get => _isSingleStepMode;
+            set
+            {
+                if (_isSingleStepMode != value)
+                {
+                    _isSingleStepMode = value;
+                    RaisePropertyChanged();
+                    _logger.Info($"[ProcessSequence] 单步模式: {(value ? "已启用" : "已关闭")}");
+                }
+            }
+        }
+
+        /// <summary> 单步模式下触发下一步执行（解除 StepGate 等待） </summary>
+        public void StepNext()
+        {
+            var tcs = _stepNextTcs;
+            if (tcs != null && !tcs.Task.IsCompleted)
+            {
+                tcs.TrySetResult(true);
+                _logger.Info("[ProcessSequence] 单步模式：用户确认下一步");
+            }
         }
 
         /// <summary> 重置步骤高亮到第一步（不清除HasActiveAlarm，报警标记在下次启动时清除） </summary>
@@ -456,23 +517,70 @@ namespace Module.Services
         }
 
         /// <summary>
-        /// 自动保存工序序列到默认目录，文件名格式：{stationId}_{timestamp}.json
+        /// 自动保存工序序列到默认目录，文件名格式：ProcessSequences_yyyyMMdd_HHmmss.json
+        /// 保存后自动清理超过保留天数的旧文件
         /// </summary>
-        /// <param name="stationId">工站标识，用于生成文件名</param>
+        /// <param name="stationId">工站标识（保留参数兼容性，不再用于文件名）</param>
         public Task SaveSequenceAsync(string stationId = null)
         {
-            // 若未指定 stationId，使用当前配方池名称或默认值
-            var id = string.IsNullOrWhiteSpace(stationId)
-                ? _recipePoolService.CurrentPoolName ?? "Default"
-                : stationId;
             // 生成时间戳：yyyyMMdd_HHmmss
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var fileName = $"{id}_{timestamp}.json";
+            var fileName = $"ProcessSequences_{timestamp}.json";
             // 确保目录存在
             var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ProcessSequenceDirectory);
             Directory.CreateDirectory(dir);
             var filePath = Path.Combine(dir, fileName);
-            return SaveSequenceToPathAsync(filePath);
+            var result = SaveSequenceToPathAsync(filePath);
+            // 后台清理过期文件，避免阻塞UI
+            QueueCleanupOldFiles(dir, filePath);
+            return result;
+        }
+
+        /// <summary> 后台异步清理过期配置文件，避免阻塞UI线程 </summary>
+        private void QueueCleanupOldFiles(string configDir, string currentFilePath)
+        {
+            _ = Task.Run(() => CleanupOldFiles(configDir, currentFilePath));
+        }
+
+        /// <summary>
+        /// 清理超过保留天数的旧配置文件。
+        /// 仅删除匹配 ProcessSequences_*.json 模式的文件，跳过当前刚保存的文件。
+        /// 清理失败仅记录日志，不影响主流程。
+        /// </summary>
+        private void CleanupOldFiles(string configDir, string currentFilePath)
+        {
+            try
+            {
+                var cutoff = DateTime.Now.AddDays(-ConfigRetentionDays);
+                var cleanedCount = 0;
+
+                foreach (var file in Directory.EnumerateFiles(configDir, "ProcessSequences_*.json"))
+                {
+                    if (string.Equals(file, currentFilePath, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (File.GetLastWriteTime(file) < cutoff)
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                            cleanedCount++;
+                            _logger.Info($"[ProcessSequence] 已清理过期配置文件: {file} (超过{ConfigRetentionDays}天)");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Warn($"[ProcessSequence] 清理过期配置文件失败: {file}, {ex.Message}");
+                        }
+                    }
+                }
+
+                if (cleanedCount > 0)
+                    _logger.Info($"[ProcessSequence] 本次清理了 {cleanedCount} 个过期配置文件 (保留{ConfigRetentionDays}天)");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[ProcessSequence] 清理过期配置文件异常: {ex.Message}");
+            }
         }
 
         /// <summary>

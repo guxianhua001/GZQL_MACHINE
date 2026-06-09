@@ -60,9 +60,59 @@ namespace Module.ViewModels
             }
         }
         public double Speed { get => _subMove.Speed; set => _subMove.Speed = value; }
-        public int HomeMode { get => _subMove.HomeMode; set => _subMove.HomeMode = value; }
+
+        /// <summary> 回零模式数值（0=卡内配置，其他=自定义模式值，如 1/2/3...） </summary>
+        public int HomeMode
+        {
+            get => _subMove.HomeMode;
+            set
+            {
+                if (_subMove.HomeMode != value)
+                {
+                    _subMove.HomeMode = value;
+                    RaisePropertyChanged(nameof(HomeMode));
+                    RaisePropertyChanged(nameof(HomeType));
+                    RaisePropertyChanged(nameof(IsHomeParamsEditable));
+                }
+            }
+        }
+
         public double HomeMinVel { get => _subMove.HomeMinVel; set => _subMove.HomeMinVel = value; }
         public double HomeMaxVel { get => _subMove.HomeMaxVel; set => _subMove.HomeMaxVel = value; }
+
+        // 回零类型选项列表（静态共享，所有行共用）
+        private static readonly ObservableCollection<string> _homeTypeOptions = new ObservableCollection<string>
+        {
+            "Card Config",
+            "Custom"
+        };
+        /// <summary> 回零类型下拉选项列表：卡内配置 / 自定义参数 </summary>
+        public ObservableCollection<string> HomeTypeOptions => _homeTypeOptions;
+
+        /// <summary> 回零类型显示文本，与 HomeMode 数值双向转换（0=Card Config，其他=Custom） </summary>
+        public string HomeType
+        {
+            get => HomeMode == 0 ? HomeTypeOptions[0] : HomeTypeOptions[1];
+            set
+            {
+                bool isCardConfig = (value == HomeTypeOptions[0]);
+                int newMode;
+                if (isCardConfig)
+                {
+                    newMode = 0;
+                }
+                else
+                {
+                    // 切换到自定义时，若当前为0则默认设为模式1
+                    newMode = HomeMode == 0 ? 1 : HomeMode;
+                }
+                if (HomeMode != newMode)
+                    HomeMode = newMode;
+            }
+        }
+
+        /// <summary> 回零参数是否可编辑（仅自定义模式下可编辑 Mode/MinVel/MaxVel） </summary>
+        public bool IsHomeParamsEditable => HomeMode != 0;
 
         // Action 属性转发（支持在运动序列中插入夹爪/延时等动作，参数统一使用夹爪配置默认值）
         public SubMoveAction Action

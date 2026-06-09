@@ -74,18 +74,18 @@ namespace MotionControl
             containerRegistry.RegisterSingleton<ITaskManager, StationTaskManager>();
             containerRegistry.RegisterSingleton<Core.Abstraction.IADValueConverter, Core.Services.UniversalADValueConverter>();
             
-            // ★ 注册夹爪服务
+            // 注册夹爪服务
             containerRegistry.RegisterSingleton<IGripperService, GripperService>();
 
-            // ★ 轴参数设置（从 ModuleCore 迁移）
+            // 轴参数设置（从 ModuleCore 迁移）
             containerRegistry.RegisterSingleton<IAxisParameterService, AxisParameterService>();
             containerRegistry.RegisterForNavigation<AxisSettingView, AxisSettingViewModel>();
             containerRegistry.RegisterDialog<ParameterProgressDialog>();
 
-            // ★ 位置编辑器运动控制
+            // 位置编辑器运动控制
             containerRegistry.RegisterSingleton<Core.Abstraction.IPositionMotionController, PositionMotionControllerImpl>();
 
-            // ★ 安全区域监控服务（运动互锁，配置驱动）
+            // 安全区域监控服务（运动互锁，配置驱动）
             containerRegistry.RegisterSingleton<ISafetyZoneConfigLoader, SafetyZoneConfigLoader>();
             containerRegistry.RegisterSingleton<ISafetyZoneMonitor, SafetyZoneMonitor>();
         }

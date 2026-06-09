@@ -28,6 +28,8 @@ namespace StationTasks.Tasks
         private readonly IStationRegistry _stationRegistry;
         private readonly ISpeedOverrideService _speedOverride;
         private readonly string _stationId;
+        /// <summary> 当前正在运动的轴ID集合（包含跨工站轴），暂停/停止时需要停止这些轴 </summary>
+        private readonly HashSet<int> _activeMotionAxes = new HashSet<int>();
         /// <summary>
         /// 工站标识，用于位置加载和信号交互
         /// </summary>
@@ -85,9 +87,19 @@ namespace StationTasks.Tasks
         }
 
         /// <summary>
-        /// 获取当前任务管理的所有轴ID，通过硬件配置动态发现
+        /// 获取当前工站配置的所有轴ID + 当前正在运动的跨工站轴
+        /// 暂停/停止时需要停止所有这些轴以确保安全
         /// </summary>
-        protected override int[] GetAllAxes() => DiscoverAxes();
+        protected override int[] GetAllAxes()
+        {
+            var configured = DiscoverAxes();
+            if (_activeMotionAxes.Count == 0)
+                return configured;
+            // 合并配置轴和当前运动轴（包括跨工站轴）
+            var result = new HashSet<int>(configured);
+            result.UnionWith(_activeMotionAxes);
+            return result.ToArray();
+        }
 
         /// <summary>
         /// 根据轴名称解析逻辑轴ID，从当前工站的轴配置中查找
@@ -235,10 +247,59 @@ namespace StationTasks.Tasks
         /// </summary>
         public async Task ExecuteHomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20)
         {
-            await RunStep($"Home Axis {axisId}", async () =>
+            // 注册当前运动轴，确保暂停/停止时能停止该轴
+            _activeMotionAxes.Add(axisId);
+            try
             {
-                await Motion.HomeAsync(axisId, mode, minVel, maxVel, CurrentToken);
-            }, publishStatus: false);
+                await RunStep($"Home Axis {axisId}", async () =>
+                {
+                    try
+                    {
+                        // 使用合并的暂停+停止令牌
+                        await Motion.HomeAsync(axisId, mode, minVel, maxVel, PauseAwareToken);
+                    }
+                    catch (OperationCanceledException) when (_isPaused && !CurrentToken.IsCancellationRequested)
+                    {
+                        // 暂停导致回零中断，转换为 MotionPausedException
+                        double actualPos = _motion.GetAxisState(axisId)?.ActualPosition ?? 0;
+                        throw new MotionPausedException(axisId, 0, actualPos);
+                    }
+                }, publishStatus: false);
+            }
+            finally
+            {
+                // 回零结束，移除当前运动轴
+                _activeMotionAxes.Remove(axisId);
+            }
+        }
+
+        /// <summary>
+        /// 使用控制卡已配置的回零参数执行回零（不覆盖 HomeMode/速度）。
+        /// 与 ExecuteHomeAsync 相同的暂停/急停/_activeMotionAxes 安全保护。
+        /// 当 SubMove.HomeMode == 0 时使用此方法。
+        /// </summary>
+        public async Task ExecuteHomeAxisAsync(int axisId)
+        {
+            _activeMotionAxes.Add(axisId);
+            try
+            {
+                await RunStep($"Home Axis {axisId} (card config)", async () =>
+                {
+                    try
+                    {
+                        await Motion.HomeAxisAsync(axisId, PauseAwareToken);
+                    }
+                    catch (OperationCanceledException) when (_isPaused && !CurrentToken.IsCancellationRequested)
+                    {
+                        double actualPos = _motion.GetAxisState(axisId)?.ActualPosition ?? 0;
+                        throw new MotionPausedException(axisId, 0, actualPos);
+                    }
+                }, publishStatus: false);
+            }
+            finally
+            {
+                _activeMotionAxes.Remove(axisId);
+            }
         }
 
         /// <summary>
@@ -353,6 +414,36 @@ namespace StationTasks.Tasks
                 }
                 catch (RecoverableException rex)
                 {
+                    // MotionPausedException 是暂停导致的运动中断，不需要弹窗和报警
+                    if (rex is MotionPausedException)
+                    {
+                        Logger.Info($"步骤 [{stepName}] 运动因暂停中断，等待恢复后重试");
+                        LastFaultStepName = stepName;
+                        _systemState.RequestPause();
+                        // 已经在 PauseAsync 中暂停，但为确保状态一致再次确认
+                        if (State != TaskState.Paused)
+                            await PauseAsync();
+                        PublishTaskStatusChanged(stepName, State);
+                        try
+                        {
+                            await CheckPauseAsync(token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Logger.Info($"步骤 [{stepName}] 操作员选择停止任务");
+                            throw;
+                        }
+                        if (State != TaskState.Running)
+                        {
+                            Logger.Info($"步骤 [{stepName}] 任务未恢复运行，取消当前步骤");
+                            throw new OperationCanceledException(token);
+                        }
+                        PublishTaskStatusChanged(stepName, State);
+                        Logger.Info($"步骤 [{stepName}] 已恢复运行，将重新执行当前步骤...");
+                        continue;  // 重试当前步骤
+                    }
+
+                    // 其他 RecoverableException：保持原有弹窗+报警逻辑
                     Logger.Warn($"步骤 [{stepName}] 发生可恢复故障。原因: {rex.Message} | 建议: {rex.SuggestedAction}");
 
                     LastFaultStepName = stepName;
@@ -612,7 +703,26 @@ namespace StationTasks.Tasks
             var pos = await GetPositionAsync(positionName, axisName);
             pos += offset;
             var actualVelocity = velocity * (_speedOverride.SpeedPercent / 100.0);
-            await _motion.MoveAbsAsync(axisId, pos, actualVelocity, CurrentToken);
+
+            // 注册当前运动轴（包含跨工站轴），确保暂停/停止时能停止该轴
+            _activeMotionAxes.Add(axisId);
+            try
+            {
+                // 使用合并的暂停+停止令牌，暂停时 _pauseCts 取消可立即中断 WaitForDone
+                await _motion.MoveAbsAsync(axisId, pos, actualVelocity, PauseAwareToken);
+            }
+            catch (OperationCanceledException) when (_isPaused && !CurrentToken.IsCancellationRequested)
+            {
+                // 暂停导致的取消（_pauseCts取消），而非停止导致的取消（_cts取消）
+                // 转换为 MotionPausedException，被 RunStep 的 RecoverableException 分支捕获
+                double actualPos = _motion.GetAxisState(axisId)?.ActualPosition ?? 0;
+                throw new MotionPausedException(axisId, pos, actualPos);
+            }
+            finally
+            {
+                // 运动结束（无论成功/暂停/停止），移除当前运动轴
+                _activeMotionAxes.Remove(axisId);
+            }
         }
 
         /// <summary> 根据轴名称查找逻辑轴ID，未找到返回 -1 </summary>

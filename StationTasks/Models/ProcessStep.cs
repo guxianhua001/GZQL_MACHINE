@@ -456,8 +456,8 @@ namespace StationTasks.Models
         public string OffsetVariableName { get => _offsetVariableName; set => SetProperty(ref _offsetVariableName, value); }
         public double Speed { get => _speed; set => SetProperty(ref _speed, value); }
 
-        private int _homeMode = 1;
-        /// <summary> 回零模式（1=标准模式等，参考运动控制卡 SDK 文档） </summary>
+        private int _homeMode = 0;
+        /// <summary> 回零模式（0=卡内配置，其他值=自定义模式，参考运动控制卡 SDK 文档） </summary>
         public int HomeMode { get => _homeMode; set => SetProperty(ref _homeMode, value); }
 
         private double _homeMinVel = 5;

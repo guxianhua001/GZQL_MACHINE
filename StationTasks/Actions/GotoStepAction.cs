@@ -82,11 +82,23 @@ namespace StationTasks.Actions
                         continue;
                     }
 
-                    _logger.Info($"HOME SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}), 模式={subMove.HomeMode}, 低速={subMove.HomeMinVel}, 高速={subMove.HomeMaxVel}");
-                    string moveLabel = $"[{step.Seq}] {axisName} → Home (mode={subMove.HomeMode}, vel={subMove.HomeMinVel}/{subMove.HomeMaxVel})";
-                    targetTask.PublishStepStatus(moveLabel, overrideState);
-                    await targetTask.ExecuteHomeAsync(axisId, subMove.HomeMode, subMove.HomeMinVel, subMove.HomeMaxVel);
-                    await Task.Delay(1800);
+                    if (subMove.HomeMode == 0)
+                    {
+                        // HomeMode=0: 使用控制卡已配置的回零参数（HomeAxisAsync）
+                        _logger.Info($"HOME SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}), 使用卡内配置回零");
+                        string moveLabel = $"[{step.Seq}] {axisName} → Home (card config)";
+                        targetTask.PublishStepStatus(moveLabel, overrideState);
+                        await targetTask.ExecuteHomeAxisAsync(axisId);
+                    }
+                    else
+                    {
+                        // HomeMode!=0: 使用自定义回零模式/速度参数（HomeAsync）
+                        _logger.Info($"HOME SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}), 模式={subMove.HomeMode}, 低速={subMove.HomeMinVel}, 高速={subMove.HomeMaxVel}");
+                        string moveLabel = $"[{step.Seq}] {axisName} → Home (mode={subMove.HomeMode}, vel={subMove.HomeMinVel}/{subMove.HomeMaxVel})";
+                        targetTask.PublishStepStatus(moveLabel, overrideState);
+                        await targetTask.ExecuteHomeAsync(axisId, subMove.HomeMode, subMove.HomeMinVel, subMove.HomeMaxVel);
+                    }
+                    //await Task.Delay(1800);
                     targetTask.CompleteStepStatus(overrideState);
                 }
                 else
@@ -114,7 +126,7 @@ namespace StationTasks.Actions
                     targetTask.PublishStepStatus(moveLabel, overrideState);
 
                     await targetTask.ExecuteMoveAsync(axisId, subMove.PositionName, speed, totalOffset);
-                    await Task.Delay(1800);
+                    //await Task.Delay(1800);
                     targetTask.CompleteStepStatus(overrideState);
                 }
             }

@@ -57,6 +57,11 @@ namespace Module.Services
         void PauseTask();
         void ResumeTask();
 
+        /// <summary> 是否启用单步模式（每步执行后等待用户确认再继续） </summary>
+        bool IsSingleStepMode { get; set; }
+        /// <summary> 单步模式下触发下一步执行 </summary>
+        void StepNext();
+
         /// <summary> 单独执行指定步骤（用于步骤编辑器中的调试运行） </summary>
         Task RunSingleStepAsync(ProcessStep step);
 

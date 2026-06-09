@@ -95,13 +95,15 @@
                         </Border>
                         <TextBlock Style="{StaticResource StepTitle}" Text="{lang:Lang PSE_SequenceFile}" Foreground="#1565C0" Margin="6,0,0,0"/>
                         <TextBlock Style="{StaticResource StepHint}" Text="{lang:Lang PSE_SequenceFileHint}"/>
-                        <ComboBox ItemsSource="{Binding RecentFiles}"
-                                  SelectedItem="{Binding SelectedRecentFile}"
-                                  Width="220"
-                                  FontSize="12"
-                                  Margin="20,0,0,0"
-                                  VerticalAlignment="Center"
-                                  materialDesign:HintAssist.Hint="{lang:Lang PSE_CurrentLabel}" />
+                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="16" Height="16"
+                                                  VerticalAlignment="Center" Foreground="#546E7A" Margin="20,0,4,0"/>
+                        <TextBlock Text="{Binding CurrentSequenceFileName, Mode=OneWay}"
+                                   Foreground="#37474F"
+                                   FontSize="12"
+                                   FontWeight="Medium"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="360"/>
                     </StackPanel>
                 </Expander.Header>
                 <Expander.Content>
@@ -272,10 +274,22 @@
                         </Setter.Value>
                     </Setter>
                     <Style.Triggers>
+                        <!-- 当前步骤默认高亮：森林绿（运行中/暂停/停止状态） -->
                         <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                            <Setter Property="Background" Value="#E3F2FD" />
+                            <Setter Property="Background" Value="#228B20" />
+                            <Setter Property="Foreground" Value="White" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </DataTrigger>
+                        <!-- 未启动时（Idle状态）当前步骤高亮改为灰色，与运行后的绿色区分 -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsCurrent}" Value="True"/>
+                                <Condition Binding="{Binding DataContext.CurrentTask.Status, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="Idle"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Background" Value="#9E9E9E" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </MultiDataTrigger>
                         <DataTrigger Binding="{Binding IsSingleExecuting}" Value="True">
                             <Setter Property="Background" Value="#C8E6C9" />
                             <Setter Property="FontWeight" Value="SemiBold" />
@@ -536,6 +550,44 @@
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Stop" Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="{lang:Lang PSE_Stop}" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- 单步模式分隔线 -->
+                        <Border Width="1" Background="#BDBDBD" Margin="10,4" VerticalAlignment="Stretch"/>
+
+                        <!-- 单步模式开关按钮 -->
+                        <Button Command="{Binding ToggleSingleStepCommand}"
+                                ToolTip="{lang:Lang PSE_SingleStepTip}"
+                                Padding="12,4" Margin="0,0,6,0"
+                                materialDesign:ButtonAssist.CornerRadius="6">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                    <Setter Property="BorderBrush" Value="#7B1FA2"/>
+                                    <Setter Property="Foreground" Value="#7B1FA2"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSingleStepMode}" Value="True">
+                                            <Setter Property="Background" Value="#7B1FA2"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="StepForward" Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{lang:Lang PSE_SingleStep}" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- 下一步按钮 -->
+                        <Button Command="{Binding StepNextCommand}"
+                                ToolTip="{lang:Lang PSE_StepNextTip}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="12,4"
+                                materialDesign:ButtonAssist.CornerRadius="6" BorderBrush="#228B20" Foreground="#228B20">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="SkipNext" Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{lang:Lang PSE_StepNext}" FontSize="12"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

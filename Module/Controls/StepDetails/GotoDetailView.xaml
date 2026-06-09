@@ -169,24 +169,46 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Mode" Width="Auto">
+                    <!-- 回零类型：卡内配置 / 自定义参数 -->
+                    <DataGridTemplateColumn Header="Type" Width="Auto">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding HomeMode, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text="{Binding HomeType}" VerticalAlignment="Center" Padding="4,2"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding HomeTypeOptions}"
+                                          SelectedItem="{Binding HomeType, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEditable="False" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <!-- 回零模式值：仅自定义模式下可编辑 -->
+                    <DataGridTemplateColumn Header="HomeMode" Width="Auto">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding HomeMode, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsHomeParamsEditable}"
+                                         materialDesign:HintAssist.Hint="1/2/3..."/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="MinVel" Width="Auto">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding HomeMinVel, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="mm/s"/>
+                                <TextBox Text="{Binding HomeMinVel, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="mm/s"
+                                         IsEnabled="{Binding IsHomeParamsEditable}"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="MaxVel" Width="Auto">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding HomeMaxVel, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="mm/s"/>
+                                <TextBox Text="{Binding HomeMaxVel, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="mm/s"
+                                         IsEnabled="{Binding IsHomeParamsEditable}"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

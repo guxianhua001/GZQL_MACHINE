@@ -44,6 +44,12 @@ namespace StationTasks.Actions
         /// <summary> 步骤标签→步骤对象映射，用于事件回调时快速查找 </summary>
         private Dictionary<string, ProcessStep> _stepLookup;
 
+        /// <summary>
+        /// 单步模式门控：每步执行后调用，等待用户确认“下一步”后才继续。
+        /// 若为 null 表示不启用单步模式。
+        /// </summary>
+        public Func<CancellationToken, Task> StepGate { get; set; }
+
         public ProcessStepExecutor(
             StationTaskBase task,
             ILoggerService logger,
@@ -161,6 +167,18 @@ namespace StationTasks.Actions
                         sw.Stop();
                         step.LastElapsedMs = sw.ElapsedMilliseconds;
                         step.IsCurrent = false;
+                    
+                        // 单步模式：步骤执行完成后高亮下一步并等待用户确认
+                        if (StepGate != null && nextIndex >= 0 && nextIndex < steps.Count)
+                        {
+                            // 提前高亮下一步，避免等待期间无高亮行
+                            steps[nextIndex].IsCurrent = true;
+                            _logger.Info($"[ProcessStepExecutor] 单步模式等待下一步确认 (下一步骤 [{steps[nextIndex].Seq}])");
+                            await StepGate(token);
+                            // 用户确认后，下一轮循环会重新设置 IsCurrent，无需在此清除
+                            _logger.Info("[ProcessStepExecutor] 单步模式收到下一步确认");
+                        }
+                    
                         currentIndex = nextIndex;
                     }
                     catch (OperationCanceledException)
@@ -838,7 +856,7 @@ namespace StationTasks.Actions
                         _logger.Info($"[Branch] 默认动作: 跳转到步骤 [{config.DefaultTargetStepSeq}]");
                         return await ResolveStepIndexAsync(config.DefaultTargetStepSeq, steps, currentIndex);
                     }
-                    // ★ 安全机制：SkipTo但目标无效时，触发报警并终止（防止撞机风险）
+                    // 安全机制：SkipTo但目标无效时，触发报警并终止（防止撞机风险）
                     string errorMsg = $"[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={config.DefaultTargetStepSeq} 不存在！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。";
                     _logger.Error(errorMsg);
                     await _alarmService.TriggerAlarmAsync(
@@ -858,7 +876,7 @@ namespace StationTasks.Actions
 
         /// <summary>
         /// 解析目标步骤索引：根据Seq号查找对应的数组索引
-        /// ★ 安全机制：如果目标Seq为0或未找到，触发报警并终止（防止撞机风险）
+        /// 安全机制：如果目标Seq为0或未找到，触发报警并终止（防止撞机风险）
         /// </summary>
         private async Task<int> ResolveStepIndexAsync(int targetSeq, ObservableCollection<ProcessStep> steps, int currentIndex)
         {
@@ -884,7 +902,7 @@ namespace StationTasks.Actions
                 }
             }
 
-            // ★ 目标步骤不存在时的安全处理
+            // 目标步骤不存在时的安全处理
             string notFoundMsg = $"[Branch] ⚠️ 安全警告: 跳转目标步骤 Seq={targetSeq} 在当前序列中不存在！可能已被删除或序号错误。为避免设备碰撞风险，已自动终止序列。";
             _logger.Error(notFoundMsg);
             await _alarmService.TriggerAlarmAsync(

@@ -253,7 +253,7 @@ namespace Module.ViewModels
                 Offset = 0,
                 OffsetVariableName = "Manual",
                 Speed = 10,
-                HomeMode = 1,
+                HomeMode = 0,  // 默认使用卡内配置回零
                 HomeMinVel = 5,
                 HomeMaxVel = 20
             };

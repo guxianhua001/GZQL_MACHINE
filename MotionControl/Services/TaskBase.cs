@@ -24,8 +24,26 @@ namespace MotionControl.Services
         // 为子类暴露只读的取消令牌
         protected CancellationToken CurrentToken => _cts?.Token ?? CancellationToken.None;
         // 实现异步暂停/恢复
-        private volatile bool _isPaused = false;
+        protected volatile bool _isPaused = false;
         private TaskCompletionSource<bool> _pauseTcs = new();
+        /// <summary> 暂停专用CancellationTokenSource：暂停时取消以中断运动等待，恢复时重建 </summary>
+        private CancellationTokenSource _pauseCts = new();
+        /// <summary> 获取合并的暂停+停止取消令牌，供 ExecuteMoveAsync 等运动方法使用
+        /// 当 _pauseCts 或 _cts 任一取消时，返回的 token 都处于取消状态
+        /// 注意：每次访问创建新的 LinkedCTS，但在步骤级调用频率下性能影响可忽略 </summary>
+        protected CancellationToken PauseAwareToken
+        {
+            get
+            {
+                var stopToken = _cts?.Token ?? CancellationToken.None;
+                if (_pauseCts == null)
+                    return stopToken;
+                // 直接创建 LinkedTokenSource，不短路 _pauseCts.IsCancellationRequested
+                // 原因：当 _pauseCts 已取消（暂停状态），必须返回取消的 token
+                // 若短路返回 stopToken（可能未取消），则 WaitForDone 无法感知暂停信号
+                return CancellationTokenSource.CreateLinkedTokenSource(stopToken, _pauseCts.Token).Token;
+            }
+        }
         public string TaskName { get; }
         public int TaskId { get; }
         public TaskState State { get; protected set; } = TaskState.Stopped;
@@ -122,12 +140,39 @@ namespace MotionControl.Services
         {
             if (State == TaskState.Running)
             {
+                CancelMotionPause();
                 State = TaskState.Paused;
-                _isPaused = true;
-                Logger.Info($"[{TaskName}] paused");
+                Logger.Info($"[{TaskName}] paused, axes decelerating to stop");
                 PublishTaskStatusChanged("Paused", State);
             }
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 取消运动暂停信号（无State守卫）：停止所有轴 + 取消 _pauseCts + 设置 _isPaused
+        /// 供 ProcessSequenceService 遍历所有工站调用，确保跨工站运动轴的 WaitForDone 立即感知暂停/停止信号
+        /// 与 PauseAsync 的区别：不检查 State，不改变 State，任何状态都可调用
+        /// </summary>
+        public void CancelMotionPause()
+        {
+            foreach (var ax in GetAllAxes())
+                Motion.StopAxis(ax);
+            _pauseCts.Cancel();
+            _isPaused = true;
+        }
+
+        /// <summary>
+        /// 重置运动暂停信号（无State守卫）：重建 _pauseCts + 重置 _isPaused
+        /// 供 ProcessSequenceService 恢复时遍历所有工站调用，确保跨工站运动重试时 PauseAwareToken 有效
+        /// </summary>
+        public void ResetMotionPause()
+        {
+            _isPaused = false;
+            if (_pauseCts.IsCancellationRequested)
+            {
+                _pauseCts.Dispose();
+                _pauseCts = new CancellationTokenSource();
+            }
         }
         public virtual Task ResumeAsync()
         {
@@ -135,6 +180,9 @@ namespace MotionControl.Services
             {
                 State = TaskState.Running;
                 _isPaused = false;
+                // 重建暂停CTS，恢复后运动方法可正常等待
+                _pauseCts.Dispose();
+                _pauseCts = new CancellationTokenSource();
                 // 异步通知解除暂停
                 _pauseTcs.TrySetResult(true);
                 Logger.Info($"[{TaskName}] resumed");
@@ -144,19 +192,18 @@ namespace MotionControl.Services
         }
         public virtual Task StopAsync()
         {
-            //if (State == TaskState.Running || State == TaskState.Paused)
-            //{
-                foreach (var ax in GetAllAxes())
-                    Motion.StopAxis(ax); 
+            foreach (var ax in GetAllAxes())
+                Motion.StopAxis(ax);
 
-                _cts?.Cancel();
-                _isPaused = false;
-                _pauseTcs.TrySetCanceled();
-                State = TaskState.Stopped;
+            _cts?.Cancel();
+            // 停止时也取消暂停CTS，确保运动等待立即退出
+            _pauseCts?.Cancel();
+            _isPaused = false;
+            _pauseTcs.TrySetCanceled();
+            State = TaskState.Stopped;
 
-                // 通知 UI 任务状态已变为 Stopped
-                PublishTaskStatusChanged("Stopped", State);
-            //}
+            // 通知 UI 任务状态已变为 Stopped
+            PublishTaskStatusChanged("Stopped", State);
             return Task.CompletedTask;
         }
         public virtual async Task HomeAsync()

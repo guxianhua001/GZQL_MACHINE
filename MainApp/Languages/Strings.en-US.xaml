@@ -2523,6 +2523,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="GotoDetail_Delete">Delete</sys:String>
     <sys:String x:Key="GotoDetail_HomeMode">Home</sys:String>
     <sys:String x:Key="GotoDetail_ModeLabel">Mode</sys:String>
+    <sys:String x:Key="GotoDetail_HomeTypeCardConfig">Card Config</sys:String>
+    <sys:String x:Key="GotoDetail_HomeTypeCustom">Custom Params</sys:String>
     <sys:String x:Key="PickDetail_Add">Add</sys:String>
     <sys:String x:Key="PickDetail_Clamp">Clamp</sys:String>
     <sys:String x:Key="PickDetail_ClampPosition">Clamp Position</sys:String>
@@ -3035,6 +3037,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="PSE_Pause">Pause</sys:String>
     <sys:String x:Key="PSE_Resume">Resume</sys:String>
     <sys:String x:Key="PSE_Stop">Stop</sys:String>
+    <sys:String x:Key="PSE_SingleStep">Single Step</sys:String>
+    <sys:String x:Key="PSE_SingleStepTip">Enable/disable single step mode (pause after each step, click Next to continue)</sys:String>
+    <sys:String x:Key="PSE_StepNext">Next</sys:String>
+    <sys:String x:Key="PSE_StepNextTip">Execute next step in single step mode</sys:String>
     <sys:String x:Key="PSE_StatusLabel">Status:</sys:String>
     <sys:String x:Key="PSE_SequenceValidation">Sequence Validation</sys:String>
     <sys:String x:Key="PSE_ValidationHint">Check sequence completeness and configuration correctness</sys:String>

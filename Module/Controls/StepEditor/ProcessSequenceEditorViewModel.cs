@@ -100,6 +100,24 @@ namespace Module.ViewModels
             ResumeTaskCommand = new DelegateCommand(() => _sequenceService.ResumeTask(), () => CurrentTask != null && CurrentTask.Status == TaskItem.TaskStatusEnum.Paused)
                 .ObservesProperty(() => CurrentTask.Status);
 
+            // 单步模式命令
+            ToggleSingleStepCommand = new DelegateCommand(OnToggleSingleStep);
+            StepNextCommand = new DelegateCommand(() => _sequenceService.StepNext(), () => _sequenceService.IsExecuting && _sequenceService.IsSingleStepMode);
+
+            // 订阅单步模式状态变化以刷新“下一步”按钮可用性和UI绑定
+            _sequenceService.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(IProcessSequenceService.IsSingleStepMode))
+                {
+                    RaisePropertyChanged(nameof(IsSingleStepMode));
+                    (StepNextCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                }
+                else if (e.PropertyName == nameof(IProcessSequenceService.IsExecuting))
+                {
+                    (StepNextCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                }
+            };
+
             RunSingleStepCommand = new DelegateCommand(async () => await OnRunSingleStepAsync(), () => SelectedStep != null && !_sequenceService.IsExecuting)
                 .ObservesProperty(() => SelectedStep);
             
@@ -140,7 +158,7 @@ namespace Module.ViewModels
                     {
                         CurrentSequenceFilePath = _sequenceService.CurrentFilePath;
                         CurrentSequenceFileName = !string.IsNullOrEmpty(_sequenceService.CurrentFilePath)
-                            ? System.IO.Path.GetFileNameWithoutExtension(_sequenceService.CurrentFilePath)
+                            ? System.IO.Path.GetFileName(_sequenceService.CurrentFilePath)
                             : null;
                     }
                     else if (e.PropertyName == nameof(IProcessSequenceService.SelectedSite))
@@ -256,24 +274,6 @@ namespace Module.ViewModels
         public ObservableCollection<string> ComponentFeatureOptions { get; }
         public ObservableCollection<string> SiteFeatureOptions { get; }
 
-        /// <summary> 最近使用的序列文件列表（代理到 Service） </summary>
-        public ObservableCollection<string> RecentFiles => _sequenceService.RecentFiles;
-
-        private string _selectedRecentFile;
-        /// <summary> 选中的最近文件，切换时自动加载 </summary>
-        public string SelectedRecentFile
-        {
-            get => _selectedRecentFile;
-            set
-            {
-                if (SetProperty(ref _selectedRecentFile, value) && !string.IsNullOrEmpty(value))
-                {
-                    if (value != _sequenceService.CurrentFilePath)
-                        SwitchToRecentFile(value);
-                }
-            }
-        }
-
         public ObservableCollection<ValidationItem> ValidationResults { get; private set; }
         public ObservableCollection<Models.Component> Components { get; }
         public ObservableCollection<Site> Sites { get; }
@@ -305,6 +305,18 @@ namespace Module.ViewModels
         public ICommand StopTaskCommand { get; }
         public ICommand PauseTaskCommand { get; }
         public ICommand ResumeTaskCommand { get; }
+
+        /// <summary> 切换单步模式开关 </summary>
+        public ICommand ToggleSingleStepCommand { get; }
+        /// <summary> 单步模式下执行下一步 </summary>
+        public ICommand StepNextCommand { get; }
+
+        /// <summary> 是否启用单步模式（双向绑定代理到 Service） </summary>
+        public bool IsSingleStepMode
+        {
+            get => _sequenceService.IsSingleStepMode;
+            set => _sequenceService.IsSingleStepMode = value;
+        }
 
         /// <summary> 单独运行选中的步骤 </summary>
         public ICommand RunSingleStepCommand { get; }
@@ -581,6 +593,13 @@ namespace Module.ViewModels
         }
 
         /// <summary> 单独运行选中的步骤 </summary>
+        /// <summary> 切换单步模式开关，触发属性变更以刷新UI状态 </summary>
+        private void OnToggleSingleStep()
+        {
+            IsSingleStepMode = !IsSingleStepMode;
+            RaisePropertyChanged(nameof(IsSingleStepMode));
+        }
+
         private async Task OnRunSingleStepAsync()
         {
             if (SelectedStep == null) return;
@@ -761,33 +780,22 @@ namespace Module.ViewModels
 
         private async void OnLoadFromJson()
         {
-            string path = _fileDialogService.ShowOpenFileDialog();
+            // 默认打开路径：bin\Debug\net9.0-windows7.0\Config\ProcessSequences
+            string defaultDir = System.IO.Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Config", "ProcessSequences");
+            string path = _fileDialogService.ShowOpenFileDialog(
+                filter: "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                title: "Load Process Sequence",
+                initialDirectory: defaultDir);
             if (string.IsNullOrEmpty(path)) return;
             try
             {
                 await _sequenceService.LoadSequenceFromPathAsync(path);
                 SelectedStep = null;
                 ValidateAll();
-                CurrentSequenceFileName = System.IO.Path.GetFileNameWithoutExtension(path);
+                CurrentSequenceFileName = System.IO.Path.GetFileName(path);
                 CurrentSequenceFilePath = path;
-                SelectedRecentFile = path;
-            }
-            catch (Exception) { }
-        }
-
-        /// <summary>
-        /// 切换到选中的最近文件
-        /// </summary>
-        private async void SwitchToRecentFile(string filePath)
-        {
-            if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath)) return;
-            try
-            {
-                await _sequenceService.LoadSequenceFromPathAsync(filePath);
-                SelectedStep = null;
-                ValidateAll();
-                CurrentSequenceFileName = System.IO.Path.GetFileNameWithoutExtension(filePath);
-                CurrentSequenceFilePath = filePath;
             }
             catch (Exception) { }
         }
