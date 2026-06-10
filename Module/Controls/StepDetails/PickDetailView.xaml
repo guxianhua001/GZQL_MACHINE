@@ -48,18 +48,19 @@
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang PickDetail_VacuumControl}" VerticalAlignment="Center"/>
                     <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="4,2">
-                        <Button Content="{lang:Lang PickDetail_VacuumOn}"
+                        <Button Content="ON"
                                 Command="{Binding VacuumOnCommand}"
                                 Margin="0,0,4,0"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                 Width="60"/>
-                        <Button Content="{lang:Lang PickDetail_VacuumOff}"
+                        <Button Content="OFF"
                                 Command="{Binding VacuumOffCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                 Width="60"/>
                         <TextBlock Text="{Binding VacuumStatusText}"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"
+                                   Foreground="{Binding VacuumStatusBrush}"
                                    FontWeight="Bold"/>
                     </StackPanel>
 

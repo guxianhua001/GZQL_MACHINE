@@ -1,5 +1,6 @@
 using Core.Utilities;
 using MotionControl.Exceptions;
+using MotionControl.Interfaces;
 using Natasha.CSharp;
 using Prism.Events;
 using Recipe.Events;
@@ -24,6 +25,7 @@ namespace StationTasks.Actions
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IMotionService _motionService;
         private readonly object _compileLock = new object();
         private Func<ScriptContext, bool> _compiledDelegate;
         private string _compiledScript;
@@ -35,11 +37,12 @@ namespace StationTasks.Actions
 
         public StepType SupportedStepType => StepType.SCRIPT;
 
-        public ScriptStepAction(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator)
+        public ScriptStepAction(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator, IMotionService motionService)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _eventAggregator = eventAggregator;
+            _motionService = motionService;
         }
 
         /// <summary>
@@ -65,7 +68,7 @@ namespace StationTasks.Actions
 
             _logger.Info($"SCRIPT 步骤 [{step.Seq}] 开始执行，全局变量数: {globalVariables.Count}，步骤输出数: {StepOutputs.Count}");
 
-            var ctx = new ScriptContext(globalVariables, StepOutputs);
+            var ctx = new ScriptContext(globalVariables, StepOutputs, _motionService);
             bool success;
             try
             {

@@ -128,13 +128,13 @@
                                     </StackPanel>
                                 </Button>
                                 <Separator/>
-                                <Button Command="{Binding AutoGenerateCommand}"
+                                <!--<Button Command="{Binding AutoGenerateCommand}"
                                         ToolTip="{lang:Lang PSE_AutoGenerateTip}">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="AutoFix" Width="18" Height="18" Margin="0,0,4,0"/>
                                         <TextBlock Text="{lang:Lang PSE_AutoGenerate}"/>
                                     </StackPanel>
-                                </Button>
+                                </Button>-->
                             </ToolBar>
                         </ToolBarTray>
                     </Border>

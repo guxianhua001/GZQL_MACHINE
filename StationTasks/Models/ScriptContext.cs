@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using MotionControl.Interfaces;
 
 namespace StationTasks.Models
 {
     /// <summary>
-    /// 脚本执行上下文，封装全局变量和步骤输出参数的读写，自动处理类型转换
+    /// 脚本执行上下文，封装全局变量、步骤输出参数和 IO 操作，自动处理类型转换
     /// 脚本通过 ctx.GetDouble("变量名") 读取、ctx.Set("变量名", value) 写入
+    /// 脚本通过 ctx.WriteDO("端口名", true) 写输出、ctx.ReadDI("端口名") 读输入
     /// </summary>
     public class ScriptContext
     {
@@ -14,20 +17,24 @@ namespace StationTasks.Models
         private readonly Dictionary<string, string> _stepOutputs;
         private readonly Dictionary<string, string> _snapshot;
         private readonly Dictionary<string, string> _changes;
+        private readonly IMotionService _motionService;
 
         /// <summary>
         /// 创建脚本执行上下文
         /// </summary>
         /// <param name="globalVariables">全局变量字典（Key=变量名, Value=变量值字符串）</param>
         /// <param name="stepOutputs">前序步骤输出参数字典</param>
+        /// <param name="motionService">运动控制服务（可选，用于 IO 读写）</param>
         public ScriptContext(
             Dictionary<string, string> globalVariables,
-            Dictionary<string, string> stepOutputs)
+            Dictionary<string, string> stepOutputs,
+            IMotionService motionService = null)
         {
             _globalVariables = globalVariables ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             _stepOutputs = stepOutputs ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             _snapshot = new Dictionary<string, string>(_globalVariables, StringComparer.OrdinalIgnoreCase);
             _changes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _motionService = motionService;
         }
 
         // ═══ 读取全局变量 ═══
@@ -141,6 +148,104 @@ namespace StationTasks.Models
             }
 
             return new Dictionary<string, string>(_changes, StringComparer.OrdinalIgnoreCase);
+        }
+
+        // ═══ IO 操作（数字输入/输出） ═══
+
+        /// <summary>
+        /// 写入数字输出 DO（按端口名称），如 ctx.WriteDO("Glue", true)
+        /// </summary>
+        /// <param name="portName">hwcfg.xml 中定义的 DO 端口名称</param>
+        /// <param name="value">true=ON, false=OFF</param>
+        public void WriteDO(string portName, bool value)
+        {
+            EnsureMotionService();
+            int logicalId = GetDoLogicalIdByName(portName);
+            _motionService.WriteDo(logicalId, value);
+        }
+
+        /// <summary>
+        /// 写入数字输出 DO（按逻辑 ID），如 ctx.WriteDO(0, true)
+        /// </summary>
+        /// <param name="logicalId">DO 逻辑端口号</param>
+        /// <param name="value">true=ON, false=OFF</param>
+        public void WriteDO(int logicalId, bool value)
+        {
+            EnsureMotionService();
+            _motionService.WriteDo(logicalId, value);
+        }
+
+        /// <summary>
+        /// 读取数字输入 DI（按端口名称），如 bool sensor = ctx.ReadDI("Sensor1")
+        /// </summary>
+        /// <param name="portName">hwcfg.xml 中定义的 DI 端口名称</param>
+        /// <returns>true=有信号, false=无信号</returns>
+        public bool ReadDI(string portName)
+        {
+            EnsureMotionService();
+            int logicalId = GetDiLogicalIdByName(portName);
+            return _motionService.ReadDi(logicalId);
+        }
+
+        /// <summary>
+        /// 读取数字输入 DI（按逻辑 ID），如 bool sensor = ctx.ReadDI(0)
+        /// </summary>
+        /// <param name="logicalId">DI 逻辑端口号</param>
+        /// <returns>true=有信号, false=无信号</returns>
+        public bool ReadDI(int logicalId)
+        {
+            EnsureMotionService();
+            return _motionService.ReadDi(logicalId);
+        }
+
+        /// <summary>
+        /// 读取数字输出 DO 当前状态（按端口名称）
+        /// </summary>
+        /// <param name="portName">hwcfg.xml 中定义的 DO 端口名称</param>
+        /// <returns>true=ON, false=OFF</returns>
+        public bool ReadDO(string portName)
+        {
+            EnsureMotionService();
+            int logicalId = GetDoLogicalIdByName(portName);
+            return _motionService.ReadDo(logicalId);
+        }
+
+        /// <summary>
+        /// 读取数字输出 DO 当前状态（按逻辑 ID）
+        /// </summary>
+        /// <param name="logicalId">DO 逻辑端口号</param>
+        /// <returns>true=ON, false=OFF</returns>
+        public bool ReadDO(int logicalId)
+        {
+            EnsureMotionService();
+            return _motionService.ReadDo(logicalId);
+        }
+
+        /// <summary> 确保 IMotionService 已注入，否则抛出明确异常 </summary>
+        private void EnsureMotionService()
+        {
+            if (_motionService == null)
+                throw new InvalidOperationException("IO operation requires IMotionService. ScriptContext was created without motion service.");
+        }
+
+        /// <summary> 按 DO 端口名称查找逻辑 ID </summary>
+        private int GetDoLogicalIdByName(string portName)
+        {
+            var outputs = _motionService.GetOutputConfigurations();
+            var config = outputs.FirstOrDefault(o => string.Equals(o.Name, portName, StringComparison.OrdinalIgnoreCase));
+            if (config == null)
+                throw new ArgumentException($"DO port '{portName}' not found in hwcfg.xml outputs");
+            return config.LogicalId;
+        }
+
+        /// <summary> 按 DI 端口名称查找逻辑 ID </summary>
+        private int GetDiLogicalIdByName(string portName)
+        {
+            var inputs = _motionService.GetInputConfigurations();
+            var config = inputs.FirstOrDefault(i => string.Equals(i.Name, portName, StringComparison.OrdinalIgnoreCase));
+            if (config == null)
+                throw new ArgumentException($"DI port '{portName}' not found in hwcfg.xml inputs");
+            return config.LogicalId;
         }
     }
 }

@@ -226,7 +226,7 @@ namespace Recipe.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
-        private int _selectedTabIndex = 1;
+        private int _selectedTabIndex = 0;
         public int SelectedTabIndex
         {
             get => _selectedTabIndex;

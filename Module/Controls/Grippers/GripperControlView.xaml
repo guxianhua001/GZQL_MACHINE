@@ -41,6 +41,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <Ellipse Width="12" Height="12" Fill="{Binding StatusBrush}"
@@ -49,7 +50,17 @@
                     <TextBlock Text="{Binding StatusMessage}" Grid.Column="1"
                                VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Medium" FontSize="12"/>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <!-- 实时位置显示 -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="12,0,8,0">
+                        <materialDesign:PackIcon Kind="MapMarkerDistance" Width="14" Height="14"
+                                                 VerticalAlignment="Center" Foreground="#1A73E8" Margin="0,0,4,0"/>
+                        <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#1A73E8">
+                            <Run Text="{Binding CurrentPosition, StringFormat=F1, Mode=OneWay}"/>
+                            <!--<Run Text=" mm"/>-->
+                        </TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="CheckCircle" Width="14" Height="14" VerticalAlignment="Center"
                                                  Foreground="#4CAF50" Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisConverter}}"/>
                         <TextBlock Text="{lang:Lang Gripper_Online}" VerticalAlignment="Center" Margin="3,0,0,0" FontSize="11"

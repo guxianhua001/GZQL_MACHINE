@@ -1,6 +1,7 @@
 using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
+using MotionControl.Interfaces;
 using Natasha.CSharp;
 using Prism.Commands;
 using Prism.Events;
@@ -27,6 +28,7 @@ namespace Module.ViewModels
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILocalizationService _localizationService;
+        private readonly IMotionService _motionService;
         private ProcessStep _step;
         private IList<ProcessStep> _allSteps;
         private readonly object _compileLock = new object();
@@ -150,16 +152,27 @@ public class ScriptAction
         // Read step output parameters
         // string output = ctx.GetStepOutput(""StepSeq_ParamName"");
 
+        // Digital Output (DO) - write by port name from hwcfg.xml
+        // ctx.WriteDO(""PortName"", true);
+
+        // Digital Input (DI) - read by port name from hwcfg.xml
+        // bool sensor = ctx.ReadDI(""SensorName"");
+
+        // DO/DI by logical ID
+        // ctx.WriteDO(0, true);
+        // bool di0 = ctx.ReadDI(0);
+
         return true; // true=pass, false=fail
     }
 }";
 
-        public ScriptDetailViewModel(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator, ILocalizationService localizationService)
+        public ScriptDetailViewModel(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator, ILocalizationService localizationService, IMotionService motionService)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _eventAggregator = eventAggregator;
             _localizationService = localizationService;
+            _motionService = motionService;
 
             CompileCommand = new DelegateCommand(OnCompile);
             ExecuteCommand = new DelegateCommand(OnExecute);
@@ -341,7 +354,7 @@ public class ScriptAction
                     foreach (var op in StepOutputParameters)
                         stepOutputs[op.Name] = op.Value ?? "0";
 
-                    var ctx = new ScriptContext(globalVariables, stepOutputs);
+                    var ctx = new ScriptContext(globalVariables, stepOutputs, _motionService);
                     bool success = _compiledDelegate(ctx);
 
                     if (!success)
