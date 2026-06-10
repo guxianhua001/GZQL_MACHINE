@@ -671,18 +671,24 @@ namespace StationTasks.Models
 
         private int _zAxisId;
         private int _xAxisId;
+        private int _yAxisId;
         private string _zInitPosition = "Z_Init";
         private string _xStartPosition = "X_Start";
         private string _zPhotoPosition = "Z_Photo";
         private string _xEndPosition = "X_End";
         private string _zSafePosition = "Z_Safe";
         private string _xStandbyPosition = "X_Standby";
+        private string _yStartPosition = "Y_Start";
+        private string _yEndPosition = "Y_End";
+        private string _yStandbyPosition = "Y_Standby";
         private double _moveSpeed = 10.0;
 
         /// <summary> Z轴编号，用于控制Z轴运动 </summary>
         public int ZAxisId { get => _zAxisId; set => SetProperty(ref _zAxisId, value); }
         /// <summary> X轴编号，用于控制X轴运动 </summary>
         public int XAxisId { get => _xAxisId; set => SetProperty(ref _xAxisId, value); }
+        /// <summary> Y轴编号，用于控制Y轴运动 </summary>
+        public int YAxisId { get => _yAxisId; set => SetProperty(ref _yAxisId, value); }
         /// <summary> Z轴初始位置名称，扫描开始前Z轴先移动到此位置 </summary>
         public string ZInitPosition { get => _zInitPosition; set => SetProperty(ref _zInitPosition, value); }
         /// <summary> X轴起始位置名称，扫描时X轴从此位置开始 </summary>
@@ -695,6 +701,12 @@ namespace StationTasks.Models
         public string ZSafePosition { get => _zSafePosition; set => SetProperty(ref _zSafePosition, value); }
         /// <summary> X轴待机位置名称，扫描完成后X轴回到此位置待命 </summary>
         public string XStandbyPosition { get => _xStandbyPosition; set => SetProperty(ref _xStandbyPosition, value); }
+        /// <summary> Y轴起始位置名称，扫描时Y轴从此位置开始 </summary>
+        public string YStartPosition { get => _yStartPosition; set => SetProperty(ref _yStartPosition, value); }
+        /// <summary> Y轴结束位置名称，扫描时Y轴到达此位置结束 </summary>
+        public string YEndPosition { get => _yEndPosition; set => SetProperty(ref _yEndPosition, value); }
+        /// <summary> Y轴待机位置名称，扫描完成后Y轴回到此位置待命 </summary>
+        public string YStandbyPosition { get => _yStandbyPosition; set => SetProperty(ref _yStandbyPosition, value); }
         /// <summary> 运动速度，扫描过程中轴的移动速度 </summary>
         public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
 
@@ -851,13 +863,56 @@ namespace StationTasks.Models
         private string _sourceKey;
         private string _globalVariableName;
         private string _compensatedGlobalVariableName;
+        private double _fixedCompensation;
+        private double _baseZValue = 11.5;
 
         /// <summary> 解析结果中的键名（如 Tab1Height、offsetX） </summary>
         public string SourceKey { get => _sourceKey; set => SetProperty(ref _sourceKey, value); }
         /// <summary> 映射到的全局变量名（接收原始实测值） </summary>
-        public string GlobalVariableName { get => _globalVariableName; set => SetProperty(ref _globalVariableName, value); }
+        public string GlobalVariableName
+        {
+            get => _globalVariableName;
+            set
+            {
+                if (SetProperty(ref _globalVariableName, value))
+                    RaisePropertyChanged(nameof(IsLinked));
+            }
+        }
         /// <summary> 补偿后值写入的全局变量名（接收 实测值+固定补偿，可为空表示不写入） </summary>
-        public string CompensatedGlobalVariableName { get => _compensatedGlobalVariableName; set => SetProperty(ref _compensatedGlobalVariableName, value); }
+        public string CompensatedGlobalVariableName
+        {
+            get => _compensatedGlobalVariableName;
+            set
+            {
+                if (SetProperty(ref _compensatedGlobalVariableName, value))
+                    RaisePropertyChanged(nameof(IsCompensationLinked));
+            }
+        }
+        /// <summary> 固定补偿值（mm），补偿后值 = 实测值 + 固定补偿 </summary>
+        public double FixedCompensation { get => _fixedCompensation; set => SetProperty(ref _fixedCompensation, value); }
+        /// <summary> 基准Z值（mm），偏差 = 实测值 - 基准Z值 </summary>
+        public double BaseZValue { get => _baseZValue; set => SetProperty(ref _baseZValue, value); }
+
+        /// <summary> 是否已链接原始值全局变量 </summary>
+        public bool IsLinked => !string.IsNullOrEmpty(GlobalVariableName);
+        /// <summary> 是否已链接补偿后值全局变量 </summary>
+        public bool IsCompensationLinked => !string.IsNullOrEmpty(CompensatedGlobalVariableName);
+
+        private double _displayValue;
+        /// <summary> 链接的全局变量当前值，用于 GlobalVariableLinkControl 实时显示 </summary>
+        public double DisplayValue
+        {
+            get => _displayValue;
+            set => SetProperty(ref _displayValue, value);
+        }
+
+        private double _compensatedDisplayValue;
+        /// <summary> 补偿后全局变量当前值，用于 GlobalVariableLinkControl 实时显示 </summary>
+        public double CompensatedDisplayValue
+        {
+            get => _compensatedDisplayValue;
+            set => SetProperty(ref _compensatedDisplayValue, value);
+        }
     }
 
     /// <summary>
@@ -896,7 +951,18 @@ namespace StationTasks.Models
         /// <summary> 补偿后值 = 实测值 + 固定补偿（mm），只读计算属性 </summary>
         public double CompensatedValue => MeasuredValue + FixedCompensation;
         /// <summary> 补偿后将写入的全局变量名（来自变量映射配置） </summary>
-        public string TargetGlobalVariable { get => _targetGlobalVariable; set => SetProperty(ref _targetGlobalVariable, value); }
+        public string TargetGlobalVariable
+        {
+            get => _targetGlobalVariable;
+            set
+            {
+                if (SetProperty(ref _targetGlobalVariable, value))
+                    RaisePropertyChanged(nameof(IsDeviationLinked));
+            }
+        }
+        /// <summary> 是否已链接到偏差全局变量（供 GlobalVariableLinkControl 使用） </summary>
+        [JsonIgnore]
+        public bool IsDeviationLinked => !string.IsNullOrEmpty(_targetGlobalVariable);
         /// <summary> 检测状态：Pass(合格) / Fail(超限) / ---(未检测)，根据实测值与上下限判定 </summary>
         public string Status { get => _status; set => SetProperty(ref _status, value); }
     }
@@ -914,21 +980,33 @@ namespace StationTasks.Models
         /// <summary> 关联通道号（AD通道从0开始，0-8） </summary>
         public int LinkedChannel { get => _linkedChannel; set => SetProperty(ref _linkedChannel, value); }
 
-        private double _targetForce = 0.3;
+        private double _targetForce = 5.0;
         /// <summary> 目标力值（N） </summary>
         public double TargetForce { get => _targetForce; set => SetProperty(ref _targetForce, value); }
 
-        private double _forceMin = -2.0;
+        private double _forceMin = -20.0;
         /// <summary> 力值下限（N） </summary>
         public double ForceMin { get => _forceMin; set => SetProperty(ref _forceMin, value); }
 
-        private double _forceMax = 2.0;
+        private double _forceMax = 20.0;
         /// <summary> 力值上限（N） </summary>
         public double ForceMax { get => _forceMax; set => SetProperty(ref _forceMax, value); }
 
         private string _linkedVariableName;
         /// <summary> 关联变量名，寻针结果写入该全局变量 </summary>
-        public string LinkedVariableName { get => _linkedVariableName; set => SetProperty(ref _linkedVariableName, value); }
+        public string LinkedVariableName
+        {
+            get => _linkedVariableName;
+            set
+            {
+                if (SetProperty(ref _linkedVariableName, value))
+                    RaisePropertyChanged(nameof(IsLinked));
+            }
+        }
+
+        /// <summary> 是否已链接到全局变量（供 GlobalVariableLinkControl 使用） </summary>
+        [JsonIgnore]
+        public bool IsLinked => !string.IsNullOrEmpty(_linkedVariableName);
 
         private string _description;
         /// <summary> 通道描述 </summary>
@@ -943,6 +1021,16 @@ namespace StationTasks.Models
         private bool _isForceInRange = true;
         /// <summary> 力值是否在合格范围内（运行时判定，不序列化） </summary>
         public bool IsForceInRange { get => _isForceInRange; set => SetProperty(ref _isForceInRange, value); }
+
+        [JsonIgnore]
+        private string _channelUnit = "N";
+        /// <summary> 通道物理量单位（来自 hwcfg.xml 配置，不序列化） </summary>
+        public string ChannelUnit { get => _channelUnit; set => SetProperty(ref _channelUnit, value); }
+
+        [JsonIgnore]
+        private string _channelName;
+        /// <summary> 通道名称（来自 hwcfg.xml 配置，不序列化） </summary>
+        public string ChannelName { get => _channelName; set => SetProperty(ref _channelName, value); }
     }
 
     /// <summary>

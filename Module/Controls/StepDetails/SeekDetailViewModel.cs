@@ -2,11 +2,14 @@ using Core.Models;
 using MotionControl.Interfaces;
 using Newtonsoft.Json;
 using Prism.Commands;
+using Prism.Events;
 using Prism.Mvvm;
+using Recipe.Events;
 using Recipe.Interfaces;
-using Core.Abstraction;  // ILocalizationService 接口
+using Core.Abstraction;  // ILocalizationService / IADValueConverter 接口
 using StationTasks.Models;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -28,6 +31,9 @@ namespace Module.ViewModels
         private DispatcherTimer _refreshTimer;
         private bool _isRefreshing;
         private readonly ILocalizationService _localizationService;
+        /// <summary> AD值转换器（Singleton），用于获取通道配置（名称、单位等） </summary>
+        private readonly IADValueConverter _adConverter;
+        private readonly IEventAggregator _eventAggregator;
 
         /// <summary> 当前编辑的工艺步骤，设置时自动初始化通道行 </summary>
         public ProcessStep Step
@@ -59,6 +65,14 @@ namespace Module.ViewModels
         {
             get => _globalVariableOptions;
             set => SetProperty(ref _globalVariableOptions, value);
+        }
+
+        /// <summary> 可链接的全局变量列表（仅 Double 类型），供 GlobalVariableLinkControl 使用 </summary>
+        private ObservableCollection<GlobalVariable> _linkableGlobalVariables;
+        public ObservableCollection<GlobalVariable> LinkableGlobalVariables
+        {
+            get => _linkableGlobalVariables;
+            set => SetProperty(ref _linkableGlobalVariables, value);
         }
 
         public bool IsRefreshing
@@ -95,14 +109,21 @@ namespace Module.ViewModels
         /// <summary> 保存并关闭弹窗命令 </summary>
         public ICommand SaveCommand { get; }
 
+        /// <summary> 取消链接全局变量命令 </summary>
+        public ICommand UnlinkVariableCommand { get; }
+
         public SeekDetailViewModel(
             IMotionService motionService,
             IRecipePoolService recipePoolService,
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            IADValueConverter adConverter,
+            IEventAggregator eventAggregator)
         {
             _motionService = motionService;
             _recipePoolService = recipePoolService;
             _localizationService = localizationService;
+            _adConverter = adConverter;
+            _eventAggregator = eventAggregator;
 
             AddChannelRowCommand = new DelegateCommand(OnAddChannelRow);
             DeleteChannelRowCommand = new DelegateCommand(OnDeleteChannelRow, () => SelectedChannelRow != null)
@@ -116,6 +137,11 @@ namespace Module.ViewModels
             CloseCommand = new DelegateCommand(OnClose);
             SaveOnlyCommand = new DelegateCommand(OnSaveOnly);
             SaveCommand = new DelegateCommand(OnSave);
+            UnlinkVariableCommand = new DelegateCommand(OnUnlinkVariable);
+
+            // 订阅全局变量变更事件，使用 UIThread 确保在 UI 线程刷新显示
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
+                .Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
             LoadGlobalVariablesAsync().ConfigureAwait(false);
         }
@@ -149,10 +175,13 @@ namespace Module.ViewModels
                     LinkedVariableName = r.LinkedVariableName,
                     Description = r.Description
                 }));
+
+            // 从 AD 通道配置填充通道名称和单位
+            RefreshChannelConfigInfo();
         }
 
         /// <summary>
-        /// 从 IRecipePoolService 加载全局变量名称列表，构建下拉选项
+        /// 从 IRecipePoolService 加载全局变量，构建可链接变量列表（仅 Double 类型）
         /// </summary>
         private async Task LoadGlobalVariablesAsync()
         {
@@ -162,15 +191,112 @@ namespace Module.ViewModels
                 if (string.IsNullOrEmpty(poolId)) return;
 
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+
+                // 构建字符串下拉选项（向后兼容）
                 var options = new ObservableCollection<string> { "" };
                 foreach (var v in variables)
                     options.Add(v.Name);
                 GlobalVariableOptions = options;
+
+                // 筛选 Double 类型变量，供 GlobalVariableLinkControl 使用
+                var doubleVars = variables
+                    .Where(v => v.Type == GlobalVariableType.Double)
+                    .ToList();
+
+                // 取消旧变量的值变更订阅
+                UnsubscribeVariableValueChanges();
+
+                // 就地更新集合而非替换引用，避免行的绑定失效
+                if (LinkableGlobalVariables == null)
+                    LinkableGlobalVariables = new ObservableCollection<GlobalVariable>(doubleVars);
+                else
+                {
+                    LinkableGlobalVariables.Clear();
+                    foreach (var v in doubleVars)
+                        LinkableGlobalVariables.Add(v);
+                }
+
+                SubscribeVariableValueChanges();
+
+                // 无论首次加载还是事件触发，均刷新所有行的链接显示值
+                RefreshLinkedVariableDisplayValues();
             }
             catch
             {
                 GlobalVariableOptions = new ObservableCollection<string> { "" };
+                LinkableGlobalVariables = new ObservableCollection<GlobalVariable>();
             }
+        }
+
+        /// <summary>
+        /// 全局变量变更事件回调，重新加载变量列表并刷新显示
+        /// </summary>
+        private void OnGlobalVariablesChanged(string poolId)
+        {
+            LoadGlobalVariablesAsync().ConfigureAwait(false);
+        }
+
+        /// <summary> 订阅 Double 类型变量的 PropertyChanged，值变化时实时刷新行显示 </summary>
+        private void SubscribeVariableValueChanges()
+        {
+            if (LinkableGlobalVariables == null) return;
+            foreach (var v in LinkableGlobalVariables)
+                v.PropertyChanged += OnGlobalVariablePropertyChanged;
+        }
+
+        /// <summary> 取消所有 Double 变量的 PropertyChanged 订阅 </summary>
+        private void UnsubscribeVariableValueChanges()
+        {
+            if (LinkableGlobalVariables == null) return;
+            foreach (var v in LinkableGlobalVariables)
+                v.PropertyChanged -= OnGlobalVariablePropertyChanged;
+        }
+
+        /// <summary>
+        /// 全局变量 Value 属性变化时，刷新链接了该变量的行的 CurrentForce 显示值
+        /// </summary>
+        private void OnGlobalVariablePropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(GlobalVariable.Value)) return;
+            if (sender is GlobalVariable gv)
+            {
+                foreach (var row in ChannelRows)
+                {
+                    if (string.Equals(row.LinkedVariableName, gv.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (double.TryParse(gv.Value, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double val))
+                            row.CurrentForce = val;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 刷新所有行的链接显示值（解决构造函数竞态问题）
+        /// </summary>
+        private void RefreshLinkedVariableDisplayValues()
+        {
+            if (LinkableGlobalVariables == null) return;
+            foreach (var row in ChannelRows)
+            {
+                if (!string.IsNullOrEmpty(row.LinkedVariableName))
+                {
+                    var gv = LinkableGlobalVariables
+                        .Cast<GlobalVariable>()
+                        .FirstOrDefault(v => string.Equals(v.Name, row.LinkedVariableName, StringComparison.OrdinalIgnoreCase));
+                    if (gv != null && double.TryParse(gv.Value, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out double val))
+                        row.CurrentForce = val;
+                }
+            }
+        }
+
+        /// <summary> 取消链接选中行的全局变量 </summary>
+        private void OnUnlinkVariable()
+        {
+            if (SelectedChannelRow != null)
+                SelectedChannelRow.LinkedVariableName = null;
         }
 
         /// <summary> 新增通道行，Sub 自动递增 </summary>
@@ -280,9 +406,28 @@ namespace Module.ViewModels
                     row.CurrentForce = force;
                     row.IsForceInRange = force >= row.ForceMin && force <= row.ForceMax;
                 }
+                // 同步通道配置信息（名称、单位）
+                RefreshChannelConfigInfo();
             }
             catch
             {
+            }
+        }
+
+        /// <summary>
+        /// 从 IADValueConverter 获取已加载的通道配置，更新每行的名称和单位
+        /// </summary>
+        private void RefreshChannelConfigInfo()
+        {
+            if (_adConverter == null) return;
+            foreach (var row in ChannelRows)
+            {
+                var cfg = _adConverter.GetChannelConfig(row.LinkedChannel);
+                if (cfg != null)
+                {
+                    row.ChannelUnit = cfg.Unit ?? "N";
+                    row.ChannelName = cfg.Name ?? string.Empty;
+                }
             }
         }
 
@@ -337,6 +482,9 @@ namespace Module.ViewModels
         public void Dispose()
         {
             StopRefreshTimer();
+            UnsubscribeVariableValueChanges();
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
+                .Unsubscribe(OnGlobalVariablesChanged);
         }
     }
 }

@@ -1,4 +1,6 @@
 using System;
+using System.Globalization;
+using Core.Models;
 using MotionControl.Interfaces;
 using Prism.Mvvm;
 using StationTasks.Models;
@@ -17,6 +19,7 @@ namespace Module.ViewModels
     {
         private readonly SubMove _subMove;
         private readonly IPositionProvider _positionProvider;
+        private ObservableCollection<GlobalVariable> _linkedVariables;
 
         /// <summary> 底层 SubMove 模型，保存时回写 </summary>
         public SubMove SubMove => _subMove;
@@ -42,6 +45,14 @@ namespace Module.ViewModels
         public string PositionName { get => _subMove.PositionName; set => _subMove.PositionName = value; }
         public string Description { get => _subMove.Description; set => _subMove.Description = value; }
         public double Offset { get => _subMove.Offset; set => _subMove.Offset = value; }
+        /// <summary> 链接变量时显示的实时数值（从全局变量的 Value 解析而来） </summary>
+        private double _offsetDisplayValue;
+        public double OffsetDisplayValue
+        {
+            get => _offsetDisplayValue;
+            set => SetProperty(ref _offsetDisplayValue, value);
+        }
+
         public string OffsetVariableName
         {
             get => _subMove.OffsetVariableName;
@@ -53,6 +64,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(OffsetVariableName));
                     RaisePropertyChanged(nameof(IsOffsetLinked));
                     RaisePropertyChanged(nameof(OffsetDisplayText));
+                    UpdateOffsetDisplayValue();
                     // 如果输入的是数值，同步到 Offset 字段
                     if (double.TryParse(value, out var numVal))
                         _subMove.Offset = numVal;
@@ -175,6 +187,28 @@ namespace Module.ViewModels
         {
             _subMove = subMove;
             _positionProvider = positionProvider;
+            UpdateOffsetDisplayValue();
+        }
+
+        /// <summary>
+        /// 根据链接的全局变量值更新 OffsetDisplayValue
+        /// </summary>
+        public void UpdateOffsetDisplayValue()
+        {
+            if (!string.IsNullOrEmpty(OffsetVariableName) && !double.TryParse(OffsetVariableName, out _))
+            {
+                var variable = _linkedVariables?
+                    .Cast<GlobalVariable>()
+                    .FirstOrDefault(v => string.Equals(v.Name, OffsetVariableName, StringComparison.OrdinalIgnoreCase));
+                if (variable != null && double.TryParse(variable.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double val))
+                    OffsetDisplayValue = val;
+            }
+        }
+
+        /// <summary> 设置可链接全局变量列表引用（由父 ViewModel 调用） </summary>
+        internal void SetLinkableVariables(ObservableCollection<GlobalVariable> variables)
+        {
+            _linkedVariables = variables;
         }
 
         /// <summary>

@@ -58,6 +58,21 @@ namespace StationTasks.Services
             }
         }
         /// <summary>
+        /// 仅编译脚本，不执行。用于验证脚本语法和约定是否正确
+        /// </summary>
+        /// <exception cref="InvalidOperationException">编译失败或约定不满足时抛出</exception>
+        public void CompileScript()
+        {
+            if (string.IsNullOrWhiteSpace(_script))
+                throw new InvalidOperationException("脚本内容为空");
+
+            // 清除缓存以强制重新编译
+            _compiledDelegate = null;
+            _compiledScript = null;
+            EnsureCompiled();
+        }
+
+        /// <summary>
         /// 确保 Natasha 已初始化且脚本已编译，仅当脚本内容变化时重新编译
         /// </summary>
         private void EnsureCompiled()

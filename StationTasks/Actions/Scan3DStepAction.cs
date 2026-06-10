@@ -20,7 +20,7 @@ namespace StationTasks.Actions
 {
     /// <summary>
     /// SCAN步骤动作：3D相机扫描工作流
-    /// 按7步顺序编排：Z抬升→X起始→Z下降→IO触发(异步复位)→X终点+TCP实时接收→Z安全→X待机
+    /// 按9步顺序编排：Z抬升→Y起始→X起始→Z下降→IO触发(异步复位)→X终点+TCP实时接收→Z安全→X待机→Y待机
     /// X轴移动期间通过TCP/IP实时接收3D相机回传数据并解析
     /// </summary>
     public class Scan3DStepAction : IProcessStepAction
@@ -54,7 +54,7 @@ namespace StationTasks.Actions
         }
 
         /// <summary>
-        /// 执行3D相机扫描步骤：读取ScanDetail配置，按7步工作流顺序执行
+        /// 执行3D相机扫描步骤：读取ScanDetail配置，按9步工作流顺序执行
         /// </summary>
         public async Task ExecuteAsync(ProcessStep step, StationTaskBase task, CancellationToken token)
         {
@@ -77,29 +77,37 @@ namespace StationTasks.Actions
                 _logger.Info($"SCAN [{step.Seq}] 步骤1: Z轴抬升至 {detail.ZInitPosition}");
                 await task.ExecuteMoveAsync(detail.ZAxisId, detail.ZInitPosition, speed);
 
-                // 步骤2：X轴移动至起始点
-                _logger.Info($"SCAN [{step.Seq}] 步骤2: X轴移动至 {detail.XStartPosition}");
+                // 步骤2：Y轴移动至起始点
+                _logger.Info($"SCAN [{step.Seq}] 步骤2: Y轴移动至 {detail.YStartPosition}");
+                await task.ExecuteMoveAsync(detail.YAxisId, detail.YStartPosition, speed);
+
+                // 步骤3：X轴移动至起始点
+                _logger.Info($"SCAN [{step.Seq}] 步骤3: X轴移动至 {detail.XStartPosition}");
                 await task.ExecuteMoveAsync(detail.XAxisId, detail.XStartPosition, speed);
 
-                // 步骤3：Z轴下降至拍照高度
-                _logger.Info($"SCAN [{step.Seq}] 步骤3: Z轴下降至 {detail.ZPhotoPosition}");
+                // 步骤4：Z轴下降至拍照高度
+                _logger.Info($"SCAN [{step.Seq}] 步骤4: Z轴下降至 {detail.ZPhotoPosition}");
                 await task.ExecuteMoveAsync(detail.ZAxisId, detail.ZPhotoPosition, speed);
 
-                // 步骤4：触发IO拍照信号（异步自动复位，不阻塞后续流程）
-                _logger.Info($"SCAN [{step.Seq}] 步骤4: 触发IO[{detail.TriggerIoPort}]拍照信号，复位延时{detail.IoResetDelayMs}ms");
+                // 步骤5：触发IO拍照信号（异步自动复位，不阻塞后续流程）
+                _logger.Info($"SCAN [{step.Seq}] 步骤5: 触发IO[{detail.TriggerIoPort}]拍照信号，复位延时{detail.IoResetDelayMs}ms");
                 TriggerIoWithAutoReset(detail.TriggerIoPort, detail.IoResetDelayMs);
 
-                // 步骤5：X轴移动至终点，同时通过TCP实时接收3D相机数据
-                _logger.Info($"SCAN [{step.Seq}] 步骤5: X轴移动至 {detail.XEndPosition}，同时接收TCP数据");
+                // 步骤6：X轴移动至终点，同时通过TCP实时接收3D相机数据
+                _logger.Info($"SCAN [{step.Seq}] 步骤6: X轴移动至 {detail.XEndPosition}，同时接收TCP数据");
                 string rawData = await MoveAndReceiveDataAsync(task, detail, speed, token);
 
-                // 步骤6：Z轴抬升至安全高度
-                _logger.Info($"SCAN [{step.Seq}] 步骤6: Z轴抬升至 {detail.ZSafePosition}");
+                // 步骤7：Z轴抬升至安全高度
+                _logger.Info($"SCAN [{step.Seq}] 步骤7: Z轴抬升至 {detail.ZSafePosition}");
                 await task.ExecuteMoveAsync(detail.ZAxisId, detail.ZSafePosition, speed);
 
-                // 步骤7：X轴返回待机位置
-                _logger.Info($"SCAN [{step.Seq}] 步骤7: X轴返回 {detail.XStandbyPosition}");
+                // 步骤8：X轴返回待机位置
+                _logger.Info($"SCAN [{step.Seq}] 步骤8: X轴返回 {detail.XStandbyPosition}");
                 await task.ExecuteMoveAsync(detail.XAxisId, detail.XStandbyPosition, speed);
+
+                // 步骤9：Y轴返回待机位置
+                _logger.Info($"SCAN [{step.Seq}] 步骤9: Y轴返回 {detail.YStandbyPosition}");
+                await task.ExecuteMoveAsync(detail.YAxisId, detail.YStandbyPosition, speed);
 
                 // 解析数据并映射全局变量
                 if (!string.IsNullOrEmpty(rawData))
@@ -248,6 +256,7 @@ namespace StationTasks.Actions
 
         /// <summary>
         /// 将解析结果映射到全局变量并持久化
+        /// 同时写入原始实测值和补偿后值（实测值+固定补偿）
         /// </summary>
         private async Task MapToGlobalVariablesAsync(
             Dictionary<string, double> parsedData, ObservableCollection<VariableMapping> mappings)
@@ -266,7 +275,7 @@ namespace StationTasks.Actions
 
             foreach (var mapping in mappings)
             {
-                if (string.IsNullOrEmpty(mapping.SourceKey) || string.IsNullOrEmpty(mapping.GlobalVariableName))
+                if (string.IsNullOrEmpty(mapping.SourceKey))
                     continue;
 
                 if (!parsedData.TryGetValue(mapping.SourceKey, out double value))
@@ -275,16 +284,38 @@ namespace StationTasks.Actions
                     continue;
                 }
 
-                var targetVar = globalVars.FirstOrDefault(v => v.Name == mapping.GlobalVariableName);
-                if (targetVar != null)
+                // 1. 原始实测值 → 全局变量
+                if (!string.IsNullOrEmpty(mapping.GlobalVariableName))
                 {
-                    targetVar.Value = value.ToString("F6");
-                    _logger.Info($"SCAN 映射: {mapping.SourceKey}={value:F3} → 全局变量 '{mapping.GlobalVariableName}'");
-                    changed = true;
+                    var targetVar = globalVars.FirstOrDefault(v => v.Name == mapping.GlobalVariableName);
+                    if (targetVar != null)
+                    {
+                        targetVar.Value = value.ToString("F6");
+                        _logger.Info($"SCAN 映射: {mapping.SourceKey}={value:F3} → '{mapping.GlobalVariableName}'(原始值)");
+                        changed = true;
+                    }
+                    else
+                    {
+                        _logger.Warn($"SCAN 映射跳过: 全局变量 '{mapping.GlobalVariableName}' 不存在");
+                    }
                 }
-                else
+
+                // 2. 偏差值（实测值 - 基准Z值）→ 全局变量
+                if (!string.IsNullOrEmpty(mapping.CompensatedGlobalVariableName))
                 {
-                    _logger.Warn($"SCAN 映射跳过: 全局变量 '{mapping.GlobalVariableName}' 不存在");
+                    // 偏差 = 实测值 - 基准Z值
+                    double deviation = value - mapping.BaseZValue;
+                    var compTargetVar = globalVars.FirstOrDefault(v => v.Name == mapping.CompensatedGlobalVariableName);
+                    if (compTargetVar != null)
+                    {
+                        compTargetVar.Value = deviation.ToString("F6");
+                        _logger.Info($"SCAN 映射: {mapping.SourceKey}({value:F3}-{mapping.BaseZValue:F3})={deviation:F3} → '{mapping.CompensatedGlobalVariableName}'(偏差)");
+                        changed = true;
+                    }
+                    else
+                    {
+                        _logger.Warn($"SCAN 映射跳过: 偏差全局变量 '{mapping.CompensatedGlobalVariableName}' 不存在");
+                    }
                 }
             }
 

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Core.Abstraction;
 
 namespace MotionControl.Models
 {
@@ -14,6 +15,9 @@ namespace MotionControl.Models
         public List<SignalConfig> Signals { get; set; } = new();
         public List<OutputSignalConfig> OutputSignals { get; set; } = new();
         public List<LightConfig> Lights { get; set; } = new();
+
+        /// <summary> 模拟量输入通道配置（来自 hwcfg.xml AnalogInputs 节点） </summary>
+        public List<ADChannelConfig> AnalogInputs { get; set; } = new();
     }
     public class CardConfig
     {

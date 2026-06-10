@@ -1,6 +1,8 @@
 using Core.Utilities;
 using MotionControl.Exceptions;
 using MotionControl.Interfaces;
+using Prism.Events;
+using Recipe.Events;
 using Recipe.Interfaces;
 using StationTasks.Models;
 using StationTasks.Services;
@@ -26,6 +28,7 @@ namespace StationTasks.Actions
         private readonly ITCPEventService _tcpEventService;
         private readonly IVisionDataParser _defaultParser;
         private readonly ScriptVisionDataParser _scriptParser;
+        private readonly IEventAggregator _eventAggregator;
 
         public StepType SupportedStepType => StepType.VISION;
 
@@ -34,13 +37,15 @@ namespace StationTasks.Actions
             ILoggerService logger,
             ITCPEventService tcpEventService,
             IVisionDataParser defaultParser,
-            ScriptVisionDataParser scriptParser)
+            ScriptVisionDataParser scriptParser,
+            IEventAggregator eventAggregator)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _tcpEventService = tcpEventService;
             _defaultParser = defaultParser;
             _scriptParser = scriptParser;
+            _eventAggregator = eventAggregator;
         }
 
         public async Task ExecuteAsync(ProcessStep step, StationTaskBase task, CancellationToken token)
@@ -216,6 +221,9 @@ namespace StationTasks.Actions
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
                 _logger.Info("VISION 全局变量已保存");
+
+                // 通知所有订阅者全局变量已更新，刷新 UI 显示值
+                _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
             }
         }
     }

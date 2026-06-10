@@ -4,6 +4,8 @@ using Core.Models;
 using Core.Utilities;
 using MotionControl.Exceptions;
 using MotionControl.Interfaces;
+using Prism.Events;
+using Recipe.Events;
 using Recipe.Interfaces;
 using StationTasks.Models;
 using StationTasks.Tasks;
@@ -22,6 +24,7 @@ namespace StationTasks.Actions
         private readonly IRecipePoolService _recipePoolService;
         private readonly IAlarmService _alarmService;
         private readonly ILoggerService _logger;
+        private readonly IEventAggregator _eventAggregator;
 
         public StepType SupportedStepType => StepType.SEEK;
 
@@ -29,12 +32,14 @@ namespace StationTasks.Actions
             IMotionService motionService,
             IRecipePoolService recipePoolService,
             IAlarmService alarmService,
-            ILoggerService logger)
+            ILoggerService logger,
+            IEventAggregator eventAggregator)
         {
             _motionService = motionService;
             _recipePoolService = recipePoolService;
             _alarmService = alarmService;
             _logger = logger;
+            _eventAggregator = eventAggregator;
         }
 
         /// <summary>
@@ -112,6 +117,9 @@ namespace StationTasks.Actions
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
                 _logger.Info($"SEEK 步骤 [{step.Seq}] 全局变量已保存");
+
+                // 通知所有订阅者全局变量已更新，刷新 UI 显示值
+                _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
             }
 
             // 力值超限时发布步骤故障事件，并根据 AlarmConfig 决定是否触发报警

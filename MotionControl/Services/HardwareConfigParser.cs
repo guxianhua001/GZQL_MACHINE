@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -137,6 +138,28 @@ namespace MotionControl.Services
                     StationId = ParseInt(light.Attribute("stationId")?.Value)
                 });
             }
+
+            // 解析 AnalogInputs（AD 模拟量输入通道配置）
+            var analogInputsEl = root.Element("AnalogInputs");
+            if (analogInputsEl != null)
+            {
+                foreach (var ch in analogInputsEl.Elements("ADChannel"))
+                {
+                    config.AnalogInputs.Add(new ADChannelConfig
+                    {
+                        Channel = ParseIntAttr(ch, "channel", 0),
+                        Name = (string)ch.Attribute("name") ?? string.Empty,
+                        MinADValue = ParseDoubleAttr(ch, "minADValue", -32767),
+                        MaxADValue = ParseDoubleAttr(ch, "maxADValue", 32767),
+                        MinPhysicalValue = ParseDoubleAttr(ch, "minPhysical", 0),
+                        MaxPhysicalValue = ParseDoubleAttr(ch, "maxPhysical", 10),
+                        Unit = (string)ch.Attribute("unit") ?? "N",
+                        CalibrationFactor = ParseDoubleAttr(ch, "calibration", 1.0),
+                        ZeroOffset = ParseDoubleAttr(ch, "zeroOffset", 0.0),
+                        IsEnabled = ParseBoolAttr(ch, "isEnabled", true)
+                    });
+                }
+            }
             return config;
         }
 
@@ -145,6 +168,27 @@ namespace MotionControl.Services
         {
             if (string.IsNullOrWhiteSpace(s)) return null;
             return int.TryParse(s, out int val) ? val : null;
+        }
+
+        /// <summary> 解析整数属性，缺省返回 defaultValue </summary>
+        private static int ParseIntAttr(XElement el, string attr, int defaultValue)
+        {
+            var a = el.Attribute(attr);
+            return a != null && int.TryParse(a.Value, out int v) ? v : defaultValue;
+        }
+
+        /// <summary> 解析浮点属性，缺省返回 defaultValue </summary>
+        private static double ParseDoubleAttr(XElement el, string attr, double defaultValue)
+        {
+            var a = el.Attribute(attr);
+            return a != null && double.TryParse(a.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : defaultValue;
+        }
+
+        /// <summary> 解析布尔属性，缺省返回 defaultValue </summary>
+        private static bool ParseBoolAttr(XElement el, string attr, bool defaultValue)
+        {
+            var a = el.Attribute(attr);
+            return a != null && bool.TryParse(a.Value, out bool v) ? v : defaultValue;
         }
 
         /// <summary>

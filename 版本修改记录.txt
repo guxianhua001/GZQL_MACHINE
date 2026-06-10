@@ -1,6 +1,45 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.09 — SCAN步骤运动配置增加Y轴支持 + ScanDetailView重构
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - ScanDetailViewModel 运动配置仅有 Z/X 轴，缺少 Y 轴配置
+   - 位置名称从 IPositionProvider 加载，但仅填充 Z/X 下拉，未包含 Y
+   - ScanDetailView 包含运动配置和IO配置区，需重构简化
+   - 提示信息存在硬编码中文，未支持多语言
+
+2. 修复内容
+   - ScanDetail 模型新增 YAxisId、YStartPosition、YEndPosition、YStandbyPosition 属性
+   - ScanDetailViewModel 新增对应绑定属性及 YPositions 位置下拉集合
+   - LoadPositionsAsync 同时填充 Z/X/Y 三个位置下拉列表
+   - InitializeFromStep/OnSave 双向同步 Y 轴配置
+   - Scan3DStepAction 工作流从7步扩展为9步：新增 Y轴起始(步骤2)和 Y轴待机(步骤9)
+   - ScanDetailView 重构：删除运动配置和IO配置区，保留通讯、数据解析等配置
+   - 布局改为双列Grid：左列(通讯配置+数据解析脚本/映射)，右列(结果面板+执行测试+提示)
+   - 修复 MultiBinding 中 LangExtension 返回 Binding 导致 XamlParseException 的问题，改用独立 TextBlock 拼接
+   - 提示信息硬编码中文全部替换为多语言键 (zh-CN + en-US)
+   - 标题栏、提示信息、解析时间等硬编码中文替换为多语言键
+   - 添加中英文多语言资源键(ScanDetail_Title/Hint_TcpFlow/Hint_SampleSkip等)
+   - 数据解析面板 DataGrid 增加水平滚动条 (ScrollViewer.HorizontalScrollBarVisibility="Auto")
+   - 删除固定补偿列 (ScanDetail_Column_FixedComp) 和补偿变量列 (ScanDetail_Column_CompensatedVar)
+   - 补偿后值列改为超链接样式，点击复制全局变量名到剪贴板 (NavigateToGlobalVarCommand)
+   - 变量映射表“全局变量”列改用 GlobalVariableLinkControl，支持实时显示变量值+链接状态+下拉选择
+   - 修复脚本栏 TextBox 横向滚动条不显示问题（用 Grid 包裹约束宽度，避免 StackPanel 无限空间导致膨胀）
+   - 修复数据解析面板 DataGrid 横向滚动条：设置 MinWidth="620" 使 DataGrid 宽度超出容器，触发外层 ScrollViewer 横向滚动
+   - 右列恢复为 StackPanel 布局（取消 DockPanel 改动），WriteGlobalVar 列恢复 Width="*"
+   - 新增 OnUnlinkMapping 方法：解除映射行的全局变量链接
+   - 新增 using Core.Models 引用，支持 GlobalVariable 类型
+
+3. 影响文件
+   - StationTasks/Models/ProcessStep.cs (ScanDetail 类 + VariableMapping 新增 DisplayValue/IsLinked 属性)
+   - Module/Controls/StepDetails/ScanDetailViewModel.cs (新增 LinkableGlobalVariables/UnlinkMappingCommand)
+   - Module/Controls/StepDetails/ScanDetailView.xaml (新增 common 命名空间引用，变量映射列改用 GlobalVariableLinkControl)
+   - StationTasks/Actions/Scan3DStepAction.cs
+   - MainApp/Languages/Strings.zh-CN.xaml
+   - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.04 — CAD对位拟合点示教改为真实轴位置（Dx/Dy）
 -------------------------------------------------------------------------------
 

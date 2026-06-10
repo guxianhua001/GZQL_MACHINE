@@ -2,16 +2,15 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:converters="clr-namespace:Module.Converters"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
-             Width="920"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
+             Width="1010"
              MaxHeight="680">
 
     <Border Background="{DynamicResource MaterialDesignCardBackground}"
             CornerRadius="6">
         <Border.Resources>
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
-            <converters:NullToVisibilityConverter x:Key="NullToVisConv" />
         </Border.Resources>
 
         <Grid>
@@ -114,6 +113,17 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
 
+                        <!-- 通道名称（来自 hwcfg.xml 配置，只读） -->
+                        <DataGridTemplateColumn Header="{lang:Lang SeekDetail_Column_ChannelName}" Width="90" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ChannelName}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="#78909C" FontSize="12" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <!-- Target 目标力值 -->
                         <DataGridTemplateColumn Header="Target(N)" Width="95">
                             <DataGridTemplateColumn.CellTemplate>
@@ -131,13 +141,14 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- Force 实时力值（核心列，带颜色指示条） -->
-                        <DataGridTemplateColumn Header="Force" Width="110" IsReadOnly="True">
+                        <!-- Force 实时力值（核心列，带颜色指示条 + 单位显示） -->
+                        <DataGridTemplateColumn Header="Force" Width="130" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid VerticalAlignment="Center">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0"
@@ -178,6 +189,13 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
+                                        <!-- 单位显示（来自 hwcfg.xml AD 通道配置） -->
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding ChannelUnit}"
+                                                   FontSize="11"
+                                                   Foreground="#9E9E9E"
+                                                   VerticalAlignment="Center"
+                                                   Margin="3,0,0,0" />
                                     </Grid>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -217,30 +235,20 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- 全局变量（带链接图标） -->
-                        <DataGridTemplateColumn Header="{lang:Lang SeekDetail_Column_GlobalVar}" Width="140">
+                        <!-- 全局变量（统一使用 GlobalVariableLinkControl） -->
+                        <DataGridTemplateColumn Header="{lang:Lang SeekDetail_Column_GlobalVar}" Width="200">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <materialDesign:PackIcon Kind="LinkVariant"
-                                                                 VerticalAlignment="Center"
-                                                                 Margin="0,0,4,0"
-                                                                 Width="14" Height="14"
-                                                                 Foreground="#42A5F5"
-                                                                 Visibility="{Binding LinkedVariableName, Converter={StaticResource NullToVisConv}}" />
-                                        <TextBlock Text="{Binding LinkedVariableName}"
-                                                   VerticalAlignment="Center"
-                                                   FontSize="12" />
-                                    </StackPanel>
+                                    <common:GlobalVariableLinkControl
+                                        DisplayValue="{Binding CurrentForce, Mode=OneWay}"
+                                        DisplayForeground="#42A5F5"
+                                        IsLinked="{Binding IsLinked, Mode=OneWay}"
+                                        UnlinkCommand="{Binding DataContext.UnlinkVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        LinkedVariableName="{Binding LinkedVariableName, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding DataContext.LinkableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        ComboBoxWidth="100" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
-                            <DataGridTemplateColumn.CellEditingTemplate>
-                                <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding DataContext.GlobalVariableOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                              SelectedItem="{Binding LinkedVariableName, UpdateSourceTrigger=PropertyChanged}"
-                                              IsEditable="True" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
 
                         <!-- Description -->

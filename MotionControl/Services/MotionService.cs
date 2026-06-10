@@ -199,6 +199,15 @@ namespace MotionControl.Services
         public async Task InitializeAsync()
         {
             _config = _configLoader.Load();
+
+            // 从 hwcfg.xml 加载 AD 模拟量通道配置到转换器（Singleton，全局生效）
+            if (_config.AnalogInputs?.Count > 0)
+            {
+                foreach (var adCfg in _config.AnalogInputs)
+                    _adConverter.UpdateChannelConfig(adCfg);
+                _logger.Info($"已加载 {_config.AnalogInputs.Count} 个 AD 通道配置");
+            }
+
             foreach (var cardCfg in _config.Cards)
             {
                 var card = _cardFactory.GetCard(cardCfg.Index);

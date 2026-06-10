@@ -748,6 +748,9 @@ namespace StationTasks.Actions
                 {
                     await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
                     _logger.Info("[Branch] 全局变量已保存");
+
+                    // 通知所有订阅者全局变量已更新
+                    _ea.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>().Publish(poolId);
                 }
             }
             catch (Exception ex)

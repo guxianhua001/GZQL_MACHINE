@@ -129,8 +129,30 @@ namespace Module.ViewModels
         public ICommand SaveCommand { get; }
         public ICommand CloseCommand { get; }
 
-        /// <summary> 默认脚本模板（支持多语言） </summary>
-        public string DefaultScriptTemplate => L("ScriptDetail_DefaultTemplate");
+        /// <summary> Default script template (English, no multilingual) </summary>
+        public string DefaultScriptTemplate => @"using System;
+using System.Collections.Generic;
+using StationTasks.Models;
+
+// ScriptAction - Custom script for SCRIPT step
+// Convention: class ScriptAction with public static bool Execute(ScriptContext ctx)
+// Use // comments only (no /// XML doc comments) to avoid Natasha CS1569 error
+public class ScriptAction
+{
+    public static bool Execute(ScriptContext ctx)
+    {
+        // Read global variables
+        // double val = ctx.GetDouble(""VariableName"");
+
+        // Write to global variables
+        // ctx.Set(""VariableName"", 1.23);
+
+        // Read step output parameters
+        // string output = ctx.GetStepOutput(""StepSeq_ParamName"");
+
+        return true; // true=pass, false=fail
+    }
+}";
 
         public ScriptDetailViewModel(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator, ILocalizationService localizationService)
         {

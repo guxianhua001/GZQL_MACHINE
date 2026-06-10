@@ -4,6 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              xmlns:converters="clr-namespace:Module.Converters"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              Width="960"
              MaxHeight="720">
 
@@ -126,6 +127,18 @@
                                 <TextBlock Text="{lang:Lang VisionDetail_DefaultTemplate}" Margin="5,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <Button DockPanel.Dock="Right"
+                                Command="{Binding CompileScriptCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="8,4" Height="30" FontSize="11"
+                                materialDesign:ButtonAssist.CornerRadius="4"
+                                Margin="8,0,0,0"
+                                Foreground="#81C784" BorderBrush="#81C784">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="PlayCircleOutline" Width="14" Height="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="{lang:Lang VisionDetail_Compile}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <TextBlock Text="{lang:Lang VisionDetail_InputScriptVision}" VerticalAlignment="Center"
                                    FontSize="11" Foreground="White" />
                     </DockPanel>
@@ -213,7 +226,7 @@
                         <!-- 变量映射 Expander -->
                         <Expander IsExpanded="True" Header="{lang:Lang VisionDetail_VariableMapping}" Margin="0,0,0,8">
                             <StackPanel Margin="4">
-                                <DataGrid ItemsSource="{Binding VariableMappings}"
+                                <DataGrid ItemsSource="{Binding MappingRows}"
                                           SelectedItem="{Binding SelectedMapping}"
                                           AutoGenerateColumns="False"
                                           CanUserAddRows="False" CanUserDeleteRows="False"
@@ -228,28 +241,29 @@
                                                 <DataTemplate><TextBox Text="{Binding SourceKey, UpdateSourceTrigger=PropertyChanged}" FontSize="11"/></DataTemplate>
                                             </DataGridTemplateColumn.CellEditingTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="{lang:Lang VisionDetail_Column_GlobalVar}" Width="Auto">
+                                        <DataGridTemplateColumn Header="{lang:Lang VisionDetail_Column_GlobalVar}" Width="*">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding GlobalVariableName}" VerticalAlignment="Center" FontSize="11"/>
-                                                        <TextBlock Text="{lang:Lang VisionDetail_LinkVariableHint}"
-                                                                   FontSize="9" Foreground="#FFB74D" VerticalAlignment="Center" Margin="4,0,0,0"
-                                                                   Visibility="{Binding GlobalVariableName, Converter={StaticResource StringEmptyToCollapsedConverter}}"/>
-                                                    </StackPanel>
+                                                    <common:GlobalVariableLinkControl
+                                                        DisplayValue="{Binding DisplayValue, Mode=OneWay}"
+                                                        DisplayForeground="#81C784"
+                                                        IsLinked="{Binding IsLinked, Mode=OneWay}"
+                                                        UnlinkCommand="{Binding DataContext.UnlinkMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        LinkedVariableName="{Binding GlobalVariableName, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding DataContext.LinkableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        ComboBoxWidth="120" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                             <DataGridTemplateColumn.CellEditingTemplate>
                                                 <DataTemplate>
-                                                    <DockPanel>
-                                                        <TextBlock Text="{lang:Lang VisionDetail_LinkVariableHint}"
-                                                                   FontSize="9" Foreground="#FFB74D" VerticalAlignment="Center"
-                                                                   DockPanel.Dock="Right" Margin="4,0,0,0"
-                                                                   Visibility="{Binding GlobalVariableName, Converter={StaticResource StringEmptyToCollapsedConverter}}"/>
-                                                        <ComboBox ItemsSource="{Binding DataContext.GlobalVariableNames, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                  SelectedItem="{Binding GlobalVariableName, UpdateSourceTrigger=PropertyChanged}"
-                                                                  IsEditable="True" FontSize="11"/>
-                                                    </DockPanel>
+                                                    <common:GlobalVariableLinkControl
+                                                        DisplayValue="{Binding DisplayValue, Mode=OneWay}"
+                                                        DisplayForeground="#81C784"
+                                                        IsLinked="{Binding IsLinked, Mode=OneWay}"
+                                                        UnlinkCommand="{Binding DataContext.UnlinkMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        LinkedVariableName="{Binding GlobalVariableName, UpdateSourceTrigger=PropertyChanged}"
+                                                        LinkableGlobalVariables="{Binding DataContext.LinkableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        ComboBoxWidth="120" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellEditingTemplate>
                                         </DataGridTemplateColumn>

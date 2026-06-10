@@ -4,6 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              xmlns:converters="clr-namespace:Module.Common.Converters"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              Width="800">
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
@@ -105,7 +106,14 @@
                     <DataGridTemplateColumn Header="Ofs(mm)" Width="Auto">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding Offset, UpdateSourceTrigger=PropertyChanged}" />
+                                <common:GlobalVariableLinkControl
+                                    DisplayValue="{Binding OffsetDisplayValue, Mode=OneWay}"
+                                    DisplayForeground="#81C784"
+                                    IsLinked="{Binding IsOffsetLinked, Mode=OneWay}"
+                                    UnlinkCommand="{Binding DataContext.UnlinkOffsetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    LinkedVariableName="{Binding OffsetVariableName, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding DataContext.LinkableOffsetVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    ComboBoxWidth="100" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

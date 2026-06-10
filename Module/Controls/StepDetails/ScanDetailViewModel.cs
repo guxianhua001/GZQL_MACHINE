@@ -1,4 +1,5 @@
 using Core.Abstraction;
+using Core.Models;
 using Core.Utilities;
 using MotionControl.Interfaces;
 using StationTasks.Models;
@@ -70,6 +71,10 @@ namespace Module.ViewModels
         /// <summary> X轴编号 </summary>
         public int XAxisId { get => _xAxisId; set => SetProperty(ref _xAxisId, value); }
 
+        private int _yAxisId;
+        /// <summary> Y轴编号 </summary>
+        public int YAxisId { get => _yAxisId; set => SetProperty(ref _yAxisId, value); }
+
         private string _zInitPosition = "Z_Init";
         /// <summary> Z轴初始位置名称 </summary>
         public string ZInitPosition { get => _zInitPosition; set => SetProperty(ref _zInitPosition, value); }
@@ -94,6 +99,18 @@ namespace Module.ViewModels
         /// <summary> X轴待机位置名称 </summary>
         public string XStandbyPosition { get => _xStandbyPosition; set => SetProperty(ref _xStandbyPosition, value); }
 
+        private string _yStartPosition = "Y_Start";
+        /// <summary> Y轴起始位置名称 </summary>
+        public string YStartPosition { get => _yStartPosition; set => SetProperty(ref _yStartPosition, value); }
+
+        private string _yEndPosition = "Y_End";
+        /// <summary> Y轴结束位置名称 </summary>
+        public string YEndPosition { get => _yEndPosition; set => SetProperty(ref _yEndPosition, value); }
+
+        private string _yStandbyPosition = "Y_Standby";
+        /// <summary> Y轴待机位置名称 </summary>
+        public string YStandbyPosition { get => _yStandbyPosition; set => SetProperty(ref _yStandbyPosition, value); }
+
         private double _moveSpeed = 10.0;
         /// <summary> 运动速度 </summary>
         public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
@@ -103,6 +120,9 @@ namespace Module.ViewModels
 
         /// <summary> X轴位置名称列表，从 IPositionProvider 加载 </summary>
         public ObservableCollection<string> XPositions { get; } = new ObservableCollection<string>();
+
+        /// <summary> Y轴位置名称列表，从 IPositionProvider 加载 </summary>
+        public ObservableCollection<string> YPositions { get; } = new ObservableCollection<string>();
 
         #endregion
 
@@ -191,6 +211,14 @@ namespace Module.ViewModels
         /// <summary> 全局变量名称列表，用于变量映射下拉选择 </summary>
         public ObservableCollection<string> GlobalVariableNames { get; } = new ObservableCollection<string>();
 
+        private ObservableCollection<GlobalVariable> _linkableGlobalVariables;
+        /// <summary> 可链接的全局变量列表（仅 Double 类型），供 GlobalVariableLinkControl 使用 </summary>
+        public ObservableCollection<GlobalVariable> LinkableGlobalVariables
+        {
+            get => _linkableGlobalVariables;
+            set => SetProperty(ref _linkableGlobalVariables, value);
+        }
+
         #endregion
 
         #region 数据解析面板
@@ -202,7 +230,8 @@ namespace Module.ViewModels
 
         #region 执行测试相关属性
 
-        private string _sampleData;
+        // 默认填充示例数据，使 ExecuteWithSampleDataCommand 初始可用
+        private string _sampleData = "Camera=3DCAMERA;VISION_RESULT:SUCCESS:14.164,10.713,9.399,11.682,13.871,11.75,0,0,0,0,0,0";
         /// <summary> 示例/测试数据，用于执行测试 </summary>
         public string SampleData
         {
@@ -244,6 +273,10 @@ namespace Module.ViewModels
         public ICommand CloseCommand { get; }
         /// <summary> 保存并关闭弹窗命令 </summary>
         public ICommand SaveCommand { get; }
+        /// <summary> 点击补偿值超链接时，将全局变量名复制到剪贴板 </summary>
+        public ICommand NavigateToGlobalVarCommand { get; }
+        /// <summary> 解除映射行的全局变量链接命令 </summary>
+        public ICommand UnlinkMappingCommand { get; }
 
         public ScanDetailViewModel(
             IContainerProvider containerProvider,
@@ -284,9 +317,17 @@ namespace Module.ViewModels
                 .ObservesProperty(() => SampleData);
             CloseCommand = new DelegateCommand(OnClose);
             SaveCommand = new DelegateCommand(OnSave);
+            // 点击补偿值超链接：将全局变量名复制到剪贴板，方便用户查找
+            NavigateToGlobalVarCommand = new DelegateCommand<string>(OnNavigateToGlobalVar);
+            // 解除映射行的全局变量链接：清空 GlobalVariableName
+            UnlinkMappingCommand = new DelegateCommand<VariableMapping>(OnUnlinkMapping);
 
             LoadTcpConnections();
             LoadGlobalVariableNamesAsync().ConfigureAwait(false);
+
+            // 订阅全局变量变更事件，当其他步骤修改全局变量时刷新 DisplayValue
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
+                .Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
         }
 
         /// <summary>
@@ -303,12 +344,16 @@ namespace Module.ViewModels
 
             ZAxisId = detail.ZAxisId;
             XAxisId = detail.XAxisId;
+            YAxisId = detail.YAxisId;
             ZInitPosition = detail.ZInitPosition ?? "Z_Init";
             XStartPosition = detail.XStartPosition ?? "X_Start";
             ZPhotoPosition = detail.ZPhotoPosition ?? "Z_Photo";
             XEndPosition = detail.XEndPosition ?? "X_End";
             ZSafePosition = detail.ZSafePosition ?? "Z_Safe";
             XStandbyPosition = detail.XStandbyPosition ?? "X_Standby";
+            YStartPosition = detail.YStartPosition ?? "Y_Start";
+            YEndPosition = detail.YEndPosition ?? "Y_End";
+            YStandbyPosition = detail.YStandbyPosition ?? "Y_Standby";
             MoveSpeed = detail.MoveSpeed;
 
             TriggerIoPort = detail.TriggerIoPort;
@@ -330,7 +375,9 @@ namespace Module.ViewModels
                     {
                         SourceKey = mapping.SourceKey,
                         GlobalVariableName = mapping.GlobalVariableName,
-                        CompensatedGlobalVariableName = mapping.CompensatedGlobalVariableName
+                        CompensatedGlobalVariableName = mapping.CompensatedGlobalVariableName,
+                        BaseZValue = mapping.BaseZValue,
+                        FixedCompensation = mapping.FixedCompensation
                     });
                 }
             }
@@ -373,15 +420,56 @@ namespace Module.ViewModels
 
             // 订阅TCP被动数据接收事件：3D相机通过IO触发后回传数据，自动解析并刷新数据面板
             SubscribeCameraData();
+
+            // 初始化时加载变量映射行的全局变量当前值，使 GlobalVariableLinkControl 实时显示
+            RefreshMappingDisplayValuesAsync().ConfigureAwait(false);
         }
 
         /// <summary>
-        /// 从 IPositionProvider 加载指定工站的位置名称列表，分别填充 Z 轴和 X 轴位置下拉
+        /// 从配方池加载全局变量当前值，刷新变量映射行的 DisplayValue / CompensatedDisplayValue
+        /// 弹窗打开时调用，确保 GlobalVariableLinkControl 显示最新链接值
+        /// </summary>
+        private async System.Threading.Tasks.Task RefreshMappingDisplayValuesAsync()
+        {
+            if (VariableMappings == null || VariableMappings.Count == 0) return;
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolId;
+                if (string.IsNullOrEmpty(poolId)) return;
+
+                var globalVars = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+                foreach (var mapping in VariableMappings)
+                {
+                    if (!string.IsNullOrEmpty(mapping.GlobalVariableName))
+                    {
+                        var v = globalVars.FirstOrDefault(g => g.Name == mapping.GlobalVariableName);
+                        if (v != null && double.TryParse(v.Value, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double d))
+                            mapping.DisplayValue = d;
+                    }
+                    if (!string.IsNullOrEmpty(mapping.CompensatedGlobalVariableName))
+                    {
+                        var v = globalVars.FirstOrDefault(g => g.Name == mapping.CompensatedGlobalVariableName);
+                        if (v != null && double.TryParse(v.Value, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double d))
+                            mapping.CompensatedDisplayValue = d;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"初始化刷新变量映射 DisplayValue 失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从 IPositionProvider 加载指定工站的位置名称列表，分别填充 Z、X、Y 轴位置下拉
         /// </summary>
         private async System.Threading.Tasks.Task LoadPositionsAsync(string stationId)
         {
             ZPositions.Clear();
             XPositions.Clear();
+            YPositions.Clear();
             try
             {
                 var positions = await _positionProvider.GetPositionsAsync(stationId);
@@ -395,6 +483,7 @@ namespace Module.ViewModels
                 {
                     ZPositions.Add(name);
                     XPositions.Add(name);
+                    YPositions.Add(name);
                 }
             }
             catch (Exception ex)
@@ -447,6 +536,10 @@ namespace Module.ViewModels
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
                 foreach (var v in variables)
                     GlobalVariableNames.Add(v.Name);
+
+                // 同时填充可链接的全局变量列表（仅Double类型，供GlobalVariableLinkControl使用）
+                LinkableGlobalVariables = new ObservableCollection<GlobalVariable>(
+                    variables.Where(v => v.Type == GlobalVariableType.Double));
             }
             catch (Exception ex)
             {
@@ -532,6 +625,37 @@ namespace Module.ViewModels
         {
             if (SelectedMapping != null)
                 VariableMappings.Remove(SelectedMapping);
+        }
+
+        /// <summary>
+        /// 解除映射行的全局变量链接：清空该行的 GlobalVariableName
+        /// </summary>
+        private void OnUnlinkMapping(VariableMapping mapping)
+        {
+            if (mapping != null)
+            {
+                mapping.GlobalVariableName = "";
+                _logger?.Info($"已解除变量映射链接: {mapping.SourceKey}");
+            }
+        }
+
+        /// <summary>
+        /// 点击补偿值超链接时，将全局变量名复制到剪贴板，方便用户查找对应变量
+        /// </summary>
+        private void OnNavigateToGlobalVar(string variableName)
+        {
+            if (!string.IsNullOrEmpty(variableName))
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(variableName);
+                    _logger?.Info($"已复制全局变量名到剪贴板: {variableName}");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Error($"复制全局变量名失败: {ex.Message}");
+                }
+            }
         }
 
         /// <summary>
@@ -666,10 +790,11 @@ namespace Module.ViewModels
                 {
                     Index = i + 1,
                     Name = string.IsNullOrEmpty(key) ? $"Point{i + 1}" : key,
-                    BaseZValue = 11.5,
+                    // 从 VariableMapping 读取基准Z值，而非硬编码 11.5
+                    BaseZValue = mapping.BaseZValue,
                     UpperLimit = 15.0,
                     LowerLimit = 8.0,
-                    FixedCompensation = 0,
+                    FixedCompensation = mapping.FixedCompensation,
                     TargetGlobalVariable = mapping.CompensatedGlobalVariableName ?? ""
                 };
 
@@ -711,50 +836,50 @@ namespace Module.ViewModels
 
             foreach (var mapping in VariableMappings)
             {
-                // 1. 原始实测值 → 全局变量
-                if (!string.IsNullOrEmpty(mapping.SourceKey) && !string.IsNullOrEmpty(mapping.GlobalVariableName))
+                if (string.IsNullOrEmpty(mapping.SourceKey))
+                    continue;
+
+                if (!parsedData.TryGetValue(mapping.SourceKey, out double value))
                 {
-                    if (parsedData.TryGetValue(mapping.SourceKey, out double value))
+                    results.Add($"⚠ 跳过 '{mapping.SourceKey}': 解析结果中不存在此键");
+                    continue;
+                }
+
+                // 1. 原始实测值 → 全局变量
+                if (!string.IsNullOrEmpty(mapping.GlobalVariableName))
+                {
+                    var targetVar = globalVars.FirstOrDefault(v => v.Name == mapping.GlobalVariableName);
+                    if (targetVar != null)
                     {
-                        var targetVar = globalVars.FirstOrDefault(v => v.Name == mapping.GlobalVariableName);
-                        if (targetVar != null)
-                        {
-                            targetVar.Value = value.ToString("F6");
-                            results.Add($"✓ {mapping.SourceKey}={value:F3} → '{mapping.GlobalVariableName}'(原始值)");
-                            changed = true;
-                        }
-                        else
-                        {
-                            results.Add($"⚠ 跳过 '{mapping.GlobalVariableName}': 全局变量不存在");
-                        }
+                        targetVar.Value = value.ToString("F6");
+                        // 刷新变量映射行的 DisplayValue，使 GlobalVariableLinkControl 实时显示
+                        mapping.DisplayValue = value;
+                        results.Add($"✓ {mapping.SourceKey}={value:F3} → '{mapping.GlobalVariableName}'(原始值)");
+                        changed = true;
                     }
                     else
                     {
-                        results.Add($"⚠ 跳过 '{mapping.SourceKey}': 解析结果中不存在此键");
+                        results.Add($"⚠ 跳过 '{mapping.GlobalVariableName}': 全局变量不存在");
                     }
                 }
 
-                // 2. 补偿后值(实测+固定补偿) → 全局变量
-                if (!string.IsNullOrEmpty(mapping.SourceKey) && !string.IsNullOrEmpty(mapping.CompensatedGlobalVariableName))
+                // 2. 偏差值(实测值 - 基准Z值) → 全局变量
+                if (!string.IsNullOrEmpty(mapping.CompensatedGlobalVariableName))
                 {
-                    if (parsedData.TryGetValue(mapping.SourceKey, out double rawValue))
+                    // 偏差 = 实测值 - 基准Z值
+                    double deviation = value - mapping.BaseZValue;
+                    var compTargetVar = globalVars.FirstOrDefault(v => v.Name == mapping.CompensatedGlobalVariableName);
+                    if (compTargetVar != null)
                     {
-                        // 从ScanResults中获取该行的固定补偿值
-                        var scanItem = ScanResults.FirstOrDefault(s => s.Name == mapping.SourceKey);
-                        double compensation = scanItem?.FixedCompensation ?? 0;
-                        double compensatedValue = rawValue + compensation;
-
-                        var compTargetVar = globalVars.FirstOrDefault(v => v.Name == mapping.CompensatedGlobalVariableName);
-                        if (compTargetVar != null)
-                        {
-                            compTargetVar.Value = compensatedValue.ToString("F6");
-                            results.Add($"✓ {mapping.SourceKey}({rawValue:F3}+{compensation:F2})={compensatedValue:F3} → '{mapping.CompensatedGlobalVariableName}'(补偿后)");
-                            changed = true;
-                        }
-                        else
-                        {
-                            results.Add($"⚠ 跳过 '{mapping.CompensatedGlobalVariableName}': 全局变量不存在");
-                        }
+                        compTargetVar.Value = deviation.ToString("F6");
+                        // 刷新偏差显示值
+                        mapping.CompensatedDisplayValue = deviation;
+                        results.Add($"✓ {mapping.SourceKey}({value:F3}-{mapping.BaseZValue:F3})={deviation:F3} → '{mapping.CompensatedGlobalVariableName}'(偏差)");
+                        changed = true;
+                    }
+                    else
+                    {
+                        results.Add($"⚠ 跳过 '{mapping.CompensatedGlobalVariableName}': 全局变量不存在");
                     }
                 }
             }
@@ -905,11 +1030,48 @@ namespace Module.ViewModels
         public string LastReceivedData { get => _lastReceivedData; set => SetProperty(ref _lastReceivedData, value); }
 
         /// <summary>
-        /// 关闭弹窗，不保存修改，同时取消TCP数据订阅
+        /// 全局变量被外部修改时（如其他步骤执行完成），刷新变量映射行的 DisplayValue
+        /// </summary>
+        private async void OnGlobalVariablesChanged(string poolId)
+        {
+            if (VariableMappings == null || VariableMappings.Count == 0) return;
+            try
+            {
+                var currentPoolId = _recipePoolService.CurrentPoolId;
+                if (string.IsNullOrEmpty(currentPoolId) || poolId != currentPoolId) return;
+
+                var globalVars = await _recipePoolService.LoadGlobalVariablesAsync(currentPoolId);
+                foreach (var mapping in VariableMappings)
+                {
+                    if (!string.IsNullOrEmpty(mapping.GlobalVariableName))
+                    {
+                        var v = globalVars.FirstOrDefault(g => g.Name == mapping.GlobalVariableName);
+                        if (v != null && double.TryParse(v.Value, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double d))
+                            mapping.DisplayValue = d;
+                    }
+                    if (!string.IsNullOrEmpty(mapping.CompensatedGlobalVariableName))
+                    {
+                        var v = globalVars.FirstOrDefault(g => g.Name == mapping.CompensatedGlobalVariableName);
+                        if (v != null && double.TryParse(v.Value, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double d))
+                            mapping.CompensatedDisplayValue = d;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"刷新变量映射 DisplayValue 失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 关闭弹窗，不保存修改，同时取消TCP数据订阅和全局变量事件订阅
         /// </summary>
         private void OnClose()
         {
             UnsubscribeCameraData();
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
             try
             {
                 var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
@@ -932,12 +1094,16 @@ namespace Module.ViewModels
 
             detail.ZAxisId = ZAxisId;
             detail.XAxisId = XAxisId;
+            detail.YAxisId = YAxisId;
             detail.ZInitPosition = ZInitPosition;
             detail.XStartPosition = XStartPosition;
             detail.ZPhotoPosition = ZPhotoPosition;
             detail.XEndPosition = XEndPosition;
             detail.ZSafePosition = ZSafePosition;
             detail.XStandbyPosition = XStandbyPosition;
+            detail.YStartPosition = YStartPosition;
+            detail.YEndPosition = YEndPosition;
+            detail.YStandbyPosition = YStandbyPosition;
             detail.MoveSpeed = MoveSpeed;
 
             detail.TriggerIoPort = TriggerIoPort;
@@ -955,7 +1121,9 @@ namespace Module.ViewModels
                 {
                     SourceKey = m.SourceKey,
                     GlobalVariableName = m.GlobalVariableName,
-                    CompensatedGlobalVariableName = m.CompensatedGlobalVariableName
+                    CompensatedGlobalVariableName = m.CompensatedGlobalVariableName,
+                    BaseZValue = m.BaseZValue,
+                    FixedCompensation = m.FixedCompensation
                 }));
 
             // 持久化保存当前扫描结果和数据，方便下次打开时查看最后一次的值

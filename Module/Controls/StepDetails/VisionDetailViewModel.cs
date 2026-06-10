@@ -9,11 +9,13 @@ using Prism.Events;
 using Recipe.Interfaces;
 using Recipe.Events;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using TCPIPModule.Interfaces;
+using Core.Models;
 
 namespace Module.ViewModels
 {
@@ -106,12 +108,12 @@ namespace Module.ViewModels
             set => SetProperty(ref _parseScript, value);
         }
 
-        /// <summary> 变量映射集合 </summary>
-        public ObservableCollection<VariableMapping> VariableMappings { get; } = new ObservableCollection<VariableMapping>();
+        /// <summary> 变量映射行集合（支持GlobalVariableLinkControl实时显示值） </summary>
+        public ObservableCollection<VisionVariableMappingRow> MappingRows { get; } = new ObservableCollection<VisionVariableMappingRow>();
 
-        private VariableMapping _selectedMapping;
+        private VisionVariableMappingRow _selectedMapping;
         /// <summary> 当前选中的变量映射行 </summary>
-        public VariableMapping SelectedMapping
+        public VisionVariableMappingRow SelectedMapping
         {
             get => _selectedMapping;
             set => SetProperty(ref _selectedMapping, value);
@@ -119,6 +121,14 @@ namespace Module.ViewModels
 
         /// <summary> 全局变量名称列表，用于变量映射下拉选择 </summary>
         public ObservableCollection<string> GlobalVariableNames { get; } = new ObservableCollection<string>();
+
+        /// <summary> 可链接的全局变量列表（Double类型，供GlobalVariableLinkControl使用） </summary>
+        private ObservableCollection<GlobalVariable> _linkableGlobalVariables = new ObservableCollection<GlobalVariable>();
+        public ObservableCollection<GlobalVariable> LinkableGlobalVariables
+        {
+            get => _linkableGlobalVariables;
+            set => SetProperty(ref _linkableGlobalVariables, value);
+        }
 
         #region 执行测试相关属性
 
@@ -164,8 +174,12 @@ namespace Module.ViewModels
         public ICommand AddMappingCommand { get; }
         /// <summary> 删除变量映射命令 </summary>
         public ICommand DeleteMappingCommand { get; }
+        /// <summary> 取消变量链接命令（供GlobalVariableLinkControl使用） </summary>
+        public ICommand UnlinkMappingCommand { get; }
         /// <summary> 插入默认解析脚本模板命令 </summary>
         public ICommand InsertDefaultScriptCommand { get; }
+        /// <summary> 编译脚本命令：验证脚本语法和约定是否正确 </summary>
+        public ICommand CompileScriptCommand { get; }
         /// <summary> 填充示例数据命令 </summary>
         public ICommand FillSampleDataCommand { get; }
         /// <summary> 执行测试命令：发送触发命令→解析→映射变量 </summary>
@@ -204,7 +218,10 @@ namespace Module.ViewModels
             AddMappingCommand = new DelegateCommand(OnAddMapping);
             DeleteMappingCommand = new DelegateCommand(OnDeleteMapping, () => SelectedMapping != null)
                 .ObservesProperty(() => SelectedMapping);
+            UnlinkMappingCommand = new DelegateCommand(OnUnlinkMapping, () => SelectedMapping != null)
+                .ObservesProperty(() => SelectedMapping);
             InsertDefaultScriptCommand = new DelegateCommand(OnInsertDefaultScript);
+            CompileScriptCommand = new DelegateCommand(OnCompileScript);
             FillSampleDataCommand = new DelegateCommand(OnFillSampleData);
             ExecuteTestCommand = new DelegateCommand(async () => await OnExecuteTestAsync(),
                     () => !IsExecuting && IsTcpSelected && !string.IsNullOrEmpty(SelectedConnectionName))
@@ -220,6 +237,9 @@ namespace Module.ViewModels
 
             LoadTcpConnections();
             LoadGlobalVariableNamesAsync().ConfigureAwait(false);
+
+            // 订阅全局变量变更事件，自动刷新显示值
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Subscribe(_ => RefreshMappingDisplayValues());
         }
 
         /// <summary>
@@ -267,6 +287,11 @@ namespace Module.ViewModels
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
                 foreach (var v in variables)
                     GlobalVariableNames.Add(v.Name);
+
+                // 同时填充可链接的全局变量列表（仅Double类型，供GlobalVariableLinkControl使用）
+                LinkableGlobalVariables = new ObservableCollection<GlobalVariable>(
+                    variables.Where(v => v.Type == GlobalVariableType.Double));
+                RefreshMappingDisplayValues();
             }
             catch (Exception ex)
             {
@@ -292,21 +317,45 @@ namespace Module.ViewModels
             ResponseTimeout = detail.ResponseTimeout;
             ParseScript = detail.ParseScript ?? "";
 
-            VariableMappings.Clear();
-            if (detail.VariableMappings != null)
-            {
-                foreach (var mapping in detail.VariableMappings)
-                {
-                    VariableMappings.Add(new VariableMapping
-                    {
-                        SourceKey = mapping.SourceKey,
-                        GlobalVariableName = mapping.GlobalVariableName
-                    });
-                }
-            }
+            RebuildMappingRows(detail.VariableMappings);
 
             RaisePropertyChanged(nameof(StepDescription));
             RaisePropertyChanged(nameof(IsTcpSelected));
+        }
+
+        /// <summary>
+        /// 从VariableMapping列表重建MappingRows，订阅属性变更以自动刷新显示值
+        /// </summary>
+        private void RebuildMappingRows(ObservableCollection<VariableMapping> sourceMappings)
+        {
+            foreach (var row in MappingRows)
+                row.PropertyChanged -= OnMappingRowPropertyChanged;
+            MappingRows.Clear();
+
+            if (sourceMappings != null)
+            {
+                foreach (var mapping in sourceMappings)
+                {
+                    var row = new VisionVariableMappingRow
+                    {
+                        SourceKey = mapping.SourceKey,
+                        GlobalVariableName = mapping.GlobalVariableName
+                    };
+                    row.PropertyChanged += OnMappingRowPropertyChanged;
+                    MappingRows.Add(row);
+                }
+            }
+
+            RefreshMappingDisplayValues();
+        }
+
+        /// <summary>
+        /// 映射行属性变更回调：当GlobalVariableName变更时自动刷新显示值
+        /// </summary>
+        private void OnMappingRowPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(VisionVariableMappingRow.GlobalVariableName))
+                RefreshMappingDisplayValues();
         }
 
         /// <summary>
@@ -314,11 +363,9 @@ namespace Module.ViewModels
         /// </summary>
         private void OnAddMapping()
         {
-            VariableMappings.Add(new VariableMapping
-            {
-                SourceKey = "",
-                GlobalVariableName = ""
-            });
+            var row = new VisionVariableMappingRow { SourceKey = "", GlobalVariableName = "" };
+            row.PropertyChanged += OnMappingRowPropertyChanged;
+            MappingRows.Add(row);
         }
 
         /// <summary>
@@ -327,7 +374,19 @@ namespace Module.ViewModels
         private void OnDeleteMapping()
         {
             if (SelectedMapping != null)
-                VariableMappings.Remove(SelectedMapping);
+            {
+                SelectedMapping.PropertyChanged -= OnMappingRowPropertyChanged;
+                MappingRows.Remove(SelectedMapping);
+            }
+        }
+
+        /// <summary>
+        /// 取消变量链接：清空当前选中映射行的全局变量名
+        /// </summary>
+        private void OnUnlinkMapping()
+        {
+            if (SelectedMapping != null)
+                SelectedMapping.GlobalVariableName = null;
         }
 
         /// <summary>
@@ -346,11 +405,17 @@ namespace Module.ViewModels
         {
             SampleData = "offsetX=0.523,offsetY=-0.317,angle=1.245,score=0.98";
 
-            VariableMappings.Clear();
-            VariableMappings.Add(new VariableMapping { SourceKey = "offsetX", GlobalVariableName = "" });
-            VariableMappings.Add(new VariableMapping { SourceKey = "offsetY", GlobalVariableName = "" });
-            VariableMappings.Add(new VariableMapping { SourceKey = "angle", GlobalVariableName = "" });
-            VariableMappings.Add(new VariableMapping { SourceKey = "score", GlobalVariableName = "" });
+            foreach (var row in MappingRows)
+                row.PropertyChanged -= OnMappingRowPropertyChanged;
+            MappingRows.Clear();
+
+            var keys = new[] { "offsetX", "offsetY", "angle", "score" };
+            foreach (var key in keys)
+            {
+                var row = new VisionVariableMappingRow { SourceKey = key, GlobalVariableName = "" };
+                row.PropertyChanged += OnMappingRowPropertyChanged;
+                MappingRows.Add(row);
+            }
 
             _logger?.Info(L("VisionDetail_Log_SampleFilled"));
         }
@@ -477,7 +542,7 @@ namespace Module.ViewModels
         /// </summary>
         private async System.Threading.Tasks.Task<string> ApplyVariableMappingsAsync(Dictionary<string, double> parsedData)
         {
-            if (VariableMappings == null || VariableMappings.Count == 0)
+            if (MappingRows == null || MappingRows.Count == 0)
                 return L("VisionDetail_Map_NoMapping");
 
             var poolId = _recipePoolService.CurrentPoolName;
@@ -488,7 +553,7 @@ namespace Module.ViewModels
             var results = new List<string>();
             bool changed = false;
 
-            foreach (var mapping in VariableMappings)
+            foreach (var mapping in MappingRows)
             {
                 if (string.IsNullOrEmpty(mapping.SourceKey) || string.IsNullOrEmpty(mapping.GlobalVariableName))
                     continue;
@@ -517,6 +582,7 @@ namespace Module.ViewModels
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
+                RefreshMappingDisplayValues();
                 results.Add(L("VisionDetail_Map_Saved"));
             }
 
@@ -524,48 +590,135 @@ namespace Module.ViewModels
         }
 
         /// <summary>
+        /// 刷新所有映射行的DisplayValue，反映全局变量的当前值
+        /// </summary>
+        private void RefreshMappingDisplayValues()
+        {
+            if (LinkableGlobalVariables == null) return;
+            foreach (var row in MappingRows)
+            {
+                if (!string.IsNullOrEmpty(row.GlobalVariableName))
+                {
+                    var gv = LinkableGlobalVariables.FirstOrDefault(v =>
+                        string.Equals(v.Name, row.GlobalVariableName, StringComparison.OrdinalIgnoreCase));
+                    row.DisplayValue = gv != null && double.TryParse(gv.Value, out double val) ? val : 0;
+                }
+                else
+                {
+                    row.DisplayValue = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 编译验证当前脚本：不执行，仅检查语法和约定是否满足
+        /// </summary>
+        private void OnCompileScript()
+        {
+            IsExecuteSuccess = null;
+            if (string.IsNullOrWhiteSpace(ParseScript))
+            {
+                ExecuteResult = L("VisionDetail_Compile_Empty");
+                IsExecuteSuccess = false;
+                return;
+            }
+
+            try
+            {
+                _scriptParser.Script = ParseScript;
+                _scriptParser.CompileScript();
+                ExecuteResult = L("VisionDetail_Compile_Success");
+                IsExecuteSuccess = true;
+            }
+            catch (Exception ex)
+            {
+                ExecuteResult = ex.Message;
+                IsExecuteSuccess = false;
+            }
+        }
+
+        /// <summary>
         /// 返回默认的 C# 数据解析脚本模板
-        /// 脚本约定：类名必须为 VisionParseScript，
-        /// 包含 public static Dictionary&lt;string, double&gt; Parse(string data) 方法
+        /// 脚本约定：类名 VisionParseScript，含 public static Dictionary Parse(string) 方法
+        /// 使用 // 注释而非 /// XML文档注释，避免 Natasha 编译器 CS1569 错误
         /// </summary>
         private string GetDefaultParseScript()
         {
             return @"using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Globalization;
 
-/// <summary>
-/// 默认解析脚本：解析逗号分隔的 key=value 格式数据
-/// 输入参数：data（string）— 视觉系统返回的原始字符串
-/// 输出参数：Dictionary<string, double> — 解析后的键值对集合
-///
-/// 示例输入：""offsetX=0.5,offsetY=-0.3,angle=1.2""
-/// </summary>
+// VisionParseScript - 解析逗号分隔的 key=value 数据
+// 支持前缀格式: Camera=SideCamera;VISION_RESULT:SUCCESS:offsetX=1.5,...
 public class VisionParseScript
 {
     public static Dictionary<string, double> Parse(string data)
     {
         var result = new Dictionary<string, double>();
-
-        if (string.IsNullOrWhiteSpace(data))
-            return result;
-
-        var pairs = data.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+        if (string.IsNullOrWhiteSpace(data)) return result;
+        data = StripPrefix(data);
+        var sep = new char[] { ',' };
+        var pairs = data.Split(sep, StringSplitOptions.RemoveEmptyEntries);
         foreach (var pair in pairs)
         {
             var kv = pair.Split(new[] { '=' }, 2);
             if (kv.Length == 2)
             {
                 var key = kv[0].Trim();
-                var valueStr = kv[1].Trim();
-                if (double.TryParse(valueStr, out double value))
-                {
-                    result[key] = value;
-                }
+                var val = kv[1].Trim();
+                if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out double d))
+                    result[key] = d;
             }
         }
-
         return result;
+    }
+
+    // 剥离前缀元数据，提取数值数据部分
+    private static string StripPrefix(string data)
+    {
+        var comma = new char[] { ',' };
+        var parts = data.Split(comma);
+        if (parts.Length < 2) return data;
+        var eq = new char[] { '=' };
+        var firstKv = parts[0].Split(eq, 2);
+        if (firstKv.Length != 2) return data;
+        if (double.TryParse(firstKv[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            return data;
+        for (int i = 0; i < parts.Length; i++)
+        {
+            var kv = parts[i].Split(eq, 2);
+            if (kv.Length != 2) continue;
+            if (double.TryParse(kv[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            {
+                if (i > 0)
+                {
+                    var prev = parts[i - 1].Split(eq, 2);
+                    if (prev.Length == 2)
+                    {
+                        var pv = prev[1].Trim();
+                        if (!double.TryParse(pv, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+                        {
+                            int s = pv.LastIndexOfAny(new[] { ':', ';' });
+                            if (s >= 0)
+                            {
+                                var emb = pv.Substring(s + 1);
+                                if (emb.Contains(""=""))
+                                {
+                                    var list = new List<string>();
+                                    list.Add(emb);
+                                    for (int j = i; j < parts.Length; j++) list.Add(parts[j]);
+                                    return string.Join("","", list);
+                                }
+                            }
+                        }
+                    }
+                }
+                var r = new List<string>();
+                for (int j = i; j < parts.Length; j++) r.Add(parts[j]);
+                return string.Join("","", r);
+            }
+        }
+        return data;
     }
 }";
         }
@@ -602,7 +755,7 @@ public class VisionParseScript
             detail.ParseScript = ParseScript;
 
             detail.VariableMappings = new ObservableCollection<VariableMapping>(
-                VariableMappings.Select(m => new VariableMapping
+                MappingRows.Select(m => new VariableMapping
                 {
                     SourceKey = m.SourceKey,
                     GlobalVariableName = m.GlobalVariableName
@@ -612,5 +765,42 @@ public class VisionParseScript
 
             OnClose();
         }
+    }
+
+    /// <summary>
+    /// VISION变量映射行模型，支持GlobalVariableLinkControl实时显示链接变量的当前值
+    /// </summary>
+    public class VisionVariableMappingRow : BindableBase
+    {
+        private string _sourceKey;
+        /// <summary> 解析结果中的键名（如 offsetX、angle） </summary>
+        public string SourceKey
+        {
+            get => _sourceKey;
+            set => SetProperty(ref _sourceKey, value);
+        }
+
+        private string _globalVariableName;
+        /// <summary> 映射到的全局变量名 </summary>
+        public string GlobalVariableName
+        {
+            get => _globalVariableName;
+            set
+            {
+                if (SetProperty(ref _globalVariableName, value))
+                    RaisePropertyChanged(nameof(IsLinked));
+            }
+        }
+
+        private double _displayValue;
+        /// <summary> 链接的全局变量当前值，用于GlobalVariableLinkControl显示 </summary>
+        public double DisplayValue
+        {
+            get => _displayValue;
+            set => SetProperty(ref _displayValue, value);
+        }
+
+        /// <summary> 是否已链接到全局变量 </summary>
+        public bool IsLinked => !string.IsNullOrEmpty(GlobalVariableName);
     }
 }
