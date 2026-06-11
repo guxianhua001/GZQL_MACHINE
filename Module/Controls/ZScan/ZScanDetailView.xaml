@@ -69,14 +69,14 @@
                 </StackPanel>
             </Button>
 
-            <!-- 回待机位按钮 -->
+            <!-- 回待机位按钮（轴运动图标） -->
             <Button Command="{Binding ReturnToStandbyCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Padding="16,6"
                     ToolTip="{lang:Lang ZScanDetail_ReturnStandby}"
                     Margin="0,0,24,0">
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="HomeOutline" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <materialDesign:PackIcon Kind="AxisArrow" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <TextBlock Text="{lang:Lang ZScanDetail_ReturnStandbyBtn}" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>

@@ -27,7 +27,8 @@ namespace StationTasks
                 serviceTypeCondition: serviceType =>
                     serviceType == typeof(ITask) ||
                     serviceType == typeof(IStationParameterProvider) ||
-                    serviceType == typeof(IBatchSwitchable)
+                    serviceType == typeof(IBatchSwitchable) ||
+                    serviceType == typeof(Core.Abstraction.IDispensingZScanOperations)
             );
 
             // 注册步骤动作实现

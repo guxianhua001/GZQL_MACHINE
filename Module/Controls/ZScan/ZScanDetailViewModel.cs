@@ -46,6 +46,8 @@ namespace Module.ViewModels
         private readonly IZScanCalibrationService _zscanCalibrationService;
         private readonly IZScanArcCompensationService _zscanArcCompensationService;
         private readonly INeedleTeachService _needleTeachService;
+        /// <summary> 点胶工站 ZScan 操作接口（运动序列委托给 DispensingTask 执行） </summary>
+        private readonly IDispensingZScanOperations _dispensingOps;
 
         #region 原有属性
 
@@ -104,6 +106,61 @@ namespace Module.ViewModels
         private double _moveSpeed = 10.0;
         /// <summary> 运动速度（mm/s）</summary>
         public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
+
+        #endregion
+
+        #region 位置编辑器引用属性
+
+        private string _safePositionName = "SafePosition";
+        /// <summary> 安全位置名（来自位置编辑器），Dz₁/Dz₂/Dz3 抬起到此高度 </summary>
+        public string SafePositionName
+        {
+            get => _safePositionName;
+            set => SetProperty(ref _safePositionName, value);
+        }
+
+        private string _scanStartPositionName = "ScanStartPosition";
+        /// <summary> 3D扫描起始位置名，Dx+Dy 插补运动到此位 </summary>
+        public string ScanStartPositionName
+        {
+            get => _scanStartPositionName;
+            set => SetProperty(ref _scanStartPositionName, value);
+        }
+
+        private string _scanEndPositionName = "ScanEndPosition";
+        /// <summary> 3D扫描结束位置名，Dx 单独运动到此位 </summary>
+        public string ScanEndPositionName
+        {
+            get => _scanEndPositionName;
+            set => SetProperty(ref _scanEndPositionName, value);
+        }
+
+        private string _standbyPositionName = "StandbyPosition";
+        /// <summary> 待机位置名，Dx+Dy 插补运动到此位 </summary>
+        public string StandbyPositionName
+        {
+            get => _standbyPositionName;
+            set => SetProperty(ref _standbyPositionName, value);
+        }
+
+        private string _triggerIOName = "Q3.3DispensingStation3DCameraTrigger";
+        /// <summary> 3D相机触发IO端口名（来自 hwcfg.xml） </summary>
+        public string TriggerIOName
+        {
+            get => _triggerIOName;
+            set => SetProperty(ref _triggerIOName, value);
+        }
+
+        private int _dataReceiveTimeoutMs = 10000;
+        /// <summary> 相机数据接收超时时间（毫秒） </summary>
+        public int DataReceiveTimeoutMs
+        {
+            get => _dataReceiveTimeoutMs;
+            set => SetProperty(ref _dataReceiveTimeoutMs, value);
+        }
+
+        /// <summary> 扫描数据接收 TaskCompletionSource（供 SubscribeCameraData 回调触发） </summary>
+        private System.Threading.Tasks.TaskCompletionSource<List<double>> _scanDataTcs;
 
         #endregion
 
@@ -251,7 +308,8 @@ namespace Module.ViewModels
             IZScanConfigService zscanConfigService,
             IZScanCalibrationService zscanCalibrationService,
             IZScanArcCompensationService zscanArcCompensationService,
-            INeedleTeachService needleTeachService)
+            INeedleTeachService needleTeachService,
+            IDispensingZScanOperations dispensingOps)
         {
             _dialogService = dialogService;
             _motionService = motionService;
@@ -263,6 +321,7 @@ namespace Module.ViewModels
             _zscanCalibrationService = zscanCalibrationService;
             _zscanArcCompensationService = zscanArcCompensationService;
             _needleTeachService = needleTeachService;
+            _dispensingOps = dispensingOps;
 
             _zscanCalibrationService.CalibrationChanged += OnCalibrationChanged;
 
@@ -487,21 +546,13 @@ namespace Module.ViewModels
         #region Task 7: 运动控制逻辑实现
 
         /// <summary>
-        /// 执行完整的3D扫描流程：
-        /// 1. 移动到起始位置（Z轴安全高度 + X轴起始位）
-        /// 2. 移动到拍照位置（Z轴下降到拍照高度）
-        /// 3. 触发相机（通过IO或TCP命令）
-        /// 4. 等待数据返回（带超时处理）
-        /// 5. 解析数据并更新PointDetails表格
-        /// 
-        /// 安全性保障：
-        /// - 使用CancellationToken支持急停打断
-        /// - 所有运动操作都有异常捕获
-        /// - 完成后自动恢复按钮状态
+        /// 执行完整的3D扫描流程（运动委托给 DispensingTask，数据接收在 VM 层处理）：
+        /// 1-7. 运动序列由 IDispensingZScanOperations.ExecuteZScan3DSequenceAsync 执行
+        /// 8. 异步等待相机数据并解析到表格 ZActual
+        /// 触发拍照后就异步等待接收数据，带超时报警
         /// </summary>
         private async Task OnStart3DScanAsync()
         {
-            // 防止重复点击
             if (IsScanning) return;
 
             var cts = new CancellationTokenSource();
@@ -512,64 +563,69 @@ namespace Module.ViewModels
                 StatusColor = Brushes.Orange;
                 _logger?.Info($"Z-SCAN 开始3D扫描: {AssyGroup} / {SiteId}");
 
-                // 步骤1：移动到起始位置（先抬Z轴防撞，再移X轴）
-                _logger?.Info($"步骤1: 移动到起始位置 Z={ZInitPosition}, X={XStartPosition}");
-                await _motionService.MoveAbsAsync(ZAxisId, ZInitPosition, MoveSpeed, cts.Token);
-                await Task.Delay(100, cts.Token); // 短暂延时确保到位
-                await _motionService.MoveAbsAsync(XAxisId, XStartPosition, MoveSpeed, cts.Token);
-                await Task.Delay(100, cts.Token);
+                // 创建数据接收 TaskCompletionSource
+                _scanDataTcs = new TaskCompletionSource<List<double>>();
 
-                // 步骤2：移动到拍照位置（Z轴下降到拍照高度）
-                _logger?.Info($"步骤2: 移动到拍照位置 Z={ZPhotoPosition}");
-                await _motionService.MoveAbsAsync(ZAxisId, ZPhotoPosition, MoveSpeed, cts.Token);
-                await Task.Delay(200, cts.Token); // 等待稳定
+                // 步骤1-7：运动序列委托给 DispensingTask（享受 RunStep 安全保护）
+                await _dispensingOps.ExecuteZScan3DSequenceAsync(
+                    SafePositionName, ScanStartPositionName, ScanEndPositionName,
+                    StandbyPositionName, TriggerIOName, MoveSpeed,
+                    status => { StatusText = status; },
+                    cts.Token);
 
-                // 步骤3：触发相机（通过TCP发送触发命令）
-                _logger?.Info("步骤3: 触发3D相机");
-                if (!string.IsNullOrEmpty(SelectedConnectionName))
+                // 步骤8：异步等待相机数据（带超时报警）
+                _logger?.Info($"Z-SCAN 等待3D相机数据返回（超时={DataReceiveTimeoutMs}ms）...");
+                StatusText = "Waiting for data...";
+                var timeoutTask = Task.Delay(DataReceiveTimeoutMs, cts.Token);
+                var completedTask = await Task.WhenAny(_scanDataTcs.Task, timeoutTask);
+
+                if (completedTask == timeoutTask)
                 {
-                    try
+                    // 超时报警
+                    StatusText = "Data Timeout";
+                    StatusColor = Brushes.Red;
+                    _logger?.Error($"Z-SCAN 相机数据接收超时 ({DataReceiveTimeoutMs}ms)");
+                    Application.Current.Dispatcher.Invoke(() =>
                     {
-                        // 通过ITCPEventService发送触发命令（实际命令根据相机协议调整）
-                        // 注意：此处仅演示触发逻辑，实际应根据相机通信协议发送正确命令
-                        _logger?.Info($"相机触发命令已发送至 [{SelectedConnectionName}]");
-
-                        // 步骤4：等待数据返回（带超时处理，建议5-10秒）
-                        _logger?.Info("步骤4: 等待相机数据返回...");
-                        // 数据将通过SubscribeCameraData()订阅的CameraMessageReceived事件被动接收
-                        // 此处可添加主动等待机制（如TaskCompletionSource），但通常采用被动接收模式
-                        await Task.Delay(3000, cts.Token); // 模拟等待时间，实际应使用信号量或事件等待
-                    }
-                    catch (Exception triggerEx)
-                    {
-                        _logger?.Error($"相机触发失败: {triggerEx.Message}");
-                        throw new InvalidOperationException($"相机触发失败: {triggerEx.Message}", triggerEx);
-                    }
+                        _dialogService.ShowDialog("MessageDialog",
+                            new DialogParameters { { "message", $"3D相机数据接收超时（{DataReceiveTimeoutMs}ms），请检查相机连接和触发信号。" } }, null);
+                    });
                 }
                 else
                 {
-                    _logger?.Warn("未选择TCP连接，跳过相机触发");
-                }
+                    // 数据已接收，更新表格并自动保存
+                    var parsedValues = await _scanDataTcs.Task;
+                    _logger?.Info($"Z-SCAN 接收到 {parsedValues.Count} 个测量点数据");
+                    if (parsedValues.Count > 0)
+                    {
+                        UpdatePointDetailsFromCameraData(parsedValues);
+                        RecalculateStatistics();
 
-                // 步骤5：完成扫描，更新状态
-                StatusText = "Scan Completed";
-                StatusColor = Brushes.Green;
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "3D扫描完成！" } }, null);
-                _logger?.Info($"Z-SCAN 3D扫描完成: {AssyGroup} / {SiteId}");
+                        // 自动保存到 ZScan 文件夹
+                        await AutoSaveZScanConfigAsync();
+                    }
+
+                    StatusText = "Scan Completed";
+                    StatusColor = Brushes.Green;
+                    _logger?.Info($"Z-SCAN 3D扫描完成: {AssyGroup} / {SiteId}");
+                }
             }
             catch (OperationCanceledException)
             {
                 StatusText = "Stopped";
                 StatusColor = Brushes.Yellow;
                 _logger?.Warn($"Z-SCAN 扫描被用户停止: {AssyGroup} / {SiteId}");
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "扫描已被停止" } }, null);
             }
             catch (Exception ex)
             {
                 StatusText = "Error";
                 StatusColor = Brushes.Red;
                 _logger?.Error($"Z-SCAN 扫描异常: {ex.Message}\n{ex.StackTrace}");
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"扫描失败: {ex.Message}" } }, null);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    _dialogService.ShowDialog("MessageDialog",
+                        new DialogParameters { { "message", $"扫描失败: {ex.Message}" } }, null);
+                });
             }
             finally
             {
@@ -607,10 +663,9 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 移动轴到安全待机位置：
-        /// - 先抬Z轴到安全高度（防止碰撞）
-        /// - 再移X轴到待机位置
-        /// 参考IMotionService.HomeAsync()方法的异步回零/回待机逻辑
+        /// 返回待机位动作（运动委托给 DispensingTask）：
+        /// 1. Dz₁/Dz₂/Dz3 抬起到安全高度（并行）
+        /// 2. Dx+Dy 插补运动到待机位（StandbyPosition）
         /// </summary>
         private async Task OnReturnToStandbyAsync()
         {
@@ -623,18 +678,14 @@ namespace Module.ViewModels
                 StatusColor = Brushes.Orange;
                 _logger?.Info($"Z-SCAN 开始返回待机位置: {AssyGroup} / {SiteId}");
 
-                // 先抬Z轴到安全高度（防止水平移动时碰撞工件）
-                _logger?.Info($"抬Z轴到安全高度: Z={ZSafePosition}");
-                await _motionService.MoveAbsAsync(ZAxisId, ZSafePosition, MoveSpeed, cts.Token);
-                await Task.Delay(100, cts.Token);
-
-                // 再移X轴到待机位置
-                _logger?.Info($"移X轴到待机位置: X={XStandbyPosition}");
-                await _motionService.MoveAbsAsync(XAxisId, XStandbyPosition, MoveSpeed, cts.Token);
+                // 运动序列委托给 DispensingTask（享受 RunStep 安全保护）
+                await _dispensingOps.ReturnToStandbyAsync(
+                    SafePositionName, StandbyPositionName, MoveSpeed,
+                    status => { StatusText = status; },
+                    cts.Token);
 
                 StatusText = "Standby";
                 StatusColor = Brushes.Blue;
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "设备已返回待机位置" } }, null);
                 _logger?.Info("Z-SCAN 已返回待机位置");
             }
             catch (OperationCanceledException)
@@ -721,14 +772,22 @@ namespace Module.ViewModels
                             // 解析相机原始数据
                             var parsedValues = ParseCameraData(message);
 
-                            // 更新PointDetails表格中的ZMeasured值
                             if (parsedValues.Count > 0)
                             {
-                                UpdatePointDetailsFromCameraData(parsedValues);
-                                RecalculateStatistics();
-
-                                _dialogService.ShowDialog("MessageDialog",
-                                    new DialogParameters { { "message", $"接收到{parsedValues.Count}个测量点数据，表格已更新" } }, null);
+                                // 如果有 TaskCompletionSource 在等待，优先通过 TCS 传递数据
+                                if (_scanDataTcs != null && !_scanDataTcs.Task.IsCompleted)
+                                {
+                                    _scanDataTcs.TrySetResult(parsedValues);
+                                    _logger?.Info($"Z-SCAN 数据已通过 TCS 传递给扫描流程");
+                                }
+                                else
+                                {
+                                    // 无等待中的扫描流程，直接更新表格
+                                    UpdatePointDetailsFromCameraData(parsedValues);
+                                    RecalculateStatistics();
+                                    _dialogService.ShowDialog("MessageDialog",
+                                        new DialogParameters { { "message", $"接收到{parsedValues.Count}个测量点数据，表格已更新" } }, null);
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -1691,6 +1750,10 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>
+        /// 自动保存配置到 Config/ZScan 文件夹（ZScan_时间.json 格式）
+        /// 不再弹出 SaveFileDialog，直接自动保存
+        /// </summary>
         private void OnSaveConfig()
         {
             try
@@ -1703,23 +1766,14 @@ namespace Module.ViewModels
                     Tables = Tables.ToList()
                 };
 
-                var saveDialog = new SaveFileDialog
-                {
-                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                    DefaultExt = ".json",
-                    FileName = $"ZScan_{DateTime.Now:yyyyMMdd_HHmmss}.json",
-                    InitialDirectory = _zscanConfigService.GetConfigPath(),
-                    Title = "保存ZScan配置"
-                };
+                // 自动保存到 Config/ZScan/ZScan_yyyyMMdd_HHmmss.json
+                string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
+                CurrentFilePath = savedPath;
 
-                if (saveDialog.ShowDialog() == true)
-                {
-                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(configFile, Newtonsoft.Json.Formatting.Indented);
-                    System.IO.File.WriteAllText(saveDialog.FileName, json);
-                    CurrentFilePath = saveDialog.FileName;
-                    _zscanConfigService.SaveToRecipePool(configFile, $"{AssyGroup}_{SiteId}");
-                    _logger?.Info($"Z-SCAN 配置已保存到: {saveDialog.FileName}");
-                }
+                // 同时保存到配方池
+                _zscanConfigService.SaveToRecipePool(configFile, $"{AssyGroup}_{SiteId}");
+
+                _logger?.Info($"Z-SCAN 配置已自动保存: {savedPath}");
             }
             catch (Exception ex)
             {
@@ -1727,25 +1781,43 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>
+        /// 自动保存配置（异步包装，供扫描完成后调用）
+        /// </summary>
+        private async Task AutoSaveZScanConfigAsync()
+        {
+            await Task.Run(() =>
+            {
+                SyncPointDetailsToTable();
+                var configFile = new ZScanConfigFile
+                {
+                    DefaultTableName = SelectedTable?.TableName ?? string.Empty,
+                    Tables = Tables.ToList()
+                };
+                string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
+                CurrentFilePath = savedPath;
+                _zscanConfigService.SaveToRecipePool(configFile, $"{AssyGroup}_{SiteId}");
+                _logger?.Info($"Z-SCAN 扫描后自动保存: {savedPath}");
+            });
+        }
+
         private void OnLoadConfig()
         {
             try
             {
-                var configFile = _zscanConfigService.LoadLastFromRecipePool();
+                // 优先从 Config/ZScan/ 目录自动查找最新的 ZScan_*.json 文件
+                var latestFile = FindLatestZScanFile();
+                ZScanConfigFile configFile;
 
-                if (configFile.Tables.Count == 0)
+                if (!string.IsNullOrEmpty(latestFile))
                 {
-                    var openDialog = new OpenFileDialog
-                    {
-                        Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                        InitialDirectory = _zscanConfigService.GetConfigPath(),
-                        Title = "加载ZScan配置"
-                    };
-
-                    if (openDialog.ShowDialog() == true)
-                    {
-                        configFile = _zscanConfigService.LoadFromFile(openDialog.FileName);
-                    }
+                    configFile = _zscanConfigService.LoadFromFile(latestFile);
+                    _logger?.Info($"Z-SCAN 自动加载最新配置: {latestFile}");
+                }
+                else
+                {
+                    // 回退：尝试从配方池加载
+                    configFile = _zscanConfigService.LoadLastFromRecipePool();
                 }
 
                 if (configFile.Tables.Count > 0)
@@ -1760,6 +1832,30 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 _logger?.Error($"Z-SCAN 配置加载失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从 Config/ZScan/ 目录查找最新的 ZScan_*.json 文件（按文件名排序，取最新）
+        /// </summary>
+        /// <returns>最新文件路径，未找到返回 null</returns>
+        private string FindLatestZScanFile()
+        {
+            try
+            {
+                string configDir = _zscanConfigService.GetConfigPath();
+                if (!Directory.Exists(configDir)) return null;
+
+                var zscanFiles = Directory.GetFiles(configDir, "ZScan_*.json")
+                    .OrderByDescending(f => f)
+                    .FirstOrDefault();
+
+                return zscanFiles;
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"Z-SCAN 查找最新文件失败: {ex.Message}");
+                return null;
             }
         }
 

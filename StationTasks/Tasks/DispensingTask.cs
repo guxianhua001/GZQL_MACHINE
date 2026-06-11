@@ -1,6 +1,7 @@
 using AlarmModule.Interfaces;
 using Core.Utilities;
 using MotionControl.Interfaces;
+using MotionControl.Services;
 using Prism.Events;
 using Recipe.Interfaces;
 using StationTasks.Services;
@@ -9,8 +10,14 @@ using Core.Abstraction;
 
 namespace StationTasks.Tasks
 {
-    public class DispensingTask : RecipeStationBase<DispenserStationParams>
+    /// <summary>
+    /// 点胶工站任务（partial class）
+    /// Z-Scan 3D扫描操作见 DispensingTask.ZScan.cs
+    /// </summary>
+    public partial class DispensingTask : RecipeStationBase<DispenserStationParams>
     {
+        /// <summary> 轴参数服务（用于插补系查找等） </summary>
+        private readonly IAxisParameterService _axisParameterService;
         /// <summary> Dx轴 — Dispenser gantry X (逻辑ID从hwcfg.xml动态获取) </summary>
         private int AxisDx => ResolveAxisId("Dx");
         /// <summary> Dy轴 — Dispenser gantry Y </summary>
@@ -31,10 +38,14 @@ namespace StationTasks.Tasks
             ISystemStateService systemState, IRecipeServiceFactory recipeServiceFactory,
             IRecipePoolService recipePoolService, IStationRegistry stationRegistry,
             ISpeedOverrideService speedOverride,
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            IAxisParameterService axisParameterService)
             : base(motion, recipePool, interaction, ea, logger, alarmService, systemState,
                   recipeServiceFactory, recipePoolService, stationRegistry, speedOverride,
-                  2, localizationService?.GetResourceOrDefault("Station_DispenserStation", "点胶系统") ?? "点胶系统", "DispenserStation") { }
+                  2, localizationService?.GetResourceOrDefault("Station_DispenserStation", "点胶系统") ?? "点胶系统", "DispenserStation")
+        {
+            _axisParameterService = axisParameterService;
+        }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)
         {

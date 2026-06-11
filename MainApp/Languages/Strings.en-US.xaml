@@ -1549,6 +1549,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZScanDetail_DispenseHeight">Dispense Z:</sys:String>
     <sys:String x:Key="ZScanDetail_ResetCalibrationBtn">Reset</sys:String>
     <sys:String x:Key="ZScanDetail_CalibrationSection">Z Calibration</sys:String>
+    <sys:String x:Key="ZScanDetail_DataTimeout_Title">Data Timeout</sys:String>
+    <sys:String x:Key="ZScanDetail_DataTimeout_Msg">3D camera data receive timeout ({0}ms). Please check camera connection and trigger signal.</sys:String>
+    <sys:String x:Key="ZScanDetail_AutoSavedMsg">Configuration auto-saved: {0}</sys:String>
+    <sys:String x:Key="ZScanDetail_ScanCompleteMsg">3D scan completed!</sys:String>
+    <sys:String x:Key="ZScanDetail_DataReceivedMsg">Received {0} measurement points, table updated.</sys:String>
     <sys:String x:Key="Step3_Btn_ExtractCADZ">Extract CAD Z</sys:String>
     <sys:String x:Key="LoadUnload_Title">Load / Unload</sys:String>
     <sys:String x:Key="LoadUnload_Subtitle">Load / Unload</sys:String>

@@ -1534,6 +1534,11 @@
     <sys:String x:Key="ZScanDetail_DispenseHeight">点胶Z:</sys:String>
     <sys:String x:Key="ZScanDetail_ResetCalibrationBtn">重置</sys:String>
     <sys:String x:Key="ZScanDetail_CalibrationSection">Z向标定</sys:String>
+    <sys:String x:Key="ZScanDetail_DataTimeout_Title">数据超时</sys:String>
+    <sys:String x:Key="ZScanDetail_DataTimeout_Msg">3D相机数据接收超时（{0}ms），请检查相机连接和触发信号。</sys:String>
+    <sys:String x:Key="ZScanDetail_AutoSavedMsg">配置已自动保存: {0}</sys:String>
+    <sys:String x:Key="ZScanDetail_ScanCompleteMsg">3D扫描完成！</sys:String>
+    <sys:String x:Key="ZScanDetail_DataReceivedMsg">已接收 {0} 个测量点数据，表格已更新。</sys:String>
     <sys:String x:Key="Step3_Btn_ExtractCADZ">提取CAD Z值</sys:String>
     <sys:String x:Key="LoadUnload_Title">上料 / 下料</sys:String>
     <sys:String x:Key="LoadUnload_Subtitle">上料 / 下料</sys:String>
