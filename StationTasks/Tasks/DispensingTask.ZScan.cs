@@ -1,4 +1,4 @@
-using Core.Abstraction;
+﻿using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Services;
 using System;
@@ -33,6 +33,7 @@ namespace StationTasks.Tasks
                 double safeDz1 = GetPositionValueFromMap(positions, safePosName, "Dz₁");
                 double safeDz2 = GetPositionValueFromMap(positions, safePosName, "Dz₂");
                 double safeDz3 = GetPositionValueFromMap(positions, safePosName, "Dz3");
+                double scanDz = GetPositionValueFromMap(positions, scanStartPosName, "Dz₁");
                 double startDx = GetPositionValueFromMap(positions, scanStartPosName, "Dx");
                 double startDy = GetPositionValueFromMap(positions, scanStartPosName, "Dy");
                 double endDx = GetPositionValueFromMap(positions, scanEndPosName, "Dx");
@@ -60,7 +61,12 @@ namespace StationTasks.Tasks
                     new[] { startDx, startDy }, speed, CurrentToken);
                 await WaitTime(100);
 
-                // 步骤3：触发3D相机拍照（IO触发）
+                // 步骤2：AxisDz1 单轴运动到扫描高度
+                progressCallback?.Invoke("Moving to scan height...");
+                await _motion.MoveAbsAsync(AxisDz1, scanDz, speed, CurrentToken);
+                await WaitTime(100);
+
+                // 步骤4：触发3D相机拍照（IO触发）
                 progressCallback?.Invoke("Triggering camera...");
                 int triggerLogicalId = GetDoLogicalId(triggerIOName);
                 if (triggerLogicalId >= 0)
@@ -73,18 +79,18 @@ namespace StationTasks.Tasks
                     TaskLogger.Warn($"[{TaskName}] 未找到 IO 端口 '{triggerIOName}'，跳过相机触发");
                 }
 
-                // 步骤4：Dx 运动到扫描结束位
+                // 步骤5：Dx 运动到扫描结束位
                 progressCallback?.Invoke("Scanning...");
                 await _motion.MoveAbsAsync(AxisDx, endDx, speed, CurrentToken);
 
-                // 步骤5：复位触发信号
+                // 步骤6：复位触发信号
                 if (triggerLogicalId >= 0)
                 {
                     WriteDO(triggerLogicalId, false);
                     TaskLogger.Info($"[{TaskName}] IO 触发信号已复位: {triggerIOName}");
                 }
 
-                // 步骤6：Dz₁/Dz₂/Dz3 再次抬起到安全高度（并行）
+                // 步骤7：Dz₁/Dz₂/Dz3 再次抬起到安全高度（并行）
                 progressCallback?.Invoke("Raising Z axes...");
                 await Task.WhenAll(
                     _motion.MoveAbsAsync(AxisDz1, safeDz1, speed, CurrentToken),
@@ -92,7 +98,7 @@ namespace StationTasks.Tasks
                     _motion.MoveAbsAsync(AxisDz3, safeDz3, speed, CurrentToken)
                 );
 
-                // 步骤7：Dx+Dy 插补运动到待机位
+                // 步骤8：Dx+Dy 插补运动到待机位
                 progressCallback?.Invoke("Returning to standby...");
                 await _motion.MoveLineAbsAsync(coordId,
                     new[] { AxisDx, AxisDy },

@@ -1,6 +1,30 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.12 — Z-SCAN 双针头(Dz1/Dz2)完整支持
+-------------------------------------------------------------------------------
+
+1. 需求背景
+   - Z-SCAN 功能需要支持双针头(Dz1/Dz2)，两根针头的标定参数和数据表格各自独立
+   - 原有 AssyGroup/SiteId 字段无实际引用，需清理
+   - 标定服务状态、Z轴ID、日志标识未感知针头切换，存在安全与正确性隐患
+
+2. 修改内容
+   - 移除 ZScanSummaryItem 中无引用的 AssyGroup / SiteId 字段及后备字段
+   - 修复标定服务状态同步：OnSelectedTableChanged() 加载标定参数后，同步到 ZScanCalibrationService
+     (SetBaseZ / TeachNeedleMZ / ApplyNeedleCompensation)，确保 CalculateDispenseHeight 等方法使用正确数据
+   - Z轴ID针头感知：新增 ZAxisIdNeedle2 属性和 ResolveCurrentZAxisId() 方法
+     针头示教/移动到基准Z等操作自动使用当前针头对应的Z轴ID
+   - 急停同时停止两根Z轴 (ZAxisId + ZAxisIdNeedle2)，安全优先
+   - 标定相关日志增加 [Dz1]/[Dz2] 针头索引标识，便于追踪调试
+   - 多语言资源新增 ZScanDetail_ZAxisLabel 键 (zh-CN: "Z轴" / en-US: "Z-Axis")
+
+3. 涉及文件
+   - Module/Models/ZScanSummaryItem.cs — 移除 AssyGroup/SiteId
+   - Module/Controls/ZScan/ZScanDetailViewModel.cs — 标定同步、Z轴感知、日志增强
+   - MainApp/Languages/Strings.zh-CN.xaml — 多语言键
+   - MainApp/Languages/Strings.en-US.xaml — 多语言键
+
 v2026.06.09 — SCAN步骤运动配置增加Y轴支持 + ScanDetailView重构
 -------------------------------------------------------------------------------
 

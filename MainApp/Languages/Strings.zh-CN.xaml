@@ -1478,8 +1478,8 @@
     <sys:String x:Key="ZScanDetail_3DScan">3D扫描</sys:String>
     <sys:String x:Key="ZScanDetail_EmergencyStop">急停</sys:String>
     <sys:String x:Key="ZScanDetail_Stop">停止</sys:String>
-    <sys:String x:Key="ZScanDetail_ReturnStandby">返回待机</sys:String>
-    <sys:String x:Key="ZScanDetail_ReturnStandbyBtn">待机</sys:String>
+    <sys:String x:Key="ZScanDetail_ReturnStandby">返回待机位</sys:String>
+    <sys:String x:Key="ZScanDetail_ReturnStandbyBtn">返回待机位</sys:String>
     <sys:String x:Key="ZScanDetail_CommMethod">通讯方式:</sys:String>
     <sys:String x:Key="ZScanDetail_SelectCommMethod">选择方式</sys:String>
     <sys:String x:Key="ZScanDetail_TcpConnName">TCP连接名称</sys:String>
@@ -1495,6 +1495,11 @@
     <sys:String x:Key="ZScanDetail_SaveConfigBtn">保存</sys:String>
     <sys:String x:Key="ZScanDetail_LoadConfig">加载配置</sys:String>
     <sys:String x:Key="ZScanDetail_LoadConfigBtn">加载</sys:String>
+    <sys:String x:Key="ZScanDetail_LoadConfigDialogTitle">Z-SCAN 加载配置</sys:String>
+    <sys:String x:Key="ZScanDetail_NeedleSelector">针头</sys:String>
+    <sys:String x:Key="ZScanDetail_Needle1Tab">针头1 (Dz1)</sys:String>
+    <sys:String x:Key="ZScanDetail_Needle2Tab">针头2 (Dz2)</sys:String>
+    <sys:String x:Key="ZScanDetail_ZAxisLabel">Z轴</sys:String>
     <sys:String x:Key="ZScanDetail_CalibrateCameraZ">标定相机Z高度</sys:String>
     <sys:String x:Key="ZScanDetail_CalibrateBtn">标定</sys:String>
     <sys:String x:Key="ZScanDetail_NeedleComp">针头补偿:</sys:String>
@@ -1520,9 +1525,9 @@
     <sys:String x:Key="ZScanDetail_Step2_MoveNeedle">步骤2: 移动针头到基准Z</sys:String>
     <sys:String x:Key="ZScanDetail_MoveNeedleBtn">移动针头</sys:String>
     <sys:String x:Key="ZScanDetail_Step3_TeachMZ">步骤3: 示教针头基准高度MZ</sys:String>
-    <sys:String x:Key="ZScanDetail_TeachMZBtn">示教MZ</sys:String>
-    <sys:String x:Key="ZScanDetail_MZ">MZ:</sys:String>
-    <sys:String x:Key="ZScanDetail_Step4_CurrentZ">步骤4: 输入当前Z向高度</sys:String>
+    <sys:String x:Key="ZScanDetail_TeachMZBtn">示教针头机械高度</sys:String>
+    <sys:String x:Key="ZScanDetail_MZ">机械高度:</sys:String>
+    <sys:String x:Key="ZScanDetail_Step4_CurrentZ">输入当前3D点 Z向高度</sys:String>
     <sys:String x:Key="ZScanDetail_CurrentZHeight">当前Z:</sys:String>
     <sys:String x:Key="ZScanDetail_BaseDispenseHeight">基准点胶Z:</sys:String>
     <sys:String x:Key="ZScanDetail_ZHeightDiff">Z高度差:</sys:String>

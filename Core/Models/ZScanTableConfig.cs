@@ -90,9 +90,17 @@ namespace Core.Models
         public ZScanGlobalVariableLink GlobalVariableLink { get; set; }
     }
 
+    /// <summary>
+    /// Z-SCAN 配置文件模型，支持双针头（Dz1/Dz2）各自独立的表格集合
+    /// </summary>
     public class ZScanConfigFile
     {
-        public List<ZScanTableConfig> Tables { get; set; } = new List<ZScanTableConfig>();
+        /// <summary> 针头1（Dz1）的表格集合 </summary>
+        public List<ZScanTableConfig> Needle1Tables { get; set; } = new List<ZScanTableConfig>();
+        /// <summary> 针头2（Dz2）的表格集合 </summary>
+        public List<ZScanTableConfig> Needle2Tables { get; set; } = new List<ZScanTableConfig>();
+        /// <summary> 向后兼容旧格式（单针头时代的表格集合） </summary>
+        public List<ZScanTableConfig> Tables { get; set; }
         public string DefaultTableName { get; set; } = string.Empty;
     }
 }

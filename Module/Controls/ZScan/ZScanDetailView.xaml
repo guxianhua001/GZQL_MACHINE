@@ -11,6 +11,7 @@
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
                                             TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
+        <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
         <Style x:Key="StatusTextStyle" TargetType="TextBlock">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Status}" Value="Pass">
@@ -41,7 +42,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ═══ Row 0: 运动控制按钮组 ═══ -->
+        <!-- ═══ Row 0: 运动控制按钮组 + 针头选择 ═══ -->
         <StackPanel Grid.Row="0" Margin="0,0,0,8" Orientation="Horizontal">
             <!-- 3D扫描按钮（主色调） -->
             <Button Command="{Binding Start3DScanCommand}"
@@ -71,15 +72,27 @@
 
             <!-- 回待机位按钮（轴运动图标） -->
             <Button Command="{Binding ReturnToStandbyCommand}"
-                    Style="{StaticResource MaterialDesignOutlinedButton}"
                     Padding="16,6"
                     ToolTip="{lang:Lang ZScanDetail_ReturnStandby}"
-                    Margin="0,0,24,0">
+                    Margin="0,0,16,0">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="AxisArrow" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <TextBlock Text="{lang:Lang ZScanDetail_ReturnStandbyBtn}" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
+
+            <Separator Width="1" Margin="4,0" VerticalAlignment="Stretch" />
+
+            <!-- 针头选择 -->
+            <StackPanel Orientation="Horizontal" Margin="12,0">
+                <TextBlock Text="{lang:Lang ZScanDetail_NeedleSelector}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource MaterialDesignBodyLight}" FontWeight="Medium" FontSize="12" />
+                <RadioButton Content="Dz1" GroupName="NeedleSelector"
+                             IsChecked="{Binding CurrentNeedleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"
+                             Margin="0,0,8,0" FontSize="12" />
+                <RadioButton Content="Dz2" GroupName="NeedleSelector"
+                             IsChecked="{Binding CurrentNeedleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"
+                             FontSize="12" />
+            </StackPanel>
 
             <Separator Width="1" Margin="4,0" VerticalAlignment="Stretch" />
 
@@ -176,7 +189,6 @@
                     <TextBox Text="{Binding BaseZInput, StringFormat=F3}" Width="80" VerticalAlignment="Center" FontSize="12"
                              materialDesign:HintAssist.Hint="{lang:Lang ZScanDetail_3DCameraHeight}" Margin="0,0,8,0" />
                     <Button Command="{Binding SetBaseZCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
                             Padding="8,4" FontSize="11"
                             Content="{lang:Lang ZScanDetail_SetBaseZBtn}" />
                 </WrapPanel>
@@ -198,7 +210,6 @@
                         <TextBlock Text="{Binding MeasuredMZ, StringFormat=F3}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="#2E7D32" />
                     </Border>
                     <Button Command="{Binding TeachNeedleMZCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
                             Padding="8,4" FontSize="11"
                             ToolTip="{lang:Lang ZScanDetail_TeachNeedleHeight}"
                             Content="{lang:Lang ZScanDetail_TeachMZBtn}" Margin="0,0,8,0" />
@@ -214,22 +225,21 @@
                     <TextBox Text="{Binding NeedleCompensationValue, StringFormat=F3}" Width="65" VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0" />
                     <Button Command="{Binding CalculateDispenseHeightCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Padding="8,4" FontSize="11"
+                            Padding="8,4" FontSize="11" MinWidth="65"
                             Content="{lang:Lang ZScanDetail_CalcBtn}" Margin="0,0,8,0" />
                     <TextBlock Text="{lang:Lang ZScanDetail_ZHeightDiff}" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#E65100" FontWeight="Medium" />
-                    <Border Background="#FFF3E0" CornerRadius="3" Padding="6,2" Margin="0,0,12,0">
+                    <Border Background="#FFF3E0" CornerRadius="3" Padding="6,2" Margin="0,0,12,0" MinWidth="50">
                         <TextBlock Text="{Binding ZHeightDifference, StringFormat=+0.000;-0.000;0.000}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12" Foreground="#E65100" />
                     </Border>
                     <TextBlock Text="{lang:Lang ZScanDetail_DispenseHeight}" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#1565C0" FontWeight="Medium" />
-                    <Border Background="#E3F2FD" CornerRadius="3" Padding="8,3">
+                    <Border Background="#E3F2FD" CornerRadius="3" Padding="8,3" MinWidth="50">
                         <TextBlock Text="{Binding CalculatedDispenseHeight, StringFormat=F3}" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="#0D47A1" />
                     </Border>
                 </WrapPanel>
 
                 <WrapPanel>
                     <Button Command="{Binding ResetCalibrationCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Padding="8,4"
+                            Padding="8,4" MinWidth="65"
                             ToolTip="{lang:Lang ZScanDetail_ResetCalibration}"
                             VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">

@@ -8,16 +8,12 @@ namespace Module.Models
     /// </summary>
     public class ZScanSummaryItem : BindableBase
     {
-        private string _assyGroup;
-        private string _siteId;
         private string _subAssy;
         private int _points;
         private double _zNominal;
         private double _zMaxDelta;
         private ScanStatus _status;
 
-        public string AssyGroup { get => _assyGroup; set => SetProperty(ref _assyGroup, value); }
-        public string SiteId { get => _siteId; set => SetProperty(ref _siteId, value); }
         public string SubAssy { get => _subAssy; set => SetProperty(ref _subAssy, value); }
         public int Points { get => _points; set => SetProperty(ref _points, value); }
         public double ZNominal { get => _zNominal; set => SetProperty(ref _zNominal, value); }
