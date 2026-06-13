@@ -257,19 +257,7 @@
             </materialDesign:Card>
         </Expander>
 
-        <!-- 轨迹段保存/加载 -->
-        <Separator Margin="0,12,0,8"/>
-        <TextBlock Text="{lang:Lang Step4_Section_Persistence}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="#424242"/>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-            <Button Content="{lang:Lang Step4_Btn_SaveSegments}" Command="{Binding SaveSegmentsCommand}"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
-                    Padding="8,4" FontSize="12" Margin="0,0,8,0"
-                    ToolTip="{lang:Lang Step4_ToolTip_SaveSegments}"/>
-            <!--<Button Content="📂 加载轨迹段" Command="{Binding LoadSegmentsCommand}"
-                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                    Padding="8,4" FontSize="12"
-                    ToolTip="从 JSON 文件加载之前保存的轨迹段"/>-->
-        </StackPanel>
+
 
     </StackPanel>
 </UserControl>

@@ -544,7 +544,7 @@ namespace Module.ViewModels
         /// <summary>轨迹段摘要文本（如 "检测到 N 条轨迹段，M 个图层"）</summary>
         public string SegmentSummaryDisplay =>
             _parsedDxfResult != null
-                ? $"检测到 {_parsedDxfResult.TotalEntityCount} 个图元，{_parsedDxfResult.LayerNames.Count} 个图层"
+                ? string.Format(L("CadPoint_Status_Summary"), _parsedDxfResult.TotalEntityCount, _parsedDxfResult.LayerNames.Count)
                 : L("CadPoint_Status_NoData");
 
         #endregion
@@ -1295,7 +1295,7 @@ namespace Module.ViewModels
 
                 if (newPoints == null || newPoints.Count == 0)
                 {
-                    GlobalStatus = "重新采样失败：无法生成采样点";
+                    GlobalStatus = L("CadPoint_Status_ResampleFailed");
                     return;
                 }
 
@@ -1305,11 +1305,11 @@ namespace Module.ViewModels
                 SelectedSegmentPoints = newPoints;
                 RaisePropertyChanged(nameof(SegmentSummaryDisplay));
 
-                GlobalStatus = $"已将 {_selectedSegment.SegmentId} 重新采样为 {_segmentSplitCount} 个点";
+                GlobalStatus = string.Format(L("CadPoint_Status_ResampleSuccess"), _selectedSegment.SegmentId, _segmentSplitCount);
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"重新采样失败: {ex.Message}";
+                GlobalStatus = string.Format(L("CadPoint_Status_ResampleError"), ex.Message);
             }
         }
 
@@ -1759,7 +1759,7 @@ namespace Module.ViewModels
             if (dialog.ShowDialog() == true)
             {
                 FilePath = dialog.FileName;
-                ImportStatusMessage = $"已选择: {System.IO.Path.GetFileName(dialog.FileName)}";
+                ImportStatusMessage = string.Format(L("CadPoint_Status_FileSelected"), System.IO.Path.GetFileName(dialog.FileName));
                 ImportDxfCommand.RaiseCanExecuteChanged();
             }
         }
@@ -1777,7 +1777,7 @@ namespace Module.ViewModels
 
             var dialog = new OpenFileDialog
             {
-                Filter = "JSON 文件|*.json|所有文件|*.*",
+                Filter = L("CadPoint_Filter_JsonAll"),
                 DefaultExt = ".json",
                 Title = L("CadPoint_Dialog_LoadTrajectory"),
                 InitialDirectory = initialDir
@@ -1797,14 +1797,14 @@ namespace Module.ViewModels
         {
             if (!HasFilePath)
             {
-                ImportStatusMessage = "错误：未选择文件";
+                ImportStatusMessage = L("CadPoint_Status_NoFile");
                 return;
             }
 
             try
             {
-                GlobalStatus = "正在解析 DXF 文件...";
-                ImportStatusMessage = "解析中，请稍候...";
+                GlobalStatus = L("CadPoint_Status_Parsing");
+                ImportStatusMessage = L("CadPoint_Status_ParsingWait");
 
                 var filePath = FilePath;
 
@@ -1839,8 +1839,8 @@ namespace Module.ViewModels
 
                 if (!importResult.IsSuccess)
                 {
-                    ImportStatusMessage = $"解析失败: 未检测到有效图元。警告: {string.Join("; ", _parsedDxfResult?.ParseWarnings ?? new List<string>())}";
-                    GlobalStatus = "DXF 解析失败";
+                    ImportStatusMessage = string.Format(L("CadPoint_Status_ParseFailedNoEntity"), string.Join("; ", _parsedDxfResult?.ParseWarnings ?? new List<string>()));
+                    GlobalStatus = L("CadPoint_Status_ParseFailed");
                     return;
                 }
 
@@ -1859,20 +1859,20 @@ namespace Module.ViewModels
                 SelectedLayer = _layerNames.FirstOrDefault();
                 RaisePropertyChanged(nameof(LayerNames));
 
-                GlobalStatus = $"导入成功: {Segments.Count} 条轨迹段";
+                GlobalStatus = string.Format(L("CadPoint_Status_ImportSuccess"), Segments.Count);
                 RaisePropertyChanged(nameof(SegmentSummaryDisplay));
 
-                ImportStatusMessage = $"成功! 共解析 {_parsedDxfResult.TotalEntityCount} 个图元, 生成 {Segments.Count} 条轨迹段";
+                ImportStatusMessage = string.Format(L("CadPoint_Status_ImportDetail"), _parsedDxfResult.TotalEntityCount, Segments.Count);
                 if (_parsedDxfResult.ParseWarnings.Count > 0)
-                    ImportStatusMessage += $" | 警告: {string.Join("; ", _parsedDxfResult.ParseWarnings)}";
+                    ImportStatusMessage += string.Format(L("CadPoint_Status_ImportWarning"), string.Join("; ", _parsedDxfResult.ParseWarnings));
 
                 FitCanvasToExtents();
                 GoToStep(2);
             }
             catch (Exception ex)
             {
-                ImportStatusMessage = $"导入异常: {ex.Message}";
-                GlobalStatus = "DXF 导入异常";
+                ImportStatusMessage = string.Format(L("CadPoint_Status_ImportException"), ex.Message);
+                GlobalStatus = L("CadPoint_Status_ImportError");
             }
         }
 
@@ -1884,7 +1884,7 @@ namespace Module.ViewModels
         {
             if (_dxfParser == null)
             {
-                ImportStatusMessage = "错误：DXF 解析服务不可用";
+                ImportStatusMessage = L("CadPoint_Status_DxfServiceUnavailable");
                 return;
             }
 
@@ -1894,7 +1894,7 @@ namespace Module.ViewModels
 
                 if (!_parsedDxfResult.IsSuccess)
                 {
-                    ImportStatusMessage = $"解析失败: 未检测到有效图元。警告: {string.Join("; ", _parsedDxfResult.ParseWarnings)}";
+                    ImportStatusMessage = string.Format(L("CadPoint_Status_ParseFailedNoEntity"), string.Join("; ", _parsedDxfResult.ParseWarnings));
                     return;
                 }
 
@@ -1937,7 +1937,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                ImportStatusMessage = $"导入异常: {ex.Message}";
+                ImportStatusMessage = string.Format(L("CadPoint_Status_ImportException"), ex.Message);
             }
         }
 
@@ -2064,7 +2064,7 @@ namespace Module.ViewModels
                         seg.JumpSpeed = vm.JumpSpeed;
                         seg.MoveSpeed = vm.MoveSpeed;
                     }
-                    GlobalStatus = $"批量设速: 空移={vm.JumpSpeed:F1}, 插补={vm.MoveSpeed:F1} mm/s ({targets.Count} 段)";
+                    GlobalStatus = string.Format(L("CadPoint_Status_BatchSetSpeed"), vm.JumpSpeed, vm.MoveSpeed, targets.Count);
                 }
             }
         }
@@ -2079,7 +2079,7 @@ namespace Module.ViewModels
             {
                 foreach (var seg in targets)
                     seg.DispenseAmount = glue;
-                GlobalStatus = $"批量设胶: {glue:F2} ({targets.Count} 段)";
+                GlobalStatus = string.Format(L("CadPoint_Status_BatchSetGlue"), glue, targets.Count);
             }
         }
 
@@ -2093,7 +2093,7 @@ namespace Module.ViewModels
 
             var window = new Window
             {
-                Title = "批量设置参数",
+                Title = L("CadPoint_Dialog_BatchSetTitle"),
                 Content = dialog,
                 Width = 470,
                 Height = 520,
@@ -2117,7 +2117,7 @@ namespace Module.ViewModels
                             param.ApplyTo(seg);
                         changedCount++;
                     }
-                    GlobalStatus = $"批量设置: {changedCount} 个参数已应用到 {targets.Count} 段";
+                    GlobalStatus = string.Format(L("CadPoint_Status_BatchSetResult"), changedCount, targets.Count);
                 }
             }
         }
@@ -2189,7 +2189,7 @@ namespace Module.ViewModels
             IsPolylineRoiActive = false;
             IsArcRoiActive = false;
 
-            GlobalStatus = $"已添加 ROI 轨迹段: {segment.SegmentId}";
+            GlobalStatus = string.Format(L("CadPoint_Status_RoiAdded"), segment.SegmentId);
         }
 
         /// <summary>取消 ROI 绘制——清除预览并关闭所有 ROI 工具</summary>
@@ -2276,13 +2276,13 @@ namespace Module.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    GlobalStatus = $"示教机械坐标失败: {ex.Message}";
+                    GlobalStatus = string.Format(L("Step4_Status_TeachMachineFailed"), ex.Message);
                     return;
                 }
             }
 
             ComputeAffineTransformCommand.RaiseCanExecuteChanged();
-            GlobalStatus = $"已示教 {point.Name} 机械坐标: ({point.MachineX:F3}, {point.MachineY:F3}, Dz={point.MachineDz:F3})";
+            GlobalStatus = string.Format(L("Step4_Status_TeachAffineSuccess"), point.Name, point.MachineX, point.MachineY, point.MachineDz);
         }
 
         /// <summary>计算N点仿射变换——调用AffineCalibrationService.Solve()</summary>
@@ -2370,7 +2370,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"应用变换失败: {ex.Message}";
+                GlobalStatus = string.Format(L("Step4_Status_ApplyTransformFailed"), ex.Message);
             }
         }
 
@@ -2445,13 +2445,12 @@ namespace Module.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    GlobalStatus = $"示教机械坐标失败: {ex.Message}";
+                    GlobalStatus = string.Format(L("Step4_Status_TeachMachineFailed"), ex.Message);
                     return;
                 }
             }
 
-            GlobalStatus = $"已示教 {point.Name} 机械坐标: Dx={point.MachineDx:F3}, Dy={point.MachineDy:F3}"
-                         + $", Dz={point.MachineDz:F3}";
+            GlobalStatus = string.Format(L("Step4_Status_TeachMappingSuccess"), point.Name, point.MachineDx, point.MachineDy, point.MachineDz);
         }
 
         /// <summary>弹出坐标对齐原理示意图窗口</summary>
@@ -2465,7 +2464,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"打开示意图失败: {ex.Message}";
+                GlobalStatus = string.Format(L("Step4_Status_OpenDiagramFailed"), ex.Message);
             }
         }
 
@@ -2490,25 +2489,18 @@ namespace Module.ViewModels
             _simCts = new System.Threading.CancellationTokenSource();
             IsSimulating = true;
             SimProgress = 0;
-            GlobalStatus = "Dry Run 开始...";
 
             try
             {
-                int total = enabledSegments.Count;
-                for (int i = 0; i < total; i++)
+                if (LineDispenseMode == LineDispenseMode.SinglePoint)
                 {
-                    _simCts.Token.ThrowIfCancellationRequested();
-
-                    var seg = enabledSegments[i];
-                    SimStatusText = $"正在仿真 {seg.SegmentId} ({i + 1}/{total})...";
-                    SimProgress = (double)(i + 1) / total * 100;
-
-                    // 高亮当前仿真的段对应的图元
-                    SelectedEntity = seg.SourceEntity;
-
-                    // 模拟每段执行耗时（按长度比例，至少 200ms）
-                    int delayMs = Math.Max(200, (int)(seg.Length * 50));
-                    await Task.Delay(delayMs, _simCts.Token);
+                    // 单点模式：逐点仿真，模拟每个点的完整工艺周期
+                    await ExecuteDryRunSinglePoint(enabledSegments);
+                }
+                else
+                {
+                    // 连续插补模式：按段仿真
+                    await ExecuteDryRunContinuous(enabledSegments);
                 }
 
                 SimStatusText = L("CadPoint_Status_DryRunFinish");
@@ -2528,12 +2520,73 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>连续插补模式仿真——按段级别迭代</summary>
+        private async Task ExecuteDryRunContinuous(List<DispenseSegment> enabledSegments)
+        {
+            int total = enabledSegments.Count;
+            for (int i = 0; i < total; i++)
+            {
+                _simCts!.Token.ThrowIfCancellationRequested();
+
+                var seg = enabledSegments[i];
+                SimStatusText = $"[{L("Step3_Radio_ContinuousInterpolation")}] {seg.SegmentId} ({i + 1}/{total})...";
+                SimProgress = (double)(i + 1) / total * 100;
+
+                SelectedEntity = seg.SourceEntity;
+
+                // 模拟每段执行耗时（按长度比例，至少 200ms）
+                int delayMs = Math.Max(200, (int)(seg.Length * 50));
+                await Task.Delay(delayMs, _simCts.Token);
+            }
+        }
+
+        /// <summary>单点模式仿真——逐点迭代，模拟每个点的完整工艺周期</summary>
+        private async Task ExecuteDryRunSinglePoint(List<DispenseSegment> enabledSegments)
+        {
+            // 计算总点数
+            int totalPoints = enabledSegments.Sum(s => s.Points?.Count ?? 0);
+            if (totalPoints == 0) return;
+
+            DispenseSegment? lastSeg = null;
+            int pointIndex = 0;
+            foreach (var seg in enabledSegments)
+            {
+                if (seg.Points == null || seg.Points.Count == 0) continue;
+
+                // 切换段时更新选中段（触发 SelectedSegmentPoints 和 SelectedEntity 刷新）
+                if (lastSeg != seg)
+                {
+                    SelectedSegment = seg;
+                    lastSeg = seg;
+                }
+
+                for (int ptIdx = 0; ptIdx < seg.Points.Count; ptIdx++)
+                {
+                    _simCts!.Token.ThrowIfCancellationRequested();
+                    pointIndex++;
+
+                    // 高亮当前执行的点位
+                    SelectedPointIndex = ptIdx;
+
+                    SimStatusText = $"[{L("Step3_Radio_SinglePoint")}] {seg.SegmentId} - P{pointIndex} ({pointIndex}/{totalPoints})...";
+                    SimProgress = (double)pointIndex / totalPoints * 100;
+
+                    // 模拟单点工艺周期：抬升→XY定位→Z下降→出胶→关胶→抬升
+                    int delayMs = Math.Max(100, (int)(SinglePointProcessParams.DispenseTime + SinglePointProcessParams.PreDispenseDelay + SinglePointProcessParams.PostDelay));
+                    await Task.Delay(delayMs, _simCts.Token);
+                }
+            }
+
+            // 仿真结束后清除点位高亮
+            SelectedPointIndex = -1;
+        }
+
         /// <summary>暂停仿真（通过取消令牌实现）</summary>
         private void ExecutePauseSim()
         {
             // TODO: 实现真正的暂停逻辑（需要更复杂的异步状态机）
             // 目前简化为停止后可重新开始
-            GlobalStatus = "仿真已暂停（点击 Dry Run 可继续）";
+            GlobalStatus = L("CadPoint_Status_SimPaused");
         }
 
         /// <summary>停止仿真——取消正在进行的异步任务</summary>
@@ -2562,7 +2615,7 @@ namespace Module.ViewModels
 
             if (_dispenseExecuteService == null)
             {
-                GlobalStatus = "点胶执行服务不可用，无法执行真实运动";
+                GlobalStatus = L("CadPoint_Status_DispenseUnavailable");
                 return;
             }
 
@@ -2576,8 +2629,22 @@ namespace Module.ViewModels
 
                 if (IsRealDryRunMode)
                 {
-                    GlobalStatus = DescendInDryRun ? L("CadPoint_Status_DryRunStart_Descend") : L("CadPoint_Status_DryRunStart_Safe");
-                    await _dispenseExecuteService.DryRunAsync(enabledSegments, DescendInDryRun, _simCts.Token);
+                    if (LineDispenseMode == LineDispenseMode.SinglePoint)
+                    {
+                        // 单点模式空跑：逐点执行运动，不出胶
+                        GlobalStatus = DescendInDryRun
+                            ? L("CadPoint_Status_DryRunStart_Descend") + $" ({L("Step3_Radio_SinglePoint")})"
+                            : L("CadPoint_Status_DryRunStart_Safe") + $" ({L("Step3_Radio_SinglePoint")})";
+                        await _dispenseExecuteService.ExecuteSinglePointLineAsync(
+                            enabledSegments, SinglePointProcessParams, StandbyHeight, CurrentNeedleIndex, _simCts.Token,
+                            dryRun: !DescendInDryRun);
+                    }
+                    else
+                    {
+                        // 连续插补模式空跑
+                        GlobalStatus = DescendInDryRun ? L("CadPoint_Status_DryRunStart_Descend") : L("CadPoint_Status_DryRunStart_Safe");
+                        await _dispenseExecuteService.DryRunAsync(enabledSegments, DescendInDryRun, CurrentNeedleIndex, _simCts.Token);
+                    }
                     GlobalStatus = L("CadPoint_Status_DryRunCompleted");
                 }
                 else if (IsRealDispenseMode)
@@ -2586,13 +2653,13 @@ namespace Module.ViewModels
                     {
                         GlobalStatus = L("LineBC_Status_SinglePointExecuting");
                         await _dispenseExecuteService.ExecuteSinglePointLineAsync(
-                            enabledSegments, SinglePointProcessParams, StandbyHeight, _simCts.Token);
+                            enabledSegments, SinglePointProcessParams, StandbyHeight, CurrentNeedleIndex, _simCts.Token);
                         GlobalStatus = L("LineBC_Status_SinglePointCompleted");
                     }
                     else
                     {
                         GlobalStatus = L("LineBC_Status_ContinuousInterpolationExecuting");
-                        await _dispenseExecuteService.ExecutePathAsync(enabledSegments, "B/C", _simCts.Token);
+                        await _dispenseExecuteService.ExecutePathAsync(enabledSegments, "B/C", CurrentNeedleIndex, _simCts.Token);
                         GlobalStatus = L("LineBC_Status_ContinuousInterpolationCompleted");
                     }
                 }
@@ -2643,7 +2710,7 @@ namespace Module.ViewModels
 
             if (_motionService == null)
             {
-                GlobalStatus = "运动服务不可用，无法读取Z轴位置";
+                GlobalStatus = L("CadPoint_Status_MotionUnavailable");
                 return;
             }
 
@@ -2654,11 +2721,11 @@ namespace Module.ViewModels
                 double currentZ = _motionService.GetAxisState(AxisDz1).ActualPosition;
                 _selectedSegment.TeachHeight = currentZ;
                 _selectedSegment.ZHeight = currentZ;
-                GlobalStatus = $"已示教 {_selectedSegment.SegmentId} 高度: {currentZ:F3} mm";
+                GlobalStatus = string.Format(L("CadPoint_Status_TeachHeightSuccess"), _selectedSegment.SegmentId, currentZ);
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"示教高度失败: {ex.Message}";
+                GlobalStatus = string.Format(L("CadPoint_Status_TeachHeightFailed"), ex.Message);
             }
         }
 
@@ -2758,7 +2825,7 @@ namespace Module.ViewModels
                 _selectedAffinePoint.CadY = cadY;
                 _isPickingAffineCadCoord = false;
                 ComputeAffineTransformCommand.RaiseCanExecuteChanged();
-                GlobalStatus = $"已选取 {_selectedAffinePoint.Name} CAD坐标: ({cadX:F3}, {cadY:F3})";
+                GlobalStatus = string.Format(L("Step4_Status_PickedAffineCad"), _selectedAffinePoint.Name, cadX, cadY);
                 return;
             }
 
@@ -2768,7 +2835,7 @@ namespace Module.ViewModels
                 _selectedMappingPoint.CadX = cadX;
                 _selectedMappingPoint.CadY = cadY;
                 _isPickingMappingCadCoord = false;
-                GlobalStatus = $"已选取 {_selectedMappingPoint.Name} CAD坐标: ({cadX:F3}, {cadY:F3})";
+                GlobalStatus = string.Format(L("Step4_Status_PickedMappingCad"), _selectedMappingPoint.Name, cadX, cadY);
                 return;
             }
         }
@@ -2983,7 +3050,7 @@ namespace Module.ViewModels
             _layerNames = layers;
             RaisePropertyChanged(nameof(LayerNames));
 
-            GlobalStatus = $"已加载 {Segments.Count} 条轨迹段";
+            GlobalStatus = string.Format(L("CadPoint_Status_SegmentsLoaded"), Segments.Count);
             GoToStep(3);
         }
 
@@ -3063,7 +3130,7 @@ namespace Module.ViewModels
 
             var dialog = new SaveFileDialog
             {
-                Filter = "JSON 文件|*.json|所有文件|*.*",
+                Filter = L("CadPoint_Filter_JsonAll"),
                 DefaultExt = ".json",
                 FileName = $"segments_{DateTime.Now:yyyyMMdd_HHmmss}",
                 Title = L("CadPoint_Dialog_SaveTrajectory"),
@@ -3117,11 +3184,11 @@ namespace Module.ViewModels
                 string json = System.Text.Json.JsonSerializer.Serialize(saveData, options);
                 System.IO.File.WriteAllText(dialog.FileName, json);
                 RecordSegmentConfigPath(dialog.FileName);
-                GlobalStatus = $"轨迹段已保存: {Segments.Count} 段 → {System.IO.Path.GetFileName(dialog.FileName)}";
+                GlobalStatus = string.Format(L("CadPoint_Status_SegmentsSaved"), Segments.Count, System.IO.Path.GetFileName(dialog.FileName));
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"保存失败: {ex.Message}";
+                GlobalStatus = string.Format(L("CadPoint_Status_SaveFailed"), ex.Message);
             }
         }
 
@@ -3134,7 +3201,7 @@ namespace Module.ViewModels
             var path = _segmentFilePath;
             if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path))
             {
-                GlobalStatus = "请先选择有效的轨迹段配置文件";
+                GlobalStatus = L("CadPoint_Status_NoValidConfig");
                 return;
             }
 
@@ -3298,13 +3365,13 @@ namespace Module.ViewModels
                 FitCanvasToExtents();
 
                 RecordSegmentConfigPath(path);
-                GlobalStatus = $"已加载: {Segments.Count} 段, {CanvasEntities.Count} 个图元"
-                    + (alignData != null ? $", 对齐模式={alignData.AlignMode}" : "");
+                GlobalStatus = string.Format(L("CadPoint_Status_LoadSuccess"), Segments.Count, CanvasEntities.Count)
+                    + (alignData != null ? string.Format(L("CadPoint_Status_LoadAlignMode"), alignData.AlignMode) : "");
                 GoToStep(2);
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"加载失败: {ex.Message}";
+                GlobalStatus = string.Format(L("CadPoint_Status_LoadFailed"), ex.Message);
             }
         }
 
@@ -3503,7 +3570,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(LayerNames));
             RaisePropertyChanged(nameof(SegmentSummaryDisplay));
 
-            GlobalStatus = $"测试模式: {CanvasEntities.Count} 个图元, {_layerCheckList.Count} 个图层";
+            GlobalStatus = string.Format(L("CadPoint_Status_TestMode"), CanvasEntities.Count, _layerCheckList.Count);
 
             // 自动适配视口并跳转到 Step2 显示画布
             FitCanvasToExtents();
@@ -3561,25 +3628,34 @@ namespace Module.ViewModels
 
         private readonly Window _dialogWindow;
 
+        /// <summary>获取多语言文本（便捷方法）</summary>
+        private static string L(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                return string.Empty;
+            var resource = Application.Current?.TryFindResource(key);
+            return resource?.ToString() ?? $"[{key}]";
+        }
+
         public BatchSetParamsViewModel(DispenseSegment referenceSegment, Window dialogWindow)
         {
             _dialogWindow = dialogWindow;
 
-            BatchParamItems.Add(new TypedBatchParamItem("空移速度", "mm/s", referenceSegment.JumpSpeed,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_JumpSpeed"), "mm/s", referenceSegment.JumpSpeed,
                 (seg, val) => seg.JumpSpeed = val));
-            BatchParamItems.Add(new TypedBatchParamItem("插补速度", "mm/s", referenceSegment.MoveSpeed,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_MoveSpeed"), "mm/s", referenceSegment.MoveSpeed,
                 (seg, val) => seg.MoveSpeed = val));
-            BatchParamItems.Add(new TypedBatchParamItem("安全高度", "mm", referenceSegment.SafeHeight,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_SafeHeight"), "mm", referenceSegment.SafeHeight,
                 (seg, val) => seg.SafeHeight = val));
-            BatchParamItems.Add(new TypedBatchParamItem("逼近高度", "mm", referenceSegment.ApproachHeight,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_ApproachHeight"), "mm", referenceSegment.ApproachHeight,
                 (seg, val) => seg.ApproachHeight = val));
-            BatchParamItems.Add(new TypedBatchParamItem("减速系数", "", referenceSegment.CornerDecel,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_CornerDecel"), "", referenceSegment.CornerDecel,
                 (seg, val) => seg.CornerDecel = val));
-            BatchParamItems.Add(new TypedBatchParamItem("开胶距离", "mm", referenceSegment.GlueTriggerOffsetMm,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_GlueTriggerOffset"), "mm", referenceSegment.GlueTriggerOffsetMm,
                 (seg, val) => seg.GlueTriggerOffsetMm = val));
-            BatchParamItems.Add(new TypedBatchParamItem("起点延时", "ms", referenceSegment.PreDelay,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_PreDelay"), "ms", referenceSegment.PreDelay,
                 (seg, val) => seg.PreDelay = val));
-            BatchParamItems.Add(new TypedBatchParamItem("终点延时", "ms", referenceSegment.PostDelay,
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_PostDelay"), "ms", referenceSegment.PostDelay,
                 (seg, val) => seg.PostDelay = val));
 
             ConfirmCommand = new DelegateCommand(() =>

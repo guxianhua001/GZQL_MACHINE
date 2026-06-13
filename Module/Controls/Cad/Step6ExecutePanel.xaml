@@ -64,8 +64,6 @@
                 Style="{StaticResource MaterialDesignRaisedButton}"
                 HorizontalAlignment="Stretch" Padding="0,6"
                 FontSize="15" FontWeight="Bold"
-                Background="#D32F2F" Foreground="White"
-                BorderBrush="#B71C1C"
                 IsEnabled="{Binding CanExecute, FallbackValue=False}"
                 Margin="0,0,0,6"/>
 

@@ -89,7 +89,7 @@ namespace MotionControl.Interfaces
         // 连续插补
 
         /// <summary> 初始化连续插补：设置速度曲线、前瞻模式、打开插补列表 </summary>
-        void InitializeContinuousInterpolation(int coordId, int[] axisIds, double startVel = 5, double maxVel = 50, double acc = 500, double dec = 500, double endVel = 0,double sPara = 0.05);
+        void InitializeContinuousInterpolation(int coordId, int[] axisIds, double startVel = 0, double maxVel = 5, double acc = 0.1, double dec = 0.1, double endVel = 0,double sPara = 0.05);
 
         /// <summary> 添加直线插补段到连续插补列表 </summary>
         void AddLineSegment(int coordId, double[] targetPos, ushort posiMode = 1, int mark = 0);

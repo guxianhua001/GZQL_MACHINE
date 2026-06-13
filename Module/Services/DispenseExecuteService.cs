@@ -12,6 +12,7 @@ namespace Module.Services
     /// <summary>
     /// 点胶执行服务实现 — 将 DispenseSegment 轨迹转换为运动控制指令
     /// 空跑和走胶共享同一工艺流程，仅工作高度和出胶行为不同
+    /// 支持双针头：needleIndex=0 使用 AxisDz1，needleIndex=1 使用 AxisDz2
     /// </summary>
     public class DispenseExecuteService : IDispenseExecuteService
     {
@@ -19,9 +20,10 @@ namespace Module.Services
         private readonly ILoggerService? _logger;
 
         private const int CoordId = 0;
-        private const int AxisDx = 9;
-        private const int AxisDy = 7;
+        private const int AxisDx = 8;
+        private const int AxisDy = 6;
         private const int AxisDz1 = 3;
+        private const int AxisDz2 = 4;
         private const int GlueIoPort = 0;
         private const double DefaultVelocity = 10.0;
         private const double DefaultAcc = 0.05;
@@ -42,51 +44,47 @@ namespace Module.Services
             _logger = logger;
         }
 
+        /// <summary>根据针头索引获取对应的Z轴编号</summary>
+        private static int GetAxisDz(int needleIndex) => needleIndex == 0 ? AxisDz1 : AxisDz2;
+
         /// <summary>
         /// 空跑仿真：按行业标准工艺流程执行，可选是否下降到工作高度，不出胶
         /// </summary>
-        public async Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, CancellationToken token = default)
+        public async Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default)
         {
-            await ExecuteSegmentsAsync(segments, descendToWorkHeight: descendToWorkHeight, dispenseGlue: false, modeLabel: "空跑", token: token);
+            await ExecuteSegmentsAsync(segments, descendToWorkHeight: descendToWorkHeight, dispenseGlue: false, modeLabel: "空跑", needleIndex: needleIndex, token: token);
         }
 
         /// <summary>
         /// 执行走胶路径：按行业标准工艺流程执行，下降到工作高度并出胶
         /// </summary>
-        public async Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, CancellationToken token = default)
+        public async Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default)
         {
-            await ExecuteSegmentsAsync(segments, descendToWorkHeight: true, dispenseGlue: true, modeLabel: $"走胶[{site}]", token: token);
+            await ExecuteSegmentsAsync(segments, descendToWorkHeight: true, dispenseGlue: true, modeLabel: $"走胶[{site}]", needleIndex: needleIndex, token: token);
         }
 
         /// <summary>
         /// 统一执行入口——空跑和走胶共享同一工艺流程
         /// 【工业标准工艺】
         /// 流程：安全抬升 → XY定位 → Z下降(可选) → 走轨迹 → 关胶 → 抬升
-        /// 
-        /// 参数组合：
-        /// - 空跑: descendToWorkHeight=false, dispenseGlue=false → 保持在安全高度，不出胶
-        /// - 走胶: descendToWorkHeight=true,  dispenseGlue=true  → 下降到工作高度，出胶
         /// </summary>
-        /// <param name="segments">轨迹段集合</param>
-        /// <param name="descendToWorkHeight">是否下降到工作高度（false=保持在安全高度）</param>
-        /// <param name="dispenseGlue">是否出胶</param>
-        /// <param name="modeLabel">模式标签（用于日志和进度显示）</param>
-        /// <param name="token">取消令牌</param>
         private async Task ExecuteSegmentsAsync(
             IEnumerable<DispenseSegment> segments,
             bool descendToWorkHeight,
             bool dispenseGlue,
             string modeLabel,
+            int needleIndex,
             CancellationToken token)
         {
             SetRunning(true);
             PublishStatus("Running");
+            int axisDz = GetAxisDz(needleIndex);
 
             try
             {
                 var segmentList = segments.Where(s => s.IsEnabled).ToList();
                 int total = segmentList.Count;
-                _logger?.Info($"[DispenseExecute] 开始{modeLabel}，共 {total} 段");
+                _logger?.Info($"[DispenseExecute] 开始{modeLabel}，共 {total} 段，针头{(needleIndex == 0 ? "1/Dz1" : "2/Dz2")}");
 
                 foreach (var (seg, index) in segmentList.Select((s, i) => (s, i)))
                 {
@@ -97,12 +95,14 @@ namespace Module.Services
                     _logger?.Debug($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]");
 
                     // 1. Z 抬升到安全高度
-                    await _motionService.MoveAbsAsync(AxisDz1, seg.SafeHeight, DefaultVelocity, token);
+                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, DefaultVelocity, token);
 
-                    // 2. XY 移动到段起点上方
+                    // 2. XY 移动到段起点上方（必须使用对齐后的机械坐标，CAD坐标不可用于运动）
                     var startPt = seg.Points.First();
-                    double startX = startPt.MachineX ?? startPt.X;
-                    double startY = startPt.MachineY ?? startPt.Y;
+                    if (!startPt.MachineX.HasValue || !startPt.MachineY.HasValue)
+                        throw new InvalidOperationException($"段 [{seg.SegmentId}] 起点缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机");
+                    double startX = startPt.MachineX.Value;
+                    double startY = startPt.MachineY.Value;
                     await _motionService.MoveLineAbsAsync(CoordId, new[] { AxisDx, AxisDy },
                         new[] { startX, startY }, DefaultVelocity, token);
 
@@ -117,52 +117,43 @@ namespace Module.Services
                         double slowVel = DefaultVelocity * seg.CornerDecel;
 
                         // 3a. 快速下降到距目标位 3mm 处
-                        await _motionService.MoveAbsAsync(AxisDz1, approachZ, DefaultVelocity, token);
+                        await _motionService.MoveAbsAsync(axisDz, approachZ, DefaultVelocity, token);
 
-                        // 3b. 慢速接近目标高度（使用减速系数）
-                        var moveZTask = _motionService.MoveAbsAsync(AxisDz1, targetZ, slowVel, token);
-
-                        // 3c. 出胶模式：慢速下降过程中位置触发开胶
                         if (dispenseGlue)
                         {
-                            bool glueOpened = false;
-                            double triggerOffset = seg.GlueTriggerOffsetMm;
-                            while (!moveZTask.IsCompleted && !token.IsCancellationRequested)
-                            {
-                                double currentZ = _motionService.GetAxisPosition(AxisDz1);
-                                if (Math.Abs(currentZ - targetZ) <= triggerOffset)
-                                {
-                                    WriteGlueIo(true);
-                                    _logger?.Debug($"[DispenseExecute] 段 [{seg.SegmentId}] 位置触发开胶");
-                                    glueOpened = true;
-                                    break;
-                                }
-                                await Task.Delay(1, token);
-                            }
+                            // 3b. 计算位置触发点：根据运动方向确定触发位在目标上方（提前开胶）
+                            double triggerDistance = Math.Abs(seg.GlueTriggerOffsetMm);
+                            int motionDir = Math.Sign(approachZ - targetZ);
+                            double triggerZ = targetZ + motionDir * triggerDistance;
 
-                            if (!glueOpened)
-                            {
-                                WriteGlueIo(true);
-                                _logger?.Warn($"[DispenseExecute] 段 [{seg.SegmentId}] 兜底开胶");
-                            }
+                            // 3c. 慢速移到触发位开胶
+                            await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
+                            WriteGlueIo(true);
+                            _logger?.Debug($"[DispenseExecute] 段 [{seg.SegmentId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={seg.GlueTriggerOffsetMm:F3}mm");
+
+                            // 3d. 继续慢速移到目标位
+                            await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
                         }
-
-                        await moveZTask;
+                        else
+                        {
+                            // 空跑：直接慢速移到目标位
+                            await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
+                        }
                     }
 
-                    // 3b. 开胶稳定延时
+                    // 开胶稳定延时
                     if (dispenseGlue && seg.PreDelay > 0)
                         await Task.Delay((int)seg.PreDelay, token);
 
-                    // 3d. Z轴安全防护：确认Z轴已到达工作高度再开始插补运动
+                    // Z轴安全防护：确认Z轴已到达工作高度再开始插补运动
                     if (descendToWorkHeight)
                     {
-                        double currentZPos = _motionService.GetAxisPosition(AxisDz1);
+                        double currentZPos = _motionService.GetAxisPosition(axisDz);
                         if (Math.Abs(currentZPos - targetZ) > 0.5)
                         {
                             _logger?.Warn($"[DispenseExecute] 段 [{seg.SegmentId}] Z轴未到位: 当前={currentZPos:F3}, 目标={targetZ:F3}，重新下降");
                             double slowVel = DefaultVelocity * seg.CornerDecel;
-                            await _motionService.MoveAbsAsync(AxisDz1, targetZ, slowVel, token);
+                            await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
                         }
                     }
 
@@ -173,8 +164,10 @@ namespace Module.Services
 
                     foreach (var pt in seg.Points)
                     {
-                        double px = pt.MachineX ?? pt.X;
-                        double py = pt.MachineY ?? pt.Y;
+                        if (!pt.MachineX.HasValue || !pt.MachineY.HasValue)
+                            throw new InvalidOperationException($"段 [{seg.SegmentId}] 点缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机");
+                        double px = pt.MachineX.Value;
+                        double py = pt.MachineY.Value;
                         _motionService.AddLineSegment(CoordId, new[] { px, py });
                     }
 
@@ -198,7 +191,7 @@ namespace Module.Services
                     }
 
                     // 7. Z 抬升到安全高度
-                    await _motionService.MoveAbsAsync(AxisDz1, seg.SafeHeight, DefaultVelocity, token);
+                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, DefaultVelocity, token);
                 }
 
                 PublishStatus("Completed");
@@ -227,20 +220,24 @@ namespace Module.Services
         /// <summary>
         /// 执行单点点胶：定点下降 → 开胶 → 延时 → 关胶 → 上升
         /// </summary>
-        public async Task ExecuteSinglePointAsync(CadPoint point, CancellationToken token = default)
+        public async Task ExecuteSinglePointAsync(CadPoint point, int needleIndex = 0, CancellationToken token = default)
         {
             SetRunning(true);
             PublishStatus("Running");
+            int axisDz = GetAxisDz(needleIndex);
+
             try
             {
-                double mx = point.MachineX ?? point.X;
-                double my = point.MachineY ?? point.Y;
+                if (!point.MachineX.HasValue || !point.MachineY.HasValue)
+                    throw new InvalidOperationException("单点点胶：点缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机");
+                double mx = point.MachineX.Value;
+                double my = point.MachineY.Value;
                 double mz = point.MachineZ ?? point.Z;
 
-                _logger?.Info($"[DispenseExecute] 单点点胶 → ({mx:F3}, {my:F3}, {mz:F3})");
+                _logger?.Info($"[DispenseExecute] 单点点胶(针头{(needleIndex == 0 ? "1" : "2")}) → ({mx:F3}, {my:F3}, {mz:F3})");
 
                 PublishProgress("单点点胶 - 移动到安全高度", 1, 1);
-                await _motionService.MoveAbsAsync(AxisDz1, 5.0, DefaultVelocity, token);
+                await _motionService.MoveAbsAsync(axisDz, 5.0, DefaultVelocity, token);
 
                 PublishProgress("单点点胶 - XY 定位", 1, 1);
                 await _motionService.MoveLineAbsAsync(
@@ -248,7 +245,7 @@ namespace Module.Services
                     DefaultVelocity, token);
 
                 PublishProgress("单点点胶 - Z 轴下降", 1, 1);
-                await _motionService.MoveAbsAsync(AxisDz1, mz, DefaultVelocity, token);
+                await _motionService.MoveAbsAsync(axisDz, mz, DefaultVelocity, token);
 
                 PublishProgress("单点点胶 - 开胶", 1, 1);
                 WriteGlueIo(true);
@@ -257,7 +254,7 @@ namespace Module.Services
                 await Task.Delay(DefaultPostDelayMs, token);
 
                 PublishProgress("单点点胶 - Z 轴回升", 1, 1);
-                await _motionService.MoveAbsAsync(AxisDz1, 5.0, DefaultVelocity, token);
+                await _motionService.MoveAbsAsync(axisDz, 5.0, DefaultVelocity, token);
 
                 PublishStatus("Completed");
                 _logger?.Info("[DispenseExecute] 单点点胶完成");
@@ -284,23 +281,25 @@ namespace Module.Services
 
         /// <summary>
         /// 单点模式执行线条走胶——逐点执行，遵循行业标准工艺流程
-        /// 流程：单点→Z抬升→XY定位→Z两段式下降(同步检测开胶距离)→出胶(起点延时)→
-        /// 关胶(收胶延时)→抬升至安全高度→循环→结束后Z抬升至待机位
         /// </summary>
         public async Task ExecuteSinglePointLineAsync(
             IEnumerable<DispenseSegment> segments,
             DotProcessParams processParams,
             double standbyHeight,
-            CancellationToken token = default)
+            int needleIndex = 0,
+            CancellationToken token = default,
+            bool dryRun = false)
         {
             SetRunning(true);
             PublishStatus("Running");
+            int axisDz = GetAxisDz(needleIndex);
+            string modeLabel = dryRun ? "单点空跑" : "单点走胶";
 
             try
             {
                 var segmentList = segments.Where(s => s.IsEnabled).ToList();
                 int total = segmentList.Count;
-                _logger?.Info($"[DispenseExecute] 开始单点线条走胶，共 {total} 段");
+                _logger?.Info($"[DispenseExecute] 开始{modeLabel}，共 {total} 段，针头{(needleIndex == 0 ? "1/Dz1" : "2/Dz2")}");
 
                 double moveSpeed = processParams.MoveSpeed;
                 double safeHeight = processParams.SafeHeight;
@@ -308,88 +307,86 @@ namespace Module.Services
                 double slowVel = moveSpeed * processParams.CornerDecel;
                 double glueTriggerOffset = processParams.DotGlueTriggerOffsetMm;
 
-                await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
                 foreach (var (seg, index) in segmentList.Select((s, i) => (s, i)))
                 {
                     token.ThrowIfCancellationRequested();
                     if (seg.Points == null || seg.Points.Count == 0) continue;
 
-                    PublishProgress($"单点走胶 - 段 [{seg.SegmentId}] ({index + 1}/{total})", index + 1, total);
-                    _logger?.Debug($"[DispenseExecute] 单点走胶段 [{seg.SegmentId}]，共 {seg.Points.Count} 点");
+                    PublishProgress($"{modeLabel} - 段 [{seg.SegmentId}] ({index + 1}/{total})", index + 1, total);
+                    _logger?.Debug($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]，共 {seg.Points.Count} 点");
 
-                    double targetZ = processParams.EffectiveZHeight;
+                    double targetZ = dryRun ? safeHeight : processParams.EffectiveZHeight;
 
                     foreach (var (point, ptIndex) in seg.Points.Select((p, i) => (p, i)))
                     {
                         token.ThrowIfCancellationRequested();
 
-                        double px = point.MachineX ?? point.OffsetX ?? point.X;
-                        double py = point.MachineY ?? point.OffsetY ?? point.Y;
+                        double px = point.MachineX ?? throw new InvalidOperationException($"段 [{seg.SegmentId}] 点{ptIndex + 1}缺少MachineX（未执行坐标对齐），拒绝执行以防撞机");
+                        double py = point.MachineY ?? throw new InvalidOperationException($"段 [{seg.SegmentId}] 点{ptIndex + 1}缺少MachineY（未执行坐标对齐），拒绝执行以防撞机");
 
-                        await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                        await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
                         await _motionService.MoveLineAbsAsync(CoordId, new[] { AxisDx, AxisDy },
                             new[] { px, py }, moveSpeed, token);
 
-                        double approachZ = targetZ + approachOffset;
-                        await _motionService.MoveAbsAsync(AxisDz1, approachZ, moveSpeed, token);
-
-                        var moveZTask = _motionService.MoveAbsAsync(AxisDz1, targetZ, slowVel, token);
-
-                        bool glueOpened = false;
-                        while (!moveZTask.IsCompleted && !token.IsCancellationRequested)
+                        if (!dryRun)
                         {
-                            double currentZ = _motionService.GetAxisPosition(AxisDz1);
-                            if (Math.Abs(currentZ - targetZ) <= glueTriggerOffset)
-                            {
-                                WriteGlueIo(true);
-                                _logger?.Debug($"[DispenseExecute] 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶");
-                                glueOpened = true;
-                                break;
-                            }
-                            await Task.Delay(1, token);
-                        }
+                            // 正常走胶：两段式下降 + 位置触发开胶
+                            double approachZ = targetZ + approachOffset;
+                            await _motionService.MoveAbsAsync(axisDz, approachZ, moveSpeed, token);
 
-                        if (!glueOpened)
-                        {
+                            // 计算位置触发点：根据运动方向确定触发位在目标上方（提前开胶）
+                            double triggerDistance = Math.Abs(glueTriggerOffset);
+                            int motionDir = Math.Sign(approachZ - targetZ);
+                            double triggerZ = targetZ + motionDir * triggerDistance;
+
+                            // 慢速移到触发位开胶
+                            await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
                             WriteGlueIo(true);
-                            _logger?.Warn($"[DispenseExecute] 段[{seg.SegmentId}]点{ptIndex + 1} 兜底开胶");
+                            _logger?.Debug($"[DispenseExecute] 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
+
+                            // 继续慢速移到目标位
+                            await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
+
+                            if (processParams.PreDispenseDelay > 0)
+                                await Task.Delay((int)processParams.PreDispenseDelay, token);
+
+                            await Task.Delay((int)processParams.DispenseTime, token);
+
+                            WriteGlueIo(false);
+
+                            if (processParams.PostDelay > 0)
+                                await Task.Delay((int)processParams.PostDelay, token);
+                        }
+                        else
+                        {
+                            // 空跑模式：仅在安全高度定位，不出胶，短暂延时模拟
+                            await Task.Delay(50, token);
                         }
 
-                        await moveZTask;
-
-                        if (processParams.PreDispenseDelay > 0)
-                            await Task.Delay((int)processParams.PreDispenseDelay, token);
-
-                        await Task.Delay((int)processParams.DispenseTime, token);
-
-                        WriteGlueIo(false);
-
-                        if (processParams.PostDelay > 0)
-                            await Task.Delay((int)processParams.PostDelay, token);
-
-                        await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                        await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
                     }
                 }
 
-                await _motionService.MoveAbsAsync(AxisDz1, standbyHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(axisDz, standbyHeight, moveSpeed, token);
 
                 PublishStatus("Completed");
-                _logger?.Info("[DispenseExecute] 单点线条走胶完成");
+                _logger?.Info($"[DispenseExecute] {modeLabel}完成");
             }
             catch (OperationCanceledException)
             {
                 SafeGlueOff();
                 PublishStatus("Canceled");
-                _logger?.Warn("[DispenseExecute] 单点线条走胶已取消");
+                _logger?.Warn($"[DispenseExecute] {modeLabel}已取消");
                 throw;
             }
             catch (Exception ex)
             {
                 SafeGlueOff();
                 PublishStatus("Error");
-                _logger?.Error(ex, "[DispenseExecute] 单点线条走胶异常");
+                _logger?.Error(ex, $"[DispenseExecute] {modeLabel}异常");
                 throw;
             }
             finally

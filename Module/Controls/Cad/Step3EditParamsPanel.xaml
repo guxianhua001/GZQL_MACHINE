@@ -312,7 +312,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
+                        <!--<ColumnDefinition Width="*"/>-->
                     </Grid.ColumnDefinitions>
 
                     <!-- 第一组：运动参数（蓝色） -->
@@ -424,7 +424,7 @@
                     <Border Grid.Column="5" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
 
                     <!-- 第四组：阀控参数（紫色） -->
-                    <StackPanel Grid.Column="6" Margin="8,0,0,0">
+                    <!--<StackPanel Grid.Column="6" Margin="8,0,0,0">
                         <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#7B1FA2"
                                    Text="{lang:Lang Step3_Group_ValveControl}"/>
                         <Grid>
@@ -441,7 +441,7 @@
                                      Text="{Binding SinglePointProcessParams.SuckBackTime, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                             <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
                         </Grid>
-                    </StackPanel>
+                    </StackPanel>-->
                 </Grid>
 
                 <!-- 单点模式采样点位列表 -->

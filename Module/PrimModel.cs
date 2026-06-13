@@ -45,7 +45,9 @@ namespace Module
             Navigate.NavigateList.Add(new NavigateItem() { ViewName = "RecipeManagerView", IconKind = "NoteEditOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_RecipeManager", "配方管理"), DisplayNameKey = "Nav_RecipeManager", UserLevel = 0, Display = true });
             // 9. TCPIP设置
             Navigate.NavigateList.Add(new NavigateItem() { ViewName = "TcpConfigView", IconKind = "LanPending", DisplayName = localizationService.GetResourceOrDefault("Nav_TcpConfig", "TCPIP设置"), DisplayNameKey = "Nav_TcpConfig", UserLevel = 0, Display = true });
-            // 10. 设备维护
+            // 10. N点标定
+            Navigate.NavigateList.Add(new NavigateItem() { ViewName = "NPointCalibrationView", IconKind = "VectorIntersection", DisplayName = localizationService.GetResourceOrDefault("Nav_NPointCalibration", "N点标定"), DisplayNameKey = "Nav_NPointCalibration", UserLevel = 0, Display = true });
+            // 11. 设备维护
             //Navigate.NavigateList.Add(new NavigateItem() { ViewName = "MaintenanceView", IconKind = "WrenchOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Maintenance", "设备维护"), DisplayNameKey = "Nav_Maintenance", UserLevel = 1, Display = true });
             Navigate.DefaultView = "OverView";
 
@@ -137,6 +139,10 @@ namespace Module
             containerRegistry.RegisterForNavigation<NeedleAlignerView, NeedleAlignerViewModel>();
             containerRegistry.RegisterForNavigation<NeedleCalibrationVerifyView, NeedleCalibrationVerifyViewModel>();
             containerRegistry.RegisterForNavigation<SafetyZoneConfigView, SafetyZoneConfigViewModel>();
+
+            // === N点标定 ===
+            containerRegistry.RegisterSingleton<Core.Abstraction.INPointCalibrationService, Module.Services.NPointCalibrationService>();
+            containerRegistry.RegisterForNavigation<NPointCalibrationView, NPointCalibrationViewModel>();
         }
     }
 }

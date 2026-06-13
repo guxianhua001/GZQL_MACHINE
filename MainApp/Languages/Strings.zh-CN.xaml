@@ -1121,6 +1121,7 @@
     <sys:String x:Key="Nav_AlarmQuery">报警查询</sys:String>
     <sys:String x:Key="Nav_Home">首页</sys:String>
     <sys:String x:Key="Nav_IOView">IO视图</sys:String>
+    <sys:String x:Key="Nav_NPointCalibration">N点标定</sys:String>
     <sys:String x:Key="Nav_Operation">操作页面</sys:String>
     <sys:String x:Key="Nav_RecipeManager">配方管理</sys:String>
     <sys:String x:Key="Needle_Calibration">针头校准</sys:String>
@@ -1669,6 +1670,56 @@
     <sys:String x:Key="ProductCalib_ApplyAll">应用所有纠偏</sys:String>
     <sys:String x:Key="ProductCalib_SaveData">保存</sys:String>
     <sys:String x:Key="ProductCalib_LoadData">加载</sys:String>
+    <sys:String x:Key="NPointCalib_Title">N点标定</sys:String>
+    <sys:String x:Key="NPointCalib_AxisConfig">轴配置</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisX">启用X轴</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisY">启用Y轴</sys:String>
+    <sys:String x:Key="NPointCalib_PointCount">标定点数</sys:String>
+    <sys:String x:Key="NPointCalib_TcpConfig">通讯配置</sys:String>
+    <sys:String x:Key="NPointCalib_EnableVisionData">接收视觉数据</sys:String>
+    <sys:String x:Key="NPointCalib_ConnectionName">连接名称</sys:String>
+    <sys:String x:Key="NPointCalib_TriggerCommand">触发命令</sys:String>
+    <sys:String x:Key="NPointCalib_AutoCalib">自动标定</sys:String>
+    <sys:String x:Key="NPointCalib_DelayMs">延时(ms)</sys:String>
+    <sys:String x:Key="NPointCalib_StartAutoCalib">开始自动标定</sys:String>
+    <sys:String x:Key="NPointCalib_StopAutoCalib">停止</sys:String>
+    <sys:String x:Key="NPointCalib_CalibData">标定数据</sys:String>
+    <sys:String x:Key="NPointCalib_PointName">名称</sys:String>
+    <sys:String x:Key="NPointCalib_MachineX">机械X</sys:String>
+    <sys:String x:Key="NPointCalib_MachineY">机械Y</sys:String>
+    <sys:String x:Key="NPointCalib_VisionX">视觉X</sys:String>
+    <sys:String x:Key="NPointCalib_VisionY">视觉Y</sys:String>
+    <sys:String x:Key="NPointCalib_Status">状态</sys:String>
+    <sys:String x:Key="NPointCalib_Operation">操作</sys:String>
+    <sys:String x:Key="NPointCalib_Teach">示教</sys:String>
+    <sys:String x:Key="NPointCalib_Move">移动</sys:String>
+    <sys:String x:Key="NPointCalib_AddPoint">添加</sys:String>
+    <sys:String x:Key="NPointCalib_DeletePoint">删除</sys:String>
+    <sys:String x:Key="NPointCalib_CalibResult">标定结果</sys:String>
+    <sys:String x:Key="NPointCalib_FileOperation">文件操作</sys:String>
+    <sys:String x:Key="NPointCalib_CurrentFile">当前文件</sys:String>
+    <sys:String x:Key="NPointCalib_Save">保存</sys:String>
+    <sys:String x:Key="NPointCalib_SaveAs">另存为</sys:String>
+    <sys:String x:Key="NPointCalib_Import">导入</sys:String>
+    <sys:String x:Key="NPointCalib_Export">导出</sys:String>
+    <sys:String x:Key="NPointCalib_Compute">计算标定</sys:String>
+    <sys:String x:Key="NPointCalib_Idle">空闲</sys:String>
+    <sys:String x:Key="NPointCalib_Calibrating">标定中...</sys:String>
+    <sys:String x:Key="NPointCalib_Completed">标定完成</sys:String>
+    <sys:String x:Key="NPointCalib_Error">标定错误</sys:String>
+    <sys:String x:Key="NPointCalib_NoFile">未加载文件</sys:String>
+    <sys:String x:Key="NPointCalib_SaveSuccess">保存成功</sys:String>
+    <sys:String x:Key="NPointCalib_LoadSuccess">加载成功</sys:String>
+    <sys:String x:Key="NPointCalib_AutoLoadFailed">自动加载失败</sys:String>
+    <sys:String x:Key="NPointCalib_MinPointsRequired">标定至少需要3个点</sys:String>
+    <sys:String x:Key="NPointCalib_VisionDataReceived">视觉数据已接收</sys:String>
+    <sys:String x:Key="NPointCalib_MovingToPoint">正在移动到点位 {0}...</sys:String>
+    <sys:String x:Key="NPointCalib_WaitingVisionData">等待视觉数据...</sys:String>
+    <sys:String x:Key="NPointCalib_PointCalibrated">点位 {0} 标定完成</sys:String>
+    <sys:String x:Key="NPointCalib_RmsError">RMS误差</sys:String>
+    <sys:String x:Key="NPointCalib_RotationAngle">等效旋转角</sys:String>
+    <sys:String x:Key="NPointCalib_ScaleFactor">缩放因子</sys:String>
+    <sys:String x:Key="NPointCalib_QualityRating">质量评级</sys:String>
     <sys:String x:Key="NeedleCamera_Title">针头与相机中心标定</sys:String>
     <sys:String x:Key="NeedleCamera_Subtitle">针头校准</sys:String>
     <sys:String x:Key="NeedleCamera_SystemSelection">系统选择</sys:String>
@@ -2211,7 +2262,7 @@
     <sys:String x:Key="CadPoint_SegmentCount_Format">线段数: {0}</sys:String>
     <sys:String x:Key="CadPoint_TotalLength_Format">总长度: {0:F2}mm</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Unavailable">对齐不可用</sys:String>
-    <sys:String x:Key="CadPoint_AlignMode_FirstPoint">N点仿射</sys:String>
+    <sys:String x:Key="CadPoint_AlignMode_Affine">N点仿射</sys:String>
     <sys:String x:Key="CadPoint_AlignMode_PointMapping">逐点映射</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Format">对齐状态: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_NoData">无数据</sys:String>
@@ -2250,6 +2301,62 @@
     <sys:String x:Key="LineBC_Status_ContinuousInterpolationExecuting">连续插补执行中</sys:String>
     <sys:String x:Key="LineBC_Status_ContinuousInterpolationCompleted">连续插补执行完成</sys:String>
     <sys:String x:Key="LineBC_Status_PrepareExec">准备执行: {0}条轨迹, {1}</sys:String>
+
+    <!-- CadPointEditor Align Status -->
+    <sys:String x:Key="Step4_Status_TeachMachineFailed">示教机械坐标失败: {0}</sys:String>
+    <sys:String x:Key="Step4_Status_TeachAffineSuccess">已示教 {0} 机械坐标: ({1:F3}, {2:F3}, Dz={3:F3})</sys:String>
+    <sys:String x:Key="Step4_Status_TeachMappingSuccess">已示教 {0} 机械坐标: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
+    <sys:String x:Key="Step4_Status_ApplyTransformFailed">应用变换失败: {0}</sys:String>
+    <sys:String x:Key="Step4_Status_OpenDiagramFailed">打开示意图失败: {0}</sys:String>
+    <sys:String x:Key="Step4_Status_PickedAffineCad">已选取 {0} CAD坐标: ({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="Step4_Status_PickedMappingCad">已选取 {0} CAD坐标: ({1:F3}, {2:F3})</sys:String>
+
+    <!-- CadPointEditor Global Status -->
+    <sys:String x:Key="CadPoint_Status_ResampleFailed">重新采样失败：无法生成采样点</sys:String>
+    <sys:String x:Key="CadPoint_Status_ResampleSuccess">已将 {0} 重新采样为 {1} 个点</sys:String>
+    <sys:String x:Key="CadPoint_Status_ResampleError">重新采样失败: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_FileSelected">已选择: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Filter_JsonAll">JSON 文件|*.json|所有文件|*.*</sys:String>
+    <sys:String x:Key="CadPoint_Status_NoFile">错误：未选择文件</sys:String>
+    <sys:String x:Key="CadPoint_Status_Parsing">正在解析 DXF 文件...</sys:String>
+    <sys:String x:Key="CadPoint_Status_ParsingWait">解析中，请稍候...</sys:String>
+    <sys:String x:Key="CadPoint_Status_ParseFailedNoEntity">解析失败: 未检测到有效图元。警告: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_ParseFailed">DXF 解析失败</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportSuccess">导入成功: {0} 条轨迹段</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportDetail">成功! 共解析 {0} 个图元, 生成 {1} 条轨迹段</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportWarning"> | 警告: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportException">导入异常: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportError">DXF 导入异常</sys:String>
+    <sys:String x:Key="CadPoint_Status_DxfServiceUnavailable">错误：DXF 解析服务不可用</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetSpeed">批量设速: 空移={0:F1}, 插补={1:F1} mm/s ({2} 段)</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetGlue">批量设胶: {0:F2} ({1} 段)</sys:String>
+    <sys:String x:Key="CadPoint_Dialog_BatchSetTitle">批量设置参数</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetResult">批量设置: {0} 个参数已应用到 {1} 段</sys:String>
+    <sys:String x:Key="CadPoint_Status_RoiAdded">已添加 ROI 轨迹段: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_SimPaused">仿真已暂停（点击 Dry Run 可继续）</sys:String>
+    <sys:String x:Key="CadPoint_Status_DispenseUnavailable">点胶执行服务不可用，无法执行真实运动</sys:String>
+    <sys:String x:Key="CadPoint_Status_MotionUnavailable">运动服务不可用，无法读取Z轴位置</sys:String>
+    <sys:String x:Key="CadPoint_Status_TeachHeightSuccess">已示教 {0} 高度: {1:F3} mm</sys:String>
+    <sys:String x:Key="CadPoint_Status_TeachHeightFailed">示教高度失败: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_SegmentsLoaded">已加载 {0} 条轨迹段</sys:String>
+    <sys:String x:Key="CadPoint_Status_SegmentsSaved">轨迹段已保存: {0} 段 → {1}</sys:String>
+    <sys:String x:Key="CadPoint_Status_SaveFailed">保存失败: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_NoValidConfig">请先选择有效的轨迹段配置文件</sys:String>
+    <sys:String x:Key="CadPoint_Status_LoadSuccess">已加载: {0} 段, {1} 个图元</sys:String>
+    <sys:String x:Key="CadPoint_Status_LoadAlignMode">, 对齐模式={0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_LoadFailed">加载失败: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_TestMode">测试模式: {0} 个图元, {1} 个图层</sys:String>
+    <sys:String x:Key="CadPoint_Status_Summary">检测到 {0} 个图元，{1} 个图层</sys:String>
+
+    <!-- CadPointEditor Batch Param Names -->
+    <sys:String x:Key="CadPoint_BatchParam_JumpSpeed">空移速度</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_MoveSpeed">插补速度</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_SafeHeight">安全高度</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_ApproachHeight">逼近高度</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_CornerDecel">减速系数</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">开胶距离</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_PreDelay">起点延时</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_PostDelay">终点延时</sys:String>
 
     <!-- PrincipleWindow -->
     <sys:String x:Key="Principle_Bar1">回转中心</sys:String>

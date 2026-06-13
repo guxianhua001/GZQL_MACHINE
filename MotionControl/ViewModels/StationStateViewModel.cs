@@ -4,6 +4,7 @@ using MotionControl.Models;
 using Prism.Events;
 using Prism.Mvvm;
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 
@@ -65,36 +66,47 @@ namespace MotionControl.ViewModels
 
         private void OnStateChanged(StationStatePayload payload)
         {
-            Application.Current?.Dispatcher.Invoke(() =>
+            try
             {
-                StateText = payload.Description;
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    StateText = payload.Description;
 
-                _isBlinkingRed = payload.State == StationState.STOP
-                              || payload.State == StationState.WAITRESET
-                              || payload.State == StationState.ESTOP
-                              || payload.State == StationState.ALARM
-                              || payload.State == StationState.TIP;
-                _isBlinkingGreen = payload.State == StationState.PAUSE;
-                _isBlinkingOrange = payload.State == StationState.WAITRUN;
+                    _isBlinkingRed = payload.State == StationState.STOP
+                                  || payload.State == StationState.WAITRESET
+                                  || payload.State == StationState.ESTOP
+                                  || payload.State == StationState.ALARM
+                                  || payload.State == StationState.TIP;
+                    _isBlinkingGreen = payload.State == StationState.PAUSE;
+                    _isBlinkingOrange = payload.State == StationState.WAITRUN;
 
-                if (_isBlinkingRed)
-                    StatusColor = payload.RedLight ? RedOnColor : RedOffColor;
-                else if (_isBlinkingGreen)
-                    StatusColor = payload.GreenLight ? GreenOnColor : GreenOffColor;
-                else if (_isBlinkingOrange)
-                    StatusColor = payload.OrangeLight ? OrangeOnColor : OrangeOffColor;
-                else if (payload.RedLight)
-                    StatusColor = RedOnColor;
-                else if (payload.GreenLight)
-                    StatusColor = GreenOnColor;
-                else if (payload.OrangeLight)
-                    StatusColor = OrangeOnColor;
-                else
-                    StatusColor = Brushes.White;
+                    if (_isBlinkingRed)
+                        StatusColor = payload.RedLight ? RedOnColor : RedOffColor;
+                    else if (_isBlinkingGreen)
+                        StatusColor = payload.GreenLight ? GreenOnColor : GreenOffColor;
+                    else if (_isBlinkingOrange)
+                        StatusColor = payload.OrangeLight ? OrangeOnColor : OrangeOffColor;
+                    else if (payload.RedLight)
+                        StatusColor = RedOnColor;
+                    else if (payload.GreenLight)
+                        StatusColor = GreenOnColor;
+                    else if (payload.OrangeLight)
+                        StatusColor = OrangeOnColor;
+                    else
+                        StatusColor = Brushes.White;
 
-                BuzzerActive = payload.Buzzer;
-                BuzzerColor = payload.Buzzer ? Brushes.Red : Brushes.Gray;
-            });
+                    BuzzerActive = payload.Buzzer;
+                    BuzzerColor = payload.Buzzer ? Brushes.Red : Brushes.Gray;
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                // 任务取消时忽略，通常发生在仿真停止或应用关闭期间
+            }
+            catch (OperationCanceledException)
+            {
+                // 操作取消时忽略
+            }
         }
 
         private void OnLanguageChanged(object sender, Core.Abstraction.LanguageChangedEventArgs e)

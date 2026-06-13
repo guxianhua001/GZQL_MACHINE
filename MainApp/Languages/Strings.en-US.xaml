@@ -1127,6 +1127,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Nav_AlarmQuery">Alarm</sys:String>
     <sys:String x:Key="Nav_Home">Home</sys:String>
     <sys:String x:Key="Nav_IOView">IO View</sys:String>
+    <sys:String x:Key="Nav_NPointCalibration">N-Point Calibration</sys:String>
     <sys:String x:Key="Nav_Operation">Operation</sys:String>
     <sys:String x:Key="Nav_RecipeManager">Recipe</sys:String>
     <sys:String x:Key="Needle_Calibration">Needle Calibration</sys:String>
@@ -1684,6 +1685,56 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ProductCalib_ApplyAll">Apply All Corrections</sys:String>
     <sys:String x:Key="ProductCalib_SaveData">Save</sys:String>
     <sys:String x:Key="ProductCalib_LoadData">Load</sys:String>
+    <sys:String x:Key="NPointCalib_Title">N-Point Calibration</sys:String>
+    <sys:String x:Key="NPointCalib_AxisConfig">Axis Config</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisX">Enable X Axis</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisY">Enable Y Axis</sys:String>
+    <sys:String x:Key="NPointCalib_PointCount">Point Count</sys:String>
+    <sys:String x:Key="NPointCalib_TcpConfig">Communication</sys:String>
+    <sys:String x:Key="NPointCalib_EnableVisionData">Receive Vision Data</sys:String>
+    <sys:String x:Key="NPointCalib_ConnectionName">Connection</sys:String>
+    <sys:String x:Key="NPointCalib_TriggerCommand">Trigger Command</sys:String>
+    <sys:String x:Key="NPointCalib_AutoCalib">Auto Calibration</sys:String>
+    <sys:String x:Key="NPointCalib_DelayMs">Delay (ms)</sys:String>
+    <sys:String x:Key="NPointCalib_StartAutoCalib">Start Auto Calib</sys:String>
+    <sys:String x:Key="NPointCalib_StopAutoCalib">Stop</sys:String>
+    <sys:String x:Key="NPointCalib_CalibData">Calibration Data</sys:String>
+    <sys:String x:Key="NPointCalib_PointName">Name</sys:String>
+    <sys:String x:Key="NPointCalib_MachineX">Machine X</sys:String>
+    <sys:String x:Key="NPointCalib_MachineY">Machine Y</sys:String>
+    <sys:String x:Key="NPointCalib_VisionX">Vision X</sys:String>
+    <sys:String x:Key="NPointCalib_VisionY">Vision Y</sys:String>
+    <sys:String x:Key="NPointCalib_Status">Status</sys:String>
+    <sys:String x:Key="NPointCalib_Operation">Action</sys:String>
+    <sys:String x:Key="NPointCalib_Teach">Teach</sys:String>
+    <sys:String x:Key="NPointCalib_Move">Move</sys:String>
+    <sys:String x:Key="NPointCalib_AddPoint">Add</sys:String>
+    <sys:String x:Key="NPointCalib_DeletePoint">Delete</sys:String>
+    <sys:String x:Key="NPointCalib_CalibResult">Calibration Result</sys:String>
+    <sys:String x:Key="NPointCalib_FileOperation">File Operation</sys:String>
+    <sys:String x:Key="NPointCalib_CurrentFile">Current File</sys:String>
+    <sys:String x:Key="NPointCalib_Save">Save</sys:String>
+    <sys:String x:Key="NPointCalib_SaveAs">Save As</sys:String>
+    <sys:String x:Key="NPointCalib_Import">Import</sys:String>
+    <sys:String x:Key="NPointCalib_Export">Export</sys:String>
+    <sys:String x:Key="NPointCalib_Compute">Compute</sys:String>
+    <sys:String x:Key="NPointCalib_Idle">Idle</sys:String>
+    <sys:String x:Key="NPointCalib_Calibrating">Calibrating...</sys:String>
+    <sys:String x:Key="NPointCalib_Completed">Calibration Completed</sys:String>
+    <sys:String x:Key="NPointCalib_Error">Calibration Error</sys:String>
+    <sys:String x:Key="NPointCalib_NoFile">No file loaded</sys:String>
+    <sys:String x:Key="NPointCalib_SaveSuccess">Saved successfully</sys:String>
+    <sys:String x:Key="NPointCalib_LoadSuccess">Loaded successfully</sys:String>
+    <sys:String x:Key="NPointCalib_AutoLoadFailed">Auto-load failed</sys:String>
+    <sys:String x:Key="NPointCalib_MinPointsRequired">At least 3 points required</sys:String>
+    <sys:String x:Key="NPointCalib_VisionDataReceived">Vision data received</sys:String>
+    <sys:String x:Key="NPointCalib_MovingToPoint">Moving to point {0}...</sys:String>
+    <sys:String x:Key="NPointCalib_WaitingVisionData">Waiting for vision data...</sys:String>
+    <sys:String x:Key="NPointCalib_PointCalibrated">Point {0} calibrated</sys:String>
+    <sys:String x:Key="NPointCalib_RmsError">RMS Error</sys:String>
+    <sys:String x:Key="NPointCalib_RotationAngle">Rotation Angle</sys:String>
+    <sys:String x:Key="NPointCalib_ScaleFactor">Scale Factor</sys:String>
+    <sys:String x:Key="NPointCalib_QualityRating">Quality Rating</sys:String>
     <sys:String x:Key="NeedleCamera_Title">Needle &amp; Camera Center Calibration</sys:String>
     <sys:String x:Key="NeedleCamera_Subtitle">Needle Calibration</sys:String>
     <sys:String x:Key="NeedleCamera_SystemSelection">System Selection</sys:String>
@@ -2211,7 +2262,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_SegmentCount_Format">Segments: {0}</sys:String>
     <sys:String x:Key="CadPoint_TotalLength_Format">Total Length: {0:F2}mm</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Unavailable">Alignment unavailable</sys:String>
-    <sys:String x:Key="CadPoint_AlignMode_FirstPoint">N-Point Affine</sys:String>
+    <sys:String x:Key="CadPoint_AlignMode_Affine">N-Point Affine</sys:String>
     <sys:String x:Key="CadPoint_AlignMode_PointMapping">Point Mapping</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Format">Align Status: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_NoData">No Data</sys:String>
@@ -2250,6 +2301,62 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="LineBC_Status_ContinuousInterpolationExecuting">Continuous Interpolation Executing</sys:String>
     <sys:String x:Key="LineBC_Status_ContinuousInterpolationCompleted">Continuous Interpolation Completed</sys:String>
     <sys:String x:Key="LineBC_Status_PrepareExec">Prepare: {0} trajectories, {1}</sys:String>
+
+    <!-- CadPointEditor Align Status -->
+    <sys:String x:Key="Step4_Status_TeachMachineFailed">Teach machine coord failed: {0}</sys:String>
+    <sys:String x:Key="Step4_Status_TeachAffineSuccess">Taught {0} machine coord: ({1:F3}, {2:F3}, Dz={3:F3})</sys:String>
+    <sys:String x:Key="Step4_Status_TeachMappingSuccess">Taught {0} machine coord: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
+    <sys:String x:Key="Step4_Status_ApplyTransformFailed">Apply transform failed: {0}</sys:String>
+    <sys:String x:Key="Step4_Status_OpenDiagramFailed">Open diagram failed: {0}</sys:String>
+    <sys:String x:Key="Step4_Status_PickedAffineCad">Picked {0} CAD coord: ({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="Step4_Status_PickedMappingCad">Picked {0} CAD coord: ({1:F3}, {2:F3})</sys:String>
+
+    <!-- CadPointEditor Global Status -->
+    <sys:String x:Key="CadPoint_Status_ResampleFailed">Resample failed: Cannot generate sample points</sys:String>
+    <sys:String x:Key="CadPoint_Status_ResampleSuccess">Resampled {0} to {1} points</sys:String>
+    <sys:String x:Key="CadPoint_Status_ResampleError">Resample failed: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_FileSelected">Selected: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Filter_JsonAll">JSON Files|*.json|All Files|*.*</sys:String>
+    <sys:String x:Key="CadPoint_Status_NoFile">Error: No file selected</sys:String>
+    <sys:String x:Key="CadPoint_Status_Parsing">Parsing DXF file...</sys:String>
+    <sys:String x:Key="CadPoint_Status_ParsingWait">Parsing, please wait...</sys:String>
+    <sys:String x:Key="CadPoint_Status_ParseFailedNoEntity">Parse failed: No valid entities detected. Warnings: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_ParseFailed">DXF parse failed</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportSuccess">Import success: {0} segments</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportDetail">Success! Parsed {0} entities, generated {1} segments</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportWarning"> | Warnings: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportException">Import exception: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_ImportError">DXF import error</sys:String>
+    <sys:String x:Key="CadPoint_Status_DxfServiceUnavailable">Error: DXF parser service unavailable</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetSpeed">Batch speed: Jump={0:F1}, Interp={1:F1} mm/s ({2} segs)</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetGlue">Batch glue: {0:F2} ({1} segs)</sys:String>
+    <sys:String x:Key="CadPoint_Dialog_BatchSetTitle">Batch Set Parameters</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetResult">Batch set: {0} params applied to {1} segments</sys:String>
+    <sys:String x:Key="CadPoint_Status_RoiAdded">ROI segment added: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_SimPaused">Simulation paused (click Dry Run to continue)</sys:String>
+    <sys:String x:Key="CadPoint_Status_DispenseUnavailable">Dispense service unavailable, cannot execute real motion</sys:String>
+    <sys:String x:Key="CadPoint_Status_MotionUnavailable">Motion service unavailable, cannot read Z position</sys:String>
+    <sys:String x:Key="CadPoint_Status_TeachHeightSuccess">Taught {0} height: {1:F3} mm</sys:String>
+    <sys:String x:Key="CadPoint_Status_TeachHeightFailed">Teach height failed: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_SegmentsLoaded">Loaded {0} segments</sys:String>
+    <sys:String x:Key="CadPoint_Status_SegmentsSaved">Segments saved: {0} segs → {1}</sys:String>
+    <sys:String x:Key="CadPoint_Status_SaveFailed">Save failed: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_NoValidConfig">Please select a valid trajectory config file first</sys:String>
+    <sys:String x:Key="CadPoint_Status_LoadSuccess">Loaded: {0} segs, {1} entities</sys:String>
+    <sys:String x:Key="CadPoint_Status_LoadAlignMode">, Align mode={0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_LoadFailed">Load failed: {0}</sys:String>
+    <sys:String x:Key="CadPoint_Status_TestMode">Test mode: {0} entities, {1} layers</sys:String>
+    <sys:String x:Key="CadPoint_Status_Summary">Detected {0} entities, {1} layers</sys:String>
+
+    <!-- CadPointEditor Batch Param Names -->
+    <sys:String x:Key="CadPoint_BatchParam_JumpSpeed">Jump Speed</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_MoveSpeed">Move Speed</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_SafeHeight">Safe Height</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_ApproachHeight">Approach Height</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_CornerDecel">Corner Decel</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">Glue Trigger Offset</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_PreDelay">Pre Delay</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_PostDelay">Post Delay</sys:String>
 
     <!-- PrincipleWindow -->
     <sys:String x:Key="Principle_Bar1">Rotation Center</sys:String>
