@@ -58,36 +58,9 @@ namespace Module.ViewModels
     }
 
     /// <summary>
-    /// 仿射标定点模型——用于步骤2的N点仿射标定，存储CAD坐标与对应的机械示教坐标
+    /// 仿射标定点模型已移至 Core.Models.AffineCalibrationPoint
     /// </summary>
-    public class AffineCalibrationPoint : BindableBase
-    {
-        public int Index { get; set; }
-
-        private string _name = "";
-        /// <summary>点名标识（如 P1, P2, P3）</summary>
-        public string Name { get => _name; set => SetProperty(ref _name, value); }
-
-        private double _cadX;
-        /// <summary>CAD图纸X坐标</summary>
-        public double CadX { get => _cadX; set => SetProperty(ref _cadX, value); }
-
-        private double _cadY;
-        /// <summary>CAD图纸Y坐标</summary>
-        public double CadY { get => _cadY; set => SetProperty(ref _cadY, value); }
-
-        private double _machineX;
-        /// <summary>机械示教X坐标</summary>
-        public double MachineX { get => _machineX; set => SetProperty(ref _machineX, value); }
-
-        private double _machineY;
-        /// <summary>机械示教Y坐标</summary>
-        public double MachineY { get => _machineY; set => SetProperty(ref _machineY, value); }
-
-        private double _residual;
-        /// <summary>该点的标定残差(mm)，标定计算后填充</summary>
-        public double Residual { get => _residual; set => SetProperty(ref _residual, value); }
-    }
+    // AffineCalibrationPoint 使用 Core.Models 版本
 
     /// <summary>
     /// 回转中心可视化点位——用于Step1画布显示拟合点与回转中心位置
@@ -1572,6 +1545,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 }
 
                 // 步骤2：使用DLS算法计算精确的椭圆参数
+#if HAS_HALCON
                 var ellipseParams = Core.Models.CadEntityHalconExtensions.FitEllipseDLS(fitPoints);
 
                 if (!ellipseParams.IsValid || double.IsNaN(ellipseParams.CenterX))
@@ -1627,6 +1601,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                         ellipseParams.MajorAxis.ToString("F2"),
                         ellipseParams.MinorAxis.ToString("F2"),
                         (ellipseParams.RotationRad * 180 / Math.PI).ToString("F1")));
+#else
+                System.Diagnostics.Debug.WriteLine("[EllipseFit] Halcon SDK 未安装，跳过椭圆拟合");
+                return;
+#endif
 
                 StatusMessage += L("CAD_EllipseFit_Done");
             }

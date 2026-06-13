@@ -2211,8 +2211,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_SegmentCount_Format">Segments: {0}</sys:String>
     <sys:String x:Key="CadPoint_TotalLength_Format">Total Length: {0:F2}mm</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Unavailable">Alignment unavailable</sys:String>
-    <sys:String x:Key="CadPoint_AlignMode_FirstPoint">First Point Align</sys:String>
-    <sys:String x:Key="CadPoint_AlignMode_PointMapping">Point Mapping Align</sys:String>
+    <sys:String x:Key="CadPoint_AlignMode_FirstPoint">N-Point Affine</sys:String>
+    <sys:String x:Key="CadPoint_AlignMode_PointMapping">Point Mapping</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Format">Align Status: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_NoData">No Data</sys:String>
     <sys:String x:Key="CadPoint_Status_Ready">Ready</sys:String>
@@ -2389,9 +2389,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step4_Header_MZ">Mach Z</sys:String>
     <sys:String x:Key="Step4_Label_DirectionDistance">Direction &amp; Distance</sys:String>
     <sys:String x:Key="Step4_Desc_DirectionDistance">Direction vector length (mm)</sys:String>
-    <sys:String x:Key="Step4_Mode_Affine">2-Point Affine</sys:String>
-    <sys:String x:Key="Step4_Mode_AffineDesc">(Auto direction)</sys:String>
-    <sys:String x:Key="Step4_Mode_AffineDetail">Suitable for arc workpieces, auto-calculates rotation angle and translation offset</sys:String>
+    <sys:String x:Key="Step4_Mode_Affine">N-Point Affine</sys:String>
+    <sys:String x:Key="Step4_Mode_AffineDesc">(>=3 points)</sys:String>
+    <sys:String x:Key="Step4_Mode_AffineDetail">Solve affine transform matrix using >=3 point pairs, high precision</sys:String>
     <sys:String x:Key="Step4_Mode_FirstPointDesc">(Translation)</sys:String>
     <sys:String x:Key="Step4_Mode_FirstPointDetail">Translation compensation only, no rotation, for low-precision alignment scenarios</sys:String>
     <sys:String x:Key="Step4_Mode_FirstPointOffset">Single Reference Offset</sys:String>
@@ -2404,6 +2404,28 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step4_Section_Persistence">Data Persistence</sys:String>
     <sys:String x:Key="Step4_Section_PreviewTitle">Preview</sys:String>
     <sys:String x:Key="Step4_Title">Step 4: Alignment</sys:String>
+    <sys:String x:Key="Step4_Section_AffineCalibration">N-Point Affine Calibration</sys:String>
+    <sys:String x:Key="Step4_Section_PointMapping">Point-by-Point Mapping</sys:String>
+    <sys:String x:Key="Step4_Btn_AddAffinePoint">Add Cal. Point</sys:String>
+    <sys:String x:Key="Step4_Btn_AddMappingPoint">Add Mapping Point</sys:String>
+    <sys:String x:Key="Step4_Btn_TeachMachine">Teach Machine Coord</sys:String>
+    <sys:String x:Key="Step4_Btn_DeletePoint">Delete</sys:String>
+    <sys:String x:Key="Step4_Btn_ComputeAffine">Compute Affine Transform</sys:String>
+    <sys:String x:Key="Step4_Btn_ApplyTransform">Apply Transform to Segments</sys:String>
+    <sys:String x:Key="Step4_Label_NeedleSelect">Needle Select:</sys:String>
+    <sys:String x:Key="Step4_Status_PickCadCoord">Click on canvas to pick CAD coordinate</sys:String>
+    <sys:String x:Key="Step4_Status_AffineComputed">Affine transform computed</sys:String>
+    <sys:String x:Key="Step4_Status_Points">points</sys:String>
+    <sys:String x:Key="Step4_Status_TransformApplied">Transform applied to</sys:String>
+    <sys:String x:Key="Step4_Error_NeedMorePoints">Insufficient valid calibration points (need >=3)</sys:String>
+    <sys:String x:Key="Step4_Error_AffineFailed">Affine computation failed</sys:String>
+    <sys:String x:Key="Step4_Affine_RmsLabel">RMS Error</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Good">Excellent</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Acceptable">Acceptable</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Poor">Deviation too large</sys:String>
+    <sys:String x:Key="Step4_Error_BothNeedlesRequired">Both needles must complete affine calibration before applying transform</sys:String>
+    <sys:String x:Key="Step5_Label_NeedleSelect">Needle Select</sys:String>
+    <sys:String x:Key="Step6_Label_NeedleSelect">Needle Select</sys:String>
     <sys:String x:Key="Step4_ToolTip_SaveSegments">Save aligned segment data</sys:String>
 
     <!-- Step5 Simulate -->

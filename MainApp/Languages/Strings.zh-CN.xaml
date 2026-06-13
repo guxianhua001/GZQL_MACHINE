@@ -2211,8 +2211,8 @@
     <sys:String x:Key="CadPoint_SegmentCount_Format">线段数: {0}</sys:String>
     <sys:String x:Key="CadPoint_TotalLength_Format">总长度: {0:F2}mm</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Unavailable">对齐不可用</sys:String>
-    <sys:String x:Key="CadPoint_AlignMode_FirstPoint">首点对齐</sys:String>
-    <sys:String x:Key="CadPoint_AlignMode_PointMapping">点映射对齐</sys:String>
+    <sys:String x:Key="CadPoint_AlignMode_FirstPoint">N点仿射</sys:String>
+    <sys:String x:Key="CadPoint_AlignMode_PointMapping">逐点映射</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Format">对齐状态: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_NoData">无数据</sys:String>
     <sys:String x:Key="CadPoint_Status_Ready">就绪</sys:String>
@@ -2389,9 +2389,9 @@
     <sys:String x:Key="Step4_Header_MZ">机械Z</sys:String>
     <sys:String x:Key="Step4_Label_DirectionDistance">方向与距离</sys:String>
     <sys:String x:Key="Step4_Desc_DirectionDistance">方向向量长度（mm）</sys:String>
-    <sys:String x:Key="Step4_Mode_Affine">两点仿射</sys:String>
-    <sys:String x:Key="Step4_Mode_AffineDesc">（自动方向点）</sys:String>
-    <sys:String x:Key="Step4_Mode_AffineDetail">适用于圆弧工件，自动计算旋转角度与平移偏移</sys:String>
+    <sys:String x:Key="Step4_Mode_Affine">N点仿射</sys:String>
+    <sys:String x:Key="Step4_Mode_AffineDesc">（>=3点标定）</sys:String>
+    <sys:String x:Key="Step4_Mode_AffineDetail">使用>=3对对应点求解仿射变换矩阵，精度高</sys:String>
     <sys:String x:Key="Step4_Mode_FirstPointDesc">（平移）</sys:String>
     <sys:String x:Key="Step4_Mode_FirstPointDetail">仅做平移补偿，不旋转，适用于对位精度要求不高的场景</sys:String>
     <sys:String x:Key="Step4_Mode_FirstPointOffset">单基准点偏移</sys:String>
@@ -2404,6 +2404,28 @@
     <sys:String x:Key="Step4_Section_Persistence">数据持久化</sys:String>
     <sys:String x:Key="Step4_Section_PreviewTitle">预览</sys:String>
     <sys:String x:Key="Step4_Title">步骤4：对齐</sys:String>
+    <sys:String x:Key="Step4_Section_AffineCalibration">N点仿射标定</sys:String>
+    <sys:String x:Key="Step4_Section_PointMapping">逐点映射</sys:String>
+    <sys:String x:Key="Step4_Btn_AddAffinePoint">添加标定点</sys:String>
+    <sys:String x:Key="Step4_Btn_AddMappingPoint">添加映射点</sys:String>
+    <sys:String x:Key="Step4_Btn_TeachMachine">示教机械坐标</sys:String>
+    <sys:String x:Key="Step4_Btn_DeletePoint">删除</sys:String>
+    <sys:String x:Key="Step4_Btn_ComputeAffine">计算仿射变换</sys:String>
+    <sys:String x:Key="Step4_Btn_ApplyTransform">应用变换到轨迹段</sys:String>
+    <sys:String x:Key="Step4_Label_NeedleSelect">针头选择:</sys:String>
+    <sys:String x:Key="Step4_Status_PickCadCoord">请在画布上点击选取CAD坐标</sys:String>
+    <sys:String x:Key="Step4_Status_AffineComputed">仿射变换已计算</sys:String>
+    <sys:String x:Key="Step4_Status_Points">个点</sys:String>
+    <sys:String x:Key="Step4_Status_TransformApplied">变换已应用到</sys:String>
+    <sys:String x:Key="Step4_Error_NeedMorePoints">有效标定点不足3个，请添加更多标定点</sys:String>
+    <sys:String x:Key="Step4_Error_AffineFailed">仿射计算失败</sys:String>
+    <sys:String x:Key="Step4_Affine_RmsLabel">RMS误差</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Good">优秀</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Acceptable">可接受</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Poor">偏差过大</sys:String>
+    <sys:String x:Key="Step4_Error_BothNeedlesRequired">两个针头都必须完成仿射标定后才能应用变换</sys:String>
+    <sys:String x:Key="Step5_Label_NeedleSelect">针头选择</sys:String>
+    <sys:String x:Key="Step6_Label_NeedleSelect">针头选择</sys:String>
     <sys:String x:Key="Step4_ToolTip_SaveSegments">保存对齐后的线段数据</sys:String>
 
     <!-- Step5 Simulate -->

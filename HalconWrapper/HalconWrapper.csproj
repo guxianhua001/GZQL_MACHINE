@@ -15,10 +15,16 @@
     <SuppressWarningsWhenUsingBinaryFormatter>true</SuppressWarningsWhenUsingBinaryFormatter>
     <!-- 禁用 WinForms Designer 序列化警告（遗留 UserControl 兼容性） -->
     <NoWarn>$(NoWarn);WFO1000;SYSLIB0011</NoWarn>
+    <!-- Halcon SDK 不存在时跳过编译错误 -->
+    <HalcondDllPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HalcondDllPath>
   </PropertyGroup>
+  <!-- Halcon SDK DLL 存在时启用 HALCON 编译；不存在时排除所有源码，生成空程序集 -->
+  <ItemGroup Condition="!Exists('$(HalcondDllPath)')">
+    <Compile Remove="**\*.cs" />
+  </ItemGroup>
   <ItemGroup>
-    <Reference Include="halcondotnet">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
+    <Reference Include="halcondotnet" Condition="Exists('$(HalcondDllPath)')">
+      <HintPath>$(HalcondDllPath)</HintPath>
     </Reference>
   </ItemGroup>
 

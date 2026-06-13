@@ -6,12 +6,16 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <BaseOutputPath>bin\</BaseOutputPath>
+    <!-- Halcon SDK DLL 路径，不存在时定义 HAS_HALCON=false -->
+    <HalcondDllPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HalcondDllPath>
+    <DefineConstants Condition="Exists('$(HalcondDllPath)')">$(DefineConstants);HAS_HALCON</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NLog" Version="4.7.12" />
     <PackageReference Include="Prism.Wpf" Version="8.1.97" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
@@ -29,14 +33,9 @@
                         PrivateAssets="all" />
     -->
     
-    <Reference Include="halcondotnet">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\Plugins\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="NLog">
-      <HintPath>obj\NLog.dll</HintPath>
+    <!-- Halcon SDK：DLL 存在时才引用 -->
+    <Reference Include="halcondotnet" Condition="Exists('$(HalcondDllPath)')">
+      <HintPath>$(HalcondDllPath)</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -599,42 +599,8 @@ namespace Module.ViewModels
             set => SetProperty(ref _alignMode, value);
         }
 
-        private bool _isModeFirstPoint;
-        /// <summary>是否为 Mode1（示教首点）</summary>
-        public bool IsModeFirstPoint
-        {
-            get => _isModeFirstPoint;
-            set
-            {
-                if (SetProperty(ref _isModeFirstPoint, value) && value)
-                {
-                    IsModeAllPoints = false;
-                    IsModeAffine = false;
-                    AlignMode = AlignMode.FirstPoint;
-                    RaisePropertyChanged(nameof(IsAutoCalculateEnabled));
-                }
-            }
-        }
-
-        private bool _isModeAllPoints;
-        /// <summary>是否为 Mode2（示教全部）</summary>
-        public bool IsModeAllPoints
-        {
-            get => _isModeAllPoints;
-            set
-            {
-                if (SetProperty(ref _isModeAllPoints, value) && value)
-                {
-                    IsModeFirstPoint = false;
-                    IsModeAffine = false;
-                    AlignMode = AlignMode.AllPoints;
-                    RaisePropertyChanged(nameof(IsAutoCalculateEnabled));
-                }
-            }
-        }
-
         private bool _isModeAffine = true;
-        /// <summary>是否为 Mode3（仿射对齐——自动生成方向点B）</summary>
+        /// <summary>是否为N点仿射模式</summary>
         public bool IsModeAffine
         {
             get => _isModeAffine;
@@ -642,20 +608,25 @@ namespace Module.ViewModels
             {
                 if (SetProperty(ref _isModeAffine, value) && value)
                 {
-                    IsModeFirstPoint = false;
-                    IsModeAllPoints = false;
+                    IsModePointMapping = false;
                     AlignMode = AlignMode.Affine;
-                    RaisePropertyChanged(nameof(IsAutoCalculateEnabled));
                 }
             }
         }
 
-        private double _directionLength = 100.0;
-        /// <summary>方向点距离（仿射模式下自动生成虚拟方向点B的偏移距离，默认100mm）</summary>
-        public double DirectionLength
+        private bool _isModePointMapping;
+        /// <summary>是否为逐点映射模式</summary>
+        public bool IsModePointMapping
         {
-            get => _directionLength;
-            set => SetProperty(ref _directionLength, value);
+            get => _isModePointMapping;
+            set
+            {
+                if (SetProperty(ref _isModePointMapping, value) && value)
+                {
+                    IsModeAffine = false;
+                    AlignMode = AlignMode.PointMapping;
+                }
+            }
         }
 
         private string _transformStatus = string.Empty;
@@ -682,58 +653,230 @@ namespace Module.ViewModels
             set => SetProperty(ref _transformedPointsPreview, value);
         }
 
-        // Map Fiducial（图纸基准点）各分量
-        private double _mapFiducialX = 15.0;
-        /// <summary>图纸基准点 X 坐标</summary>
-        public double MapFiducialX { get => _mapFiducialX; set { if (SetProperty(ref _mapFiducialX, value)) OnMapFiducialChanged(); } }
+        #endregion
 
-        private double _mapFiducialY = 15.0;
-        /// <summary>图纸基准点 Y 坐标</summary>
-        public double MapFiducialY { get => _mapFiducialY; set { if (SetProperty(ref _mapFiducialY, value)) OnMapFiducialChanged(); } }
+        #region 绑定属性 — Step4: N点仿射标定
 
-        private double _mapFiducialZ = 0.0;
-        /// <summary>图纸基准点 Z 坐标</summary>
-        public double MapFiducialZ { get => _mapFiducialZ; set { if (SetProperty(ref _mapFiducialZ, value)) OnMapFiducialChanged(); } }
+        private List<AffineCalibrationPoint> _affineCalibrationPointsNeedle1 = new();
+        private List<AffineCalibrationPoint> _affineCalibrationPointsNeedle2 = new();
+        private ObservableCollection<AffineCalibrationPoint> _affineCalibrationPoints = new();
 
-        /// <summary>图纸基准点变更时刷新自动计算按钮的可用状态</summary>
-        private void OnMapFiducialChanged()
+        /// <summary>针头1仿射标定点集合（备份）</summary>
+        public List<AffineCalibrationPoint> AffineCalibrationPointsNeedle1
         {
-            RaisePropertyChanged(nameof(IsAutoCalculateEnabled));
-            AutoCalculateCommand.RaiseCanExecuteChanged();
+            get => _affineCalibrationPointsNeedle1;
+            set => SetProperty(ref _affineCalibrationPointsNeedle1, value);
         }
 
-        // Machine Fiducial（机械基准点）各分量（由示教写入或从文件加载）
-        private double _machineFidX;
-        /// <summary>机械基准点 X 坐标（由运动卡示教获取）</summary>
-        public double MachineFidX { get => _machineFidX; set { if (SetProperty(ref _machineFidX, value)) OnMachineFiducialChanged(); } }
-
-        private double _machineFidY;
-        /// <summary>机械基准点 Y 坐标</summary>
-        public double MachineFidY { get => _machineFidY; set { if (SetProperty(ref _machineFidY, value)) OnMachineFiducialChanged(); } }
-
-        private double _machineFidZ;
-        /// <summary>机械基准点 Z 坐标</summary>
-        public double MachineFidZ { get => _machineFidZ; set { if (SetProperty(ref _machineFidZ, value)) OnMachineFiducialChanged(); } }
-
-        private double _machineFidRx;
-        /// <summary>机械基准点 Rx 旋转角</summary>
-        public double MachineFidRx { get => _machineFidRx; set { if (SetProperty(ref _machineFidRx, value)) OnMachineFiducialChanged(); } }
-
-        private double _machineFidRz;
-        /// <summary>机械基准点 Rz 旋转角</summary>
-        public double MachineFidRz { get => _machineFidRz; set { if (SetProperty(ref _machineFidRz, value)) OnMachineFiducialChanged(); } }
-
-        /// <summary>机械基准点变更时刷新自动计算按钮的可用状态</summary>
-        private void OnMachineFiducialChanged()
+        /// <summary>针头2仿射标定点集合（备份）</summary>
+        public List<AffineCalibrationPoint> AffineCalibrationPointsNeedle2
         {
-            RaisePropertyChanged(nameof(IsAutoCalculateEnabled));
-            AutoCalculateCommand.RaiseCanExecuteChanged();
+            get => _affineCalibrationPointsNeedle2;
+            set => SetProperty(ref _affineCalibrationPointsNeedle2, value);
         }
 
-        /// <summary>自动计算按钮是否可用（图纸基准点和机械基准点均已设置时启用）</summary>
-        public bool IsAutoCalculateEnabled =>
-            (_mapFiducialX != 0 || _mapFiducialY != 0) &&
-            (_machineFidX != 0 || _machineFidY != 0 || _machineFidZ != 0);
+        /// <summary>当前针头的仿射标定点集合（根据CurrentNeedleIndex切换）</summary>
+        public ObservableCollection<AffineCalibrationPoint> AffineCalibrationPoints
+        {
+            get => _affineCalibrationPoints;
+            set => SetProperty(ref _affineCalibrationPoints, value);
+        }
+
+        private AffineCalibrationPoint _selectedAffinePoint;
+        /// <summary>当前选中的仿射标定点</summary>
+        public AffineCalibrationPoint SelectedAffinePoint
+        {
+            get => _selectedAffinePoint;
+            set => SetProperty(ref _selectedAffinePoint, value);
+        }
+
+        private AffineCalibrationResult _affineResultNeedle1;
+        private AffineCalibrationResult _affineResultNeedle2;
+        private AffineCalibrationResult _affineResult;
+
+        /// <summary>针头1仿射标定计算结果</summary>
+        public AffineCalibrationResult AffineResultNeedle1
+        {
+            get => _affineResultNeedle1;
+            set => SetProperty(ref _affineResultNeedle1, value);
+        }
+
+        /// <summary>针头2仿射标定计算结果</summary>
+        public AffineCalibrationResult AffineResultNeedle2
+        {
+            get => _affineResultNeedle2;
+            set => SetProperty(ref _affineResultNeedle2, value);
+        }
+
+        /// <summary>当前针头的仿射标定计算结果（根据CurrentNeedleIndex切换）</summary>
+        public AffineCalibrationResult AffineResult
+        {
+            get => _affineResult;
+            set
+            {
+                if (SetProperty(ref _affineResult, value))
+                {
+                    // 同步到对应针头的结果
+                    if (_currentNeedleIndex == 0)
+                        _affineResultNeedle1 = value;
+                    else
+                        _affineResultNeedle2 = value;
+                    RaisePropertyChanged(nameof(HasAffineResult));
+                    RaisePropertyChanged(nameof(AffineQualityText));
+                    RaisePropertyChanged(nameof(AffineResultDisplay));
+                    ApplyTransformToSegmentsCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>是否已有仿射计算结果</summary>
+        public bool HasAffineResult => _affineResult != null;
+
+        /// <summary>仿射标定质量评级文本</summary>
+        public string AffineQualityText
+        {
+            get
+            {
+                if (_affineResult == null) return string.Empty;
+                var grade = _affineResult.RmsError < 0.05 ? L("Step4_Affine_Quality_Good")
+                          : _affineResult.RmsError < 0.10 ? L("Step4_Affine_Quality_Acceptable")
+                          : L("Step4_Affine_Quality_Poor");
+                return $"{L("Step4_Affine_RmsLabel")}: {_affineResult.RmsError:F4}mm | {grade}";
+            }
+        }
+
+        /// <summary>仿射参数结果文本</summary>
+        public string AffineResultDisplay
+        {
+            get
+            {
+                if (_affineResult == null) return string.Empty;
+                return $"A={_affineResult.A:F4} B={_affineResult.B:F4} C={_affineResult.C:F4} D={_affineResult.D:F4}\n"
+                     + $"Tx={_affineResult.Tx:F3} Ty={_affineResult.Ty:F3} | "
+                     + $"θ={_affineResult.EquivalentRotationDeg:F2}° Sx={_affineResult.EquivalentScaleX:F4} Sy={_affineResult.EquivalentScaleY:F4}";
+            }
+        }
+
+        /// <summary>是否正在从画布选取仿射CAD坐标</summary>
+        private bool _isPickingAffineCadCoord;
+
+        #endregion
+
+        #region 绑定属性 — Step4: 逐点映射
+
+        private List<PointMappingPoint> _pointMappingPointsNeedle1 = new();
+        private List<PointMappingPoint> _pointMappingPointsNeedle2 = new();
+        private ObservableCollection<PointMappingPoint> _pointMappingPoints = new();
+        /// <summary>逐点映射点集合</summary>
+        public ObservableCollection<PointMappingPoint> PointMappingPoints
+        {
+            get => _pointMappingPoints;
+            set => SetProperty(ref _pointMappingPoints, value);
+        }
+
+        private PointMappingPoint _selectedMappingPoint;
+        /// <summary>当前选中的逐点映射点</summary>
+        public PointMappingPoint SelectedMappingPoint
+        {
+            get => _selectedMappingPoint;
+            set => SetProperty(ref _selectedMappingPoint, value);
+        }
+
+        /// <summary>是否正在从画布选取映射CAD坐标</summary>
+        private bool _isPickingMappingCadCoord;
+
+        #endregion
+
+        #region 绑定属性 — 双针头选择
+
+        private int _currentNeedleIndex;
+        private int _previousNeedleIndex; // 追踪上一次针头索引，用于保存数据
+
+        /// <summary>当前针头索引（0=Dz1/针头1, 1=Dz2/针头2）</summary>
+        public int CurrentNeedleIndex
+        {
+            get => _currentNeedleIndex;
+            set
+            {
+                if (SetProperty(ref _currentNeedleIndex, value))
+                {
+                    RaisePropertyChanged(nameof(IsNeedle1Selected));
+                    RaisePropertyChanged(nameof(IsNeedle2Selected));
+                    SwitchNeedleData();
+                }
+            }
+        }
+
+        /// <summary>切换针头时保存当前数据并加载目标针头数据</summary>
+        private void SwitchNeedleData()
+        {
+            // 1. 保存当前数据到上一次针头的备份
+            SaveCurrentNeedleData(_previousNeedleIndex);
+
+            // 2. 加载目标针头的数据
+            LoadNeedleData(_currentNeedleIndex);
+
+            // 3. 更新上一次索引
+            _previousNeedleIndex = _currentNeedleIndex;
+        }
+
+        /// <summary>保存指定针头的仿射标定数据和逐点映射数据</summary>
+        private void SaveCurrentNeedleData(int needleIndex)
+        {
+            if (needleIndex == 0)
+            {
+                _affineCalibrationPointsNeedle1 = new List<AffineCalibrationPoint>(_affineCalibrationPoints);
+                _affineResultNeedle1 = _affineResult;
+                _pointMappingPointsNeedle1 = new List<PointMappingPoint>(_pointMappingPoints);
+            }
+            else
+            {
+                _affineCalibrationPointsNeedle2 = new List<AffineCalibrationPoint>(_affineCalibrationPoints);
+                _affineResultNeedle2 = _affineResult;
+                _pointMappingPointsNeedle2 = new List<PointMappingPoint>(_pointMappingPoints);
+            }
+        }
+
+        /// <summary>加载指定针头的仿射标定数据和逐点映射数据到UI集合</summary>
+        private void LoadNeedleData(int needleIndex)
+        {
+            // 切换仿射标定点（内容交换，保持同一ObservableCollection引用）
+            var affineSource = needleIndex == 0 ? _affineCalibrationPointsNeedle1 : _affineCalibrationPointsNeedle2;
+            _affineCalibrationPoints.Clear();
+            foreach (var p in affineSource)
+                _affineCalibrationPoints.Add(p);
+
+            // 切换仿射结果
+            _affineResult = needleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+            RaisePropertyChanged(nameof(AffineResult));
+            RaisePropertyChanged(nameof(HasAffineResult));
+            RaisePropertyChanged(nameof(AffineQualityText));
+            RaisePropertyChanged(nameof(AffineResultDisplay));
+            ApplyTransformToSegmentsCommand.RaiseCanExecuteChanged();
+
+            // 切换逐点映射点（内容交换）
+            var mappingSource = needleIndex == 0 ? _pointMappingPointsNeedle1 : _pointMappingPointsNeedle2;
+            _pointMappingPoints.Clear();
+            foreach (var p in mappingSource)
+                _pointMappingPoints.Add(p);
+
+            ComputeAffineTransformCommand.RaiseCanExecuteChanged();
+            DeleteAffinePointCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>是否选中针头1（Dz1）</summary>
+        public bool IsNeedle1Selected
+        {
+            get => _currentNeedleIndex == 0;
+            set { if (value) CurrentNeedleIndex = 0; }
+        }
+
+        /// <summary>是否选中针头2（Dz2）</summary>
+        public bool IsNeedle2Selected
+        {
+            get => _currentNeedleIndex == 1;
+            set { if (value) CurrentNeedleIndex = 1; }
+        }
 
         #endregion
 
@@ -849,8 +992,8 @@ namespace Module.ViewModels
             get
             {
                 if (_alignService == null) return L("CadPoint_AlignStatus_Unavailable");
-                var modeText = _alignService.CurrentMode == AlignMode.FirstPoint
-                    ? L("CadPoint_AlignMode_FirstPoint")
+                var modeText = _alignMode == AlignMode.Affine
+                    ? L("CadPoint_AlignMode_Affine")
                     : L("CadPoint_AlignMode_PointMapping");
                 return string.Format(L("CadPoint_AlignStatus_Format"), modeText);
             }
@@ -1249,24 +1392,65 @@ namespace Module.ViewModels
 
         #endregion
 
-        #region 委托命令 — Step4: 坐标对齐
+        #region 委托命令 — Step4: 坐标对齐（N点仿射 + 逐点映射）
 
-        private DelegateCommand _teachMapFiducialCommand;
-        /// <summary>示教图纸基准点命令——从画布选取或手动输入图纸基准点坐标</summary>
-        public DelegateCommand TeachMapFiducialCommand =>
-            _teachMapFiducialCommand ??= new DelegateCommand(ExecuteTeachMapFiducial);
+        private DelegateCommand _addAffinePointCommand;
+        /// <summary>添加仿射标定点命令</summary>
+        public DelegateCommand AddAffinePointCommand =>
+            _addAffinePointCommand ??= new DelegateCommand(ExecuteAddAffinePoint);
 
-        private DelegateCommand _teachMachineFiducialCommand;
-        /// <summary>示教机械基准点命令——从运动卡读取当前位置作为机械基准点</summary>
-        public DelegateCommand TeachMachineFiducialCommand =>
-            _teachMachineFiducialCommand ??= new DelegateCommand(ExecuteTeachMachineFiducial);
+        private DelegateCommand<AffineCalibrationPoint> _deleteAffinePointCommand;
+        /// <summary>删除仿射标定点命令（最少保留3点）</summary>
+        public DelegateCommand<AffineCalibrationPoint> DeleteAffinePointCommand =>
+            _deleteAffinePointCommand ??= new DelegateCommand<AffineCalibrationPoint>(
+                ExecuteDeleteAffinePoint, p => _affineCalibrationPoints.Count > 3);
 
-        private DelegateCommand _autoCalculateCommand;
-        /// <summary>自动计算坐标变换命令（仅 Mode1 可用）</summary>
-        public DelegateCommand AutoCalculateCommand =>
-            _autoCalculateCommand ??= new DelegateCommand(
-                ExecuteAutoCalculate,
-                () => IsAutoCalculateEnabled);
+        private DelegateCommand<AffineCalibrationPoint> _pickAffineCadCoordCommand;
+        /// <summary>从画布选取仿射CAD坐标命令</summary>
+        public DelegateCommand<AffineCalibrationPoint> PickAffineCadCoordCommand =>
+            _pickAffineCadCoordCommand ??= new DelegateCommand<AffineCalibrationPoint>(ExecutePickAffineCadCoord);
+
+        private DelegateCommand<AffineCalibrationPoint> _teachAffineMachineCoordCommand;
+        /// <summary>示教仿射机械坐标命令</summary>
+        public DelegateCommand<AffineCalibrationPoint> TeachAffineMachineCoordCommand =>
+            _teachAffineMachineCoordCommand ??= new DelegateCommand<AffineCalibrationPoint>(ExecuteTeachAffineMachineCoord);
+
+        private DelegateCommand _computeAffineTransformCommand;
+        /// <summary>计算N点仿射变换命令</summary>
+        public DelegateCommand ComputeAffineTransformCommand =>
+            _computeAffineTransformCommand ??= new DelegateCommand(ExecuteComputeAffineTransform,
+                () => _affineCalibrationPoints.Count(p => p.MachineX != 0 || p.MachineY != 0) >= 3);
+
+        private DelegateCommand _applyTransformToSegmentsCommand;
+        /// <summary>应用变换到轨迹段命令</summary>
+        public DelegateCommand ApplyTransformToSegmentsCommand =>
+            _applyTransformToSegmentsCommand ??= new DelegateCommand(ExecuteApplyTransformToSegments,
+                () => _affineResult != null);
+
+        private DelegateCommand _addMappingPointCommand;
+        /// <summary>添加逐点映射点命令</summary>
+        public DelegateCommand AddMappingPointCommand =>
+            _addMappingPointCommand ??= new DelegateCommand(ExecuteAddMappingPoint);
+
+        private DelegateCommand<PointMappingPoint> _deleteMappingPointCommand;
+        /// <summary>删除逐点映射点命令</summary>
+        public DelegateCommand<PointMappingPoint> DeleteMappingPointCommand =>
+            _deleteMappingPointCommand ??= new DelegateCommand<PointMappingPoint>(ExecuteDeleteMappingPoint);
+
+        private DelegateCommand<PointMappingPoint> _pickMappingCadCoordCommand;
+        /// <summary>从画布选取映射CAD坐标命令</summary>
+        public DelegateCommand<PointMappingPoint> PickMappingCadCoordCommand =>
+            _pickMappingCadCoordCommand ??= new DelegateCommand<PointMappingPoint>(ExecutePickMappingCadCoord);
+
+        private DelegateCommand<PointMappingPoint> _teachMappingMachineCoordCommand;
+        /// <summary>示教映射机械坐标命令</summary>
+        public DelegateCommand<PointMappingPoint> TeachMappingMachineCoordCommand =>
+            _teachMappingMachineCoordCommand ??= new DelegateCommand<PointMappingPoint>(ExecuteTeachMappingMachineCoord);
+
+        private DelegateCommand _showSvgCommand;
+        /// <summary>查看坐标对齐原理示意图</summary>
+        public DelegateCommand ShowSvgCommand =>
+            _showSvgCommand ??= new DelegateCommand(ExecuteShowSvg);
 
         #endregion
 
@@ -1377,6 +1561,17 @@ namespace Module.ViewModels
             _canvasEntities = new ObservableCollection<CadEntity>();
             _segments = new ObservableCollection<DispenseSegment>();
             _layerCheckList = new ObservableCollection<LayerCheckItem>();
+
+            // 初始化仿射标定点集合（默认3个空行，用户在实际流程中示教）
+            _affineCalibrationPoints = new ObservableCollection<AffineCalibrationPoint>
+            {
+                new() { Index = 0, Name = "P1" },
+                new() { Index = 1, Name = "P2" },
+                new() { Index = 2, Name = "P3" },
+            };
+
+            // 初始化逐点映射点集合
+            _pointMappingPoints = new ObservableCollection<PointMappingPoint>();
 
             // 监听 Segments 集合变化以更新状态栏摘要和 CanExecute
             _segments.CollectionChanged += OnSegmentsCollectionChanged;
@@ -1634,7 +1829,9 @@ namespace Module.ViewModels
 
                     foreach (var entity in entities)
                     {
+#if HAS_HALCON
                         try { entity.ToHObject(); } catch { }
+#endif
                     }
 
                     return (result, segments, entities);
@@ -2006,119 +2203,178 @@ namespace Module.ViewModels
 
         #endregion
 
-        #region Step4: 坐标对齐命令实现
+        #region Step4: 坐标对齐命令实现（N点仿射 + 逐点映射）
 
-        /// <summary>
-        /// 示教图纸基准点——优先使用画布上选中图元的起点，
-        /// 其次使用画布上最后点击的坐标位置
-        /// </summary>
-        private void ExecuteTeachMapFiducial()
+        /// <summary>添加仿射标定点（默认3个空行）</summary>
+        private void ExecuteAddAffinePoint()
         {
-            // 优先使用画布点击坐标（用户实际点击的位置）
-            if (_lastCanvasClickX.HasValue && _lastCanvasClickY.HasValue)
+            int idx = _affineCalibrationPoints.Count;
+            _affineCalibrationPoints.Add(new AffineCalibrationPoint
             {
-                MapFiducialX = _lastCanvasClickX.Value;
-                MapFiducialY = _lastCanvasClickY.Value;
-                GlobalStatus = $"图纸基准点已从画布选取 ({MapFiducialX:F3}, {MapFiducialY:F3})";
-                AutoCalculateCommand.RaiseCanExecuteChanged();
-                return;
-            }
+                Index = idx,
+                Name = $"P{idx + 1}",
+                CadX = 0, CadY = 0,
+                MachineX = 0, MachineY = 0
+            });
+            ComputeAffineTransformCommand.RaiseCanExecuteChanged();
+            DeleteAffinePointCommand.RaiseCanExecuteChanged();
+        }
 
-            // 备选：从选中图元包围盒提取坐标
-            if (SelectedEntity != null)
+        /// <summary>删除仿射标定点（最少保留3点）</summary>
+        private void ExecuteDeleteAffinePoint(AffineCalibrationPoint point)
+        {
+            if (point == null || _affineCalibrationPoints.Count <= 3) return;
+            _affineCalibrationPoints.Remove(point);
+            // 重新编号
+            for (int i = 0; i < _affineCalibrationPoints.Count; i++)
             {
-                var bbox = SelectedEntity.GetBoundingBox();
-                if (!bbox.IsEmpty)
+                _affineCalibrationPoints[i].Index = i;
+                _affineCalibrationPoints[i].Name = $"P{i + 1}";
+            }
+            ComputeAffineTransformCommand.RaiseCanExecuteChanged();
+            DeleteAffinePointCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>从画布选取仿射CAD坐标——标记拾取状态，等待画布点击</summary>
+        private void ExecutePickAffineCadCoord(AffineCalibrationPoint point)
+        {
+            if (point == null) return;
+            _isPickingAffineCadCoord = true;
+            _isPickingMappingCadCoord = false;
+            SelectedAffinePoint = point;
+            GlobalStatus = L("Step4_Status_PickCadCoord");
+        }
+
+        /// <summary>示教仿射机械坐标——读取运动卡当前Dx/Dy位置</summary>
+        private void ExecuteTeachAffineMachineCoord(AffineCalibrationPoint point)
+        {
+            if (point == null) return;
+
+            if (_motionService == null)
+            {
+                // 无运动卡时使用模拟数据
+                var rnd = new Random();
+                point.MachineX = Math.Round(rnd.NextDouble() * 200 - 100, 3);
+                point.MachineY = Math.Round(rnd.NextDouble() * 200 - 100, 3);
+                point.MachineDz = Math.Round(rnd.NextDouble() * 50 - 25, 3);
+            }
+            else
+            {
+                try
                 {
-                    MapFiducialX = bbox.MinX;
-                    MapFiducialY = bbox.MinY;
-                    GlobalStatus = $"图纸基准点已设置为选中图元起点 ({MapFiducialX:F3}, {MapFiducialY:F3})";
-                    AutoCalculateCommand.RaiseCanExecuteChanged();
+                    // 读取Dx(8)/Dy(6)轴当前位置
+                    const int AxisDx = 8;
+                    const int AxisDy = 6;
+                    point.MachineX = Math.Round(_motionService.GetAxisState(AxisDx).ActualPosition, 3);
+                    point.MachineY = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
+
+                    // 根据当前针头读取对应Dz轴
+                    const int AxisDz1 = 4;
+                    const int AxisDz2 = 5;
+                    point.MachineDz = Math.Round(
+                        _motionService.GetAxisState(_currentNeedleIndex == 0 ? AxisDz1 : AxisDz2).ActualPosition, 3);
+                }
+                catch (Exception ex)
+                {
+                    GlobalStatus = $"示教机械坐标失败: {ex.Message}";
                     return;
                 }
             }
 
-            GlobalStatus = "请先在画布上点击选取基准点位置，或直接手动输入坐标";
+            ComputeAffineTransformCommand.RaiseCanExecuteChanged();
+            GlobalStatus = $"已示教 {point.Name} 机械坐标: ({point.MachineX:F3}, {point.MachineY:F3}, Dz={point.MachineDz:F3})";
         }
 
-        /// <summary>
-        /// 示教机械基准点——通过运动卡接口获取当前轴位置
-        /// 若无运动卡服务则模拟填充示例数据
-        /// </summary>
-        private void ExecuteTeachMachineFiducial()
+        /// <summary>计算N点仿射变换——调用AffineCalibrationService.Solve()</summary>
+        private void ExecuteComputeAffineTransform()
         {
-            // TODO: 接入实际运动卡读位置接口
-            // 此处模拟：使用随机数演示效果（生产环境替换为真实运动卡 API）
-            var rnd = new Random();
-            MachineFidX = Math.Round(rnd.NextDouble() * 200 - 100, 3);
-            MachineFidY = Math.Round(rnd.NextDouble() * 200 - 100, 3);
-            MachineFidZ = Math.Round(rnd.NextDouble() * 50, 3);
-            MachineFidRx = Math.Round(rnd.NextDouble() * 2 - 1, 4);
-            MachineFidRz = Math.Round(rnd.NextDouble() * 2 - 1, 4);
-
-            // 将 Z 向高度同步到每段参数的示教高度
-            foreach (var seg in Segments)
+            try
             {
-                seg.TeachHeight = MachineFidZ;
-                seg.ZHeight = MachineFidZ;
+                var validPoints = _affineCalibrationPoints
+                    .Where(p => (p.MachineX != 0 || p.MachineY != 0) && (p.CadX != 0 || p.CadY != 0))
+                    .ToList();
+
+                if (validPoints.Count < 3)
+                {
+                    GlobalStatus = L("Step4_Error_NeedMorePoints");
+                    return;
+                }
+
+                var cadPoints = validPoints.Select(p => (p.CadX, p.CadY)).ToList();
+                var machinePoints = validPoints.Select(p => (p.MachineX, p.MachineY)).ToList();
+
+                var result = AffineCalibrationService.Solve(cadPoints, machinePoints);
+
+                // 回填残差到每个标定点
+                for (int i = 0; i < validPoints.Count && i < result.Residuals.Count; i++)
+                {
+                    validPoints[i].Residual = result.Residuals[i];
+                }
+
+                AffineResult = result;
+                TransformStatus = $"✅ {L("Step4_Status_AffineComputed")}: {validPoints.Count} {L("Step4_Status_Points")}, RMS={result.RmsError:F4}mm";
+                GlobalStatus = TransformStatus;
             }
-
-            GlobalStatus = $"机械基准点已示教: ({MachineFidX:F3}, {MachineFidY:F3}, {MachineFidZ:F3})，已同步Z高度到 {Segments.Count} 段";
-            AutoCalculateCommand.RaiseCanExecuteChanged();
-            RaisePropertyChanged(nameof(IsAutoCalculateEnabled));
+            catch (Exception ex)
+            {
+                GlobalStatus = $"{L("Step4_Error_AffineFailed")}: {ex.Message}";
+                TransformStatus = $"❌ {L("Step4_Error_AffineFailed")}: {ex.Message}";
+            }
         }
 
-        /// <summary>
-        /// 自动计算坐标变换——根据当前对齐模式调用不同计算逻辑
-        /// Mode1: 首点偏移（纯平移）, Mode3: 仿射对齐（平移+旋转+缩放）
-        /// </summary>
-        private void ExecuteAutoCalculate()
+        /// <summary>应用仿射变换到所有轨迹段点</summary>
+        private void ExecuteApplyTransformToSegments()
         {
-            if (_alignService == null)
+            // 两个针头都必须有变换结果才能应用
+            if (_affineResultNeedle1 == null || _affineResultNeedle2 == null)
             {
-                GlobalStatus = "错误: 坐标对齐服务不可用";
+                GlobalStatus = L("Step4_Error_BothNeedlesRequired");
                 return;
             }
 
             try
             {
-                _alignService.SetMapFiducial(MapFiducialX, MapFiducialY, MapFiducialZ);
-                _alignService.SetMachineFiducial(MachineFidX, MachineFidY, MachineFidZ, MachineFidRx, MachineFidRz);
+                // 计算当前针头的Z基准高度（当前标定点的Z平均值）
+                double avgDz = 0;
+                var validDz = _affineCalibrationPoints.Where(p => p.MachineDz != 0).ToList();
+                if (validDz.Count > 0) avgDz = validDz.Average(p => p.MachineDz);
 
-                var allPoints = Segments.SelectMany(s => s.Points).ToList();
-                _alignService.RegisterPoints(allPoints);
+                int count = 0;
+                foreach (var seg in Segments)
+                {
+                    if (seg.Points == null) continue;
+                    foreach (var pt in seg.Points)
+                    {
+                        // 根据当前针头选择对应的变换参数
+                        var currentResult = _currentNeedleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+                        var (mx, my) = AffineCalibrationService.Transform(currentResult, pt.X, pt.Y);
+                        pt.MachineX = mx;
+                        pt.MachineY = my;
+                        pt.MachineZ = avgDz;
+                        count++;
+                    }
+                }
 
-                if (IsModeAffine)
+                // 同步到对齐服务
+                if (_alignService != null)
                 {
                     _alignService.SetMode(AlignMode.Affine);
-                    _alignService.SetDirectionLength(DirectionLength);
-                    _alignService.AutoCalculateAffine();
-                    TransformMatrixDisplay = _alignService.GetAffineMatrixDisplay();
-                }
-                else
-                {
-                    _alignService.SetMode(AlignMode.FirstPoint);
-                    _alignService.AutoCalculate();
-                    var t = _alignService.GetTransform();
-                    TransformMatrixDisplay = $"Tx={t.Tx:F2} Ty={t.Ty:F2} Tz={t.Tz:F2} θ={t.RotationAngle:F2}° S={t.Scale:F3}";
+                    var allPoints = Segments.SelectMany(s => s.Points).ToList();
+                    _alignService.RegisterPoints(allPoints);
                 }
 
-                int count = allPoints.Count(p => p.MachineX.HasValue);
-                GlobalStatus = $"坐标变换已计算: 共转换 {count} 个点";
-                TransformStatus = $"✅ 已转换 {count} 个点";
-                UpdateTransformedPointsPreview(allPoints);
+                TransformStatus = $"✅ {L("Step4_Status_TransformApplied")}: {count} {L("Step4_Status_Points")}";
+                GlobalStatus = TransformStatus;
                 RaisePropertyChanged(nameof(AlignStatusDisplay));
+                UpdateTransformedPointsPreview(Segments.SelectMany(s => s.Points).ToList());
             }
             catch (Exception ex)
             {
-                GlobalStatus = $"坐标变换计算失败: {ex.Message}";
-                TransformStatus = $"❌ 计算失败: {ex.Message}";
+                GlobalStatus = $"应用变换失败: {ex.Message}";
             }
         }
 
-        /// <summary>
-        /// 更新变换后坐标预览（取前5个已变换的点）
-        /// </summary>
+        /// <summary>更新变换后坐标预览（取前5个已变换的点）</summary>
         private void UpdateTransformedPointsPreview(List<CadPoint> allPoints)
         {
             TransformedPointsPreview.Clear();
@@ -2127,10 +2383,76 @@ namespace Module.ViewModels
                 TransformedPointsPreview.Add(p);
         }
 
-        private DelegateCommand _showSvgCommand;
-        /// <summary>查看坐标对齐原理示意图</summary>
-        public DelegateCommand ShowSvgCommand =>
-            _showSvgCommand ??= new DelegateCommand(ExecuteShowSvg);
+        /// <summary>添加逐点映射点</summary>
+        private void ExecuteAddMappingPoint()
+        {
+            int idx = _pointMappingPoints.Count;
+            _pointMappingPoints.Add(new PointMappingPoint
+            {
+                Index = idx,
+                Name = $"P{idx + 1}"
+            });
+        }
+
+        /// <summary>删除逐点映射点</summary>
+        private void ExecuteDeleteMappingPoint(PointMappingPoint point)
+        {
+            if (point == null) return;
+            _pointMappingPoints.Remove(point);
+            for (int i = 0; i < _pointMappingPoints.Count; i++)
+            {
+                _pointMappingPoints[i].Index = i;
+                _pointMappingPoints[i].Name = $"P{i + 1}";
+            }
+        }
+
+        /// <summary>从画布选取映射CAD坐标——标记拾取状态，等待画布点击</summary>
+        private void ExecutePickMappingCadCoord(PointMappingPoint point)
+        {
+            if (point == null) return;
+            _isPickingMappingCadCoord = true;
+            _isPickingAffineCadCoord = false;
+            SelectedMappingPoint = point;
+            GlobalStatus = L("Step4_Status_PickCadCoord");
+        }
+
+        /// <summary>示教映射机械坐标——读取运动卡当前Dx/Dy/Dz位置</summary>
+        private void ExecuteTeachMappingMachineCoord(PointMappingPoint point)
+        {
+            if (point == null) return;
+
+            if (_motionService == null)
+            {
+                // 无运动卡时使用模拟数据
+                var rnd = new Random();
+                point.MachineDx = Math.Round(rnd.NextDouble() * 200 - 100, 3);
+                point.MachineDy = Math.Round(rnd.NextDouble() * 200 - 100, 3);
+                point.MachineDz = Math.Round(rnd.NextDouble() * 50, 3);
+            }
+            else
+            {
+                try
+                {
+                    // 读取Dx(8)/Dy(6)轴当前位置
+                    const int AxisDx = 8;
+                    const int AxisDy = 6;
+                    point.MachineDx = Math.Round(_motionService.GetAxisState(AxisDx).ActualPosition, 3);
+                    point.MachineDy = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
+
+                    // 根据当前针头选择Z轴: Dz1→AxisDz₂(logicalId=4), Dz2→AxisDz₃(logicalId=5)
+                    int axisDz = _currentNeedleIndex == 0 ? 4 : 5;
+                    point.MachineDz = Math.Round(_motionService.GetAxisState(axisDz).ActualPosition, 3);
+                }
+                catch (Exception ex)
+                {
+                    GlobalStatus = $"示教机械坐标失败: {ex.Message}";
+                    return;
+                }
+            }
+
+            GlobalStatus = $"已示教 {point.Name} 机械坐标: Dx={point.MachineDx:F3}, Dy={point.MachineDy:F3}"
+                         + $", Dz={point.MachineDz:F3}";
+        }
 
         /// <summary>弹出坐标对齐原理示意图窗口</summary>
         private void ExecuteShowSvg()
@@ -2422,12 +2744,33 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 画布点击回调——仅在鼠标点击画布时触发，缓存点击坐标用于"从画布选取"
-        /// 与 UpdateCoordinateDisplay 分离，避免鼠标移开后坐标丢失
+        /// 同时处理仿射/映射CAD坐标拾取状态
         /// </summary>
         public void OnCanvasPointClicked(double cadX, double cadY)
         {
             _lastCanvasClickX = cadX;
             _lastCanvasClickY = cadY;
+
+            // 处理仿射CAD坐标拾取
+            if (_isPickingAffineCadCoord && _selectedAffinePoint != null)
+            {
+                _selectedAffinePoint.CadX = cadX;
+                _selectedAffinePoint.CadY = cadY;
+                _isPickingAffineCadCoord = false;
+                ComputeAffineTransformCommand.RaiseCanExecuteChanged();
+                GlobalStatus = $"已选取 {_selectedAffinePoint.Name} CAD坐标: ({cadX:F3}, {cadY:F3})";
+                return;
+            }
+
+            // 处理逐点映射CAD坐标拾取
+            if (_isPickingMappingCadCoord && _selectedMappingPoint != null)
+            {
+                _selectedMappingPoint.CadX = cadX;
+                _selectedMappingPoint.CadY = cadY;
+                _isPickingMappingCadCoord = false;
+                GlobalStatus = $"已选取 {_selectedMappingPoint.Name} CAD坐标: ({cadX:F3}, {cadY:F3})";
+                return;
+            }
         }
 
         /// <summary>
@@ -2731,22 +3074,37 @@ namespace Module.ViewModels
 
             try
             {
+                // 保存当前针头数据到备份
+                SaveCurrentNeedleData(_currentNeedleIndex);
+
                 // 构建保存数据：轨迹段 + 坐标对齐参数
                 var saveData = new Core.Models.SegmentSaveData
                 {
                     Segments = Segments.ToList(),
                     AlignData = new Core.Models.CoordinateAlignData
                     {
-                        AlignMode = IsModeAffine ? "Affine" : IsModeAllPoints ? "AllPoints" : "FirstPoint",
-                        MapFiducialX = MapFiducialX,
-                        MapFiducialY = MapFiducialY,
-                        MapFiducialZ = MapFiducialZ,
-                        MachineFidX = MachineFidX,
-                        MachineFidY = MachineFidY,
-                        MachineFidZ = MachineFidZ,
-                        MachineFidRx = MachineFidRx,
-                        MachineFidRz = MachineFidRz,
-                        DirectionLength = DirectionLength
+                        AlignMode = IsModeAffine ? "Affine" : "PointMapping",
+                        AffineCalibrationPointsNeedle1 = _affineCalibrationPointsNeedle1.ToList(),
+                        AffineCalibrationPointsNeedle2 = _affineCalibrationPointsNeedle2.ToList(),
+                        PointMappingPointsNeedle1 = _pointMappingPointsNeedle1.ToList(),
+                        PointMappingPointsNeedle2 = _pointMappingPointsNeedle2.ToList(),
+                        CurrentNeedleIndex = CurrentNeedleIndex,
+                        AffineResultDataNeedle1 = _affineResultNeedle1 != null ? new Core.Models.AffineResultData
+                        {
+                            A = _affineResultNeedle1.A, B = _affineResultNeedle1.B,
+                            C = _affineResultNeedle1.C, D = _affineResultNeedle1.D,
+                            Tx = _affineResultNeedle1.Tx, Ty = _affineResultNeedle1.Ty,
+                            RmsError = _affineResultNeedle1.RmsError,
+                            PointCount = _affineResultNeedle1.PointCount
+                        } : null,
+                        AffineResultDataNeedle2 = _affineResultNeedle2 != null ? new Core.Models.AffineResultData
+                        {
+                            A = _affineResultNeedle2.A, B = _affineResultNeedle2.B,
+                            C = _affineResultNeedle2.C, D = _affineResultNeedle2.D,
+                            Tx = _affineResultNeedle2.Tx, Ty = _affineResultNeedle2.Ty,
+                            RmsError = _affineResultNeedle2.RmsError,
+                            PointCount = _affineResultNeedle2.PointCount
+                        } : null
                     }
                 };
 
@@ -2831,15 +3189,92 @@ namespace Module.ViewModels
                 // 恢复坐标对齐数据
                 if (alignData != null)
                 {
-                    MapFiducialX = alignData.MapFiducialX;
-                    MapFiducialY = alignData.MapFiducialY;
-                    MapFiducialZ = alignData.MapFiducialZ;
-                    MachineFidX = alignData.MachineFidX;
-                    MachineFidY = alignData.MachineFidY;
-                    MachineFidZ = alignData.MachineFidZ;
-                    MachineFidRx = alignData.MachineFidRx;
-                    MachineFidRz = alignData.MachineFidRz;
-                    DirectionLength = alignData.DirectionLength;
+                    // 恢复针头1仿射标定点
+                    if (alignData.AffineCalibrationPointsNeedle1 != null && alignData.AffineCalibrationPointsNeedle1.Count > 0)
+                    {
+                        _affineCalibrationPointsNeedle1 = new List<AffineCalibrationPoint>(alignData.AffineCalibrationPointsNeedle1);
+                    }
+                    // 恢复针头2仿射标定点
+                    if (alignData.AffineCalibrationPointsNeedle2 != null && alignData.AffineCalibrationPointsNeedle2.Count > 0)
+                    {
+                        _affineCalibrationPointsNeedle2 = new List<AffineCalibrationPoint>(alignData.AffineCalibrationPointsNeedle2);
+                    }
+                    // 兼容旧版数据：如果旧版 AffineCalibrationPoints 有数据，迁移到针头1
+                    if ((_affineCalibrationPointsNeedle1 == null || _affineCalibrationPointsNeedle1.Count == 0)
+                        && alignData.AffineCalibrationPoints != null && alignData.AffineCalibrationPoints.Count > 0)
+                    {
+                        _affineCalibrationPointsNeedle1 = new List<AffineCalibrationPoint>(alignData.AffineCalibrationPoints);
+                    }
+
+                    // 恢复针头1逐点映射点
+                    if (alignData.PointMappingPointsNeedle1 != null && alignData.PointMappingPointsNeedle1.Count > 0)
+                    {
+                        _pointMappingPointsNeedle1 = new List<PointMappingPoint>(alignData.PointMappingPointsNeedle1);
+                    }
+                    // 恢复针头2逐点映射点
+                    if (alignData.PointMappingPointsNeedle2 != null && alignData.PointMappingPointsNeedle2.Count > 0)
+                    {
+                        _pointMappingPointsNeedle2 = new List<PointMappingPoint>(alignData.PointMappingPointsNeedle2);
+                    }
+                    // 兼容旧版数据：如果旧版 PointMappingPoints 有数据，迁移到针头1
+                    if ((_pointMappingPointsNeedle1 == null || _pointMappingPointsNeedle1.Count == 0)
+                        && alignData.PointMappingPoints != null && alignData.PointMappingPoints.Count > 0)
+                    {
+                        _pointMappingPointsNeedle1 = new List<PointMappingPoint>(alignData.PointMappingPoints);
+                    }
+
+                    // 恢复针头索引（先设置 _currentNeedleIndex 但不触发切换）
+                    _currentNeedleIndex = alignData.CurrentNeedleIndex;
+                    _previousNeedleIndex = _currentNeedleIndex;
+                    RaisePropertyChanged(nameof(CurrentNeedleIndex));
+                    RaisePropertyChanged(nameof(IsNeedle1Selected));
+                    RaisePropertyChanged(nameof(IsNeedle2Selected));
+
+                    // 恢复针头1仿射结果
+                    if (alignData.AffineResultDataNeedle1 != null)
+                    {
+                        _affineResultNeedle1 = new AffineCalibrationResult
+                        {
+                            A = alignData.AffineResultDataNeedle1.A,
+                            B = alignData.AffineResultDataNeedle1.B,
+                            C = alignData.AffineResultDataNeedle1.C,
+                            D = alignData.AffineResultDataNeedle1.D,
+                            Tx = alignData.AffineResultDataNeedle1.Tx,
+                            Ty = alignData.AffineResultDataNeedle1.Ty,
+                            RmsError = alignData.AffineResultDataNeedle1.RmsError,
+                            PointCount = alignData.AffineResultDataNeedle1.PointCount
+                        };
+                    }
+                    // 恢复针头2仿射结果
+                    if (alignData.AffineResultDataNeedle2 != null)
+                    {
+                        _affineResultNeedle2 = new AffineCalibrationResult
+                        {
+                            A = alignData.AffineResultDataNeedle2.A,
+                            B = alignData.AffineResultDataNeedle2.B,
+                            C = alignData.AffineResultDataNeedle2.C,
+                            D = alignData.AffineResultDataNeedle2.D,
+                            Tx = alignData.AffineResultDataNeedle2.Tx,
+                            Ty = alignData.AffineResultDataNeedle2.Ty,
+                            RmsError = alignData.AffineResultDataNeedle2.RmsError,
+                            PointCount = alignData.AffineResultDataNeedle2.PointCount
+                        };
+                    }
+                    // 兼容旧版数据：如果旧版 AffineResultData 有数据，迁移到针头1
+                    if (_affineResultNeedle1 == null && alignData.AffineResultData != null)
+                    {
+                        _affineResultNeedle1 = new AffineCalibrationResult
+                        {
+                            A = alignData.AffineResultData.A,
+                            B = alignData.AffineResultData.B,
+                            C = alignData.AffineResultData.C,
+                            D = alignData.AffineResultData.D,
+                            Tx = alignData.AffineResultData.Tx,
+                            Ty = alignData.AffineResultData.Ty,
+                            RmsError = alignData.AffineResultData.RmsError,
+                            PointCount = alignData.AffineResultData.PointCount
+                        };
+                    }
 
                     // 恢复对齐模式
                     switch (alignData.AlignMode)
@@ -2847,13 +3282,16 @@ namespace Module.ViewModels
                         case "Affine":
                             IsModeAffine = true;
                             break;
-                        case "AllPoints":
-                            IsModeAllPoints = true;
+                        case "PointMapping":
+                            IsModePointMapping = true;
                             break;
                         default:
-                            IsModeFirstPoint = true;
+                            IsModeAffine = true;
                             break;
                     }
+
+                    // 加载当前针头的数据到UI集合
+                    LoadNeedleData(_currentNeedleIndex);
                 }
 
                 // 适配视口

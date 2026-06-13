@@ -299,7 +299,7 @@
             </StackPanel>
         </materialDesign:Card>
 
-        <!-- 单点模式全局工艺参数面板（三列彩色分组，与DotPointEditorView一致） -->
+        <!-- 单点模式全局工艺参数面板（四列彩色分组，含高度参数） -->
         <materialDesign:Card Padding="10" Margin="0,0,0,8"
                               Visibility="{Binding IsSinglePointMode, Converter={StaticResource BoolToVisConv}, FallbackValue=Collapsed}">
             <StackPanel>
@@ -311,10 +311,12 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- 第一组：运动参数（蓝色） -->
-                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
                         <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#1565C0"
                                    Text="{lang:Lang Step3_Group_MotionParams}"/>
                         <Grid>
@@ -345,7 +347,7 @@
                     <Border Grid.Column="1" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
 
                     <!-- 第二组：出胶控制（琥珀色） -->
-                    <StackPanel Grid.Column="2" Margin="12,0,12,0">
+                    <StackPanel Grid.Column="2" Margin="8,0,8,0">
                         <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#F57C00"
                                    Text="{lang:Lang Step3_Group_DispenseControl}"/>
                         <Grid>
@@ -376,9 +378,54 @@
 
                     <Border Grid.Column="3" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
 
-                    <!-- 第三组：阀控参数（青色） -->
-                    <StackPanel Grid.Column="4" Margin="12,0,0,0">
+                    <!-- 第三组：高度参数（青色） -->
+                    <StackPanel Grid.Column="4" Margin="8,0,8,0">
                         <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#00838F"
+                                   Text="{lang:Lang Step3_Group_HeightParams}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" MinWidth="70"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto" MinWidth="30"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_TeachHeight}" Margin="0,4,8,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm" Margin="4,4,0,0"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_HeightCompensation}" Margin="0,4,8,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Text="{Binding SinglePointProcessParams.HeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm" Margin="4,4,0,0"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_EffectiveHeight}" Margin="0,4,8,0" Foreground="#757575"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1"
+                                       Text="{Binding SinglePointProcessParams.EffectiveZHeight, StringFormat=F3}"
+                                       VerticalAlignment="Center" Margin="0,4,0,0"
+                                       Foreground="#424242" FontWeight="Medium" FontSize="11"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm" Foreground="#757575" Margin="4,4,0,0"/>
+
+                            <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                    Content="{lang:Lang Step3_Btn_ExtractCADZ}"
+                                    Command="{Binding ExtractCADZValuesCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    Padding="6,3" FontSize="10"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ArrowDownBold" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Grid.Column="5" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+
+                    <!-- 第四组：阀控参数（紫色） -->
+                    <StackPanel Grid.Column="6" Margin="8,0,0,0">
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#7B1FA2"
                                    Text="{lang:Lang Step3_Group_ValveControl}"/>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -396,6 +443,39 @@
                         </Grid>
                     </StackPanel>
                 </Grid>
+
+                <!-- 单点模式采样点位列表 -->
+                <DockPanel Margin="0,8,0,0" Visibility="{Binding HasSelectedSegment, Converter={StaticResource BoolToVisConv}, FallbackValue=Collapsed}">
+                    <Button DockPanel.Dock="Right" Content="{lang:Lang Step3_Btn_DeletePoint}" Command="{Binding DeleteSelectedPointCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3" Foreground="#D32F2F"
+                            VerticalAlignment="Top" Margin="4,0,0,0"/>
+                    <DataGrid ItemsSource="{Binding SelectedSegmentPoints}"
+                              SelectedIndex="{Binding SelectedPointIndex}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              MaxHeight="150" MinHeight="60"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="{lang:Lang Step3_Header_Index}" Width="45" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Center" Loaded="OnPointNumberLoaded"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_X}" Binding="{Binding X, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_Y}" Binding="{Binding Y, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_Z}" Binding="{Binding Z, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MX}" Binding="{Binding MachineX, StringFormat=F2}" Width="50"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MY}" Binding="{Binding MachineY, StringFormat=F2}" Width="50"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MZ}" Binding="{Binding MachineZ, StringFormat=F2}" Width="50"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
             </StackPanel>
         </materialDesign:Card>
     </StackPanel>

@@ -23,8 +23,10 @@ namespace Module
             var localizationService = containerProvider.Resolve<ILocalizationService>();
             var Navigate = containerProvider.Resolve<NavigateModel>();
 
+#if HAS_HALCON
             Core.Models.CadEntityHalconExtensions.DxfParserService =
                 containerProvider.Resolve<Core.Services.IDxfParserService>();
+#endif
             // 1. 首页/总览
             Navigate.NavigateList.Add(new NavigateItem() { ViewName = "OverView", IconKind = "HomeMinusOutline", DisplayName = localizationService.GetResourceOrDefault("Nav_Home", "首页"), DisplayNameKey = "Nav_Home", UserLevel = 0, Display = true });
             // 2. 操作页面
@@ -109,7 +111,12 @@ namespace Module
             containerRegistry.RegisterSingleton<Core.Abstraction.IFormulaEvaluator, Core.Services.FormulaEvaluator>();
             containerRegistry.RegisterSingleton<Core.Services.IDxfParserService, Core.Services.DxfParserService>();
             containerRegistry.RegisterSingleton<Core.Services.IRoiToolService, Core.Services.RoiToolService>();
+#if HAS_HALCON
             containerRegistry.RegisterSingleton<Core.Services.ICoordinateAlignService, Core.Services.CoordinateAlignService>();
+#else
+            // Halcon SDK 未安装时，CoordinateAlignService 被条件编译排除，注册空实现占位
+            containerRegistry.RegisterSingleton<Core.Services.ICoordinateAlignService, Core.Services.StubCoordinateAlignService>();
+#endif
 
             // DXF 统一导入服务（保证 CadPointEditorViewModel 和 CadAlignmentViewModel 使用相同导入逻辑）
             containerRegistry.RegisterSingleton<Core.Services.IDxfImportHelper, Core.Services.DxfImportHelper>();

@@ -33,36 +33,18 @@
             <StackPanel>
                 <TextBlock Text="{lang:Lang Step4_Section_AlignMode}" FontWeight="Bold" FontSize="12" Margin="0,0,0,8"/>
 
-                <!-- Mode 1：单基准点 平移 -->
-                <RadioButton GroupName="AlignMode" IsChecked="{Binding IsModeFirstPoint}" Margin="0,4">
-                    <RadioButton.Content>
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ArrowExpand" VerticalAlignment="Center" 
-                                                     Foreground="#1976D2" Width="20" Height="20" Margin="0,0,8,0"/>
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{lang:Lang Step4_Mode_FirstPointOffset}" FontWeight="SemiBold" FontSize="12"/>
-                                    <TextBlock Text="{lang:Lang Step4_Mode_FirstPointDesc}" Foreground="#757575" FontSize="11" Margin="4,0,0,0"/>
-                                </StackPanel>
-                                <TextBlock Text="{lang:Lang Step4_Mode_FirstPointDetail}" 
-                                           FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </RadioButton.Content>
-                </RadioButton>
-
-                <!-- Mode 3：两点仿射（自动方向点）圆弧专用 -->
+                <!-- Mode 1：N点仿射（>=3点标定） -->
                 <RadioButton GroupName="AlignMode" IsChecked="{Binding IsModeAffine}" Margin="0,4">
                     <RadioButton.Content>
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="RotateOrbit" VerticalAlignment="Center" 
+                            <materialDesign:PackIcon Kind="RotateOrbit" VerticalAlignment="Center"
                                                      Foreground="#E65100" Width="20" Height="20" Margin="0,0,8,0"/>
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{lang:Lang Step4_Mode_Affine}" FontWeight="SemiBold" FontSize="12"/>
                                     <TextBlock Text="{lang:Lang Step4_Mode_AffineDesc}" Foreground="#757575" FontSize="11" Margin="4,0,0,0"/>
                                 </StackPanel>
-                                <TextBlock Text="{lang:Lang Step4_Mode_AffineDetail}" 
+                                <TextBlock Text="{lang:Lang Step4_Mode_AffineDetail}"
                                            FontSize="10" Foreground="#00A913" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
@@ -70,17 +52,17 @@
                 </RadioButton>
 
                 <!-- Mode 2：逐点映射 -->
-                <RadioButton GroupName="AlignMode" IsChecked="{Binding IsModeAllPoints}" Margin="0,4">
+                <RadioButton GroupName="AlignMode" IsChecked="{Binding IsModePointMapping}" Margin="0,4">
                     <RadioButton.Content>
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Map" VerticalAlignment="Center" 
+                            <materialDesign:PackIcon Kind="Map" VerticalAlignment="Center"
                                                      Foreground="#FF9100" Width="20" Height="20" Margin="0,0,8,0"/>
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{lang:Lang Step4_Mode_PointMapping}" FontWeight="SemiBold" FontSize="12"/>
                                     <TextBlock Text="{lang:Lang Step4_Mode_PointMappingDesc}" Foreground="#757575" FontSize="11" Margin="4,0,0,0"/>
                                 </StackPanel>
-                                <TextBlock Text="{lang:Lang Step4_Mode_PointMappingDetail}" 
+                                <TextBlock Text="{lang:Lang Step4_Mode_PointMappingDetail}"
                                            FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
@@ -89,93 +71,166 @@
             </StackPanel>
         </materialDesign:Card>
 
-        <!-- 图纸基准点 A -->
-        <materialDesign:Card Padding="10" Margin="0,0,0,8" Background="#E3F2FD">
-            <StackPanel>
-                <Grid Margin="0,0,0,6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{lang:Lang Step4_Section_MapFiducial}" FontWeight="Bold" FontSize="12" Grid.Column="0"/>
-                    <Button Grid.Column="1" Content="{lang:Lang Step4_Btn_PickFromCanvas}" Command="{Binding TeachMapFiducialCommand}"
-                            Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2" FontSize="11"/>
-                </Grid>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="X" Foreground="#1976D2" FontWeight="Bold"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Y" Foreground="#1976D2" FontWeight="Bold"/>
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Z" Foreground="#1976D2" FontWeight="Bold"/>
-                    <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding MapFiducialX, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,4,0"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MapFiducialY, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,4,0"/>
-                    <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding MapFiducialZ, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0"/>
-                </Grid>
-            </StackPanel>
-        </materialDesign:Card>
-
-        <!-- 机械基准点 A -->
-        <materialDesign:Card Padding="10" Margin="0,0,0,8" Background="#FFF3E0">
-            <StackPanel>
-                <Grid Margin="0,0,0,6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{lang:Lang Step4_Section_MachineFiducial}" FontWeight="Bold" FontSize="12" Grid.Column="0"/>
-                    <Button Grid.Column="1" Content="{lang:Lang Step4_Btn_TeachCurrentPosition}" Command="{Binding TeachMachineFiducialCommand}"
-                            Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2" FontSize="11"/>
-                </Grid>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="X" Foreground="#E65100" FontWeight="Bold" FontSize="11"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Y" Foreground="#E65100" FontWeight="Bold" FontSize="11"/>
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Z" Foreground="#E65100" FontWeight="Bold" FontSize="11"/>
-                    <TextBlock Grid.Row="0" Grid.Column="3" Text="Rx" Foreground="#E65100" FontWeight="Bold" FontSize="11"/>
-                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Rz" Foreground="#E65100" FontWeight="Bold" FontSize="11"/>
-                    <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding MachineFidX, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,2,3,0" FontSize="11"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MachineFidY, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,2,3,0" FontSize="11"/>
-                    <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding MachineFidZ, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,2,3,0" FontSize="11"/>
-                    <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding MachineFidRx, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,2,3,0" FontSize="11"/>
-                    <TextBox Grid.Row="1" Grid.Column="4" Text="{Binding MachineFidRz, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,2,0,0" FontSize="11"/>
-                </Grid>
-            </StackPanel>
-        </materialDesign:Card>
-
-        <!-- 方向点距离（仿射模式专用） -->
-        <materialDesign:Card Padding="10" Margin="0,0,0,8" Background="#F3E5F5"
+        <!-- N点仿射标定面板 -->
+        <materialDesign:Card Padding="10" Margin="0,0,0,8"
                               Visibility="{Binding IsModeAffine, Converter={StaticResource BoolToVisibilityConverter}}">
-            <DockPanel>
-                <TextBlock Text="{lang:Lang Step4_Label_DirectionDistance}" VerticalAlignment="Center" FontWeight="Bold" FontSize="11" Margin="0,0,6,0"/>
-                <TextBox Text="{Binding DirectionLength, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="60" VerticalAlignment="Center" FontSize="11" Margin="0,0,6,0"/>
-                <TextBlock Text="{lang:Lang Step4_Desc_DirectionDistance}" 
-                           VerticalAlignment="Center" FontSize="10" Foreground="#9E9E9E"/>
-            </DockPanel>
+            <StackPanel>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{lang:Lang Step4_Section_AffineCalibration}" FontWeight="Bold" FontSize="12" Grid.Column="0"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="{lang:Lang Step4_Btn_AddAffinePoint}" Command="{Binding AddAffinePointCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2" FontSize="11" Margin="0,0,4,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 仿射面板针头选择器 -->
+                <materialDesign:Card Margin="0,0,0,6" Padding="6,4" UniformCornerRadius="4">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Needle" Width="16" Height="16" VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,6,0"/>
+                        <TextBlock Text="{lang:Lang Step4_Label_NeedleSelect}" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
+                        <RadioButton Content="Dz1" IsChecked="{Binding IsNeedle1Selected}" GroupName="Step4AffineNeedleSelector"
+                                     FontSize="11" Margin="0,0,12,0"/>
+                        <RadioButton Content="Dz2" IsChecked="{Binding IsNeedle2Selected}" GroupName="Step4AffineNeedleSelector"
+                                     FontSize="11"/>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- 仿射标定点 DataGrid -->
+                <DataGrid ItemsSource="{Binding AffineCalibrationPoints}" AutoGenerateColumns="False"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" FontSize="10" MaxHeight="200"
+                          BorderThickness="1" GridLinesVisibility="Horizontal"
+                          SelectedItem="{Binding SelectedAffinePoint}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Pt" Binding="{Binding Name}" Width="36" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="CAD X" Binding="{Binding CadX, StringFormat=F3}" Width="55"/>
+                        <DataGridTextColumn Header="CAD Y" Binding="{Binding CadY, StringFormat=F3}" Width="55"/>
+                        <DataGridTextColumn Header="Mach X" Binding="{Binding MachineX, StringFormat=F3}" Width="58" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Mach Y" Binding="{Binding MachineY, StringFormat=F3}" Width="58" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Mach Dz" Binding="{Binding MachineDz, StringFormat=F3}" Width="55" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Residual" Binding="{Binding Residual, StringFormat=F4}" Width="55" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Command="{Binding DataContext.PickAffineCadCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{lang:Lang Step4_Btn_PickFromCanvas}"
+                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                            <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                        </Button>
+                                        <Button Command="{Binding DataContext.TeachAffineMachineCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{lang:Lang Step4_Btn_TeachMachine}"
+                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                            <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14"/>
+                                        </Button>
+                                        <Button Command="{Binding DataContext.DeleteAffinePointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{lang:Lang Step4_Btn_DeletePoint}"
+                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                            <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14" Foreground="#D32F2F"/>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 计算仿射变换按钮 -->
+                <Button Content="{lang:Lang Step4_Btn_ComputeAffine}" Command="{Binding ComputeAffineTransformCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        HorizontalAlignment="Stretch" Padding="0,4" FontSize="12" Margin="0,8,0,0"/>
+
+                <!-- 仿射结果面板 -->
+                <Border Background="#E8F5E9" CornerRadius="4" Padding="8" Margin="0,6,0,0"
+                        Visibility="{Binding AffineQualityText, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding AffineQualityText}" FontSize="11" Foreground="#2E7D32" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding AffineResultDisplay}" FontSize="10" Foreground="#558B2F" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </materialDesign:Card>
 
-        <!-- 自动计算 -->
-        <Button Content="{lang:Lang Step4_Btn_CalculateTransform}" Command="{Binding AutoCalculateCommand}"
+        <!-- 逐点映射面板 -->
+        <materialDesign:Card Padding="10" Margin="0,0,0,8"
+                              Visibility="{Binding IsModePointMapping, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{lang:Lang Step4_Section_PointMapping}" FontWeight="Bold" FontSize="12" Grid.Column="0"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="{lang:Lang Step4_Btn_AddMappingPoint}" Command="{Binding AddMappingPointCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2" FontSize="11" Margin="0,0,4,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 针头选择器 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <TextBlock Text="{lang:Lang Step4_Label_NeedleSelect}" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
+                    <RadioButton Content="Dz1" IsChecked="{Binding IsNeedle1Selected}" GroupName="Step4NeedleSelector" FontSize="11" Margin="0,0,12,0"/>
+                    <RadioButton Content="Dz2" IsChecked="{Binding IsNeedle2Selected}" GroupName="Step4NeedleSelector" FontSize="11"/>
+                </StackPanel>
+
+                <!-- 逐点映射 DataGrid -->
+                <DataGrid ItemsSource="{Binding PointMappingPoints}" AutoGenerateColumns="False"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" FontSize="10" MaxHeight="200"
+                          BorderThickness="1" GridLinesVisibility="Horizontal"
+                          SelectedItem="{Binding SelectedMappingPoint}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Pt" Binding="{Binding Name}" Width="40" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="CAD X" Binding="{Binding CadX, StringFormat=F3}" Width="55"/>
+                        <DataGridTextColumn Header="CAD Y" Binding="{Binding CadY, StringFormat=F3}" Width="55"/>
+                        <DataGridTextColumn Header="Mach Dx" Binding="{Binding MachineDx, StringFormat=F3}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Mach Dy" Binding="{Binding MachineDy, StringFormat=F3}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Mach Dz" Binding="{Binding MachineDz, StringFormat=F3}" Width="60" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Command="{Binding DataContext.PickMappingCadCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{lang:Lang Step4_Btn_PickFromCanvas}"
+                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                            <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                        </Button>
+                                        <Button Command="{Binding DataContext.TeachMappingMachineCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{lang:Lang Step4_Btn_TeachMachine}"
+                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                            <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14"/>
+                                        </Button>
+                                        <Button Command="{Binding DataContext.DeleteMappingPointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{lang:Lang Step4_Btn_DeletePoint}"
+                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                            <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14" Foreground="#D32F2F"/>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- 应用变换到轨迹段 -->
+        <Button Content="{lang:Lang Step4_Btn_ApplyTransform}" Command="{Binding ApplyTransformToSegmentsCommand}"
                 Style="{StaticResource MaterialDesignRaisedButton}"
                 HorizontalAlignment="Stretch" Padding="0,5"
-                FontSize="13" IsEnabled="{Binding IsAutoCalculateEnabled}"/>
+                FontSize="13" IsEnabled="{Binding HasAffineResult}"/>
 
         <!-- 状态 -->
         <TextBlock Text="{Binding TransformStatus}" Margin="0,8" FontSize="11" Foreground="#2E7D32" TextWrapping="Wrap"/>

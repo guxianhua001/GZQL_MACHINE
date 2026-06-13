@@ -1,3 +1,4 @@
+#if HAS_HALCON
 using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
@@ -602,3 +603,41 @@ namespace Module.Services
         #endregion
     }
 }
+#else
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Core.Models;
+
+namespace Module.Services
+{
+    /// <summary>
+    /// Halcon SDK 未安装时的占位实现，确保 INeedleAlignerMotionService 可正常解析
+    /// </summary>
+    public class NeedleAlignerMotionService : INeedleAlignerMotionService
+    {
+        public IReadOnlyDictionary<string, double> ReadCurrentPositions(int systemNumber)
+            => new Dictionary<string, double>();
+
+        public Task MoveToAlignPositionAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
+            => Task.CompletedTask;
+
+        public Task MoveToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
+            => Task.CompletedTask;
+
+        public Task MoveToSearchPointXYAsync(NeedleCalibrationParams parameters, int systemNumber, double x, double y, CancellationToken token)
+            => Task.CompletedTask;
+
+        public Task MoveToSearchNeedleHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
+            => Task.CompletedTask;
+
+        public Task<NeedleCalibrationResult> ExecuteNeedleCalibrationAsync(
+            NeedleCalibrationParams parameters, int systemNumber,
+            IProgress<(string Status, double Progress)> progress, CancellationToken token)
+            => Task.FromResult(new NeedleCalibrationResult { Success = false, ErrorMessage = "Halcon SDK not available" });
+
+        public void StopMotion(int systemNumber) { }
+    }
+}
+#endif

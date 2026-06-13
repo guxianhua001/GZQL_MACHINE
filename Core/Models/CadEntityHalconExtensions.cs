@@ -1,3 +1,4 @@
+#if HAS_HALCON
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -933,3 +934,4 @@ public static HObject ToHObject(this CadLwPolyline polyline)
         #endregion
     }
 }
+#endif

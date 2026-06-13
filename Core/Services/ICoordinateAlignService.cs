@@ -9,14 +9,11 @@ namespace Core.Services
     /// </summary>
     public enum AlignMode
     {
-        /// <summary>模式1：基于基准点偏移自动计算变换矩阵，批量转换所有注册点</summary>
-        FirstPoint,
+        /// <summary>N点仿射标定——使用>=3对对应点求解仿射变换矩阵</summary>
+        Affine,
 
-        /// <summary>模式2：逐点手动指定机械坐标映射关系</summary>
-        AllPoints,
-
-        /// <summary>模式3：仿射对齐——自动生成方向点B，计算平移+旋转+缩放仿射矩阵</summary>
-        Affine
+        /// <summary>逐点映射——每个CAD点独立映射到机械坐标</summary>
+        PointMapping
     }
 
     /// <summary>

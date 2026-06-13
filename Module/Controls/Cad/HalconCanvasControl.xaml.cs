@@ -1,3 +1,4 @@
+#if HAS_HALCON
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -2176,3 +2177,4 @@ namespace Module.Controls
         #endregion
     }
 }
+#endif

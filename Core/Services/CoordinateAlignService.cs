@@ -1,3 +1,4 @@
+#if HAS_HALCON
 // Core/Services/CoordinateAlignService.cs
 using Core.Models;
 using HalconDotNet;
@@ -16,7 +17,7 @@ namespace Core.Services
         #region 私有字段
 
         /// <summary>当前对齐模式</summary>
-        private AlignMode _mode = AlignMode.FirstPoint;
+        private AlignMode _mode = AlignMode.Affine;
 
         /// <summary>CAD图纸中的基准点（Mark/Fiducial）</summary>
         private CadPoint _mapFiducial = new CadPoint();
@@ -171,7 +172,7 @@ namespace Core.Services
             if (cadPoint == null)
                 throw new ArgumentNullException(nameof(cadPoint));
 
-            if (_mode == AlignMode.FirstPoint)
+            if (_mode == AlignMode.Affine)
             {
                 // Mode1: 使用内部变换矩阵计算
                 var result = _transform.Transform(cadPoint);
@@ -404,3 +405,4 @@ namespace Core.Services
         #endregion
     }
 }
+#endif
