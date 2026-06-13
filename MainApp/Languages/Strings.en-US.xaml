@@ -601,7 +601,7 @@
     <sys:String x:Key="Dispensing_Dot_StartDistance">Start Distance</sys:String>
     <sys:String x:Key="Dispensing_Dot_EffectiveHeight">Effective Height</sys:String>
     <sys:String x:Key="Dispensing_Dot_HeightCompensation">Height Comp</sys:String>
-    <sys:String x:Key="Dispensing_Dot_TeachHeight">Teach Height</sys:String>
+    <sys:String x:Key="Dispensing_Dot_TeachHeight">Teach Dispensing Height</sys:String>
     <sys:String x:Key="Dispensing_Dot_Target_Label">Target</sys:String>
     <sys:String x:Key="Dispensing_Dot_GroupFilter_Label">Group Filter:</sys:String>
     <sys:String x:Key="Dispensing_Dot_Filter_All">All</sys:String>
@@ -643,6 +643,9 @@
     <sys:String x:Key="Dispensing_Dot_Success_DataSaved">Data saved successfully</sys:String>
     <sys:String x:Key="Dispensing_Dot_Success_DataLoaded">Data loaded successfully</sys:String>
     <sys:String x:Key="Dispensing_Dot_Error_LoadGroupFailed">Failed to load group</sys:String>
+    <sys:String x:Key="Dispensing_Dot_LoadDialogTitle">Load DotPoint Config</sys:String>
+    <sys:String x:Key="Dispensing_Dot_Error_SaveFailed">Save failed</sys:String>
+    <sys:String x:Key="Dispensing_Dot_Error_LoadFailed">Load failed</sys:String>
     <sys:String x:Key="Exception">Exception</sys:String>
     <sys:String x:Key="Dispensing_Head1_Radio">Nozzle 1</sys:String>
     <sys:String x:Key="Dispensing_Head2_Radio">Nozzle 2</sys:String>
@@ -1497,6 +1500,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZScanDetail_ReturnStandbyBtn">Return to Standby</sys:String>
     <sys:String x:Key="ZScanDetail_CommMethod">Communication:</sys:String>
     <sys:String x:Key="ZScanDetail_SelectCommMethod">Select Method</sys:String>
+    <sys:String x:Key="ZScanDetail_ScanSpeed">Scan Speed (mm/s)</sys:String>
+    <sys:String x:Key="ZScanDetail_ScanSpeedHint">Dx axis speed (10-60mm/s)</sys:String>
     <sys:String x:Key="ZScanDetail_TcpConnName">TCP Connection Name</sys:String>
     <sys:String x:Key="ZScanDetail_TotalPoints">Total Points:</sys:String>
     <sys:String x:Key="ZScanDetail_ZNominalRange">Z Nominal Range:</sys:String>
@@ -2923,6 +2928,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="FaultDialog_Resume">Resume</sys:String>
     <sys:String x:Key="FaultDialog_Pause">Pause</sys:String>
     <sys:String x:Key="FaultDialog_StopTask">Stop Task</sys:String>
+    <sys:String x:Key="FaultDialog_Confirm">OK</sys:String>
     <sys:String x:Key="SpeedControl_GlobalTitle">Global Speed Override</sys:String>
     <sys:String x:Key="SpeedControl_Applied">Applied</sys:String>
     <sys:String x:Key="SpeedControl_Pending">Pending</sys:String>

@@ -24,7 +24,7 @@ namespace Core.Models
         public double SafeHeight
         {
             get => _safeHeight;
-            set => SetProperty(ref _safeHeight, Math.Clamp(value, 0.0, 200.0));
+            set => SetProperty(ref _safeHeight, Math.Clamp(value, -50.0, 50.0));
         }
 
         private double _approachHeight = 3.0;
@@ -32,7 +32,7 @@ namespace Core.Models
         public double ApproachHeight
         {
             get => _approachHeight;
-            set => SetProperty(ref _approachHeight, Math.Clamp(value, 0.0, 50.0));
+            set => SetProperty(ref _approachHeight, Math.Clamp(value, -10.0, 10.0));
         }
 
         private double _cornerDecel = 0.3;
@@ -40,7 +40,7 @@ namespace Core.Models
         public double CornerDecel
         {
             get => _cornerDecel;
-            set => SetProperty(ref _cornerDecel, Math.Clamp(value, 0.0, 1.0));
+            set => SetProperty(ref _cornerDecel, Math.Clamp(value, 0.1, 1.0));
         }
 
         #endregion
@@ -76,7 +76,7 @@ namespace Core.Models
         public double DotGlueTriggerOffsetMm
         {
             get => _dotGlueTriggerOffsetMm;
-            set => SetProperty(ref _dotGlueTriggerOffsetMm, Math.Clamp(value, 0.05, 5.0));
+            set => SetProperty(ref _dotGlueTriggerOffsetMm, Math.Clamp(value, -5.0, 5.0));
         }
 
         #endregion

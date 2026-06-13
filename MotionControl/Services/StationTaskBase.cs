@@ -30,6 +30,8 @@ namespace StationTasks.Tasks
         private readonly string _stationId;
         /// <summary> 当前正在运动的轴ID集合（包含跨工站轴），暂停/停止时需要停止这些轴 </summary>
         private readonly HashSet<int> _activeMotionAxes = new HashSet<int>();
+        /// <summary> 当前是否在手动操作模式中（ExecuteManualProcess 设置） </summary>
+        private bool _isManualOperation;
         /// <summary>
         /// 工站标识，用于位置加载和信号交互
         /// </summary>
@@ -443,7 +445,7 @@ namespace StationTasks.Tasks
                         continue;  // 重试当前步骤
                     }
 
-                    // 其他 RecoverableException：保持原有弹窗+报警逻辑
+                    // 其他 RecoverableException
                     Logger.Warn($"步骤 [{stepName}] 发生可恢复故障。原因: {rex.Message} | 建议: {rex.SuggestedAction}");
 
                     LastFaultStepName = stepName;
@@ -473,7 +475,16 @@ namespace StationTasks.Tasks
                             type: AlarmType.ProcessError);
                     }
 
-                    PublishRecoverableFault(stepName, rex);
+                    // 手动操作：不弹窗（避免 RecoverableFaultDialog），只记录日志
+                    // 异常向上传播到 ExecuteManualProcess → ViewModel catch → ShowHintMessage(CustomDialog)
+                    if (_isManualOperation)
+                    {
+                        Logger.Info($"步骤 [{stepName}] 手动操作故障，异常向上传播至 ViewModel 处理");
+                        throw; // 让 ExecuteManualProcess 的 catch(Exception) 处理
+                    }
+
+                    // 自动运行：保持原有弹窗+暂停恢复逻辑
+                    PublishRecoverableFault(stepName, rex, isManualOperation: false);
                     _systemState.RequestPause();
                     await PauseAsync();
                     PublishTaskStatusChanged(stepName, State);
@@ -669,6 +680,7 @@ namespace StationTasks.Tasks
             await _manualLock.WaitAsync();
             try
             {
+                _isManualOperation = true;
                 State = TaskState.Running;
                 PublishTaskStatusChanged($"[手动]{processName}", State);
                 await RunStep($"[手动]{processName}", action);
@@ -688,6 +700,7 @@ namespace StationTasks.Tasks
             }
             finally
             {
+                _isManualOperation = false;
                 _manualLock.Release();
             }
         }

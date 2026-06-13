@@ -187,7 +187,7 @@ namespace MotionControl.ViewModels
             _loc = loc;
 
             for (int i = -3; i <= 37; i++) HomingModes.Add(i);
-            HomingModes.Add(65535);
+            HomingModes.Add(65533);
             InitializeMappedIOs();
 
             Axes = new ObservableCollection<AxisInfo>(_parameterService.LoadAllAxes());

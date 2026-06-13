@@ -48,6 +48,18 @@ namespace MotionControl.ViewModels
         public DelegateCommand ResumeCommand { get; }
         public DelegateCommand PauseCommand { get; }
         public DelegateCommand StopCommand { get; }
+        /// <summary> 手动操作模式的“确定”命令：只关闭弹窗，不做暂停/恢复/停止操作 </summary>
+        public DelegateCommand ConfirmCommand { get; }
+
+        /// <summary> 是否为手动操作（手动时只显示“确定”按钮，隐藏暂停/恢复/停止） </summary>
+        private bool _isManualOperation;
+        public bool IsManualOperation
+        {
+            get => _isManualOperation;
+            set => SetProperty(ref _isManualOperation, value);
+        }
+        /// <summary> 是否为自动运行（!IsManualOperation，控制XAML按钮可见性） </summary>
+        public bool IsAutoOperation => !IsManualOperation;
 
         public RecoverableFaultDialogViewModel(IEventAggregator ea, IContainerProvider container,
             ISystemStateService systemState)
@@ -58,6 +70,7 @@ namespace MotionControl.ViewModels
             ResumeCommand = new DelegateCommand(ExecuteResume);
             PauseCommand = new DelegateCommand(ExecutePause);
             StopCommand = new DelegateCommand(ExecuteStop);
+            ConfirmCommand = new DelegateCommand(ExecuteConfirm);
         }
 
         public void Initialize(RecoverableFaultPayload payload)
@@ -67,6 +80,8 @@ namespace MotionControl.ViewModels
             StepName = payload.StepName;
             ErrorMessage = payload.ErrorMessage;
             SuggestedAction = payload.SuggestedAction;
+            IsManualOperation = payload.IsManualOperation;
+            RaisePropertyChanged(nameof(IsAutoOperation));
         }
 
         private ITask FindTask()
@@ -111,6 +126,12 @@ namespace MotionControl.ViewModels
             {
                 task.StopAsync();
             }
+            CloseDialog();
+        }
+
+        /// <summary> 手动操作的“确定”按钮：仅关闭弹窗，不做任何状态切换 </summary>
+        private void ExecuteConfirm()
+        {
             CloseDialog();
         }
     }

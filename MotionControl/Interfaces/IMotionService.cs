@@ -24,6 +24,13 @@ namespace MotionControl.Interfaces
         void DisableAxis(int axisId);
 
         Task MoveAbsAsync(int axisId, double position, double velocity, CancellationToken token = default);
+
+        /// <summary>
+        /// 多轴同步绝对运动：所有轴同时下发运动指令，统一轮询等待完成。
+        /// 避免多轴各自独立 WaitForDone 导致的运动卡 DLL 交叉干扰。
+        /// </summary>
+        /// <param name="moves">轴运动参数列表 (axisId, position, velocity)</param>
+        Task MoveAbsMultiAxisAsync(IReadOnlyList<(int axisId, double position, double velocity)> moves, CancellationToken token = default);
         Task MoveRelAsync(int axisId, double distance, double velocity, CancellationToken token = default);
 
         /// <summary>相对运动下发（单轴手动：后台读卡+下发，立即返回 Task，不阻塞 UI）</summary>

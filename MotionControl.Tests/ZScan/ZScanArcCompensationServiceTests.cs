@@ -149,7 +149,7 @@ namespace MotionControl.Tests
         }
 
         [Fact]
-        public void Compensate_DataIndexOutOfBounds_SkipsPoint()
+        public void Compensate_MoreRowsThanData_SkipsExtraRows()
         {
             var service = new ZScanArcCompensationService();
             var points = new List<ZScanPointData>
@@ -157,11 +157,12 @@ namespace MotionControl.Tests
                 new ZScanPointData { Nominal = 5.000, DataIndex = 0 },
                 new ZScanPointData { Nominal = 5.010, DataIndex = 5 }
             };
-            double[] arcHeights = { 5.012, 5.025 };
+            double[] arcHeights = { 5.012 };
             double totalOffset = 0.0;
 
             service.Compensate(points, arcHeights, totalOffset, ZScanDataFormat.DoubleArray);
 
+            // 第1行有对应数据，第2行超出数据范围被跳过
             Assert.Equal(5.012, points[0].ZMeasured);
             Assert.Equal(0, points[1].ZMeasured);
         }

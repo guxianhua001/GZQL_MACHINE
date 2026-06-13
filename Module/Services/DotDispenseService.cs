@@ -20,10 +20,15 @@ namespace Module.Services
         private readonly ILoggerService? _logger;
 
         private const int CoordId = 0;
-        private const int AxisDx = 9;
-        private const int AxisDy = 7;
-        private const int AxisDz1 = 3;
-        private const int GlueIoPort = 0;
+        private const int AxisDx = 8;
+        private const int AxisDy = 6;
+        private const int AxisDz1 = 2;
+        private const int AxisDz2 = 3;
+        private const int AxisDz3 = 4;
+        private const int AxisRx = 10;
+        private const int AxisRz = 11;
+        private const int AxisY = 9;
+        private const int GlueIoPort = 13;
 
         private int _isRunning;
 
@@ -54,6 +59,9 @@ namespace Module.Services
 
                 double moveSpeed = processParams.MoveSpeed;
                 double safeHeight = processParams.SafeHeight;
+                double approachOffset = processParams.ApproachHeight;
+                double slowVel = moveSpeed * processParams.CornerDecel;
+                double dotGlueTriggerOffset = processParams.DotGlueTriggerOffsetMm;
 
                 foreach (var (point, index) in pointList.Select((p, i) => (p, i)))
                 {
@@ -62,14 +70,40 @@ namespace Module.Services
                     PublishProgress($"空跑 - 点 [{point.PointId}] ({index + 1}/{total})", index + 1, total);
                     _logger?.Debug($"[DotDispense] 空跑点 [{point.PointId}]");
 
-                    await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(AxisDz2, safeHeight, moveSpeed, token);
+
+                    // Y轴定位
+                    await _motionService.MoveAbsAsync(AxisY, point.Y, moveSpeed, token);
 
                     await _motionService.MoveLineAbsAsync(CoordId, new[] { AxisDx, AxisDy },
                         new[] { point.Dx, point.Dy }, moveSpeed, token);
+
+                    double targetZ = point.EffectiveDz2 != 0
+                                   ? point.EffectiveDz2
+                                   : processParams.TeachHeight + processParams.HeightCompensation;
+
+                    // Z 两段式下降：快速接近 + 慢速到位
+                    double approachZ = targetZ + approachOffset;
+                    await _motionService.MoveAbsAsync(AxisDz2, approachZ, moveSpeed, token);
+
+                    // 计算位置触发点：根据运动方向确定触发位在目标上方（提前开胶）
+                    // Z轴坐标系：向下位置增大。dotGlueTriggerOffset 为负数，|offset| 为提前距离
+                    // 向上运动(approachZ < targetZ): triggerZ = targetZ - |offset|（更小的位置值）
+                    // 向下运动(approachZ > targetZ): triggerZ = targetZ + |offset|（更大的位置值）
+                    double triggerDistance = Math.Abs(dotGlueTriggerOffset);
+                    int motionDir = Math.Sign(approachZ - targetZ); // +1=向上, -1=向下
+                    double triggerZ = targetZ + motionDir * triggerDistance;
+
+                    // 两段式慢速下降：先移到触发位开胶，再移到目标位
+                    await _motionService.MoveAbsAsync(AxisDz2, triggerZ, slowVel, token);
+                    _logger?.Debug($"[DotDispense] 空跑 点 [{point.PointId}] 到达触发位，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={dotGlueTriggerOffset:F3}mm");
+
+                    // 继续慢速移到目标位
+                    await _motionService.MoveAbsAsync(AxisDz2, targetZ, slowVel, token);
                 }
 
                 // 空跑完成后返回安全高度
-                await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(AxisDz2, safeHeight, moveSpeed, token);
 
                 PublishStatus("Completed");
                 _logger?.Info("[DotDispense] 空跑完成");
@@ -121,7 +155,7 @@ namespace Module.Services
 
                 if (allPointsSelected)
                 {
-                    await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(AxisDz2, safeHeight, moveSpeed, token);
                 }
 
                 foreach (var (point, index) in selectedPoints.Select((p, i) => (p, i)))
@@ -137,8 +171,11 @@ namespace Module.Services
 
                     if (!allPointsSelected)
                     {
-                        await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                        await _motionService.MoveAbsAsync(AxisDz2, safeHeight, moveSpeed, token);
                     }
+                    
+                    // Y轴定位到点位
+                    await _motionService.MoveAbsAsync(AxisY, point.Y, moveSpeed, token);
 
                     // XY 定位到点位上方
                     await _motionService.MoveLineAbsAsync(CoordId, new[] { AxisDx, AxisDy },
@@ -146,34 +183,23 @@ namespace Module.Services
 
                     // Z 两段式下降：快速接近 + 慢速到位
                     double approachZ = targetZ + approachOffset;
-                    await _motionService.MoveAbsAsync(AxisDz1, approachZ, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(AxisDz2, approachZ, moveSpeed, token);
 
-                    // 慢速下降到目标高度，同时位置触发开胶
-                    var moveZTask = _motionService.MoveAbsAsync(AxisDz1, targetZ, slowVel, token);
+                    // 计算位置触发点：根据运动方向确定触发位在目标上方（提前开胶）
+                    // Z轴坐标系：向下位置增大。dotGlueTriggerOffset 为负数，|offset| 为提前距离
+                    // 向上运动(approachZ < targetZ): triggerZ = targetZ - |offset|（更小的位置值）
+                    // 向下运动(approachZ > targetZ): triggerZ = targetZ + |offset|（更大的位置值）
+                    double triggerDistance = Math.Abs(dotGlueTriggerOffset);
+                    int motionDir = Math.Sign(approachZ - targetZ); // +1=向上, -1=向下
+                    double triggerZ = targetZ + motionDir * triggerDistance;
 
-                    // 位置触发开胶：慢速下降过程中，当距目标高度 <= dotGlueTriggerOffset 时触发开胶
-                    bool glueOpened = false;
-                    while (!moveZTask.IsCompleted && !token.IsCancellationRequested)
-                    {
-                        double currentZ = _motionService.GetAxisPosition(AxisDz1);
-                        if (Math.Abs(currentZ - targetZ) <= dotGlueTriggerOffset)
-                        {
-                            WriteGlueIo(true);
-                            _logger?.Debug($"[DotDispense] 点 [{point.PointId}] 位置触发开胶，距目标 {Math.Abs(currentZ - targetZ):F3}mm");
-                            glueOpened = true;
-                            break;
-                        }
-                        await Task.Delay(1, token);
-                    }
+                    // 两段式慢速下降：先移到触发位开胶，再移到目标位
+                    await _motionService.MoveAbsAsync(AxisDz2, triggerZ, slowVel, token);
+                    WriteGlueIo(true);
+                    _logger?.Debug($"[DotDispense] 点 [{point.PointId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={dotGlueTriggerOffset:F3}mm");
 
-                    // 兜底开胶：确保一定开胶
-                    if (!glueOpened)
-                    {
-                        WriteGlueIo(true);
-                        _logger?.Warn($"[DotDispense] 点 [{point.PointId}] 兜底开胶");
-                    }
-
-                    await moveZTask;
+                    // 继续慢速移到目标位
+                    await _motionService.MoveAbsAsync(AxisDz2, targetZ, slowVel, token);
 
                     // 出胶延时
                     await Task.Delay((int)processParams.DispenseTime, token);
@@ -186,7 +212,7 @@ namespace Module.Services
                         await Task.Delay((int)processParams.PostDelay, token);
 
                     // Z 抬升到安全高度
-                    await _motionService.MoveAbsAsync(AxisDz1, safeHeight, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(AxisDz2, safeHeight, moveSpeed, token);
                 }
 
                 PublishStatus("Completed");
@@ -219,9 +245,13 @@ namespace Module.Services
         {
             point.Dx = _motionService.GetAxisPosition(AxisDx);
             point.Dy = _motionService.GetAxisPosition(AxisDy);
-            point.Dz2 = _motionService.GetAxisPosition(AxisDz1);
+            point.Dz2 = _motionService.GetAxisPosition(AxisDz2);
+            point.Dz3 = _motionService.GetAxisPosition(AxisDz3);
+            point.Rx = _motionService.GetAxisPosition(AxisRx);
+            point.Rz = _motionService.GetAxisPosition(AxisRz);
+            point.Y = _motionService.GetAxisPosition(AxisY);
 
-            _logger?.Info($"[DotDispense] 示教点位 [{point.PointId}] → ({point.Dx:F3}, {point.Dy:F3}, {point.Dz2:F3})");
+            _logger?.Info($"[DotDispense] 示教点位 [{point.PointId}] → ({point.Dx:F3}, {point.Dy:F3}, {point.Dz2:F3}, {point.Dz3:F3}, {point.Rx:F3}, {point.Rz:F3}, {point.Y:F3})");
 
             return Task.CompletedTask;
         }
@@ -232,9 +262,14 @@ namespace Module.Services
         public async Task StopAsync()
         {
             SafeGlueOff();
-            _motionService.StopAxis(AxisDz1);
             _motionService.StopAxis(AxisDx);
             _motionService.StopAxis(AxisDy);
+            _motionService.StopAxis(AxisDz1);
+            _motionService.StopAxis(AxisDz2);
+            _motionService.StopAxis(AxisDz3);
+            _motionService.StopAxis(AxisRx);
+            _motionService.StopAxis(AxisRz);
+            _motionService.StopAxis(AxisY);
             _logger?.Info("[DotDispense] 执行安全停止");
 
             // 等待所有轴停止运动（轮询位置变化）
@@ -246,7 +281,7 @@ namespace Module.Services
         /// </summary>
         private async Task WaitForAxesStoppedAsync(int stableCount = 3, int intervalMs = 10)
         {
-            int[] axisIds = { AxisDz1, AxisDx, AxisDy };
+            int[] axisIds = { AxisDz1, AxisDx, AxisDy, AxisDz2, AxisDz3, AxisRx, AxisRz, AxisY };
             double[] lastPositions = new double[axisIds.Length];
             int[] stableCounters = new int[axisIds.Length];
             bool allStopped = false;

@@ -1,6 +1,28 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.12 — 多轴同步运动统一轮询 (MoveAbsMultiAxisAsync)
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - Task.WhenAll 并行调用 MoveAbsAsync 多轴运动时，各轴各自独立的
+     WaitForDone 自旋循环交替抢同一张运动卡的 _lockObj
+   - 雷赛 DLL dmc_check_done / dmc_check_success_encoder 在高频交替查询
+     不同轴时可能返回非当前查询轴的状态（缓存/串扰），导致 CheckDone=1
+     但 GetPosition 读到错误值，抛出 RecoverableException
+   - 屏蔽部分轴单独运行不会报错，确认是多轴并行读卡干扰问题
+
+2. 修复方案
+   - 新增 IMotionService.MoveAbsMultiAxisAsync 方法
+   - 所有轴先统一发送运动指令，然后在同一个轮询循环中一次性查询所有轴状态
+   - 消除多轴各自独立 WaitForDone 导致的 DLL 交叉干扰
+   - 所有轴运动完成后统一校验到位精度
+
+3. 涉及文件
+   - MotionControl/Interfaces/IMotionService.cs — 新增接口方法
+   - MotionControl/Services/MotionService.cs — 实现多轴统一轮询
+   - StationTasks/Tasks/DispensingTask.ZScan.cs — 3 处 Task.WhenAll 替换
+
 v2026.06.12 — Z-SCAN 双针头(Dz1/Dz2)完整支持
 -------------------------------------------------------------------------------
 

@@ -274,7 +274,8 @@ namespace MotionControl.Services
         /// </summary>
         /// <param name="stepName">发生故障的步骤名</param>
         /// <param name="rex">可恢复异常实例</param>
-        protected void PublishRecoverableFault(string stepName, RecoverableException rex)
+        /// <param name="isManualOperation">是否为手动操作（手动时弹窗只显示"确定"按钮，不显示暂停/恢复/停止）</param>
+        protected void PublishRecoverableFault(string stepName, RecoverableException rex, bool isManualOperation = false)
         {
             Ea.GetEvent<RecoverableFaultEvent>().Publish(new RecoverableFaultPayload
             {
@@ -282,7 +283,8 @@ namespace MotionControl.Services
                 TaskName = TaskName,
                 StepName = stepName,
                 ErrorMessage = rex.Message,
-                SuggestedAction = rex.SuggestedAction
+                SuggestedAction = rex.SuggestedAction,
+                IsManualOperation = isManualOperation
             });
         }
         /// <summary>

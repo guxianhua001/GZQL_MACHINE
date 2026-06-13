@@ -595,7 +595,7 @@
     <sys:String x:Key="Dispensing_Dot_StartDistance">起步距离</sys:String>
     <sys:String x:Key="Dispensing_Dot_EffectiveHeight">有效高度</sys:String>
     <sys:String x:Key="Dispensing_Dot_HeightCompensation">高度补偿</sys:String>
-    <sys:String x:Key="Dispensing_Dot_TeachHeight">示教高度</sys:String>
+    <sys:String x:Key="Dispensing_Dot_TeachHeight">示教点胶高度</sys:String>
     <sys:String x:Key="Dispensing_Dot_Target_Label">目标</sys:String>
     <sys:String x:Key="Dispensing_Dot_GroupFilter_Label">组筛选：</sys:String>
     <sys:String x:Key="Dispensing_Dot_Filter_All">全部</sys:String>
@@ -637,6 +637,9 @@
     <sys:String x:Key="Dispensing_Dot_Success_DataSaved">数据保存成功</sys:String>
     <sys:String x:Key="Dispensing_Dot_Success_DataLoaded">数据加载成功</sys:String>
     <sys:String x:Key="Dispensing_Dot_Error_LoadGroupFailed">加载组失败</sys:String>
+    <sys:String x:Key="Dispensing_Dot_LoadDialogTitle">加载点涂配置</sys:String>
+    <sys:String x:Key="Dispensing_Dot_Error_SaveFailed">保存失败</sys:String>
+    <sys:String x:Key="Dispensing_Dot_Error_LoadFailed">加载失败</sys:String>
     <sys:String x:Key="Exception">异常</sys:String>
     <sys:String x:Key="Dispensing_Head1_Radio">喷嘴1</sys:String>
     <sys:String x:Key="Dispensing_Head2_Radio">喷嘴2</sys:String>
@@ -1482,6 +1485,8 @@
     <sys:String x:Key="ZScanDetail_ReturnStandbyBtn">返回待机位</sys:String>
     <sys:String x:Key="ZScanDetail_CommMethod">通讯方式:</sys:String>
     <sys:String x:Key="ZScanDetail_SelectCommMethod">选择方式</sys:String>
+    <sys:String x:Key="ZScanDetail_ScanSpeed">扫描速度(mm/s)</sys:String>
+    <sys:String x:Key="ZScanDetail_ScanSpeedHint">Dx轴运动速度(10-60mm/s)</sys:String>
     <sys:String x:Key="ZScanDetail_TcpConnName">TCP连接名称</sys:String>
     <sys:String x:Key="ZScanDetail_TotalPoints">总点数:</sys:String>
     <sys:String x:Key="ZScanDetail_ZNominalRange">Z标称范围:</sys:String>
@@ -2862,6 +2867,7 @@
     <sys:String x:Key="FaultDialog_Resume">继续</sys:String>
     <sys:String x:Key="FaultDialog_Pause">暂停</sys:String>
     <sys:String x:Key="FaultDialog_StopTask">停止任务</sys:String>
+    <sys:String x:Key="FaultDialog_Confirm">确定</sys:String>
     <sys:String x:Key="SpeedControl_GlobalTitle">全局速度倍率</sys:String>
     <sys:String x:Key="SpeedControl_Applied">已应用</sys:String>
     <sys:String x:Key="SpeedControl_Pending">待应用</sys:String>

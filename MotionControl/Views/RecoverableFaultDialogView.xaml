@@ -11,6 +11,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel Margin="20">
@@ -35,7 +36,9 @@
                 <TextBlock Text="{Binding SuggestedAction}" Foreground="#333" TextWrapping="Wrap" FontSize="14"/>
             </StackPanel>
         </Border>
-        <UniformGrid Columns="3" Margin="0,0,0,5">
+        <!-- 自动运行模式：暂停/恢复/停止Task 三个按钮 -->
+        <UniformGrid Columns="3" Margin="0,0,0,5"
+                     Visibility="{Binding IsAutoOperation, Converter={StaticResource BoolToVis}}">
             <Button Content="{lang:Lang FaultDialog_Resume}"
 	                Command="{Binding ResumeCommand}"
 	                Background="#4CAF50" Foreground="White"
@@ -52,5 +55,12 @@
 	                Style="{DynamicResource MaterialDesignRaisedButton}"
 	                Height="40" FontSize="14" Margin="5,0,0,0"/>
         </UniformGrid>
+        <!-- 手动操作模式：只显示"确定"按钮，关闭弹窗不做状态切换 -->
+        <Button Content="{lang:Lang FaultDialog_Confirm}"
+                Command="{Binding ConfirmCommand}"
+                Background="#2196F3" Foreground="White"
+                Style="{DynamicResource MaterialDesignRaisedButton}"
+                Height="40" FontSize="14" HorizontalAlignment="Center" Width="200"
+                Visibility="{Binding IsManualOperation, Converter={StaticResource BoolToVis}}"/>
     </StackPanel>
 </UserControl>

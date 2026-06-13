@@ -9,9 +9,13 @@
 	</PropertyGroup>
 	<ItemGroup>
 	  <Compile Remove="Extension\**" />
+	  <Compile Remove="Services\**" />
 	  <EmbeddedResource Remove="Extension\**" />
+	  <EmbeddedResource Remove="Services\**" />
 	  <None Remove="Extension\**" />
+	  <None Remove="Services\**" />
 	  <Page Remove="Extension\**" />
+	  <Page Remove="Services\**" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Remove="Images\alter.png" />
@@ -84,8 +88,5 @@
 		<None Update="NLog.config">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
-	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Services\" />
 	</ItemGroup>
 </Project>

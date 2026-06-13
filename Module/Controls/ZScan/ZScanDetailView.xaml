@@ -5,12 +5,11 @@
              xmlns:prism="http://prismlibrary.com/"
              xmlns:converters="clr-namespace:Module.Converters"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:uc="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="1150" VerticalAlignment="Top">
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <converters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
-                                            TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
         <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
         <Style x:Key="StatusTextStyle" TargetType="TextBlock">
             <Style.Triggers>
@@ -38,11 +37,12 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ═══ Row 0: 运动控制按钮组 + 针头选择 ═══ -->
+        <!-- ═══ Row 0: 运动控制按钮组 + 针头选择 + 通讯方式 ═══ -->
         <StackPanel Grid.Row="0" Margin="0,0,0,8" Orientation="Horizontal">
             <!-- 3D扫描按钮（主色调） -->
             <Button Command="{Binding Start3DScanCommand}"
@@ -87,11 +87,11 @@
             <StackPanel Orientation="Horizontal" Margin="12,0">
                 <TextBlock Text="{lang:Lang ZScanDetail_NeedleSelector}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource MaterialDesignBodyLight}" FontWeight="Medium" FontSize="12" />
                 <RadioButton Content="Dz1" GroupName="NeedleSelector"
-                             IsChecked="{Binding CurrentNeedleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"
-                             Margin="0,0,8,0" FontSize="12" />
+                     IsChecked="{Binding CurrentNeedleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"
+                     Margin="0,0,8,0" FontSize="12" />
                 <RadioButton Content="Dz2" GroupName="NeedleSelector"
-                             IsChecked="{Binding CurrentNeedleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"
-                             FontSize="12" />
+                     IsChecked="{Binding CurrentNeedleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"
+                     FontSize="12" />
             </StackPanel>
 
             <Separator Width="1" Margin="4,0" VerticalAlignment="Stretch" />
@@ -115,8 +115,19 @@
                       Visibility="{Binding IsTcpSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
 
-        <!-- ═══ Row 1: 表格管理工具栏 ═══ -->
-        <Border Grid.Row="1" Background="{DynamicResource MaterialDesignCardBackground}"
+        <!-- ═══ Row 1: 扫描速度设置 ═══ -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,8" Orientation="Horizontal">
+            <!-- 扫描速度（Dx轴运动速度，范围10-60mm/s） -->
+            <TextBlock Text="{lang:Lang ZScanDetail_ScanSpeed}" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource MaterialDesignBodyLight}" FontSize="12" FontWeight="Medium" />
+            <materialDesign:DecimalUpDown Value="{Binding ScanSpeed, Mode=TwoWay}"
+                                  Minimum="10" Maximum="60" ValueStep="1"
+                                  Width="90" VerticalAlignment="Center" FontSize="12"
+                                  materialDesign:HintAssist.Hint="{lang:Lang ZScanDetail_ScanSpeedHint}" />
+            <TextBlock Text="{Binding ScanSpeedDisplay}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" />
+        </StackPanel>
+
+        <!-- ═══ Row 2: 表格管理工具栏 ═══ -->
+        <Border Grid.Row="2" Background="{DynamicResource MaterialDesignCardBackground}"
                 CornerRadius="4" BorderBrush="{DynamicResource MaterialDesignDivider}"
                 BorderThickness="1" Padding="10,6" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
@@ -171,8 +182,8 @@
             </StackPanel>
         </Border>
 
-        <!-- ═══ Row 2: 标定区域（独立） ═══ -->
-        <GroupBox Grid.Row="2" Header="{lang:Lang ZScanDetail_CalibrationSection}"
+        <!-- ═══ Row 3: 标定区域（独立） ═══ -->
+        <GroupBox Grid.Row="3" Header="{lang:Lang ZScanDetail_CalibrationSection}"
                   Margin="0,0,0,8">
             <GroupBox.HeaderTemplate>
                 <DataTemplate>
@@ -251,8 +262,8 @@
             </StackPanel>
         </GroupBox>
 
-        <!-- ═══ Row 3: 统计信息栏 ═══ -->
-        <Border Grid.Row="3"
+        <!-- ═══ Row 4: 统计信息栏 ═══ -->
+        <Border Grid.Row="4"
                 Background="{DynamicResource MaterialDesignCardBackground}"
                 CornerRadius="4"
                 BorderBrush="{DynamicResource MaterialDesignDivider}"
@@ -279,8 +290,8 @@
             </StackPanel>
         </Border>
 
-        <!-- ═══ Row 4: 数据表格 ═══ -->
-        <DataGrid x:Name="PointsDataGrid" Grid.Row="4"
+        <!-- ═══ Row 5: 数据表格 ═══ -->
+        <DataGrid x:Name="PointsDataGrid" Grid.Row="5"
                   ItemsSource="{Binding PointDetails}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
@@ -295,7 +306,6 @@
                   HorizontalScrollBarVisibility="Auto"
                   IsReadOnly="False">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Seg" Binding="{Binding Segment}" Width="50" IsReadOnly="True" />
                 <DataGridTextColumn Header="Pt #" Binding="{Binding PointNumber}" Width="55" IsReadOnly="True" />
                 <DataGridTextColumn Header="X (pcs)" Binding="{Binding X, StringFormat=F3}" Width="80" />
                 <DataGridTextColumn Header="Y (pcs)" Binding="{Binding Y, StringFormat=F3}" Width="80" />
@@ -311,7 +321,18 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="ΔZ" Binding="{Binding DeltaZ, StringFormat=+0.000;-0.000;0.000}" Width="70" IsReadOnly="True" />
+                <DataGridTemplateColumn Header="ΔZ" Width="90" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding DeltaZ, StringFormat=+0.000;-0.000;0.000}" VerticalAlignment="Center"/>
+                                <materialDesign:PackIcon Kind="Link" Width="12" Height="12"
+                                    Foreground="#1565C0" VerticalAlignment="Center" Margin="2,0,0,0"
+                                    Visibility="{Binding IsGlobalVarLinked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="Description" Width="140">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
@@ -336,30 +357,17 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="GV Link" Width="160">
+                <DataGridTemplateColumn Header="GV Link" Width="180">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Command="{Binding DataContext.UnlinkRowGlobalVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}"
-                                        Style="{StaticResource MaterialDesignIconButton}"
-                                        Padding="0" Width="22" Height="22"
-                                        ToolTip="{lang:Lang ZScanDetail_UnlinkGlobalVariable}">
-                                    <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
-                                                             Foreground="{Binding IsGlobalVarLinked, Converter={StaticResource LinkedToBrushConverter}}"
-                                                             VerticalAlignment="Center" />
-                                </Button>
-                                <ComboBox Grid.Column="1" ItemsSource="{Binding DataContext.AvailableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                          SelectedValuePath="Name"
-                                          DisplayMemberPath="Name"
-                                          SelectedValue="{Binding LinkedGlobalVarName, UpdateSourceTrigger=PropertyChanged}"
-                                          FontSize="10"
-                                          materialDesign:HintAssist.Hint="{lang:Lang ZScanDetail_LinkGlobalVariable}" />
-                            </Grid>
+                            <uc:GlobalVariableLinkControl
+                                DisplayValue="{Binding DeltaZ}"
+                                DisplayForeground="#1565C0"
+                                IsLinked="{Binding IsGlobalVarLinked, Mode=OneWay}"
+                                LinkedVariableName="{Binding LinkedGlobalVarName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                LinkableGlobalVariables="{Binding DataContext.AvailableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                UnlinkCommand="{Binding DataContext.UnlinkRowGlobalVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                ComboBoxWidth="100" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -373,8 +381,8 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- ═══ Row 5: 底部操作按钮区 ═══ -->
-        <WrapPanel Grid.Row="5" HorizontalAlignment="Right" Margin="0,4,0,0">
+        <!-- ═══ Row 6: 底部操作按钮区 ═══ -->
+        <WrapPanel Grid.Row="6" HorizontalAlignment="Right" Margin="0,4,0,0">
             <Button Command="{Binding AddRowCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Padding="12,4"

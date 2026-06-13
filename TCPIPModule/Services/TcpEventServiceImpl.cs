@@ -141,7 +141,7 @@ namespace TCPIPModule.Services
                 server.DataReceived += (clientId, message) =>
                 {
                     var sourceName = string.IsNullOrEmpty(capturedName) ? clientId : capturedName;
-                    _logger.Debug($"TCP服务器收到数据: 服务器={sourceName}, 客户端={clientId}, 消息={message}");
+                    _logger.Info($"TCP服务器收到数据: 服务器={sourceName}, 客户端={clientId}, 消息={message}");
                     CameraMessageReceived?.Invoke(sourceName, message);
                 };
 

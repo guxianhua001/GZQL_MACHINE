@@ -18,6 +18,8 @@ namespace StationTasks.Tasks
     {
         /// <summary> 轴参数服务（用于插补系查找等） </summary>
         private readonly IAxisParameterService _axisParameterService;
+        /// <summary> 全局速度比例服务（基类 _speedOverride 为 private，此处额外存储） </summary>
+        private readonly ISpeedOverrideService _speedOverrideLocal;
         /// <summary> Dx轴 — Dispenser gantry X (逻辑ID从hwcfg.xml动态获取) </summary>
         private int AxisDx => ResolveAxisId("Dx");
         /// <summary> Dy轴 — Dispenser gantry Y </summary>
@@ -27,7 +29,7 @@ namespace StationTasks.Tasks
         /// <summary> Dz₂轴 — Dispenser head 2 Z </summary>
         private int AxisDz2 => ResolveAxisId("Dz₂");
         /// <summary> Dz3轴 — Dispenser head 3 Z </summary>
-        private int AxisDz3 => ResolveAxisId("Dz3");
+        private int AxisDz3 => ResolveAxisId("Dz₃");
         private readonly Random _rand = new Random();
 
         public override string StationIdentifierValue => "DispenserStation";
@@ -45,6 +47,7 @@ namespace StationTasks.Tasks
                   2, localizationService?.GetResourceOrDefault("Station_DispenserStation", "点胶系统") ?? "点胶系统", "DispenserStation")
         {
             _axisParameterService = axisParameterService;
+            _speedOverrideLocal = speedOverride;
         }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)

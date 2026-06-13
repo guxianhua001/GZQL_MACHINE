@@ -2,6 +2,7 @@ using Core.Abstraction;
 using Core.Models;
 using Core.Services;
 using Core.Utilities;
+using Framework.Models;
 using Microsoft.Win32;
 using Module.Models;
 using Module.Services;
@@ -12,6 +13,7 @@ using Prism.Events;
 using Prism.Ioc;
 using Prism.Mvvm;
 using Prism.Services.Dialogs;
+using Recipe.Events;
 using Recipe.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -48,6 +50,8 @@ namespace Module.ViewModels
         private readonly INeedleTeachService _needleTeachService;
         /// <summary> 点胶工站 ZScan 操作接口（运动序列委托给 DispensingTask 执行） </summary>
         private readonly IDispensingZScanOperations _dispensingOps;
+        /// <summary> 配方池服务（用于全局变量链接读写） </summary>
+        private readonly IRecipePoolService _recipePoolService;
 
         #region 原有属性
 
@@ -91,8 +95,23 @@ namespace Module.ViewModels
         public double ZInitPosition { get => _zInitPosition; set => SetProperty(ref _zInitPosition, value); }
 
         private double _moveSpeed = 30.0;
-        /// <summary> 运动速度（mm/s）</summary>
+        /// <summary> 运动速度（mm/s）— 用于针头示教、移动基准Z等辅助操作 </summary>
         public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
+
+        private double _scanSpeed = 30.0;
+        /// <summary> 扫描速度（mm/s，范围10-60）— Dx轴从起始点到结束点的运动速度 </summary>
+        public double ScanSpeed
+        {
+            get => _scanSpeed;
+            set
+            {
+                var clamped = Math.Clamp(value, 10.0, 60.0);
+                if (SetProperty(ref _scanSpeed, clamped))
+                    RaisePropertyChanged(nameof(ScanSpeedDisplay));
+            }
+        }
+        /// <summary> 扫描速度显示文本（带单位） </summary>
+        public string ScanSpeedDisplay => $"{_scanSpeed:F1} mm/s";
 
         #endregion
 
@@ -317,7 +336,7 @@ namespace Module.ViewModels
         private ZScanTableConfig _selectedTable;
         public ZScanTableConfig SelectedTable { get => _selectedTable; set { if (SetProperty(ref _selectedTable, value)) OnSelectedTableChanged(); } }
 
-        private ZScanDataFormat _currentDataFormat = ZScanDataFormat.Double;
+        private ZScanDataFormat _currentDataFormat = ZScanDataFormat.DoubleArray;
         public ZScanDataFormat CurrentDataFormat { get => _currentDataFormat; set { if (SetProperty(ref _currentDataFormat, value)) OnDataFormatChanged(); } }
 
         public ObservableCollection<ZScanDataFormat> DataFormatOptions { get; } = new ObservableCollection<ZScanDataFormat> { ZScanDataFormat.Double, ZScanDataFormat.DoubleArray };
@@ -390,6 +409,7 @@ namespace Module.ViewModels
             _zscanArcCompensationService = zscanArcCompensationService;
             _needleTeachService = needleTeachService;
             _dispensingOps = dispensingOps;
+            _recipePoolService = _containerProvider.Resolve<IRecipePoolService>();
 
             _zscanCalibrationService.CalibrationChanged += OnCalibrationChanged;
 
@@ -421,7 +441,11 @@ namespace Module.ViewModels
             SaveConfigCommand = new DelegateCommand(OnSaveConfig);
             LoadConfigCommand = new DelegateCommand(() => OnLoadConfig());
 
-            UnlinkRowGlobalVariableCommand = new DelegateCommand<ZScanPointDetail>(OnUnlinkRowGlobalVariable);
+            UnlinkRowGlobalVariableCommand = new DelegateCommand(() =>
+            {
+                if (SelectedPointDetail != null)
+                    OnUnlinkRowGlobalVariable(SelectedPointDetail);
+            });
             AvailableGlobalVariables = new ObservableCollection<GlobalVariable>();
             LoadAvailableGlobalVariables();
         }
@@ -474,6 +498,24 @@ namespace Module.ViewModels
         }
 
         #endregion
+
+        /// <summary>
+        /// 显示提示消息弹窗（使用 CustomDialog UserControl + Prism IDialogService）
+        /// 带"确定"按钮，用户点击后关闭
+        /// </summary>
+        private void ShowHintMessage(string message, string title = "提示")
+        {
+            var buttons = new ObservableCollection<DialogButton>
+            {
+                new DialogButton { Text = "确定", BackgroundHex = "#2196F3", ButtonIndex = 0 }
+            };
+            _dialogService.ShowDialog("CustomDialog", new DialogParameters
+            {
+                { "title", title },
+                { "message", message },
+                { "buttons", buttons }
+            }, _ => { });
+        }
 
         #region 命令启用条件判断方法
 
@@ -591,9 +633,10 @@ namespace Module.ViewModels
                 _scanDataTcs = new TaskCompletionSource<List<double>>();
 
                 // 步骤1-7：运动序列委托给 DispensingTask（享受 RunStep 安全保护）
+                // Dx 轴使用 ScanSpeed（用户设置10-60mm/s），其他轴从轴参数配置获取速度
                 await _dispensingOps.ExecuteZScan3DSequenceAsync(
                     SafePositionName, ScanStartPositionName, ScanEndPositionName,
-                    StandbyPositionName, TriggerIOName, MoveSpeed,
+                    StandbyPositionName, TriggerIOName, ScanSpeed,
                     status => { StatusText = status; },
                     cts.Token);
 
@@ -611,8 +654,7 @@ namespace Module.ViewModels
                     _logger?.Error($"Z-SCAN 相机数据接收超时 ({DataReceiveTimeoutMs}ms)");
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        _dialogService.ShowDialog("MessageDialog",
-                            new DialogParameters { { "message", $"3D相机数据接收超时（{DataReceiveTimeoutMs}ms），请检查相机连接和触发信号。" } }, null);
+                        ShowHintMessage($"3D相机数据接收超时（{DataReceiveTimeoutMs}ms），请检查相机连接和触发信号。");
                     });
                 }
                 else
@@ -647,8 +689,7 @@ namespace Module.ViewModels
                 _logger?.Error($"Z-SCAN 扫描异常: {ex.Message}\n{ex.StackTrace}");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    _dialogService.ShowDialog("MessageDialog",
-                        new DialogParameters { { "message", $"扫描失败: {ex.Message}" } }, null);
+                    ShowHintMessage($"扫描失败: {ex.Message}");
                 });
             }
             finally
@@ -660,31 +701,31 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 紧急停止当前运动（优先级最高）
-        /// 立即调用IMotionService.EmergencyStop()停止所有轴运动
+        /// 立即调用IMotionService.StopAxis()停止所有轴运动
         /// </summary>
         private void OnStop()
         {
             try
             {
-                _logger?.Warn("Z-SCAN 用户触发紧急停止");
+                _logger?.Warn("Z-SCAN 用户触发停止");
 
                 // 同时停止两根针头的Z轴和X轴（安全优先）
-                _motionService.EmergencyStop(ZAxisIdNeedle1);
-                _motionService.EmergencyStop(ZAxisIdNeedle2);
-                _motionService.EmergencyStop(XAxisId);
-                _motionService.EmergencyStop(YAxisId);
+                _motionService.StopAxis(ZAxisIdNeedle1);
+                _motionService.StopAxis(ZAxisIdNeedle2);
+                _motionService.StopAxis(XAxisId);
+                _motionService.StopAxis(YAxisId);
 
                 IsScanning = false;
-                StatusText = "Emergency Stopped";
+                StatusText = "Stopped";
                 StatusColor = Brushes.Red;
 
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "已紧急停止！请检查设备状态后重试。" } }, null);
-                _logger?.Info("Z-SCAN 急停命令已执行");
+                ShowHintMessage("已停止！请检查设备状态后重试。");
+                _logger?.Info("Z-SCAN 停止命令已执行");
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 急停失败: {ex.Message}");
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"急停失败: {ex.Message}" } }, null);
+                _logger?.Error($"Z-SCAN 停止失败: {ex.Message}");
+                ShowHintMessage($"停止失败: {ex.Message}");
             }
         }
 
@@ -705,8 +746,9 @@ namespace Module.ViewModels
                 _logger?.Info("Z-SCAN 开始返回待机位置");
 
                 // 运动序列委托给 DispensingTask（享受 RunStep 安全保护）
+                // 各轴速度从轴参数配置获取 + 全局速度比例
                 await _dispensingOps.ReturnToStandbyAsync(
-                    SafePositionName, StandbyPositionName, MoveSpeed,
+                    SafePositionName, StandbyPositionName,
                     status => { StatusText = status; },
                     cts.Token);
 
@@ -725,7 +767,7 @@ namespace Module.ViewModels
                 StatusText = "Error";
                 StatusColor = Brushes.Red;
                 _logger?.Error($"Z-SCAN 返回待机失败: {ex.Message}");
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", $"返回待机失败: {ex.Message}" } }, null);
+                ShowHintMessage($"返回待机失败: {ex.Message}");
             }
             finally
             {
@@ -776,8 +818,8 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 订阅TCP数据接收事件：3D相机通过IO触发后被动回传数据
-        /// 只接收匹配当前SelectedConnectionName的数据，解析后自动刷新PointDetails表格
-        /// 参考ScanDetailViewModel.SubscribeCameraData()方法（第823-860行）
+        /// 扫描进行中时不过滤连接名，确保任何来源的相机数据都能被接收并传递给 TCS
+        /// 非扫描期间仍按 SelectedConnectionName 过滤
         /// </summary>
         private void SubscribeCameraData()
         {
@@ -786,34 +828,42 @@ namespace Module.ViewModels
 
             _cameraDataHandler = (cameraName, message) =>
             {
-                // 只处理当前配置的TCP连接名称的数据
+                // 快速检查：是否为3D相机数据（避免处理无关消息）
+                if (!message.Contains("VISION_RESULT:SUCCESS"))
+                    return;
+
+                // 扫描进行中：优先通过 TCS 传递数据，不过滤连接名
+                // （解决数据比运动序列先到达时因连接名不匹配被静默丢弃的问题）
+                var tcs = _scanDataTcs;
+                var isScanActive = IsScanning && tcs != null && !tcs.Task.IsCompleted;
+
+                if (isScanActive)
+                {
+                    // 扫描中：解析数据并直接设置 TCS（在 TCP 线程上快速完成，不依赖 UI 线程）
+                    var parsedValues = ParseCameraData(message);
+                    if (parsedValues.Count > 0)
+                    {
+                        tcs.TrySetResult(parsedValues);
+                        _logger?.Info($"Z-SCAN 扫描数据已接收（来源={cameraName}，{parsedValues.Count}个点），TCS 已设置");
+                    }
+                    return;
+                }
+
+                // 非扫描期间：按连接名过滤，直接更新表格
                 if (!string.IsNullOrEmpty(SelectedConnectionName) && cameraName == SelectedConnectionName)
                 {
-                    Application.Current.Dispatcher.Invoke(async () =>
+                    Application.Current.Dispatcher.Invoke(() =>
                     {
                         try
                         {
-                            _logger?.Info($"Z-SCAN 收到相机数据 [{SelectedConnectionName}]: {message}");
+                            _logger?.Info($"Z-SCAN 收到相机数据 [{cameraName}]: {message}");
 
-                            // 解析相机原始数据
                             var parsedValues = ParseCameraData(message);
-
                             if (parsedValues.Count > 0)
                             {
-                                // 如果有 TaskCompletionSource 在等待，优先通过 TCS 传递数据
-                                if (_scanDataTcs != null && !_scanDataTcs.Task.IsCompleted)
-                                {
-                                    _scanDataTcs.TrySetResult(parsedValues);
-                                    _logger?.Info($"Z-SCAN 数据已通过 TCS 传递给扫描流程");
-                                }
-                                else
-                                {
-                                    // 无等待中的扫描流程，直接更新表格
-                                    UpdatePointDetailsFromCameraData(parsedValues);
-                                    RecalculateStatistics();
-                                    _dialogService.ShowDialog("MessageDialog",
-                                        new DialogParameters { { "message", $"接收到{parsedValues.Count}个测量点数据，表格已更新" } }, null);
-                                }
+                                UpdatePointDetailsFromCameraData(parsedValues);
+                                RecalculateStatistics();
+                                ShowHintMessage($"接收到{parsedValues.Count}个测量点数据，表格已更新");
                             }
                         }
                         catch (Exception ex)
@@ -821,6 +871,10 @@ namespace Module.ViewModels
                             _logger?.Error($"Z-SCAN 相机数据处理失败: {ex.Message}");
                         }
                     });
+                }
+                else if (!string.IsNullOrEmpty(cameraName))
+                {
+                    _logger?.Debug($"Z-SCAN 相机数据被连接名过滤忽略: 来源={cameraName}, 期望={SelectedConnectionName}");
                 }
             };
 
@@ -939,7 +993,10 @@ namespace Module.ViewModels
                 _logger?.Debug($"Z-SCAN 更新点[{point.PointNumber}]: ZMeasured={point.ZMeasured:F3}, DeltaZ={point.DeltaZ:F3}");
             }
 
-            _logger?.Info($"Z-SCAN 已更新 {Math.Min(pointDataList.Count, PointDetails.Count)} 个测量点（含标定偏移={totalOffset:F3}）");
+            _logger?.Info($"Z-SCAN 已更新 {Math.Min(pointDataList.Count, PointDetails.Count)} 个测量点（含标定偏移={totalOffset:F3}，数据格式={CurrentDataFormat}，数据点数={measuredValues.Count}）");
+
+            // 同步已链接的全局变量（DeltaZ 值回写）
+            _ = SyncLinkedGlobalVariablesAsync();
         }
 
         #endregion
@@ -1240,8 +1297,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 _logger?.Error($"Z-SCAN 添加行失败: {ex.Message}\n{ex.StackTrace}");
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"添加行失败: {ex.Message}" } }, null);
+                ShowHintMessage($"添加行失败: {ex.Message}");
             }
         }
 
@@ -1285,8 +1341,7 @@ namespace Module.ViewModels
 
                 if (lines.Length == 0)
                 {
-                    _dialogService.ShowDialog("MessageDialog",
-                        new DialogParameters { { "message", "文件为空，无法导入数据。" } }, null);
+                    ShowHintMessage("文件为空，无法导入数据。");
                     return;
                 }
 
@@ -1371,8 +1426,7 @@ namespace Module.ViewModels
                 // 检查是否有有效数据
                 if (newPoints.Count == 0)
                 {
-                    _dialogService.ShowDialog("MessageDialog",
-                        new DialogParameters { { "message", $"文件中未找到有效的数据行。\n警告: {warningCount} 行解析失败。" } }, null);
+                    ShowHintMessage($"文件中未找到有效的数据行。\n警告: {warningCount} 行解析失败。");
                     return;
                 }
 
@@ -1402,25 +1456,22 @@ namespace Module.ViewModels
                 }
                 message += $"\n文件: {Path.GetFileName(openFileDialog.FileName)}";
 
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", message } }, null);
+                ShowHintMessage(message);
                 _logger?.Info($"Z-SCAN CSV 导入完成: {newPoints.Count} 行成功, {warningCount} 行警告");
             }
             catch (FileNotFoundException ex)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"文件未找到: {ex.Message}" } }, null);
+                ShowHintMessage($"文件未找到: {ex.Message}");
                 _logger?.Error($"Z-SCAN CSV 文件未找到: {ex.Message}");
             }
             catch (IOException ex)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"文件读取错误: {ex.Message}\n请检查文件是否被其他程序占用。" } }, null);
+                ShowHintMessage($"文件读取错误: {ex.Message}\n请检查文件是否被其他程序占用。");
                 _logger?.Error($"Z-SCAN CSV 文件读取错误: {ex.Message}");
             }
             catch (Exception ex)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"导入失败: {ex.Message}" } }, null);
+                ShowHintMessage($"导入失败: {ex.Message}");
                 _logger?.Error($"Z-SCAN CSV 导入异常: {ex.Message}\n{ex.StackTrace}");
             }
         }
@@ -1438,8 +1489,7 @@ namespace Module.ViewModels
             // 检查是否有数据可导出
             if (PointDetails == null || PointDetails.Count == 0)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", "当前没有数据可导出，请先添加或导入测量点数据。" } }, null);
+                ShowHintMessage("当前没有数据可导出，请先添加或导入测量点数据。");
                 return;
             }
 
@@ -1490,25 +1540,22 @@ namespace Module.ViewModels
                                $"导出行数: {PointDetails.Count} 行\n" +
                                $"编码格式: UTF-8 BOM（兼容 Excel 中文显示）";
 
-                _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", message } }, null);
+                ShowHintMessage(message);
                 _logger?.Info($"Z-SCAN CSV 导出完成: {PointDetails.Count} 行 → {saveFileDialog.FileName}");
             }
             catch (UnauthorizedAccessException ex)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"没有写入权限: {ex.Message}\n请检查文件夹权限或选择其他位置。" } }, null);
+                ShowHintMessage($"没有写入权限: {ex.Message}\n请检查文件夹权限或选择其他位置。");
                 _logger?.Error($"Z-SCAN CSV 导出权限错误: {ex.Message}");
             }
             catch (IOException ex)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"文件写入错误: {ex.Message}\n请检查文件是否被其他程序打开。" } }, null);
+                ShowHintMessage($"文件写入错误: {ex.Message}\n请检查文件是否被其他程序打开。");
                 _logger?.Error($"Z-SCAN CSV 文件写入错误: {ex.Message}");
             }
             catch (Exception ex)
             {
-                _dialogService.ShowDialog("MessageDialog",
-                    new DialogParameters { { "message", $"导出失败: {ex.Message}" } }, null);
+                ShowHintMessage($"导出失败: {ex.Message}");
                 _logger?.Error($"Z-SCAN CSV 导出异常: {ex.Message}\n{ex.StackTrace}");
             }
         }
@@ -1535,7 +1582,7 @@ namespace Module.ViewModels
 
         private void OnRescan()
         {
-            _dialogService.ShowDialog("MessageDialog", new DialogParameters { { "message", "Rescanning..." } }, null);
+            ShowHintMessage("正在重新扫描...");
             LoadSampleData();
         }
 
@@ -1622,6 +1669,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 移动针头到基准Z失败: {ex.Message}");
+                ShowHintMessage($"移动针头到基准Z失败: {ex.Message}");
             }
         }
 
@@ -1639,6 +1687,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 针头示教失败: {ex.Message}");
+                ShowHintMessage($"针头示教失败: {ex.Message}");
             }
         }
 
@@ -1744,7 +1793,10 @@ namespace Module.ViewModels
                         Description = p.Description,
                         Status = p.Status,
                         PointType = p.PointType,
-                        GlobalVariableLink = p.GlobalVariableLink
+                        // 通过 LinkedGlobalVarName 恢复全局变量链接
+                        // （setter 会同步创建 GlobalVariableLink 对象，避免与直接赋值冲突）
+                        LinkedGlobalVarName = p.GlobalVariableLink?.IsLinked == true
+                            ? p.GlobalVariableLink.VariableName : null
                     }));
             }
             else
@@ -1989,6 +2041,68 @@ namespace Module.ViewModels
 
         #region 全局变量链接实现
 
+        /// <summary>
+        /// 同步已链接全局变量：将 DeltaZ 值回写到每行绑定的全局变量
+        /// 遍历 PointDetails，对已设置 LinkedGlobalVarName 的行，
+        /// 将当前 DeltaZ 值写入对应的全局变量并持久化
+        /// </summary>
+        private async Task SyncLinkedGlobalVariablesAsync()
+        {
+            if (PointDetails == null || PointDetails.Count == 0)
+                return;
+
+            try
+            {
+                var poolId = _recipePoolService.CurrentPoolName ?? "Default";
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+                bool hasUpdate = false;
+
+                foreach (var point in PointDetails)
+                {
+                    if (string.IsNullOrEmpty(point.LinkedGlobalVarName))
+                        continue;
+
+                    var gv = variables.FirstOrDefault(v => v.Name == point.LinkedGlobalVarName);
+                    if (gv != null)
+                    {
+                        string newValue = point.DeltaZ.ToString("F6");
+                        if (gv.Value != newValue)
+                        {
+                            gv.Value = newValue;
+                            hasUpdate = true;
+                            _logger?.Debug($"Z-SCAN 全局变量同步: {gv.Name} = {point.DeltaZ:F6} (行{point.PointNumber})");
+                        }
+                    }
+                    else
+                    {
+                        _logger?.Warn($"Z-SCAN 全局变量链接未找到: {point.LinkedGlobalVarName} (行{point.PointNumber})");
+                    }
+                }
+
+                if (hasUpdate)
+                {
+                    await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+
+                    // 发布全局变量变更事件，通知 GV 页面重新加载最新数据
+                    var eventAggregator = _containerProvider.Resolve<IEventAggregator>();
+                    eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
+
+                    // 同步更新 AvailableGlobalVariables 集合，保持 UI 显示一致
+                    foreach (var point in PointDetails.Where(p => !string.IsNullOrEmpty(p.LinkedGlobalVarName)))
+                    {
+                        var localGv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == point.LinkedGlobalVarName);
+                        if (localGv != null)
+                            localGv.Value = point.DeltaZ.ToString("F6");
+                    }
+                    _logger?.Info($"Z-SCAN 已同步 {PointDetails.Count(p => !string.IsNullOrEmpty(p.LinkedGlobalVarName))} 个链接全局变量");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"Z-SCAN 同步全局变量失败: {ex.Message}");
+            }
+        }
+
         private void OnUnlinkRowGlobalVariable(ZScanPointDetail point)
         {
             if (point == null) return;
@@ -2001,8 +2115,7 @@ namespace Module.ViewModels
         {
             try
             {
-                var recipePoolService = _containerProvider.Resolve<IRecipePoolService>();
-                var variables = recipePoolService.LoadGlobalVariablesAsync("Default").GetAwaiter().GetResult();
+                var variables = _recipePoolService.LoadGlobalVariablesAsync(_recipePoolService.CurrentPoolName ?? "Default").GetAwaiter().GetResult();
                 AvailableGlobalVariables.Clear();
                 if (variables != null)
                 {

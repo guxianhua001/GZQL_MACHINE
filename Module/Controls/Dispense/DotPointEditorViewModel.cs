@@ -27,6 +27,14 @@ namespace Module.ViewModels
     /// </summary>
     public class DotPointEditorViewModel : BindableBase
     {
+        #region 常量
+
+        /// <summary> 点涂配置默认保存目录（Config/Dot） </summary>
+        private static readonly string CONFIG_DIR =
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "Dot");
+
+        #endregion
+
         #region 字段
 
         private readonly IDotDispenseService _dotDispenseService;
@@ -106,6 +114,14 @@ namespace Module.ViewModels
         {
             get => _progressTotal;
             set => SetProperty(ref _progressTotal, value);
+        }
+
+        private string _currentFilePath = string.Empty;
+        /// <summary> 当前已加载/保存的文件名（仅显示文件名，不含完整路径） </summary>
+        public string CurrentFilePath
+        {
+            get => _currentFilePath;
+            set => SetProperty(ref _currentFilePath, value);
         }
 
         #endregion
@@ -272,6 +288,9 @@ namespace Module.ViewModels
                 () => { if (CurrentStep < 3) CurrentStep++; },
                 () => CurrentStep < 3
             );
+
+            // 初始化时自动加载最后一次保存的配置（不弹窗）
+            AutoLoadLatest();
         }
 
         #endregion
@@ -530,19 +549,20 @@ namespace Module.ViewModels
 
         #region 保存/加载
 
+        /// <summary>
+        /// 保存点涂配置到 Config/Dot/ 目录（带时间戳文件名，不弹对话框）
+        /// </summary>
         private void OnSaveData()
         {
-            var dateTag = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var dlg = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "JSON 文件|*.json",
-                DefaultExt = ".json",
-                FileName = $"DotPointData_{dateTag}"
-            };
-            if (dlg.ShowDialog() != true) return;
-
             try
             {
+                if (!Directory.Exists(CONFIG_DIR))
+                    Directory.CreateDirectory(CONFIG_DIR);
+
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string fileName = $"DotPoint_{timestamp}.json";
+                string filePath = Path.Combine(CONFIG_DIR, fileName);
+
                 var data = new DotPointDataFile
                 {
                     ProcessParams = ProcessParams,
@@ -551,40 +571,96 @@ namespace Module.ViewModels
                     Version = "1.0"
                 };
                 var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(dlg.FileName, json);
+                File.WriteAllText(filePath, json);
+
+                CurrentFilePath = fileName;  // 仅显示文件名
                 Status = L("Dispensing_Dot_Success_DataSaved");
             }
             catch (Exception ex)
             {
-                Status = $"保存失败: {ex.Message}";
+                Status = $"{L("Dispensing_Dot_Error_SaveFailed")}: {ex.Message}";
             }
         }
 
+        /// <summary>
+        /// 加载点涂配置：弹出文件选择对话框，默认指向 Config/Dot 目录
+        /// </summary>
         private void OnLoadData()
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "JSON 文件|*.json",
-                DefaultExt = ".json"
-            };
-            if (dlg.ShowDialog() != true) return;
-
             try
             {
-                var json = File.ReadAllText(dlg.FileName);
-                var data = JsonSerializer.Deserialize<DotPointDataFile>(json);
-                if (data == null) return;
+                var dialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = L("Dispensing_Dot_LoadDialogTitle"),
+                    Filter = "DotPoint Config (*.json)|DotPoint_*.json|All files (*.*)|*.*",
+                    InitialDirectory = Directory.Exists(CONFIG_DIR) ? CONFIG_DIR : AppDomain.CurrentDomain.BaseDirectory
+                };
 
-                Points.Clear();
-                foreach (var p in data.Points)
-                    Points.Add(p);
+                if (dialog.ShowDialog() != true) return;
 
-                ApplyLoadedProcessParams(data.ProcessParams);
-                Status = L("Dispensing_Dot_Success_DataLoaded");
+                LoadFromFile(dialog.FileName);
             }
             catch (Exception ex)
             {
-                Status = $"加载失败: {ex.Message}";
+                Status = $"{L("Dispensing_Dot_Error_LoadFailed")}: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 初始化时自动加载 Config/Dot/ 目录下最新的配置文件（不弹对话框）
+        /// </summary>
+        private void AutoLoadLatest()
+        {
+            try
+            {
+                string latestFile = GetLatestFile();
+                if (latestFile == null) return;
+
+                LoadFromFile(latestFile);
+            }
+            catch (Exception ex)
+            {
+                // 初始化阶段静默失败，仅记录状态
+                Status = $"{L("Dispensing_Dot_Error_LoadFailed")}: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 从指定文件加载点涂配置（点位数据 + 工艺参数）
+        /// </summary>
+        private void LoadFromFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return;
+
+            var json = File.ReadAllText(filePath);
+            var data = JsonSerializer.Deserialize<DotPointDataFile>(json);
+            if (data == null) return;
+
+            Points.Clear();
+            foreach (var p in data.Points)
+                Points.Add(p);
+
+            ApplyLoadedProcessParams(data.ProcessParams);
+            CurrentFilePath = Path.GetFileName(filePath);  // 仅显示文件名
+            Status = L("Dispensing_Dot_Success_DataLoaded");
+        }
+
+        /// <summary>
+        /// 获取 Config/Dot/ 目录下最新的 DotPoint_*.json 文件路径
+        /// </summary>
+        private string GetLatestFile()
+        {
+            try
+            {
+                if (!Directory.Exists(CONFIG_DIR)) return null;
+
+                return Directory.GetFiles(CONFIG_DIR, "DotPoint_*.json")
+                    .OrderByDescending(f => f)
+                    .FirstOrDefault();
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -596,6 +672,7 @@ namespace Module.ViewModels
             ProcessParams.ApproachHeight = loaded.ApproachHeight;
             ProcessParams.CornerDecel = loaded.CornerDecel;
             ProcessParams.DispenseTime = loaded.DispenseTime;
+            ProcessParams.PreDispenseDelay = loaded.PreDispenseDelay;
             ProcessParams.PostDelay = loaded.PostDelay;
             ProcessParams.DotGlueTriggerOffsetMm = loaded.DotGlueTriggerOffsetMm;
             ProcessParams.DispensingPressure = loaded.DispensingPressure;

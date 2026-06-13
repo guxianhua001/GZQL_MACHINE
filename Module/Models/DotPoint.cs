@@ -12,10 +12,12 @@ namespace Module.Models
         private string _pointId = "DOT_001";
         private double _dx;
         private double _dy;
+        private double _y;
         private double _dz2;
         private double _dz3;
         private double _rx;
         private double _ry;
+        private double _rz;
         private double _dz2Compensation;
         private double _dz3Compensation;
         private bool _isEnabled = true;
@@ -58,12 +60,21 @@ namespace Module.Models
         }
 
         /// <summary>
+        /// Y轴绝对位置
+        /// </summary>
+        public double Y
+        {
+            get => _y;
+            set => SetProperty(ref _y, value);
+        }
+
+        /// <summary>
         /// Z2轴高度值，范围 -200~200
         /// </summary>
         public double Dz2
         {
             get => _dz2;
-            set => SetProperty(ref _dz2, Math.Clamp(value, -200, 200), onChanged: () => RaisePropertyChanged(nameof(EffectiveDz2)));
+            set => SetProperty(ref _dz2, Math.Clamp(value, -50, 60), onChanged: () => RaisePropertyChanged(nameof(EffectiveDz2)));
         }
 
         /// <summary>
@@ -72,16 +83,25 @@ namespace Module.Models
         public double Dz3
         {
             get => _dz3;
-            set => SetProperty(ref _dz3, Math.Clamp(value, -200, 200), onChanged: () => RaisePropertyChanged(nameof(EffectiveDz3)));
+            set => SetProperty(ref _dz3, Math.Clamp(value, -50, 60), onChanged: () => RaisePropertyChanged(nameof(EffectiveDz3)));
         }
 
         /// <summary>
-        /// X轴旋转角度，范围 -360~360
+        /// U轴旋转角度，范围 -360~360
         /// </summary>
         public double Rx
         {
             get => _rx;
             set => SetProperty(ref _rx, Math.Clamp(value, -360, 360));
+        }
+
+        /// <summary>
+        /// R轴旋转角度，范围 -360~360
+        /// </summary>
+        public double Rz
+        {
+            get => _rz;
+            set => SetProperty(ref _rz, Math.Clamp(value, -360, 360));
         }
 
         /// <summary>

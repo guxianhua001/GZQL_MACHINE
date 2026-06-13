@@ -51,14 +51,15 @@ namespace MotionControl.Services
                     int setAxisId = int.Parse(axisElem.Attribute("setAxisId")?.Value ?? "0");
                     string name = axisElem.Attribute("name")?.Value ?? $"Axis_{setAxisId}";
 
+                    // 从 hwcfg.xml 读取 setCardId 和 actAxisId（与 HardwareConfigParser 保持一致）
                     int cardId = 0;
                     int axisId = setAxisId;
 
-                    var cardAttr = axisElem.Attribute("cardId");
+                    var cardAttr = axisElem.Attribute("setCardId");
                     if (cardAttr != null)
                         cardId = int.Parse(cardAttr.Value);
 
-                    var axisIdAttr = axisElem.Attribute("axisId");
+                    var axisIdAttr = axisElem.Attribute("actAxisId");
                     if (axisIdAttr != null)
                         axisId = int.Parse(axisIdAttr.Value);
 

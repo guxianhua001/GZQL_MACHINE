@@ -358,25 +358,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- 操作按钮行 -->
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
-                                <Button Command="{Binding SaveDataCommand}"
-                                        Style="{StaticResource CompactOutlinedButton}" Margin="0,0,6,0">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="ContentSave" Width="14" Height="14"
-                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
-                                        <TextBlock Text="{lang:Lang Dispensing_Dot_Btn_SaveParams}" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Command="{Binding LoadDataCommand}"
-                                        Style="{StaticResource CompactOutlinedButton}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="FolderOpen" Width="14" Height="14"
-                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
-                                        <TextBlock Text="{lang:Lang Dispensing_Dot_Btn_LoadParams}" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
+                            <!-- 操作按钮行已移至底部状态栏 -->
                         </StackPanel>
                     </materialDesign:Card>
                 </StackPanel>
@@ -468,28 +450,23 @@
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Header="☑" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="38"/>
 
-                        <DataGridTemplateColumn Header="Group" Width="88">
+                        <DataGridTemplateColumn Header="Group" Width="88" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Group}" VerticalAlignment="Center" Foreground="{StaticResource TealColor}" FontWeight="Medium" FontSize="11"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
-                            <DataGridTemplateColumn.CellEditingTemplate>
-                                <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding DataContext.Groups, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                              SelectedItem="{Binding Group, UpdateSourceTrigger=PropertyChanged}" FontSize="11"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
 
                         <DataGridTextColumn Header="ID" Binding="{Binding PointId}" Width="68" IsReadOnly="True"
                                             Foreground="#757575"/>
-                        <DataGridTextColumn Header="Dx" Binding="{Binding Dx, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="62"/>
-                        <DataGridTextColumn Header="Dy" Binding="{Binding Dy, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="62"/>
-                        <DataGridTextColumn Header="Dz₂" Binding="{Binding Dz2, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="62"/>
-                        <DataGridTextColumn Header="Dz₃" Binding="{Binding Dz3, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="62"/>
-                        <DataGridTextColumn Header="Rx" Binding="{Binding Rx, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Width="52"/>
-                        <DataGridTextColumn Header="Ry" Binding="{Binding Ry, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Width="52"/>
+                        <DataGridTextColumn Header="Dx" Binding="{Binding Dx, StringFormat=F3}" Width="62" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Dy" Binding="{Binding Dy, StringFormat=F3}" Width="62" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Y" Binding="{Binding Y, StringFormat=F3}" Width="62" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Dz₂" Binding="{Binding Dz2, StringFormat=F3}" Width="62" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Dz₃" Binding="{Binding Dz3, StringFormat=F3}" Width="62" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Rx" Binding="{Binding Rx, StringFormat=F2}" Width="52" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Rz" Binding="{Binding Rz, StringFormat=F2}" Width="52" IsReadOnly="True"/>
                         <DataGridTextColumn Header="{lang:Lang Dispensing_Dot_Column_Dz2Comp}" Binding="{Binding Dz2Compensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="62"/>
                         <DataGridTextColumn Header="{lang:Lang Dispensing_Dot_Column_Dz3Comp}" Binding="{Binding Dz3Compensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="62"/>
 
@@ -613,6 +590,37 @@
 
         <!-- ========== 底部状态栏 ========== -->
         <StatusBar Grid.Row="2" Background="{StaticResource StatusBarBg}">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <!-- 保存/加载按钮 -->
+                    <Button Command="{Binding SaveDataCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="6,2" FontSize="11"
+                            ToolTip="{lang:Lang Dispensing_Dot_Btn_SaveParams}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentSave" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,3,0" />
+                            <TextBlock Text="{lang:Lang Dispensing_Dot_Btn_SaveParams}" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding LoadDataCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="6,2" FontSize="11"
+                            ToolTip="{lang:Lang Dispensing_Dot_Btn_LoadParams}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FolderOpen" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,3,0" />
+                            <TextBlock Text="{lang:Lang Dispensing_Dot_Btn_LoadParams}" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+                    <!-- 当前文件显示 -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                Visibility="{Binding CurrentFilePath, Converter={StaticResource StringToVis}}">
+                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="12" Height="12"
+                                                 VerticalAlignment="Center" Margin="4,0,3,0"
+                                                 Foreground="#FF80CBC4" />
+                        <TextBlock Text="{Binding CurrentFilePath}" Foreground="#FF80CBC4" FontSize="11"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </StatusBarItem>
+            <Separator />
             <StatusBarItem>
                 <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11" />
             </StatusBarItem>

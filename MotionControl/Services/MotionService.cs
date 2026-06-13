@@ -341,8 +341,92 @@ namespace MotionControl.Services
                     throw new SafetyViolationException($"轴{axisId}绝对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
+                double startPos = card.GetPosition(pid);
+                double distance = Math.Abs(position - startPos);
+                int timeoutMs = CalculateMotionTimeout(distance, velocity);
+
                 card.MoveAbs(pid, position, velocity);
-                WaitForDone(card, pid, position, token);
+                WaitForDone(card, pid, position, token, timeoutMs: timeoutMs);
+            }, token);
+        }
+
+        /// <summary>
+        /// 多轴同步绝对运动：所有轴同时下发运动指令，统一轮询等待完成。
+        /// 到位判据 = CheckDone(卡完成信号) + GetPosition(编码器位置验证)，双重保险。
+        /// </summary>
+        public async Task MoveAbsMultiAxisAsync(
+            IReadOnlyList<(int axisId, double position, double velocity)> moves,
+            CancellationToken token = default)
+        {
+            if (moves == null || moves.Count == 0) return;
+
+            // 预解析所有轴（在主线程，无锁竞争）
+            var resolved = new List<(int logicalId, IMotionCard card, int pid, double targetPos, double velocity)>(moves.Count);
+            foreach (var (axisId, position, velocity) in moves)
+            {
+                var (card, pid) = ResolveAxis(axisId);
+                resolved.Add((axisId, card, pid, position, velocity));
+            }
+
+            await Task.Run(() =>
+            {
+                // 1. 安全检查 + 下发运动指令（所有轴先全部下发）
+                foreach (var (logicalId, card, pid, targetPos, velocity) in resolved)
+                {
+                    var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(logicalId, targetPos);
+                    if (!allowed)
+                    {
+                        _logger.Error($"[安全互锁] 轴{logicalId}绝对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                        throw new SafetyViolationException($"轴{logicalId}绝对移动被安全策略拒绝: {reason}", logicalId, reason);
+                    }
+                    card.MoveAbs(pid, targetPos, velocity);
+                }
+
+                // 2. 统一轮询：位置 + CheckDone 双重到位验证
+                //    超时基于各轴最大运动时间动态计算
+                var spinWait = new SpinWait();
+                var pending = new HashSet<int>(resolved.Select(r => r.pid));
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                // 取所有轴中最大超时值，避免低速长距离轴误报超时
+                int timeoutMs = resolved.Max(r => CalculateMotionTimeout(
+                    Math.Abs(r.targetPos - r.card.GetPosition(r.pid)), r.velocity));
+                const double tolerance = 0.05;
+
+                while (pending.Count > 0)
+                {
+                    token.ThrowIfCancellationRequested();
+
+                    if (sw.ElapsedMilliseconds > timeoutMs)
+                    {
+                        // 超时：列出未完成轴信息
+                        var stuckAxes = resolved.Where(r => pending.Contains(r.pid))
+                            .Select(r => $"轴{r.logicalId}(pid={r.pid}) 目标={r.targetPos:F3} 当前={r.card.GetPosition(r.pid):F3}");
+                        throw new RecoverableException(
+                            message: $"多轴运动超时({timeoutMs}ms): {string.Join("; ", stuckAxes)}",
+                            suggestedAction: "请检查伺服使能、限位信号或机械卡死，复位后重试。"
+                        );
+                    }
+
+                    // 双重到位判据：CheckDone=1 且 GetPosition 在 tolerance 内
+                    var justDone = new List<int>();
+                    foreach (var (_, card, pid, targetPos, _) in resolved)
+                    {
+                        if (!pending.Contains(pid)) continue;
+                        // 先检查卡完成信号
+                        if (card.CheckDone(pid) != 1) continue;
+                        // 再校验编码器位置（防止虚假完成）
+                        double pos = card.GetPosition(pid);
+                        if (Math.Abs(pos - targetPos) <= tolerance)
+                            justDone.Add(pid);
+                        else
+                            _logger?.Warn($"[多轴运动] 轴{pid} CheckDone=1 但位置偏差 {Math.Abs(pos - targetPos):F3}mm > {tolerance}mm，继续等待");
+                    }
+                    foreach (var pid in justDone)
+                        pending.Remove(pid);
+
+                    if (pending.Count > 0)
+                        spinWait.SpinOnce();
+                }
             }, token);
         }
 
@@ -362,7 +446,8 @@ namespace MotionControl.Services
                 }
 
                 card.MoveRel(pid, distance, velocity);
-                WaitForDone(card, pid, targetPos, token);
+                int timeoutMs = CalculateMotionTimeout(Math.Abs(distance), velocity);
+                WaitForDone(card, pid, targetPos, token, timeoutMs: timeoutMs);
             }, token);
         }
 
@@ -531,29 +616,50 @@ namespace MotionControl.Services
         }
 
         /// <summary>
-        /// 等待轴运动完成，并校验最终位置是否在误差允许范围内
+        /// 等待轴运动完成，并校验最终位置是否在误差允许范围内。
+        /// 到位判据 = CheckDone + GetPosition 双重验证，防止虚假完成信号。
+        /// 超时基于距离/速度动态计算，避免低速运动误报。
         /// </summary>
-        /// <param name="card">运动卡实例</param>
-        /// <param name="physicalAxisId">卡物理轴号</param>
-        private void WaitForDone(IMotionCard card, int physicalAxisId, double targetPosition, CancellationToken token, double tolerance = 0.05)
+        private void WaitForDone(IMotionCard card, int physicalAxisId, double targetPosition, CancellationToken token, double tolerance = 0.05, int timeoutMs = 30_000)
         {
             var spinWait = new SpinWait();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+        
             while (true)
             {
                 token.ThrowIfCancellationRequested();
+        
+                if (sw.ElapsedMilliseconds > timeoutMs)
+                {
+                    double actualPos = card.GetPosition(physicalAxisId);
+                    throw new RecoverableException(
+                        message: $"轴 {physicalAxisId} 运动超时({timeoutMs}ms)。目标: {targetPosition:F3}, 当前: {actualPos:F3}",
+                        suggestedAction: "请检查伺服使能、限位信号或机械卡死，复位后重试。"
+                    );
+                }
+        
+                // 双重到位判据：CheckDone=1 且 GetPosition 在 tolerance 内
                 int done = card.CheckDone(physicalAxisId);
                 if (done == 1)
-                    break;
+                {
+                    double actualPosition = card.GetPosition(physicalAxisId);
+                    if (Math.Abs(actualPosition - targetPosition) <= tolerance)
+                        break; // 真正到位
+                    // CheckDone=1 但位置不在 tolerance → 继续等待（虚假完成）
+                }
                 spinWait.SpinOnce();
             }
-            double actualPosition = card.GetPosition(physicalAxisId);
-            if (Math.Abs(actualPosition - targetPosition) > tolerance)
-            {
-                throw new RecoverableException(
-                    message: $"轴 {physicalAxisId} 运动未到位。目标: {targetPosition:F3}, 实际: {actualPosition:F3}",
-                    suggestedAction: "请检查轴是否撞击限位、伺服是否报警或存在机械卡死，复位后重试。"
-                );
-            }
+        }
+        
+        /// <summary>
+        /// 根据运动距离和速度动态计算超时时间（ms）
+        /// 公式: max(5000ms基础, 移动时间*2 + 3000ms加减速缓冲)
+        /// </summary>
+        private static int CalculateMotionTimeout(double distance, double velocity)
+        {
+            if (velocity <= 0) return 60_000; // 防御性默认
+            double moveTimeMs = distance / velocity * 1000;
+            return Math.Max(5_000, (int)(moveTimeMs * 2) + 3_000);
         }
         /// <summary>
         /// 等待插补运动完成，并校验所有参与轴的最终位置
