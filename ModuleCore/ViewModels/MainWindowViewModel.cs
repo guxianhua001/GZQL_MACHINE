@@ -103,6 +103,9 @@ namespace ModuleCore.ViewModels
             set => SetProperty(ref _tcpStatusColor, value);
         }
 
+        /// <summary>每个TCP连接的详细状态列表</summary>
+        public ObservableCollection<TcpConnectionDetail> TcpConnectionDetails { get; } = new();
+
         public LoginModel Model { get; set; }
         public NavigateModel Navigate { get; set; }
         private readonly IDialogService _dialogService;
@@ -179,8 +182,7 @@ namespace ModuleCore.ViewModels
 
             // TCP 连接状态（通过EventAggregator订阅TCPIPModule发布的状态变更事件）
             _eventAggregator.GetEvent<TcpConnectionStatusChangedEvent>().Subscribe(OnTcpStatusChanged, ThreadOption.UIThread);
-            TcpStatusText = L("MainWindow_TcpNoConnected");
-            TcpStatusColor = Brushes.Gray;
+            RefreshTcpStatusFromService();
 
             InitializeCommands(); // 初始化命令
             LoadDefaultView(appConfig, container); // 加载默认视图
@@ -741,7 +743,7 @@ namespace ModuleCore.ViewModels
             });
 
             // 刷新 TCP 连接状态文案（保留当前连接数，更新多语言文本）
-            UpdateTcpStatusDisplay(_lastTcpConnectedCount, _lastTcpTotalCount);
+            RefreshTcpStatusDisplay();
         }
 
         private int _lastEtherCatErrorCode;
@@ -756,23 +758,79 @@ namespace ModuleCore.ViewModels
         {
             _lastTcpConnectedCount = payload.ConnectedCount;
             _lastTcpTotalCount = payload.TotalCount;
-            UpdateTcpStatusDisplay(payload.ConnectedCount, payload.TotalCount);
+            UpdateTcpStatusDisplay(payload);
         }
 
-        /// <summary>更新TCP状态显示</summary>
-        private void UpdateTcpStatusDisplay(int connected, int total)
+        /// <summary>更新TCP状态显示（含每个连接的详细状态）</summary>
+        private void UpdateTcpStatusDisplay(TcpConnectionStatusPayload payload)
         {
-            if (total == 0)
+            // 更新详情列表
+            TcpConnectionDetails.Clear();
+            foreach (var detail in payload.Details)
+                TcpConnectionDetails.Add(detail);
+
+            // 更新汇总文字和颜色
+            if (payload.TotalCount == 0)
             {
                 TcpStatusText = L("MainWindow_TcpNoConfig");
                 TcpStatusColor = Brushes.Gray;
                 return;
             }
 
-            TcpStatusText = string.Format(L("MainWindow_TcpStatusFormat"), connected, total);
-            TcpStatusColor = connected == 0 ? Brushes.Red
-                : connected < total ? Brushes.Orange
+            TcpStatusText = string.Format(L("MainWindow_TcpStatusFormat"), payload.ConnectedCount, payload.TotalCount);
+            TcpStatusColor = payload.ConnectedCount == 0 ? Brushes.Red
+                : payload.ConnectedCount < payload.TotalCount ? Brushes.Orange
                 : Brushes.LimeGreen;
+        }
+
+        /// <summary>语言切换时刷新TCP状态显示</summary>
+        private void RefreshTcpStatusDisplay()
+        {
+            if (_lastTcpTotalCount == 0)
+            {
+                TcpStatusText = L("MainWindow_TcpNoConfig");
+                TcpStatusColor = Brushes.Gray;
+            }
+            else
+            {
+                TcpStatusText = string.Format(L("MainWindow_TcpStatusFormat"), _lastTcpConnectedCount, _lastTcpTotalCount);
+            }
+        }
+
+        /// <summary>主动从配置服务拉取TCP连接列表，构建初始状态显示</summary>
+        private void RefreshTcpStatusFromService()
+        {
+            try
+            {
+                var clients = _appConfig?.Clients;
+                if (clients == null || clients.Count == 0)
+                {
+                    TcpStatusText = L("MainWindow_TcpNoConfig");
+                    TcpStatusColor = Brushes.Gray;
+                    return;
+                }
+
+                // 初始状态：配置存在但连接状态未知，显示名称列表（灰色）
+                var enabledClients = clients.Where(c => c.IsEnabled).ToList();
+                TcpConnectionDetails.Clear();
+                foreach (var cfg in enabledClients)
+                {
+                    TcpConnectionDetails.Add(new TcpConnectionDetail
+                    {
+                        Name = cfg.ClientName,
+                        IsConnected = false
+                    });
+                }
+                _lastTcpTotalCount = enabledClients.Count;
+                _lastTcpConnectedCount = 0;
+                TcpStatusText = string.Format(L("MainWindow_TcpStatusFormat"), 0, enabledClients.Count);
+                TcpStatusColor = Brushes.Orange;
+            }
+            catch
+            {
+                TcpStatusText = L("MainWindow_TcpNoConfig");
+                TcpStatusColor = Brushes.Gray;
+            }
         }
 
         #endregion

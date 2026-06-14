@@ -577,30 +577,41 @@ namespace TCPIPModule.Services
                 var clients = _appSettingService?.Clients;
                 if (clients == null) return;
 
-                int total = clients.Count(c => c.IsEnabled);
+                var enabledClients = clients.Where(c => c.IsEnabled).ToList();
+                int total = enabledClients.Count;
                 int connected = 0;
+                var details = new List<TcpConnectionDetail>();
                 var serverNames = _servers.Keys.ToList();
 
-                foreach (var cfg in clients.Where(c => c.IsEnabled))
+                foreach (var cfg in enabledClients)
                 {
+                    bool isConnected = false;
                     if (cfg.Mode == "Server")
                     {
-                        if (serverNames.Contains(cfg.ClientName))
-                            connected++;
+                        // Server模式：服务器已启动且有客户端连接才算已连接
+                        if (serverNames.Contains(cfg.ClientName) &&
+                            _connectedSnapshot.TryGetValue(cfg.ClientName, out var list))
+                        {
+                            lock (list) { isConnected = list.Count > 0; }
+                        }
                     }
                     else
                     {
+                        // Client模式：检查客户端是否已连接
                         var tcpClient = _clientManager.GetClient(cfg.ClientName);
-                        if (tcpClient != null && tcpClient.IsConnected)
-                            connected++;
+                        isConnected = tcpClient != null && tcpClient.IsConnected;
                     }
+
+                    if (isConnected) connected++;
+                    details.Add(new TcpConnectionDetail { Name = cfg.ClientName, IsConnected = isConnected });
                 }
 
                 _eventAggregator.GetEvent<TcpConnectionStatusChangedEvent>().Publish(
                     new TcpConnectionStatusPayload
                     {
                         ConnectedCount = connected,
-                        TotalCount = total
+                        TotalCount = total,
+                        Details = details
                     });
             }
             catch (Exception ex)
