@@ -980,11 +980,11 @@ namespace Module.ViewModels
             set => SetProperty(ref _globalStatus, value);
         }
 
-        /// <summary>轨迹段数量显示文本</summary>
-        public string SegmentCountDisplay => string.Format(L("CadPoint_SegmentCount_Format"), _segments.Count);
+        /// <summary>已选轨迹段数量显示文本</summary>
+        public string SegmentCountDisplay => string.Format(L("CadPoint_SegmentCount_Format"), Segments.Count(s => s.IsEnabled));
 
-        /// <summary>轨迹总长度显示文本</summary>
-        public string TotalLengthDisplay => string.Format(L("CadPoint_TotalLength_Format"), _segments.Sum(s => s.Length));
+        /// <summary>已选轨迹段总长度显示文本</summary>
+        public string TotalLengthDisplay => string.Format(L("CadPoint_TotalLength_Format"), Segments.Where(s => s.IsEnabled).Sum(s => s.Length));
 
         /// <summary>坐标对齐状态显示文本</summary>
         public string AlignStatusDisplay
@@ -2008,6 +2008,8 @@ namespace Module.ViewModels
             {
                 seg.IsEnabled = true;
             }
+            RaisePropertyChanged(nameof(SegmentCountDisplay));
+            RaisePropertyChanged(nameof(TotalLengthDisplay));
             DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
         }
 
@@ -2018,6 +2020,8 @@ namespace Module.ViewModels
             {
                 seg.IsEnabled = !seg.IsEnabled;
             }
+            RaisePropertyChanged(nameof(SegmentCountDisplay));
+            RaisePropertyChanged(nameof(TotalLengthDisplay));
             DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
         }
 
@@ -2928,6 +2932,8 @@ namespace Module.ViewModels
             if (e.PropertyName == nameof(DispenseSegment.IsEnabled))
             {
                 RaisePropertyChanged(nameof(CanExecute));
+                RaisePropertyChanged(nameof(SegmentCountDisplay));
+                RaisePropertyChanged(nameof(TotalLengthDisplay));
                 DryRunCommand.RaiseCanExecuteChanged();
                 ExecuteRunCommand.RaiseCanExecuteChanged();
                 ExecutePathCommand.RaiseCanExecuteChanged();
@@ -3107,16 +3113,8 @@ namespace Module.ViewModels
             if (!System.IO.Directory.Exists(defaultDir))
                 System.IO.Directory.CreateDirectory(defaultDir);
 
-            var dialog = new SaveFileDialog
-            {
-                Filter = L("CadPoint_Filter_JsonAll"),
-                DefaultExt = ".json",
-                FileName = $"segments_{DateTime.Now:yyyyMMdd_HHmmss}",
-                Title = L("CadPoint_Dialog_SaveTrajectory"),
-                InitialDirectory = defaultDir
-            };
-
-            if (dialog.ShowDialog() != true) return;
+            string fileName = $"segments_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+            string fullSavePath = System.IO.Path.Combine(defaultDir, fileName);
 
             try
             {
@@ -3161,9 +3159,9 @@ namespace Module.ViewModels
                     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                 };
                 string json = System.Text.Json.JsonSerializer.Serialize(saveData, options);
-                System.IO.File.WriteAllText(dialog.FileName, json);
-                RecordSegmentConfigPath(dialog.FileName);
-                GlobalStatus = string.Format(L("CadPoint_Status_SegmentsSaved"), Segments.Count, System.IO.Path.GetFileName(dialog.FileName));
+                System.IO.File.WriteAllText(fullSavePath, json);
+                RecordSegmentConfigPath(fullSavePath);
+                GlobalStatus = string.Format(L("CadPoint_Status_SegmentsSaved"), Segments.Count, System.IO.Path.GetFileName(fullSavePath));
             }
             catch (Exception ex)
             {

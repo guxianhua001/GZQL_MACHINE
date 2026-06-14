@@ -2304,8 +2304,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_Step5_Hint">Dry run simulation</sys:String>
     <sys:String x:Key="CadPoint_Step6_Title">Execute</sys:String>
     <sys:String x:Key="CadPoint_Step6_Hint">Trajectory execution</sys:String>
-    <sys:String x:Key="CadPoint_SegmentCount_Format">Segments: {0}</sys:String>
-    <sys:String x:Key="CadPoint_TotalLength_Format">Total Length: {0:F2}mm</sys:String>
+    <sys:String x:Key="CadPoint_SegmentCount_Format">Selected: {0}</sys:String>
+    <sys:String x:Key="CadPoint_TotalLength_Format">Selected Length: {0:F2}mm</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Unavailable">Alignment unavailable</sys:String>
     <sys:String x:Key="CadPoint_AlignMode_Affine">N-Point Affine</sys:String>
     <sys:String x:Key="CadPoint_AlignMode_PointMapping">Point Mapping</sys:String>
@@ -2530,7 +2530,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <!-- Step4 Align -->
     <sys:String x:Key="Step4_Btn_CalculateTransform">Calculate Transform</sys:String>
     <sys:String x:Key="Step4_Btn_PickFromCanvas">Pick from Canvas</sys:String>
-    <sys:String x:Key="Step4_Btn_SaveSegments">Save Segments</sys:String>
+    <sys:String x:Key="Step4_Btn_SaveSegments">Save</sys:String>
     <sys:String x:Key="Step4_Btn_TeachCurrentPosition">Teach Current Position</sys:String>
     <sys:String x:Key="Step4_Btn_ViewDiagram">View Diagram</sys:String>
     <sys:String x:Key="Step4_Description">Select alignment mode to establish mapping between CAD and machine coordinates.</sys:String>
@@ -3360,5 +3360,37 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="SafetyZone_DismissAlarm">Dismiss</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccess">Saved Successfully</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccessMessage">Safety zone configuration saved and applied successfully</sys:String>
+
+    <!-- DispenseExecuteService -->
+    <sys:String x:Key="DispenseExec_DryRun">Dry Run</sys:String>
+    <sys:String x:Key="DispenseExec_Dispense">Dispense[{0}]</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointDryRun">Single Point Dry Run</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointDispense">Single Point Dispense</sys:String>
+    <sys:String x:Key="DispenseExec_NeedleFormat">Needle{0}</sys:String>
+    <sys:String x:Key="DispenseExec_StartLog">Start {0}, {1} segments, {2}</sys:String>
+    <sys:String x:Key="DispenseExec_SegmentProgress">{0} - Segment [{1}] ({2})</sys:String>
+    <sys:String x:Key="DispenseExec_SegmentProgressWithIndex">{0} - Segment [{1}] ({2}/{3})</sys:String>
+    <sys:String x:Key="DispenseExec_MissingMachineCoord">Segment [{0}] {1}missing machine coordinates (alignment not performed), execution aborted to prevent collision</sys:String>
+    <sys:String x:Key="DispenseExec_PointLabel">Point{0}</sys:String>
+    <sys:String x:Key="DispenseExec_StartPoint">Start</sys:String>
+    <sys:String x:Key="DispenseExec_TriggerGlueOn">Segment [{0}] position trigger glue on, triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="DispenseExec_PointTriggerGlueOn">Seg[{0}]Pt{1} position trigger glue on, triggerZ={2:F3}, targetZ={3:F3}, offset={4:F3}mm</sys:String>
+    <sys:String x:Key="DispenseExec_ZNotReached">Segment [{0}] Z not in position: current={1:F3}, target={2:F3}, re-descending</sys:String>
+    <sys:String x:Key="DispenseExec_GlueOff">Segment [{0}] glue off</sys:String>
+    <sys:String x:Key="DispenseExec_MotionTimeout">Segment [{0}] {1} motion timeout</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointMissingCoord">Single point: missing machine coordinates (alignment not performed), execution aborted to prevent collision</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointStart">Single point({0}) → ({1:F3}, {2:F3}, {3:F3})</sys:String>
+    <sys:String x:Key="DispenseExec_MoveToSafeHeight">Move to safe height</sys:String>
+    <sys:String x:Key="DispenseExec_XYPositioning">XY Positioning</sys:String>
+    <sys:String x:Key="DispenseExec_ZDescending">Z Descending</sys:String>
+    <sys:String x:Key="DispenseExec_GlueOn">Glue On</sys:String>
+    <sys:String x:Key="DispenseExec_ZAscending">Z Ascending</sys:String>
+    <sys:String x:Key="DispenseExec_WriteIoFailed">Write glue IO failed port={0} value={1}</sys:String>
+    <sys:String x:Key="DispenseExec_Completed">{0} completed</sys:String>
+    <sys:String x:Key="DispenseExec_Canceled">{0} canceled</sys:String>
+    <sys:String x:Key="DispenseExec_Error">{0} error</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointCompleted">Single point dispense completed</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointCanceled">Single point dispense canceled</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointError">Single point dispense error</sys:String>
 </ResourceDictionary>
 

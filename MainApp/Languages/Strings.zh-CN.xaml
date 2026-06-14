@@ -2304,8 +2304,8 @@
     <sys:String x:Key="CadPoint_Step5_Hint">空跑仿真</sys:String>
     <sys:String x:Key="CadPoint_Step6_Title">执行</sys:String>
     <sys:String x:Key="CadPoint_Step6_Hint">轨迹执行</sys:String>
-    <sys:String x:Key="CadPoint_SegmentCount_Format">线段数: {0}</sys:String>
-    <sys:String x:Key="CadPoint_TotalLength_Format">总长度: {0:F2}mm</sys:String>
+    <sys:String x:Key="CadPoint_SegmentCount_Format">已选段数: {0}</sys:String>
+    <sys:String x:Key="CadPoint_TotalLength_Format">已选总长: {0:F2}mm</sys:String>
     <sys:String x:Key="CadPoint_AlignStatus_Unavailable">对齐不可用</sys:String>
     <sys:String x:Key="CadPoint_AlignMode_Affine">N点仿射</sys:String>
     <sys:String x:Key="CadPoint_AlignMode_PointMapping">逐点映射</sys:String>
@@ -3360,5 +3360,37 @@
     <sys:String x:Key="SafetyZone_DismissAlarm">关闭</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccess">保存成功</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccessMessage">安全区域配置已成功保存并生效</sys:String>
+
+    <!-- DispenseExecuteService 点胶执行服务 -->
+    <sys:String x:Key="DispenseExec_DryRun">空跑</sys:String>
+    <sys:String x:Key="DispenseExec_Dispense">走胶[{0}]</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointDryRun">单点空跑</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointDispense">单点走胶</sys:String>
+    <sys:String x:Key="DispenseExec_NeedleFormat">针头{0}</sys:String>
+    <sys:String x:Key="DispenseExec_StartLog">开始{0}，共 {1} 段，{2}</sys:String>
+    <sys:String x:Key="DispenseExec_SegmentProgress">{0} - 段 [{1}] ({2})</sys:String>
+    <sys:String x:Key="DispenseExec_SegmentProgressWithIndex">{0} - 段 [{1}] ({2}/{3})</sys:String>
+    <sys:String x:Key="DispenseExec_MissingMachineCoord">段 [{0}] {1}缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机</sys:String>
+    <sys:String x:Key="DispenseExec_PointLabel">点{0}</sys:String>
+    <sys:String x:Key="DispenseExec_StartPoint">起点</sys:String>
+    <sys:String x:Key="DispenseExec_TriggerGlueOn">段 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="DispenseExec_PointTriggerGlueOn">段[{0}]点{1} 位置触发开胶，triggerZ={2:F3}, targetZ={3:F3}, offset={4:F3}mm</sys:String>
+    <sys:String x:Key="DispenseExec_ZNotReached">段 [{0}] Z轴未到位: 当前={1:F3}, 目标={2:F3}，重新下降</sys:String>
+    <sys:String x:Key="DispenseExec_GlueOff">段 [{0}] 关胶</sys:String>
+    <sys:String x:Key="DispenseExec_MotionTimeout">段 [{0}] {1}运动超时</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointMissingCoord">单点点胶：点缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointStart">单点点胶({0}) → ({1:F3}, {2:F3}, {3:F3})</sys:String>
+    <sys:String x:Key="DispenseExec_MoveToSafeHeight">移动到安全高度</sys:String>
+    <sys:String x:Key="DispenseExec_XYPositioning">XY 定位</sys:String>
+    <sys:String x:Key="DispenseExec_ZDescending">Z 轴下降</sys:String>
+    <sys:String x:Key="DispenseExec_GlueOn">开胶</sys:String>
+    <sys:String x:Key="DispenseExec_ZAscending">Z 轴回升</sys:String>
+    <sys:String x:Key="DispenseExec_WriteIoFailed">写出胶IO失败 port={0} value={1}</sys:String>
+    <sys:String x:Key="DispenseExec_Completed">{0}完成</sys:String>
+    <sys:String x:Key="DispenseExec_Canceled">{0}已取消</sys:String>
+    <sys:String x:Key="DispenseExec_Error">{0}异常</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointCompleted">单点点胶完成</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointCanceled">单点点胶被取消</sys:String>
+    <sys:String x:Key="DispenseExec_SinglePointError">单点点胶异常</sys:String>
 </ResourceDictionary>
 

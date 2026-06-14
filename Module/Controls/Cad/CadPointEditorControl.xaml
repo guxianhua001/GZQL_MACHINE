@@ -149,7 +149,7 @@
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">
                     <Button Content="{lang:Lang Step4_Btn_SaveSegments}" Command="{Binding SaveSegmentsCommand}"
-                          Style="{StaticResource MaterialDesignFlatButton}" Foreground="#80CBC4" Padding="6,2" materialDesign:ButtonAssist.CornerRadius="4" Margin="4,0,0,0"
+                          Style="{StaticResource MaterialDesignFlatButton}" Foreground="#80CBC4" Padding="6,2" materialDesign:ButtonAssist.CornerRadius="4" 
                             ToolTip="{lang:Lang Step4_ToolTip_SaveSegments}"/>
                     <Button Content="{lang:Lang CadPoint_Btn_PrevStep}" Command="{Binding GoPrevCommand}"
                             Style="{StaticResource MaterialDesignFlatButton}" Foreground="White" Padding="8,2"/>
