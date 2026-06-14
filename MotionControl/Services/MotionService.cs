@@ -65,6 +65,7 @@ namespace MotionControl.Services
         private const int SlowPollIntervalMs = 100;
         private int _outputSlowCounter;
         private int _inputSlowCounter;
+        private int _axisSlowCounter;
         /// <summary>回零状态慢轮询游标：每周期只查 1 根轴，避免 CheckHomeDone 拖慢整轮采样</summary>
         private int _homePollCursor;
 
@@ -771,6 +772,9 @@ namespace MotionControl.Services
                 else
                 {
                     CheckCriticalAlarms(skipVisibleAxes: false);
+                    // 面板关闭时也轮询轴状态（低频），保证 AxisState.IsEnabled/IsHomeOk 缓存可用
+                    if ((_axisSlowCounter++ % 10) == 0)
+                        PollAllAxesStatusSlow();
                 }
 
                 if ((_busPollCounter++ % Math.Max(1, 1000 / intervalMs)) == 0)
@@ -842,6 +846,33 @@ namespace MotionControl.Services
                 int val = 0;
                 card.GetDi(kv.Value.Port, ref val);
                 kv.Value.Value = (val != 0);
+            }
+        }
+
+        /// <summary>
+        /// 面板关闭时的低频全轴状态轮询：仅更新 IsEnabled/IsHomeOk 等关键状态，
+        /// 不更新位置和 IO 细节，保证位置编辑器 GOTO 前的轴状态检查可用。
+        /// </summary>
+        private void PollAllAxesStatusSlow()
+        {
+            foreach (var kv in _axisStates)
+            {
+                int logicalId = kv.Key;
+                if (!_axisCardMap.TryGetValue(logicalId, out var card)) continue;
+                int pid = ToPhysicalAxisId(logicalId);
+
+                try
+                {
+                    int etherCatSts = 0;
+                    card.GetEtherCatSts(pid, ref etherCatSts);
+                    bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
+
+                    kv.Value.IsEnabled = isServoOn;
+                }
+                catch
+                {
+                    // 轮询中单轴异常不影响其他轴
+                }
             }
         }
 
