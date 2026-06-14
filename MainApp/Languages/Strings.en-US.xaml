@@ -2575,7 +2575,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Good">Excellent</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Acceptable">Acceptable</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Poor">Deviation too large</sys:String>
-    <sys:String x:Key="Step4_Error_BothNeedlesRequired">Both needles must complete affine calibration before applying transform</sys:String>
+    <sys:String x:Key="Step4_Error_NeedleNotCalibrated">Needle{0} has not completed affine calibration, please calibrate first</sys:String>
     <sys:String x:Key="Step5_Label_NeedleSelect">Needle Select</sys:String>
     <sys:String x:Key="Step6_Label_NeedleSelect">Needle Select</sys:String>
     <sys:String x:Key="Step4_ToolTip_SaveSegments">Save aligned segment data</sys:String>

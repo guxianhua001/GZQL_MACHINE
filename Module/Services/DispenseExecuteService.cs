@@ -20,7 +20,8 @@ namespace Module.Services
         private readonly IMotionService _motionService;
         private readonly ILoggerService? _logger;
 
-        private const int CoordId = 0;
+        private const int CoordIdLinear = 0;     // 直线插补使用坐标系0
+        private const int CoordIdContinuous = 1;  // 多段连续插补走轨迹使用坐标系1
         private const int AxisDx = 8;
         private const int AxisDy = 6;
         private const int AxisDz1 = 3;
@@ -111,7 +112,7 @@ namespace Module.Services
                             ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId, ResourceHelper.GetString("DispenseExec_StartPoint")));
                     double startX = startPt.MachineX.Value;
                     double startY = startPt.MachineY.Value;
-                    await _motionService.MoveLineAbsAsync(CoordId, new[] { AxisDx, AxisDy },
+                    await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { AxisDx, AxisDy },
                         new[] { startX, startY }, DefaultVelocity, token);
 
                     // 3. Z 下降到工作高度（根据 descendToWorkHeight 标志决定是否下降）
@@ -167,8 +168,8 @@ namespace Module.Services
 
                     // 4. 连续插补走轨迹
                     _motionService.InitializeContinuousInterpolation(
-                        CoordId, new[] { AxisDx, AxisDy },
-                        startVel: 5, maxVel: seg.MoveSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
+                        CoordIdContinuous, new[] { AxisDx, AxisDy },
+                        startVel: 0, maxVel: seg.MoveSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
 
                     foreach (var pt in seg.Points)
                     {
@@ -177,14 +178,14 @@ namespace Module.Services
                                 ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId, ""));
                         double px = pt.MachineX.Value;
                         double py = pt.MachineY.Value;
-                        _motionService.AddLineSegment(CoordId, new[] { px, py });
+                        _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
                     }
 
-                    _motionService.ExecuteContinuousInterpolation(CoordId);
+                    _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
 
                     // 5. 等待运动完成
                     bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
-                        CoordId, TimeSpan.FromMinutes(5), token);
+                        CoordIdContinuous, TimeSpan.FromMinutes(5), token);
 
                     if (!completed)
                         throw new TimeoutException(ResourceHelper.GetString("DispenseExec_MotionTimeout", seg.SegmentId, modeLabel));
@@ -250,7 +251,7 @@ namespace Module.Services
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_XYPositioning"), 1, 1);
                 await _motionService.MoveLineAbsAsync(
-                    CoordId, new[] { AxisDx, AxisDy }, new[] { mx, my },
+                    CoordIdLinear, new[] { AxisDx, AxisDy }, new[] { mx, my },
                     DefaultVelocity, token);
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_ZDescending"), 1, 1);
@@ -343,7 +344,7 @@ namespace Module.Services
 
                         await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
-                        await _motionService.MoveLineAbsAsync(CoordId, new[] { AxisDx, AxisDy },
+                        await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { AxisDx, AxisDy },
                             new[] { px, py }, moveSpeed, token);
 
                         if (!dryRun)

@@ -2575,7 +2575,7 @@
     <sys:String x:Key="Step4_Affine_Quality_Good">优秀</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Acceptable">可接受</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Poor">偏差过大</sys:String>
-    <sys:String x:Key="Step4_Error_BothNeedlesRequired">两个针头都必须完成仿射标定后才能应用变换</sys:String>
+    <sys:String x:Key="Step4_Error_NeedleNotCalibrated">针头{0}尚未完成仿射标定，请先标定</sys:String>
     <sys:String x:Key="Step5_Label_NeedleSelect">针头选择</sys:String>
     <sys:String x:Key="Step6_Label_NeedleSelect">针头选择</sys:String>
     <sys:String x:Key="Step4_ToolTip_SaveSegments">保存对齐后的线段数据</sys:String>

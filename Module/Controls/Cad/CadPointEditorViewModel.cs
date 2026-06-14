@@ -2318,10 +2318,11 @@ namespace Module.ViewModels
         /// <summary>应用仿射变换到所有轨迹段点</summary>
         private void ExecuteApplyTransformToSegments()
         {
-            // 两个针头都必须有变换结果才能应用
-            if (_affineResultNeedle1 == null || _affineResultNeedle2 == null)
+            // 仅检查当前选中针头是否有变换结果
+            var currentResult = _currentNeedleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+            if (currentResult == null)
             {
-                GlobalStatus = L("Step4_Error_BothNeedlesRequired");
+                GlobalStatus = string.Format(L("Step4_Error_NeedleNotCalibrated"), _currentNeedleIndex + 1);
                 return;
             }
 
@@ -2338,8 +2339,6 @@ namespace Module.ViewModels
                     if (seg.Points == null) continue;
                     foreach (var pt in seg.Points)
                     {
-                        // 根据当前针头选择对应的变换参数
-                        var currentResult = _currentNeedleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
                         var (mx, my) = AffineCalibrationService.Transform(currentResult, pt.X, pt.Y);
                         pt.MachineX = mx;
                         pt.MachineY = my;
@@ -2360,6 +2359,10 @@ namespace Module.ViewModels
                 GlobalStatus = TransformStatus;
                 RaisePropertyChanged(nameof(AlignStatusDisplay));
                 UpdateTransformedPointsPreview(Segments.SelectMany(s => s.Points).ToList());
+
+                // 刷新采样点位列表，使 Step3 DataGrid 显示更新后的 MachineX/MachineY
+                if (_selectedSegment != null)
+                    SelectedSegmentPoints = _selectedSegment.Points;
             }
             catch (Exception ex)
             {
