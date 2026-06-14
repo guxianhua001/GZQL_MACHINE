@@ -1851,7 +1851,9 @@ namespace Module.ViewModels
                 {
                     DefaultTableName = SelectedTable?.TableName ?? string.Empty,
                     Needle1Tables = _needles[0].Tables?.ToList() ?? new List<ZScanTableConfig>(),
-                    Needle2Tables = _needles[1].Tables?.ToList() ?? new List<ZScanTableConfig>()
+                    Needle2Tables = _needles[1].Tables?.ToList() ?? new List<ZScanTableConfig>(),
+                    CommunicationType = SelectedCommunicationType,
+                    ConnectionName = SelectedConnectionName ?? string.Empty
                 };
 
                 // 自动保存到 Config/ZScan/ZScan_yyyyMMdd_HHmmss.json
@@ -1881,7 +1883,9 @@ namespace Module.ViewModels
                 {
                     DefaultTableName = SelectedTable?.TableName ?? string.Empty,
                     Needle1Tables = _needles[0].Tables?.ToList() ?? new List<ZScanTableConfig>(),
-                    Needle2Tables = _needles[1].Tables?.ToList() ?? new List<ZScanTableConfig>()
+                    Needle2Tables = _needles[1].Tables?.ToList() ?? new List<ZScanTableConfig>(),
+                    CommunicationType = SelectedCommunicationType,
+                    ConnectionName = SelectedConnectionName ?? string.Empty
                 };
                 string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
                 CurrentFilePath = Path.GetFileName(savedPath);
@@ -1946,6 +1950,13 @@ namespace Module.ViewModels
                     {
                         LoadNeedleTables(configFile.Tables, 0);
                     }
+
+                    // 恢复通讯配置
+                    if (!string.IsNullOrEmpty(configFile.CommunicationType))
+                        SelectedCommunicationType = configFile.CommunicationType;
+                    if (!string.IsNullOrEmpty(configFile.ConnectionName)
+                        && TcpConnections.Contains(configFile.ConnectionName))
+                        SelectedConnectionName = configFile.ConnectionName;
 
                     // 加载当前针头状态
                     LoadCurrentNeedleState();

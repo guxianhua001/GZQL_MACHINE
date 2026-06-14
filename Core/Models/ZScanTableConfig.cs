@@ -102,5 +102,11 @@ namespace Core.Models
         /// <summary> 向后兼容旧格式（单针头时代的表格集合） </summary>
         public List<ZScanTableConfig> Tables { get; set; }
         public string DefaultTableName { get; set; } = string.Empty;
+
+        /// <summary> 通讯类型：TCPIP 或 Serial </summary>
+        public string CommunicationType { get; set; } = "TCPIP";
+
+        /// <summary> TCP 连接名称（对应 appsettings.json 中的 ClientName） </summary>
+        public string ConnectionName { get; set; } = string.Empty;
     }
 }
