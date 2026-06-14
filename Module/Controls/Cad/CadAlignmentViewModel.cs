@@ -1234,8 +1234,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
                 double theta = AlphaBaseDeg - AlphaTargetDeg;
 
-                while (theta > 180.0) theta -= 360.0;
-                while (theta <= -180.0) theta += 360.0;
+                // 归一化到 (-360, 0]：保证始终顺时针旋转
+                // 圆弧上多点对齐场景，要求每个位置都按同一方向（顺时针）转到基准角度
+                while (theta > 0.0) theta -= 360.0;
+                while (theta <= -360.0) theta += 360.0;
 
                 ThetaDeg = theta;
                 Step3Done = true;
@@ -1265,8 +1267,9 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             double thetaFallback = AlphaBaseDeg - AlphaTargetDeg;
 
-            while (thetaFallback > 180.0) thetaFallback -= 360.0;
-            while (thetaFallback <= -180.0) thetaFallback += 360.0;
+            // 归一化到 (-360, 0]：保证始终顺时针旋转
+            while (thetaFallback > 0.0) thetaFallback -= 360.0;
+            while (thetaFallback <= -360.0) thetaFallback += 360.0;
 
             ThetaDeg = thetaFallback;
             Step3Done = true;
