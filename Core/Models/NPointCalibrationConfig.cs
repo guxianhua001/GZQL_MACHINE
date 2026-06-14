@@ -1,10 +1,19 @@
 namespace Core.Models
 {
     /// <summary>
-    /// N点标定配置模型——存储轴配置、TCP通讯配置、自动标定参数等
+    /// N点标定配置模型——存储工站/轴配置、TCP通讯配置、自动标定参数等
     /// </summary>
     public class NPointCalibrationConfig
     {
+        /// <summary>工站标识（如 "DispenserStation"、"LoadingStation"）</summary>
+        public string StationIdentifier { get; set; } = "DispenserStation";
+
+        /// <summary>X轴对应的轴名称（如 "X"），从工站轴列表中选择</summary>
+        public string AxisNameX { get; set; } = "X";
+
+        /// <summary>Y轴对应的轴名称（如 "Y"），从工站轴列表中选择</summary>
+        public string AxisNameY { get; set; } = "Y";
+
         /// <summary>启用X轴</summary>
         public bool EnableAxisX { get; set; } = true;
 

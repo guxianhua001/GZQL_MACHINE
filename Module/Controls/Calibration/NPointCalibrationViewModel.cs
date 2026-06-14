@@ -26,6 +26,7 @@ namespace Module.ViewModels
     {
         private readonly INPointCalibrationService _calibService;
         private readonly IPositionMotionController _motionController;
+        private readonly IAxisConfigurationService _axisConfigService;
         private readonly ITCPEventService _tcpEventService;
         private readonly ITCPClientManagerService _tcpClientManager;
         private readonly IParameterStorage _parameterStorage;
@@ -41,6 +42,34 @@ namespace Module.ViewModels
         private CancellationTokenSource? _autoCalibCts;
 
         #region 属性
+
+        private ObservableCollection<string> _stationIdentifiers = new() { "DispenserStation", "LoadingStation", "AssemblyStation" };
+        /// <summary>可选工站标识列表</summary>
+        public ObservableCollection<string> StationIdentifiers { get => _stationIdentifiers; set => SetProperty(ref _stationIdentifiers, value); }
+
+        private string _selectedStationIdentifier = "DispenserStation";
+        /// <summary>选中的工站标识</summary>
+        public string SelectedStationIdentifier
+        {
+            get => _selectedStationIdentifier;
+            set
+            {
+                if (SetProperty(ref _selectedStationIdentifier, value))
+                    OnStationChanged();
+            }
+        }
+
+        private ObservableCollection<string> _availableAxes = new();
+        /// <summary>当前工站可用轴名列表</summary>
+        public ObservableCollection<string> AvailableAxes { get => _availableAxes; set => SetProperty(ref _availableAxes, value); }
+
+        private string _axisNameX = "X";
+        /// <summary>X轴名称</summary>
+        public string AxisNameX { get => _axisNameX; set => SetProperty(ref _axisNameX, value); }
+
+        private string _axisNameY = "Y";
+        /// <summary>Y轴名称</summary>
+        public string AxisNameY { get => _axisNameY; set => SetProperty(ref _axisNameY, value); }
 
         private bool _enableAxisX = true;
         /// <summary>启用X轴</summary>
@@ -146,6 +175,7 @@ namespace Module.ViewModels
         public NPointCalibrationViewModel(
             INPointCalibrationService calibService,
             IPositionMotionController motionController,
+            IAxisConfigurationService axisConfigService,
             ITCPEventService tcpEventService,
             ITCPClientManagerService tcpClientManager,
             IParameterStorage parameterStorage,
@@ -155,6 +185,7 @@ namespace Module.ViewModels
         {
             _calibService = calibService;
             _motionController = motionController;
+            _axisConfigService = axisConfigService;
             _tcpEventService = tcpEventService;
             _tcpClientManager = tcpClientManager;
             _parameterStorage = parameterStorage;
@@ -188,12 +219,42 @@ namespace Module.ViewModels
             _ = InitializeAsync();
         }
 
-        /// <summary>初始化：加载TCP连接列表，自动加载上次配置</summary>
+        /// <summary>初始化：加载轴列表、TCP连接列表，自动加载上次配置</summary>
         private async Task InitializeAsync()
         {
+            RefreshAvailableAxes();
             await LoadTcpConnectionsAsync();
             await TryAutoLoadConfigAsync();
             UpdateStatus(L("NPointCalib_Idle", "空闲"), Brushes.LightGray);
+        }
+
+        /// <summary>工站切换时刷新可用轴列表</summary>
+        private void OnStationChanged()
+        {
+            RefreshAvailableAxes();
+            // 重置轴名选择
+            AxisNameX = AvailableAxes.FirstOrDefault() ?? "X";
+            AxisNameY = AvailableAxes.Skip(1).FirstOrDefault() ?? "Y";
+        }
+
+        /// <summary>从IAxisConfigurationService获取当前工站的可用轴名</summary>
+        private void RefreshAvailableAxes()
+        {
+            try
+            {
+                var axes = _axisConfigService.GetAxesForStation(SelectedStationIdentifier);
+                AvailableAxes = new ObservableCollection<string>(axes.Select(a => a.Name));
+
+                if (AvailableAxes.Count == 0)
+                {
+                    _logger.Warn($"N点标定: 工站 {SelectedStationIdentifier} 无可用轴");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"N点标定: 获取工站 {SelectedStationIdentifier} 轴列表失败 - {ex.Message}");
+                AvailableAxes = new ObservableCollection<string>();
+            }
         }
 
         #region 自动标定
@@ -215,6 +276,11 @@ namespace Module.ViewModels
                     EnableVisionData,
                     SelectedTcpConnection,
                     TriggerCommand,
+                    SelectedStationIdentifier,
+                    AxisNameX,
+                    AxisNameY,
+                    EnableAxisX,
+                    EnableAxisY,
                     _autoCalibCts.Token);
             }
             catch (Exception ex)
@@ -241,7 +307,7 @@ namespace Module.ViewModels
             if (point == null) return;
             try
             {
-                var result = await _calibService.TeachPointAsync(point.Index);
+                var result = await _calibService.TeachPointAsync(SelectedStationIdentifier, AxisNameX, AxisNameY, EnableAxisX, EnableAxisY);
                 point.MachineX = result.MachineX;
                 point.MachineY = result.MachineY;
                 point.IsCalibrated = true;
@@ -259,7 +325,7 @@ namespace Module.ViewModels
             if (point == null) return;
             try
             {
-                await _calibService.MoveToPointAsync(point);
+                await _calibService.MoveToPointAsync(point, SelectedStationIdentifier, AxisNameX, AxisNameY, EnableAxisX, EnableAxisY);
             }
             catch (Exception ex)
             {
@@ -332,7 +398,6 @@ namespace Module.ViewModels
                 var data = BuildCurrentData();
                 Directory.CreateDirectory(ConfigDirectory);
 
-                // 如果已有文件名，直接保存；否则生成新文件名
                 var fileName = CurrentFileName;
                 if (string.IsNullOrEmpty(fileName))
                 {
@@ -346,11 +411,9 @@ namespace Module.ViewModels
                     File.WriteAllText(filePath, json);
                 });
 
-                // 更新LastFileName
                 data.Config.LastFileName = fileName;
                 CurrentFileName = fileName;
 
-                // 保存默认配置记录（用于自动加载）
                 _parameterStorage.Save("NPointCalibration_Default", data.Config, ConfigDirectory);
 
                 UpdateStatus($"{L("NPointCalib_SaveSuccess", "保存成功")}: {fileName}", Brushes.LightGreen);
@@ -385,7 +448,6 @@ namespace Module.ViewModels
                 CurrentFileName = Path.GetFileName(filePath);
                 data.Config.LastFileName = CurrentFileName;
 
-                // 保存默认配置记录
                 _parameterStorage.Save("NPointCalibration_Default", data.Config, ConfigDirectory);
 
                 UpdateStatus($"{L("NPointCalib_SaveSuccess", "保存成功")}: {CurrentFileName}", Brushes.LightGreen);
@@ -458,7 +520,6 @@ namespace Module.ViewModels
             {
                 Directory.CreateDirectory(ConfigDirectory);
 
-                // 从默认配置记录获取LastFileName
                 var defaultConfig = _parameterStorage.Load<NPointCalibrationConfig>(
                     "NPointCalibration_Default", ConfigDirectory);
 
@@ -472,7 +533,6 @@ namespace Module.ViewModels
                     }
                 }
 
-                // 没有上次记录，尝试加载目录下最新的文件
                 if (Directory.Exists(ConfigDirectory))
                 {
                     var latestFile = Directory.GetFiles(ConfigDirectory, "Calibration_*.json")
@@ -503,6 +563,9 @@ namespace Module.ViewModels
             if (data == null) return;
 
             // 应用配置
+            SelectedStationIdentifier = data.Config.StationIdentifier;
+            AxisNameX = data.Config.AxisNameX;
+            AxisNameY = data.Config.AxisNameY;
             EnableAxisX = data.Config.EnableAxisX;
             EnableAxisY = data.Config.EnableAxisY;
             PointCount = data.Config.PointCount;
@@ -540,7 +603,6 @@ namespace Module.ViewModels
                 {
                     TcpConnections.Clear();
 
-                    // 添加Client模式的客户端名
                     if (_tcpClientManager?.Clients != null)
                     {
                         foreach (var kvp in _tcpClientManager.Clients)
@@ -549,7 +611,6 @@ namespace Module.ViewModels
                         }
                     }
 
-                    // 添加Server模式的服务器名
                     var serverNames = _tcpEventService?.GetServerNames();
                     if (serverNames != null)
                     {
@@ -596,6 +657,9 @@ namespace Module.ViewModels
             {
                 Config = new NPointCalibrationConfig
                 {
+                    StationIdentifier = SelectedStationIdentifier,
+                    AxisNameX = AxisNameX,
+                    AxisNameY = AxisNameY,
                     EnableAxisX = EnableAxisX,
                     EnableAxisY = EnableAxisY,
                     PointCount = PointCount,

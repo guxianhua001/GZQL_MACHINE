@@ -1044,6 +1044,7 @@
     <sys:String x:Key="Maintenance_Tab_CameraAlignment">相机对针</sys:String>
     <sys:String x:Key="Maintenance_Tab_NeedleAligner">NeedleTcp</sys:String>
     <sys:String x:Key="Maintenance_Tab_CalibrationVerify">校准验证</sys:String>
+    <sys:String x:Key="Maintenance_Tab_NPointCalibration">N点标定</sys:String>
     <sys:String x:Key="Maintenance_StatusLabel">状态：</sys:String>
     <sys:String x:Key="Maintenance_Title">5. 维护</sys:String>
     <sys:String x:Key="Maintenance_WeightCheck_Description">可单独调用：按比例点胶 → 调整流量</sys:String>
@@ -1123,6 +1124,10 @@
     <sys:String x:Key="Nav_IOView">IO视图</sys:String>
     <sys:String x:Key="Nav_NPointCalibration">N点标定</sys:String>
     <sys:String x:Key="Nav_Operation">操作页面</sys:String>
+    <sys:String x:Key="Nav_AlarmRealtime">实时报警</sys:String>
+    <sys:String x:Key="Nav_AlarmStats">报警统计</sys:String>
+    <sys:String x:Key="Nav_AlarmThreshold">报警阈值</sys:String>
+    <sys:String x:Key="Nav_TcpConfig">Tcp配置</sys:String>
     <sys:String x:Key="Nav_RecipeManager">配方管理</sys:String>
     <sys:String x:Key="Needle_Calibration">针头校准</sys:String>
     <sys:String x:Key="Needle_Calibration_Height">针头校准高度</sys:String>
@@ -1672,8 +1677,9 @@
     <sys:String x:Key="ProductCalib_LoadData">加载</sys:String>
     <sys:String x:Key="NPointCalib_Title">N点标定</sys:String>
     <sys:String x:Key="NPointCalib_AxisConfig">轴配置</sys:String>
-    <sys:String x:Key="NPointCalib_EnableAxisX">启用X轴</sys:String>
-    <sys:String x:Key="NPointCalib_EnableAxisY">启用Y轴</sys:String>
+    <sys:String x:Key="NPointCalib_Station">工站</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisX">X轴</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisY">Y轴</sys:String>
     <sys:String x:Key="NPointCalib_PointCount">标定点数</sys:String>
     <sys:String x:Key="NPointCalib_TcpConfig">通讯配置</sys:String>
     <sys:String x:Key="NPointCalib_EnableVisionData">接收视觉数据</sys:String>

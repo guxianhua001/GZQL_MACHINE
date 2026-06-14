@@ -144,6 +144,16 @@
                             </StackPanel>
                         </TabItem.Header>
                     </TabItem>
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="VectorIntersection" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang Maintenance_Tab_NPointCalibration}"
+                                           VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </TabItem.Header>
+                    </TabItem>
                 </TabControl>
             </Border>
 
@@ -176,6 +186,15 @@
                                     <Setter.Value>
                                         <DataTemplate>
                                             <local:NeedleCalibrationVerifyView />
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding SelectedTabIndex}" Value="3">
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <local:NPointCalibrationView />
                                         </DataTemplate>
                                     </Setter.Value>
                                 </Setter>

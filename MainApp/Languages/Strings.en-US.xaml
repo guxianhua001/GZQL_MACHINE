@@ -1050,6 +1050,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Maintenance_Tab_CameraAlignment">Camera Alignment</sys:String>
     <sys:String x:Key="Maintenance_Tab_NeedleAligner">NeedleTcp</sys:String>
     <sys:String x:Key="Maintenance_Tab_CalibrationVerify">Calibration Verify</sys:String>
+    <sys:String x:Key="Maintenance_Tab_NPointCalibration">NPointCalibration</sys:String>
     <sys:String x:Key="Maintenance_StatusLabel">Status:</sys:String>
     <sys:String x:Key="Maintenance_Title">5. MAINTENANCE</sys:String>
     <sys:String x:Key="Maintenance_WeightCheck_Description">Independently callable: dispense proportionally → adjust flow</sys:String>
@@ -1124,12 +1125,16 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="MoveToSpecifiedPosition">Move to Specified Position</sys:String>
     <sys:String x:Key="MoveToStartPoint">MoveToStartPt</sys:String>
     <sys:String x:Key="MoveToTargetPosition">Move to Target Position</sys:String>
-    <sys:String x:Key="Nav_AlarmQuery">Alarm</sys:String>
+    <sys:String x:Key="Nav_AlarmQuery">AlarmQuery</sys:String>
     <sys:String x:Key="Nav_Home">Home</sys:String>
+    <sys:String x:Key="Nav_AlarmRealtime">AlarmRealtime</sys:String>
+    <sys:String x:Key="Nav_AlarmStats">AlarmStats</sys:String>
+    <sys:String x:Key="Nav_AlarmThreshold">AlarmThreshold</sys:String>
     <sys:String x:Key="Nav_IOView">IO View</sys:String>
     <sys:String x:Key="Nav_NPointCalibration">N-Point Calibration</sys:String>
     <sys:String x:Key="Nav_Operation">Operation</sys:String>
     <sys:String x:Key="Nav_RecipeManager">Recipe</sys:String>
+    <sys:String x:Key="Nav_TcpConfig">TcpConfig</sys:String>
     <sys:String x:Key="Needle_Calibration">Needle Calibration</sys:String>
     <sys:String x:Key="Needle_Calibration_Height">Needle Calibration Height</sys:String>
     <sys:String x:Key="Needle_Reference_Height">Needle Reference Height (mm):</sys:String>
@@ -1687,8 +1692,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ProductCalib_LoadData">Load</sys:String>
     <sys:String x:Key="NPointCalib_Title">N-Point Calibration</sys:String>
     <sys:String x:Key="NPointCalib_AxisConfig">Axis Config</sys:String>
-    <sys:String x:Key="NPointCalib_EnableAxisX">Enable X Axis</sys:String>
-    <sys:String x:Key="NPointCalib_EnableAxisY">Enable Y Axis</sys:String>
+    <sys:String x:Key="NPointCalib_Station">Station</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisX">X Axis</sys:String>
+    <sys:String x:Key="NPointCalib_EnableAxisY">Y Axis</sys:String>
     <sys:String x:Key="NPointCalib_PointCount">Point Count</sys:String>
     <sys:String x:Key="NPointCalib_TcpConfig">Communication</sys:String>
     <sys:String x:Key="NPointCalib_EnableVisionData">Receive Vision Data</sys:String>

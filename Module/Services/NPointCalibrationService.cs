@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TCPIPModule.Interfaces;
@@ -15,15 +14,13 @@ namespace Module.Services
 {
     /// <summary>
     /// N点标定服务实现——提供自动标定流程、单点示教/移动、TCP视觉数据接收、仿射计算
-    /// 自动标定流程：移动到点位 -> 示教机械坐标 -> 触发视觉 -> 等待数据 -> 填充 -> 延时 -> 下一点
+    /// 自动标定流程：移动到预定义机械点位 → 拍照(可选) → 读取当前位置 → 等待视觉数据 → 填充 → 延时 → 下一点
     /// </summary>
     public class NPointCalibrationService : INPointCalibrationService
     {
         private readonly IPositionMotionController _motionController;
         private readonly ITCPEventService _tcpEventService;
         private readonly ILoggerService _logger;
-
-        private const string StationIdentifier = "DispenserStation";
 
         /// <summary>自动标定取消令牌源</summary>
         private CancellationTokenSource? _autoCalibCts;
@@ -64,7 +61,7 @@ namespace Module.Services
 
         /// <summary>
         /// 启动自动标定流程
-        /// 依次移动到各点位 -> 示教机械坐标 -> 触发视觉 -> 等待数据 -> 填充 -> 延时 -> 下一点
+        /// 流程：移动到预定义机械点位 → 拍照(可选) → 读取当前位置 → 等待视觉数据 → 填充 → 延时 → 下一点
         /// </summary>
         public async Task StartAutoCalibrationAsync(
             IList<NPointCalibrationPoint> points,
@@ -72,6 +69,11 @@ namespace Module.Services
             bool enableVisionData,
             string tcpConnectionName,
             string triggerCommand,
+            string stationIdentifier,
+            string axisNameX,
+            string axisNameY,
+            bool enableAxisX,
+            bool enableAxisY,
             CancellationToken ct)
         {
             if (IsAutoCalibrating)
@@ -92,28 +94,33 @@ namespace Module.Services
                     ct.ThrowIfCancellationRequested();
                     var point = points[i];
 
-                    // 1. 示教当前位置（读取机械坐标）
-                    var teachResult = await TeachPointAsync(i);
+                    // 1. 移动到预定义机械点位（如果已设置机械坐标）
+                    if (point.MachineX != 0 || point.MachineY != 0)
+                    {
+                        await MoveToPointAsync(point, stationIdentifier, axisNameX, axisNameY, enableAxisX, enableAxisY);
+                    }
+
+                    // 2. 拍照（可选）：发送触发命令
+                    if (enableVisionData && !string.IsNullOrEmpty(tcpConnectionName) && !string.IsNullOrEmpty(triggerCommand))
+                    {
+                        try
+                        {
+                            await _tcpEventService.SendCommandAsync(tcpConnectionName, triggerCommand);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Warn($"N点标定: 发送触发命令失败 - {ex.Message}");
+                        }
+                    }
+
+                    // 3. 读取当前位置（移动到位后重新读取实际位置）
+                    var teachResult = await TeachPointAsync(stationIdentifier, axisNameX, axisNameY, enableAxisX, enableAxisY);
                     point.MachineX = teachResult.MachineX;
                     point.MachineY = teachResult.MachineY;
 
-                    // 2. 触发视觉并等待数据
+                    // 4. 等待视觉数据返回（可选）
                     if (enableVisionData && !string.IsNullOrEmpty(tcpConnectionName))
                     {
-                        // 发送触发命令
-                        if (!string.IsNullOrEmpty(triggerCommand))
-                        {
-                            try
-                            {
-                                await _tcpEventService.SendCommandAsync(tcpConnectionName, triggerCommand);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.Warn($"N点标定: 发送触发命令失败 - {ex.Message}");
-                            }
-                        }
-
-                        // 等待视觉数据返回
                         _visionDataTcs = new TaskCompletionSource<(double X, double Y)>();
                         try
                         {
@@ -137,18 +144,18 @@ namespace Module.Services
                         }
                     }
 
-                    // 3. 标记已标定
+                    // 5. 标记已标定
                     point.IsCalibrated = true;
                     PointCalibrated?.Invoke(i, point);
 
-                    // 4. 延时
+                    // 6. 延时
                     if (delayMs > 0 && i < points.Count - 1)
                     {
                         await Task.Delay(delayMs, ct);
                     }
                 }
 
-                // 5. 计算仿射标定结果
+                // 7. 计算仿射标定结果
                 var calibratedPoints = points.Where(p => p.IsCalibrated).ToList();
                 if (calibratedPoints.Count >= 3)
                 {
@@ -181,34 +188,35 @@ namespace Module.Services
         }
 
         /// <summary>示教指定点位的机械坐标（读取当前轴位置）</summary>
-        public async Task<NPointCalibrationPoint> TeachPointAsync(int pointIndex)
+        public async Task<NPointCalibrationPoint> TeachPointAsync(
+            string stationIdentifier, string axisNameX, string axisNameY, bool enableAxisX, bool enableAxisY)
         {
-            if (!_motionController.CanExecuteMotion(StationIdentifier))
+            if (!_motionController.CanExecuteMotion(stationIdentifier))
                 throw new InvalidOperationException("运动控制不可用，请检查安全互锁状态");
 
-            var positions = await _motionController.TeachAsync(StationIdentifier);
+            var positions = await _motionController.TeachAsync(stationIdentifier);
 
             var point = new NPointCalibrationPoint
             {
-                Index = pointIndex,
-                MachineX = positions.TryGetValue("X", out var x) ? x : 0,
-                MachineY = positions.TryGetValue("Y", out var y) ? y : 0,
+                MachineX = enableAxisX && positions.TryGetValue(axisNameX, out var x) ? x : 0,
+                MachineY = enableAxisY && positions.TryGetValue(axisNameY, out var y) ? y : 0,
             };
 
             return point;
         }
 
         /// <summary>移动到指定点位的机械坐标</summary>
-        public async Task MoveToPointAsync(NPointCalibrationPoint point)
+        public async Task MoveToPointAsync(
+            NPointCalibrationPoint point, string stationIdentifier, string axisNameX, string axisNameY, bool enableAxisX, bool enableAxisY)
         {
-            if (!_motionController.CanExecuteMotion(StationIdentifier))
+            if (!_motionController.CanExecuteMotion(stationIdentifier))
                 throw new InvalidOperationException("运动控制不可用，请检查安全互锁状态");
 
             var targetPositions = new Dictionary<string, double>();
-            if (point.MachineX != 0) targetPositions["X"] = point.MachineX;
-            if (point.MachineY != 0) targetPositions["Y"] = point.MachineY;
+            if (enableAxisX) targetPositions[axisNameX] = point.MachineX;
+            if (enableAxisY) targetPositions[axisNameY] = point.MachineY;
 
-            await _motionController.GotoAsync(StationIdentifier, targetPositions, 50.0);
+            await _motionController.GotoAsync(stationIdentifier, targetPositions, 50.0);
         }
 
         /// <summary>订阅TCP视觉数据</summary>

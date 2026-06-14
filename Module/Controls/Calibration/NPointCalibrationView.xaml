@@ -100,15 +100,63 @@
                                            Style="{StaticResource LeftCardHeaderTextStyle}" />
                             </Grid>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <!-- 工站选择 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang NPointCalib_Station}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding StationIdentifiers}"
+                                          SelectedItem="{Binding SelectedStationIdentifier}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- X轴选择 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <CheckBox Content="{lang:Lang NPointCalib_EnableAxisX}"
                                           IsChecked="{Binding EnableAxisX}"
                                           Style="{StaticResource MaterialDesignCheckBox}"
-                                          Margin="0,0,16,0" />
+                                          Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableAxes}"
+                                          SelectedItem="{Binding AxisNameX}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                                <materialDesign:PackIcon Grid.Column="2" Kind="AxisXArrow" Width="16" Height="16"
+                                                         Foreground="#E53935" Margin="6,0,0,0"
+                                                         VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Y轴选择 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <CheckBox Content="{lang:Lang NPointCalib_EnableAxisY}"
                                           IsChecked="{Binding EnableAxisY}"
-                                          Style="{StaticResource MaterialDesignCheckBox}" />
-                            </StackPanel>
+                                          Style="{StaticResource MaterialDesignCheckBox}"
+                                          Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableAxes}"
+                                          SelectedItem="{Binding AxisNameY}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                                <materialDesign:PackIcon Grid.Column="2" Kind="AxisYArrow" Width="16" Height="16"
+                                                         Foreground="#43A047" Margin="6,0,0,0"
+                                                         VerticalAlignment="Center" />
+                            </Grid>
 
                             <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
@@ -428,56 +476,81 @@
                                       HeadersVisibility="Column"
                                       FontSize="12"
                                       MaxHeight="400">
+                                <!-- 列头居中样式 -->
+                                <DataGrid.Resources>
+                                    <Style x:Key="CenterHeaderStyle" TargetType="DataGridColumnHeader">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    </Style>
+                                    <Style x:Key="CenterCellTextStyle" TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                    </Style>
+                                </DataGrid.Resources>
                                 <DataGrid.Columns>
                                     <!-- 序号 -->
-                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="36"
-                                                         IsReadOnly="True" />
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="40"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource CenterCellTextStyle}" />
                                     <!-- 名称 -->
                                     <DataGridTextColumn Header="{lang:Lang NPointCalib_PointName}"
                                                          Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                                         Width="60" />
+                                                         Width="60"
+                                                         HeaderStyle="{StaticResource CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource CenterCellTextStyle}" />
                                     <!-- 机械X -->
                                     <DataGridTextColumn Header="{lang:Lang NPointCalib_MachineX}"
                                                          Binding="{Binding MachineX, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-                                                         Width="80">
+                                                         Width="88"
+                                                         HeaderStyle="{StaticResource CenterHeaderStyle}">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="#E53935" />
-                                                <Setter Property="HorizontalAlignment" Value="Right" />
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                     <!-- 机械Y -->
                                     <DataGridTextColumn Header="{lang:Lang NPointCalib_MachineY}"
                                                          Binding="{Binding MachineY, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-                                                         Width="80">
+                                                         Width="88"
+                                                         HeaderStyle="{StaticResource CenterHeaderStyle}">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="#43A047" />
-                                                <Setter Property="HorizontalAlignment" Value="Right" />
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                     <!-- 视觉X -->
                                     <DataGridTextColumn Header="{lang:Lang NPointCalib_VisionX}"
                                                          Binding="{Binding VisionX, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-                                                         Width="80" />
+                                                         Width="88"
+                                                         HeaderStyle="{StaticResource CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource CenterCellTextStyle}" />
                                     <!-- 视觉Y -->
                                     <DataGridTextColumn Header="{lang:Lang NPointCalib_VisionY}"
                                                          Binding="{Binding VisionY, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-                                                         Width="80" />
+                                                         Width="88"
+                                                         HeaderStyle="{StaticResource CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource CenterCellTextStyle}" />
                                     <!-- 状态 -->
-                                    <DataGridTemplateColumn Header="{lang:Lang NPointCalib_Status}" Width="40">
+                                    <DataGridTemplateColumn Header="{lang:Lang NPointCalib_Status}" Width="50"
+                                                             HeaderStyle="{StaticResource CenterHeaderStyle}">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Ellipse Width="10" Height="10"
                                                          Fill="{Binding StatusColor}"
-                                                         HorizontalAlignment="Center" />
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center" />
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                     <!-- 操作列 -->
-                                    <DataGridTemplateColumn Header="{lang:Lang NPointCalib_Operation}" Width="*">
+                                    <DataGridTemplateColumn Header="{lang:Lang NPointCalib_Operation}" Width="*" MinWidth="160"
+                                                             HeaderStyle="{StaticResource CenterHeaderStyle}">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
