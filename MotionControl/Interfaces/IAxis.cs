@@ -10,6 +10,7 @@ namespace MotionControl.Interfaces
         bool IsMoving { get; }
         bool IsAlarmed { get; }
         bool IsEnabled { get; }
+        bool IsHomeOk { get; }
         int AxisStatusWord { get; }
     }
 }

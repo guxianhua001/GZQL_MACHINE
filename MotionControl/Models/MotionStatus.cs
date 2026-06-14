@@ -18,6 +18,7 @@ namespace MotionControl.Models
         public bool IsMoving { get; set; }
         public bool IsAlarmed { get; set; }
         public bool IsEnabled { get; set; }
+        public bool IsHomeOk { get; set; }
         public int AxisStatusWord { get; set; }
 
         // IAxis 显式实现

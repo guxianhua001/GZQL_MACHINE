@@ -910,6 +910,7 @@ namespace MotionControl.Services
                 kv.Value.IsMoving = isMoving;
                 kv.Value.IsAlarmed = isALM;
                 kv.Value.IsEnabled = isServoOn;
+                kv.Value.IsHomeOk = isHomeOk;
 
                 if (!snap.IsInitialized || isMoving || snap.HasChanged(newPos, isMoving, isALM, isServoOn, isMEL, isORG, isPEL, isASTP, isHomeOk, io))
                 {

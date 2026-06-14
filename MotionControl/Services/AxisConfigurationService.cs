@@ -36,9 +36,9 @@ namespace MotionControl.Services
             if (taskConfig == null)
                 return new List<AxisDefinition>();
 
-            // 通过 AxisConfig.TaskId 筛选属于该工站的所有轴
+            // 通过 AxisConfig.TaskId 筛选属于该工站的轴，排除 HiddenInEditor 的从轴
             return axisConfigs
-                .Where(a => a.TaskId == taskConfig.TaskId)
+                .Where(a => a.TaskId == taskConfig.TaskId && !a.HiddenInEditor)
                 .OrderBy(a => a.LogicalId)
                 .Select(a => new AxisDefinition
                 {

@@ -564,15 +564,22 @@ namespace Recipe.ViewModels
 
             if (choiceIndex == null || choiceIndex == 2) return;
 
-            // 回零检查：未回零的轴不允许移动
+            // 回零检查：未回零的轴不允许移动（SkipHomeCheck 的龙门从轴跳过检查）
             var notHomedAxes = new List<string>();
             // 伺服使能检查：未使能的轴不允许移动
             var notEnabledAxes = new List<string>();
+            var axisConfigs = _motionService.GetAxisConfigurations();
+
             foreach (var kvp in targetPositions)
             {
                 var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
                 if (axisId >= 0)
                 {
+                    // SkipHomeCheck 的轴（如龙门从轴）跳过回零检查
+                    var axisCfg = axisConfigs.FirstOrDefault(a => a.LogicalId == axisId);
+                    if (axisCfg == null || axisCfg.SkipHomeCheck)
+                        continue;
+
                     var homeResult = await _motionService.CheckHomeDoneAsync(axisId);
                     if (homeResult != 1)
                         notHomedAxes.Add(kvp.Key);
@@ -583,16 +590,16 @@ namespace Recipe.ViewModels
                 }
             }
 
-            //if (notHomedAxes.Count > 0)
-            //{
-            //    var axisList = string.Join(", ", notHomedAxes);
-            //    await _dialogService.ShowDialogAsync("NotificationDialog",
-            //        new DialogParameters {
-            //            { "message", _localization.GetResource("MultiStationPos_AxisNotHomed", axisList) },
-            //            { "icon", PackIconKind.AlertCircleOutline }
-            //        });
-            //    return;
-            //}
+            if (notHomedAxes.Count > 0)
+            {
+                var axisList = string.Join(", ", notHomedAxes);
+                await _dialogService.ShowDialogAsync("NotificationDialog",
+                    new DialogParameters {
+                        { "message", string.Format(_localization.GetResourceOrDefault("MultiStationPos_AxisNotHomed", "Axis not homed: {0}"), axisList) },
+                        { "icon", PackIconKind.AlertCircleOutline }
+                    });
+                return;
+            }
 
             if (notEnabledAxes.Count > 0)
             {

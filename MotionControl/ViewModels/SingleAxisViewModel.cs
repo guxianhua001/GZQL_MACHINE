@@ -150,6 +150,8 @@ namespace MotionControl.ViewModels
         public DelegateCommand ServoOnCommand { get; }
         public DelegateCommand ServoOffCommand { get; }
 
+        private readonly bool _skipHomeCheck;
+
         public SingleAxisViewModel(
             AxisConfig axisConfig,
             IMotionService motionService,
@@ -160,6 +162,7 @@ namespace MotionControl.ViewModels
             _axisId = axisConfig.LogicalId;
             _name = axisConfig.Name;
             _direction = axisConfig.Direction ?? "X";
+            _skipHomeCheck = axisConfig.SkipHomeCheck;
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _localizationService = localizationService;
             SafetyZoneMonitor = safetyZoneMonitor;
@@ -257,6 +260,9 @@ namespace MotionControl.ViewModels
             IsAlarmed = axis.IsAlarmed;
             IsALM = axis.IsAlarmed;
             IsServoOn = axis.IsEnabled;
+            // SkipHomeCheck 的龙门从轴始终视为已初始化
+            IsHomeOk = _skipHomeCheck || axis.IsHomeOk;
+            RefreshLocalizedText();
         }
 
         private void OnStatusRefreshTimerTick(object sender, EventArgs e)
@@ -272,7 +278,9 @@ namespace MotionControl.ViewModels
         /// <summary>状态灯/IO + 位置：Timer 合并后一次 Apply</summary>
         private void ApplyIndicatorsFromEvent(AxisStateChangedEvent e)
         {
-            bool homeChanged = IsHomeOk != e.IsHomeOk;
+            // SkipHomeCheck 的龙门从轴始终视为已初始化
+            bool effectiveHomeOk = _skipHomeCheck || e.IsHomeOk;
+            bool homeChanged = IsHomeOk != effectiveHomeOk;
             bool servoChanged = IsServoOn != e.IsServoOn;
 
             IsMoving = e.IsMoving;
@@ -283,7 +291,7 @@ namespace MotionControl.ViewModels
             IsORG = e.IsORG;
             IsPEL = e.IsPEL;
             IsASTP = e.IsASTP;
-            IsHomeOk = e.IsHomeOk;
+            IsHomeOk = effectiveHomeOk;
 
             ApplyHomeAllowanceRules(e);
             if (homeChanged) RefreshLocalizedText();

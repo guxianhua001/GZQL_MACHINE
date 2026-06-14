@@ -35,6 +35,12 @@ namespace MotionControl.Models
         public string Name { get; set; }
         public int TaskId { get; set; }
         public string Direction { get; set; }
+
+        /// <summary>是否跳过回零检查（龙门从轴等不需要独立回零的轴）</summary>
+        public bool SkipHomeCheck { get; set; }
+
+        /// <summary>是否在位置编辑器中隐藏（龙门从轴等跟随主轴运动的轴）</summary>
+        public bool HiddenInEditor { get; set; }
     }
     public class IoConfig
     {

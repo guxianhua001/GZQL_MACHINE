@@ -63,7 +63,9 @@ namespace MotionControl.Services
                     LogicalId = (int)el.Attribute("setAxisId"),
                     Name = (string)el.Attribute("name"),
                     TaskId = (int)el.Attribute("taskId"),
-                    Direction = (string)el.Attribute("axisDirection")
+                    Direction = (string)el.Attribute("axisDirection"),
+                    SkipHomeCheck = (bool?)el.Attribute("skipHome") ?? false,
+                    HiddenInEditor = (bool?)el.Attribute("hiddenInEditor") ?? false
                 });
 
             foreach (var el in root.Descendants("Inputs").Elements("Port"))
