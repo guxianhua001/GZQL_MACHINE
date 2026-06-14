@@ -139,7 +139,7 @@ namespace Core.Models
         public double JumpSpeed
         {
             get => _jumpSpeed;
-            set => SetProperty(ref _jumpSpeed, Math.Clamp(value, 1.0, 100.0));
+            set => SetProperty(ref _jumpSpeed, Math.Clamp(value, 1.0, 160.0));
         }
 
         private double _moveSpeed = 10.0;
@@ -147,7 +147,7 @@ namespace Core.Models
         public double MoveSpeed
         {
             get => _moveSpeed;
-            set => SetProperty(ref _moveSpeed, Math.Clamp(value, 0.1, 50.0));
+            set => SetProperty(ref _moveSpeed, Math.Clamp(value, 0.1, 160.0));
         }
 
         private double _dispenseAmount = 1.0;
@@ -187,7 +187,7 @@ namespace Core.Models
         public double ZHeight
         {
             get => _zHeight;
-            set => SetProperty(ref _zHeight, Math.Clamp(value, -200.0, 200.0));
+            set => SetProperty(ref _zHeight, Math.Clamp(value, -100.0, 100.0));
         }
 
         private double _teachHeight = 0.0;
@@ -195,7 +195,7 @@ namespace Core.Models
         public double TeachHeight
         {
             get => _teachHeight;
-            set => SetProperty(ref _teachHeight, Math.Clamp(value, -200.0, 200.0));
+            set => SetProperty(ref _teachHeight, Math.Clamp(value, -100.0, 100.0));
         }
 
         private double _heightCompensation = 0.0;
@@ -210,12 +210,12 @@ namespace Core.Models
         [JsonIgnore]
         public double EffectiveZHeight => TeachHeight + HeightCompensation;
 
-        private double _safeHeight = 5.0;
+        private double _safeHeight = 0.0;
         /// <summary>安全抬升高度 mm（范围 0~200，跨段跳转时使用）</summary>
         public double SafeHeight
         {
             get => _safeHeight;
-            set => SetProperty(ref _safeHeight, Math.Clamp(value, 0.0, 200.0));
+            set => SetProperty(ref _safeHeight, Math.Clamp(value, -50.0, 50.0));
         }
 
         private double _glueTriggerOffsetMm = 0.5;
@@ -223,7 +223,7 @@ namespace Core.Models
         public double GlueTriggerOffsetMm
         {
             get => _glueTriggerOffsetMm;
-            set => SetProperty(ref _glueTriggerOffsetMm, Math.Clamp(value, 0.05, 5.0));
+            set => SetProperty(ref _glueTriggerOffsetMm, Math.Clamp(value, -5.0, 5.0));
         }
 
         private double _dispenseTime = 180.0;
@@ -239,7 +239,7 @@ namespace Core.Models
         public double ApproachHeight
         {
             get => _approachHeight;
-            set => SetProperty(ref _approachHeight, Math.Clamp(value, 0.0, 50.0));
+            set => SetProperty(ref _approachHeight, Math.Clamp(value, -5.0, 5.0));
         }
 
         private double _dispensingPressure = 0.30;
