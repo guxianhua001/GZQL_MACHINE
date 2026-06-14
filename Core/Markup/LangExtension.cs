@@ -108,6 +108,7 @@ namespace Core.Markup
         /// 提供 Binding 值。设计时直接返回翻译文本，运行时返回绑定到 Value 属性的 OneWay Binding。
         /// 注意：XAML 设计器在 DataTemplate 内部可能在 Key 赋值前调用 ProvideValue，
         /// 因此所有代码路径均需对 null Key 做防御处理，避免 XDG0006。
+        /// 对于 Run.Text 等非依赖属性，无法使用 Binding，直接返回字符串值。
         /// </summary>
         public override object ProvideValue(IServiceProvider serviceProvider)
         {
@@ -153,8 +154,17 @@ namespace Core.Markup
                 return $"[{_key}]";
             }
 
-            // 运行时：初始化 Value 并返回绑定，后续语言切换通过 PropertyChanged 自动刷新 UI
+            // 运行时：初始化 Value
             UpdateValue();
+
+            // 检查目标属性是否为依赖属性（如 Run.Text 不是依赖属性，无法使用 Binding）
+            var targetProperty = GetTargetProperty(serviceProvider);
+            if (targetProperty == null)
+            {
+                // 目标不是依赖属性（如 Run.Text），直接返回字符串值
+                // 语言切换时通过 InvalidateAll 刷新，但 Run.Text 无法自动更新
+                return Value ?? $"[{_key}]";
+            }
 
             var binding = new Binding(nameof(Value))
             {
@@ -172,6 +182,33 @@ namespace Core.Markup
                 // 此时直接返回当前翻译值，避免设计器 XDG0006 错误
                 return Value ?? $"[{_key}]";
             }
+        }
+
+        /// <summary>
+        /// 从 IServiceProvider 获取目标属性信息，判断是否为依赖属性
+        /// </summary>
+        private object GetTargetProperty(IServiceProvider serviceProvider)
+        {
+            try
+            {
+                var provideValueTarget = serviceProvider?.GetService(typeof(IProvideValueTarget)) as IProvideValueTarget;
+                if (provideValueTarget?.TargetProperty is System.Reflection.PropertyInfo pi)
+                {
+                    // 检查属性是否由 DependencyProperty 支撑（如 TextBlock.Text 有 DependencyProperty）
+                    // Run.Text 没有 DependencyProperty，无法使用 Binding
+                    var declaringType = pi.DeclaringType;
+                    if (declaringType != null)
+                    {
+                        var field = declaringType.GetField(pi.Name + "Property",
+                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                        return field; // 非 null 表示是依赖属性
+                    }
+                }
+            }
+            catch
+            {
+            }
+            return null;
         }
 
         /// <summary>
