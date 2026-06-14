@@ -6,8 +6,11 @@ using System.Text;
 using System.Threading.Tasks;
 using AlarmModule.Interfaces;
 using AlarmModule.Models;
+using Core.Abstraction;
+using Core.Events;
 using Core.Models;
 using Core.Utilities;
+using Prism.Events;
 using TCPIPModule.Interfaces;
 
 namespace TCPIPModule.Services
@@ -24,6 +27,8 @@ namespace TCPIPModule.Services
         private readonly ITCPClientManagerService _clientManager;
         private readonly ILoggerService _logger;
         private readonly IAlarmService? _alarmService;
+        private readonly IEventAggregator _eventAggregator;
+        private readonly IAppSettingService? _appSettingService;
         private readonly ConcurrentDictionary<string, ITCPServer> _servers = new();
 
         /// <summary>
@@ -65,11 +70,13 @@ namespace TCPIPModule.Services
             return _servers.Keys.ToList();
         }
 
-        public TcpEventServiceImpl(ITCPClientManagerService clientManager, ILoggerService logger, IAlarmService? alarmService = null)
+        public TcpEventServiceImpl(ITCPClientManagerService clientManager, ILoggerService logger, IAlarmService? alarmService = null, IEventAggregator? eventAggregator = null, IAppSettingService? appSettingService = null)
         {
             _clientManager = clientManager;
             _logger = logger;
             _alarmService = alarmService;
+            _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+            _appSettingService = appSettingService;
         }
 
         /// <summary>
@@ -118,6 +125,9 @@ namespace TCPIPModule.Services
                     _connectedSnapshot.AddOrUpdate(capturedName,
                         new List<(string, int)> { (serverClient.RemoteIP, serverClient.RemotePort) },
                         (_, list) => { lock (list) { list.Add((serverClient.RemoteIP, serverClient.RemotePort)); } return list; });
+
+                    // 发布TCP连接状态变更事件
+                    PublishTcpStatusChanged();
                 };
 
                 server.ClientDisconnected += serverClient =>
@@ -134,6 +144,9 @@ namespace TCPIPModule.Services
 
                     // 触发掉线报警（上传到服务器）
                     TriggerDisconnectAlarm(capturedName, serverClient.RemoteIP, serverClient.RemotePort);
+
+                    // 发布TCP连接状态变更事件
+                    PublishTcpStatusChanged();
                 };
 
                 // 关键修复：每个服务器的DataReceived事件使用闭包捕获的serverName
@@ -155,6 +168,9 @@ namespace TCPIPModule.Services
                 server.StartAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                 _servers[serverName] = server;
                 _logger.Info($"TCP服务器[{serverName}]启动成功: {serverConfig.ServerIP}:{serverConfig.Port} (当前共{_servers.Count}个服务器)");
+
+                // 服务器启动后发布TCP状态变更事件
+                PublishTcpStatusChanged();
             }
             catch (Exception ex)
             {
@@ -207,6 +223,9 @@ namespace TCPIPModule.Services
                     _logger.Warn($"TCP服务器[{serverName}]不存在或已停止");
                 }
             }
+
+            // 服务器停止后发布TCP状态变更事件
+            PublishTcpStatusChanged();
         }
 
         /// <summary>
@@ -216,6 +235,9 @@ namespace TCPIPModule.Services
         {
             await _clientManager.AddClientAsync(clientName, config).ConfigureAwait(false);
             _logger.Info($"TCP客户端 [{clientName}] 已添加: {config.IP}:{config.Port}");
+
+            // 客户端添加后发布TCP状态变更事件
+            PublishTcpStatusChanged();
         }
 
         /// <summary>
@@ -235,6 +257,9 @@ namespace TCPIPModule.Services
         {
             _clientManager.RemoveClientAsync(clientName).ConfigureAwait(false).GetAwaiter().GetResult();
             _logger.Info($"TCP客户端 [{clientName}] 已移除");
+
+            // 客户端移除后发布TCP状态变更事件
+            PublishTcpStatusChanged();
         }
 
         /// <summary>
@@ -462,6 +487,9 @@ namespace TCPIPModule.Services
                     ClientDisconnected?.Invoke(c.ClientName, c.RemoteIP, c.RemotePort);
                     _logger.Warn($"TCP客户端 [{c.ClientName}] 已断开: {c.RemoteIP}:{c.RemotePort}");
                 }
+
+                // 发布TCP连接状态变更事件，供MainWindow状态栏订阅
+                PublishTcpStatusChanged();
             };
 
             client.ErrorOccurred += (c, ex) =>
@@ -536,6 +564,49 @@ namespace TCPIPModule.Services
                 description: $"TCP服务器[{serverName}]通讯异常: {errorMessage}",
                 source: $"TCPIP.{serverName}",
                 type: AlarmType.CommunicationError);
+        }
+
+        /// <summary>
+        /// 发布TCP连接状态变更事件，供MainWindow底部状态栏订阅
+        /// 统计所有已启用配置项的连接状态：Server模式检查服务器是否运行，Client模式检查IsConnected
+        /// </summary>
+        private void PublishTcpStatusChanged()
+        {
+            try
+            {
+                var clients = _appSettingService?.Clients;
+                if (clients == null) return;
+
+                int total = clients.Count(c => c.IsEnabled);
+                int connected = 0;
+                var serverNames = _servers.Keys.ToList();
+
+                foreach (var cfg in clients.Where(c => c.IsEnabled))
+                {
+                    if (cfg.Mode == "Server")
+                    {
+                        if (serverNames.Contains(cfg.ClientName))
+                            connected++;
+                    }
+                    else
+                    {
+                        var tcpClient = _clientManager.GetClient(cfg.ClientName);
+                        if (tcpClient != null && tcpClient.IsConnected)
+                            connected++;
+                    }
+                }
+
+                _eventAggregator.GetEvent<TcpConnectionStatusChangedEvent>().Publish(
+                    new TcpConnectionStatusPayload
+                    {
+                        ConnectedCount = connected,
+                        TotalCount = total
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"发布TCP状态变更事件失败: {ex.Message}");
+            }
         }
     }
 }

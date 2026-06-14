@@ -88,6 +88,21 @@ namespace ModuleCore.ViewModels
             set => SetProperty(ref _etherCatStatusColor, value);
         }
 
+        // TCP 连接状态（MainWindow 底部状态栏）
+        private string _tcpStatusText = string.Empty;
+        public string TcpStatusText
+        {
+            get => _tcpStatusText;
+            set => SetProperty(ref _tcpStatusText, value);
+        }
+
+        private Brush _tcpStatusColor = Brushes.Gray;
+        public Brush TcpStatusColor
+        {
+            get => _tcpStatusColor;
+            set => SetProperty(ref _tcpStatusColor, value);
+        }
+
         public LoginModel Model { get; set; }
         public NavigateModel Navigate { get; set; }
         private readonly IDialogService _dialogService;
@@ -161,6 +176,11 @@ namespace ModuleCore.ViewModels
             _eventAggregator.GetEvent<EtherCatBusStatusChangedEvent>().Subscribe(OnEtherCatBusStatusChanged, ThreadOption.UIThread);
             RefreshEtherCatBusStatus();
             Application.Current?.Dispatcher.BeginInvoke(RefreshEtherCatBusStatus, DispatcherPriority.Loaded);
+
+            // TCP 连接状态（通过EventAggregator订阅TCPIPModule发布的状态变更事件）
+            _eventAggregator.GetEvent<TcpConnectionStatusChangedEvent>().Subscribe(OnTcpStatusChanged, ThreadOption.UIThread);
+            TcpStatusText = L("MainWindow_TcpNoConnected");
+            TcpStatusColor = Brushes.Gray;
 
             InitializeCommands(); // 初始化命令
             LoadDefaultView(appConfig, container); // 加载默认视图
@@ -719,9 +739,42 @@ namespace ModuleCore.ViewModels
                 ErrorCode = _lastEtherCatErrorCode,
                 IsSimulation = _etherCatIsSimulation
             });
+
+            // 刷新 TCP 连接状态文案（保留当前连接数，更新多语言文本）
+            UpdateTcpStatusDisplay(_lastTcpConnectedCount, _lastTcpTotalCount);
         }
 
         private int _lastEtherCatErrorCode;
         private bool _etherCatIsSimulation;
+        private int _lastTcpConnectedCount;
+        private int _lastTcpTotalCount;
+
+        #region TCP 连接状态管理
+
+        /// <summary>TCP连接状态变更回调：更新底部状态栏</summary>
+        private void OnTcpStatusChanged(TcpConnectionStatusPayload payload)
+        {
+            _lastTcpConnectedCount = payload.ConnectedCount;
+            _lastTcpTotalCount = payload.TotalCount;
+            UpdateTcpStatusDisplay(payload.ConnectedCount, payload.TotalCount);
+        }
+
+        /// <summary>更新TCP状态显示</summary>
+        private void UpdateTcpStatusDisplay(int connected, int total)
+        {
+            if (total == 0)
+            {
+                TcpStatusText = L("MainWindow_TcpNoConfig");
+                TcpStatusColor = Brushes.Gray;
+                return;
+            }
+
+            TcpStatusText = string.Format(L("MainWindow_TcpStatusFormat"), connected, total);
+            TcpStatusColor = connected == 0 ? Brushes.Red
+                : connected < total ? Brushes.Orange
+                : Brushes.LimeGreen;
+        }
+
+        #endregion
     }
 }

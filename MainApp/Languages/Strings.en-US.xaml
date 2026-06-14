@@ -1662,6 +1662,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="MainWindow_EtherCatError">EtherCAT bus error (0x{0:X4})</sys:String>
     <sys:String x:Key="MainWindow_EtherCatSimulated">Simulation mode</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_EtherCatStatus">EtherCAT bus communication status</sys:String>
+    <sys:String x:Key="MainWindow_Text_Tcp">TCP:</sys:String>
+    <sys:String x:Key="MainWindow_TcpStatusFormat">Connected {0}/{1}</sys:String>
+    <sys:String x:Key="MainWindow_TcpNoConnected">Not connected</sys:String>
+    <sys:String x:Key="MainWindow_TcpStatusError">Status error</sys:String>
+    <sys:String x:Key="MainWindow_ToolTip_TcpStatus">TCP connection status</sys:String>
     <sys:String x:Key="EtherCat_AxisState_0">Axis {0}: not started</sys:String>
     <sys:String x:Key="EtherCat_AxisState_1">Axis {0}: switch on disabled</sys:String>
     <sys:String x:Key="EtherCat_AxisState_2">Axis {0}: ready to switch on</sys:String>

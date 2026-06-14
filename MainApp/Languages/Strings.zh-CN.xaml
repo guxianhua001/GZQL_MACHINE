@@ -1647,6 +1647,11 @@
     <sys:String x:Key="MainWindow_EtherCatError">EtherCAT总线出错 (0x{0:X4})</sys:String>
     <sys:String x:Key="MainWindow_EtherCatSimulated">模拟模式</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_EtherCatStatus">EtherCAT 总线通讯状态</sys:String>
+    <sys:String x:Key="MainWindow_Text_Tcp">TCP:</sys:String>
+    <sys:String x:Key="MainWindow_TcpStatusFormat">已连接 {0}/{1}</sys:String>
+    <sys:String x:Key="MainWindow_TcpNoConnected">未连接</sys:String>
+    <sys:String x:Key="MainWindow_TcpStatusError">状态异常</sys:String>
+    <sys:String x:Key="MainWindow_ToolTip_TcpStatus">TCP 连接状态</sys:String>
     <sys:String x:Key="EtherCat_AxisState_0">{0} 轴处于未启动状态</sys:String>
     <sys:String x:Key="EtherCat_AxisState_1">{0} 轴处于启动禁止状态</sys:String>
     <sys:String x:Key="EtherCat_AxisState_2">{0} 轴处于准备启动状态</sys:String>
