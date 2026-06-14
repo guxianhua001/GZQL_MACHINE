@@ -14,7 +14,6 @@ namespace Module.Controls
 
         /// <summary>
         /// 点位序号列的 TextBlock.Loaded 事件——通过行索引显示序号
-        /// 首行显示"起点"，末行显示"终点"，中间行显示数字序号
         /// </summary>
         private void OnPointNumberLoaded(object sender, RoutedEventArgs e)
         {
@@ -24,15 +23,7 @@ namespace Module.Controls
                 if (row != null)
                 {
                     int idx = row.GetIndex();
-                    var dg = FindAncestor<DataGrid>(row);
-                    int total = dg?.Items.Count ?? 0;
-
-                    if (idx == 0 && total > 0)
-                        tb.Text = TryFindResource("Step3_Label_StartPoint") as string ?? "起点";
-                    else if (idx == total - 1 && total > 1)
-                        tb.Text = TryFindResource("Step3_Label_EndPoint") as string ?? "终点";
-                    else
-                        tb.Text = (idx + 1).ToString();
+                    tb.Text = (idx + 1).ToString();
                 }
             }
         }

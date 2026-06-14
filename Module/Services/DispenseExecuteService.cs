@@ -112,11 +112,11 @@ namespace Module.Services
                     if (descendToWorkHeight)
                     {
                         // 两段式下降：快速接近 + 慢速到位
-                        double approachOffset = 3.0;
+                        double approachOffset = seg.ApproachHeight;
                         double approachZ = targetZ + approachOffset;
                         double slowVel = DefaultVelocity * seg.CornerDecel;
 
-                        // 3a. 快速下降到距目标位 3mm 处
+                        // 3a. 快速下降到接近高度
                         await _motionService.MoveAbsAsync(axisDz, approachZ, DefaultVelocity, token);
 
                         if (dispenseGlue)

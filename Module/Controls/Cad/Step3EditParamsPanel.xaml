@@ -66,7 +66,7 @@
                 <ToggleButton Content="{lang:Lang Step3_ToggleBtn_LineSegment}" IsChecked="{Binding IsLineRoiActive}"
                               Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="62"/>
                 <ToggleButton Content="{lang:Lang Step3_ToggleBtn_Polyline}" IsChecked="{Binding IsPolylineRoiActive}"
-                              Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="62"/>
+                              Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="72"/>
                 <ToggleButton Content="{lang:Lang Step3_ToggleBtn_Arc}" IsChecked="{Binding IsArcRoiActive}"
                               Style="{StaticResource MaterialDesignFlatToggleButton}" Margin="0,0,4,0" Padding="8,3" Width="62"/>
                 <Button Content="{lang:Lang Step3_Btn_ConfirmRoi}" Command="{Binding ConfirmRoiCommand}"

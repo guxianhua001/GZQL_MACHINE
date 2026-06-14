@@ -1,9 +1,14 @@
 using Core.Abstraction;
 using Core.Models;
+using Core.Utilities;
+using Framework.Dialogs;
 using Moq;
-using Prism.Services.Dialogs;
+using Prism.Events;
+using Recipe.Interfaces;
 using System.Threading.Tasks;
+using TCPIPModule.Interfaces;
 using Xunit;
+using Module.ViewModels;
 
 namespace MotionControl.Tests
 {
@@ -25,7 +30,21 @@ namespace MotionControl.Tests
                 {
                     X = 120, Y = 180, Z = 25, Rx = 0.5, Rz = -0.2
                 });
+            mock.Setup(s => s.ReadCurrentPositionsAsync())
+                .ReturnsAsync(new CurrentPositionResult
+                {
+                    X = 120, Y = 180, Z = 25, Rx = 0.5, Rz = -0.2,
+                    Dx = 10.5, Dy = 20.3, Dz = 5.0
+                });
             mock.Setup(s => s.GoToPhotoPositionAsync(It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>()))
+                .Returns(Task.CompletedTask);
+            mock.Setup(s => s.MoveToReferencePositionAsync(It.IsAny<double>(), It.IsAny<double>()))
+                .Returns(Task.CompletedTask);
+            mock.Setup(s => s.MoveCameraToPhotoPositionAsync(It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>()))
+                .Returns(Task.CompletedTask);
+            mock.Setup(s => s.TriggerCaptureAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ReturnsAsync(new FiducialCaptureResult { Success = true, X = 50.5, Y = 60.3 });
+            mock.Setup(s => s.RotateToReferenceAngleAsync(It.IsAny<double>(), It.IsAny<double>()))
                 .Returns(Task.CompletedTask);
             mock.Setup(s => s.ApplyCorrectionAsync(It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>()))
                 .Returns(Task.CompletedTask);
@@ -38,181 +57,86 @@ namespace MotionControl.Tests
             return mock;
         }
 
-        [Fact]
-        public void FiducialData_DefaultValues_AreSet()
+        private ProductCalibrationViewModel CreateViewModel()
         {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
+            var calibService = CreateMockCalibrationService();
+            var tcpEvent = new Mock<ITCPEventService>();
+            var tcpClient = new Mock<ITCPClientManagerService>();
+            var paramStorage = new Mock<IParameterStorage>();
+            var fileDialog = new Mock<IFileDialogService>();
+            var localization = new Mock<ILocalizationService>();
+            var logger = new Mock<ILoggerService>();
+            var eventAgg = new Mock<IEventAggregator>();
 
-            Assert.Equal(100, fiducial.PhotoX);
-            Assert.Equal(150, fiducial.PhotoY);
-            Assert.Equal(20, fiducial.PhotoZ);
+            return new ProductCalibrationViewModel(
+                calibService.Object,
+                tcpEvent.Object,
+                tcpClient.Object,
+                paramStorage.Object,
+                fileDialog.Object,
+                localization.Object,
+                logger.Object,
+                eventAgg.Object);
         }
 
         [Fact]
-        public void FiducialData_OffsetDisplay_ShowsCorrectFormat()
+        public void ViewModel_HasAllCommands()
         {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
+            var vm = CreateViewModel();
 
-            var display = fiducial.OffsetDisplay;
-            Assert.Contains("ΔX", display);
-            Assert.Contains("ΔY", display);
-            Assert.Contains("ΔAngle", display);
+            Assert.NotNull(vm.MoveToReferenceCommand);
+            Assert.NotNull(vm.TeachReferenceCommand);
+            Assert.NotNull(vm.MoveToPhoto1Command);
+            Assert.NotNull(vm.TeachPhoto1Command);
+            Assert.NotNull(vm.Capture1Command);
+            Assert.NotNull(vm.MoveToPhoto2Command);
+            Assert.NotNull(vm.TeachPhoto2Command);
+            Assert.NotNull(vm.Capture2Command);
+            Assert.NotNull(vm.RotateCommand);
+            Assert.NotNull(vm.SaveConfigCommand);
+            Assert.NotNull(vm.LoadConfigCommand);
+            Assert.NotNull(vm.ImportConfigCommand);
+            Assert.NotNull(vm.ExportConfigCommand);
         }
 
         [Fact]
-        public void FiducialData_CorrectCommand_CanExecuteAfterCapture()
+        public void ViewModel_DefaultValues_AreSet()
         {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
+            var vm = CreateViewModel();
 
-            Assert.False(fiducial.CorrectCommand.CanExecute(null));
-
-            fiducial.OnCaptureFromService(new FiducialCaptureResult
-            {
-                Success = true,
-                X = 100.05,
-                Y = 150.03,
-                Angle = 0.012
-            });
-
-            Assert.True(fiducial.CorrectCommand.CanExecute(null));
+            Assert.Equal(0, vm.RefRx);
+            Assert.Equal(0, vm.RefRz);
+            Assert.Equal(0, vm.Photo1Dx);
+            Assert.Equal(0, vm.Photo1Dy);
+            Assert.Equal(0, vm.Photo1Dz);
+            Assert.Equal(0, vm.Photo2Dx);
+            Assert.Equal(0, vm.Photo2Dy);
+            Assert.Equal(0, vm.Photo2Dz);
+            Assert.Equal(5000, vm.CaptureTimeoutMs);
         }
 
         [Fact]
-        public void FiducialData_OnCaptureFromService_UpdatesMeasuredValues()
+        public void ViewModel_RotateCommand_CannotExecuteBeforeCapture()
         {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
+            var vm = CreateViewModel();
 
-            fiducial.OnCaptureFromService(new FiducialCaptureResult
-            {
-                Success = true,
-                X = 100.05,
-                Y = 150.03,
-                Angle = 0.012
-            });
-
-            Assert.Equal(100.05, fiducial.MeasuredX, 3);
-            Assert.Equal(150.03, fiducial.MeasuredY, 3);
-            Assert.Equal(0.012, fiducial.MeasuredAngle, 3);
+            Assert.False(vm.RotateCommand.CanExecute());
         }
 
         [Fact]
-        public void FiducialData_OnTeachFromService_UpdatesPhotoPosition()
+        public void ViewModel_GlobalVariableLinkProperties_Work()
         {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
+            var vm = CreateViewModel();
 
-            fiducial.OnTeachFromService(new CurrentPositionResult
-            {
-                X = 120, Y = 180, Z = 25, Rx = 0.5, Rz = -0.2
-            });
+            Assert.False(vm.IsDeltaXLinked);
+            Assert.False(vm.IsDeltaYLinked);
+            Assert.False(vm.IsDeltaAngleLinked);
 
-            Assert.Equal(120, fiducial.PhotoX);
-            Assert.Equal(180, fiducial.PhotoY);
-            Assert.Equal(25, fiducial.PhotoZ);
-            Assert.Equal(0.5, fiducial.PhotoRx, 3);
-            Assert.Equal(-0.2, fiducial.PhotoRz, 3);
-        }
+            vm.DeltaXLinkedVar = "TestVar";
+            Assert.True(vm.IsDeltaXLinked);
 
-        [Fact]
-        public void FiducialData_ToData_MapsAllProperties()
-        {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
-            fiducial.PhotoX = 111;
-            fiducial.PhotoY = 222;
-            fiducial.PhotoZ = 33;
-            fiducial.PhotoRx = 0.4;
-            fiducial.PhotoRz = -0.1;
-            fiducial.RefX = 100;
-            fiducial.RefY = 200;
-            fiducial.RefAngle = 0.5;
-
-            var data = fiducial.ToData();
-
-            Assert.Equal(111, data.PhotoX);
-            Assert.Equal(222, data.PhotoY);
-            Assert.Equal(33, data.PhotoZ);
-            Assert.Equal(0.4, data.PhotoRx, 3);
-            Assert.Equal(-0.1, data.PhotoRz, 3);
-            Assert.Equal(100, data.RefX);
-            Assert.Equal(200, data.RefY);
-            Assert.Equal(0.5, data.RefAngle, 3);
-        }
-
-        [Fact]
-        public void FiducialData_FromData_RestoresAllProperties()
-        {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
-
-            var data = new StageCalibrationFiducialData
-            {
-                PhotoX = 555, PhotoY = 666, PhotoZ = 77,
-                PhotoRx = 1.2, PhotoRz = -3.4,
-                RefX = 500, RefY = 600, RefAngle = 0.9,
-                MeasuredX = 501, MeasuredY = 601, MeasuredAngle = 0.91
-            };
-
-            fiducial.FromData(data);
-
-            Assert.Equal(555, fiducial.PhotoX);
-            Assert.Equal(666, fiducial.PhotoY);
-            Assert.Equal(77, fiducial.PhotoZ);
-            Assert.Equal(500, fiducial.RefX);
-            Assert.Equal(600, fiducial.RefY);
-            Assert.Equal(501, fiducial.MeasuredX);
-        }
-
-        [Fact]
-        public void FiducialData_FromData_Null_DoesNotThrow()
-        {
-            var mockDialog = new Mock<IDialogService>();
-            var fiducial = new Module.ViewModels.FiducialData(mockDialog.Object, "Test");
-
-            fiducial.FromData(null);
-
-            Assert.Equal(100, fiducial.PhotoX);
-        }
-
-        [Fact]
-        public void ViewModel_HasSaveAndLoadCommands()
-        {
-            var mockDialog = new Mock<IDialogService>();
-            var mockService = CreateMockCalibrationService();
-            var vm = new Module.ViewModels.ProductCalibrationViewModel(mockDialog.Object, mockService.Object);
-
-            Assert.NotNull(vm.SaveCalibrationCommand);
-            Assert.NotNull(vm.LoadCalibrationCommand);
-            Assert.True(vm.SaveCalibrationCommand.CanExecute(null));
-            Assert.True(vm.LoadCalibrationCommand.CanExecute(null));
-        }
-
-        [Fact]
-        public async Task ViewModel_SaveCalibration_CallsService()
-        {
-            var mockDialog = new Mock<IDialogService>();
-            var mockService = CreateMockCalibrationService();
-            var vm = new Module.ViewModels.ProductCalibrationViewModel(mockDialog.Object, mockService.Object);
-
-            vm.SaveCalibrationCommand.Execute(null);
-
-            mockService.Verify(s => s.SaveCalibrationDataAsync(), Times.Once);
-        }
-
-        [Fact]
-        public async Task ViewModel_LoadCalibration_CallsService()
-        {
-            var mockDialog = new Mock<IDialogService>();
-            var mockService = CreateMockCalibrationService();
-            var vm = new Module.ViewModels.ProductCalibrationViewModel(mockDialog.Object, mockService.Object);
-
-            vm.LoadCalibrationCommand.Execute(null);
-
-            mockService.Verify(s => s.LoadCalibrationDataAsync(), Times.Once);
+            vm.DeltaXLinkedVar = null;
+            Assert.False(vm.IsDeltaXLinked);
         }
     }
 }

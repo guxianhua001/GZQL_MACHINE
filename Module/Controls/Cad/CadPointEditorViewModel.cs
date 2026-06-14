@@ -1315,6 +1315,7 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 基于现有点集进行重采样，生成指定数量的均匀分布点
+        /// 所有点（含首尾）统一通过插值计算，不硬编码起点/终点
         /// </summary>
         private List<CadPoint> ResamplePoints(List<CadPoint> originalPoints, int targetCount)
         {
@@ -1323,69 +1324,57 @@ namespace Module.ViewModels
 
             var result = new List<CadPoint>();
             
-            // 计算总长度
+            // 计算总长度及各段累积长度
             double totalLength = 0;
-            var segmentLengths = new List<double>();
+            var cumulativeLengths = new List<double> { 0 };
             for (int i = 1; i < originalPoints.Count; i++)
             {
-                double dx = originalPoints[i].X - originalPoints[i-1].X;
-                double dy = originalPoints[i].Y - originalPoints[i-1].Y;
-                double dz = originalPoints[i].Z - originalPoints[i-1].Z;
-                double length = Math.Sqrt(dx*dx + dy*dy + dz*dz);
-                segmentLengths.Add(length);
-                totalLength += length;
+                double dx = originalPoints[i].X - originalPoints[i - 1].X;
+                double dy = originalPoints[i].Y - originalPoints[i - 1].Y;
+                double dz = originalPoints[i].Z - originalPoints[i - 1].Z;
+                totalLength += Math.Sqrt(dx * dx + dy * dy + dz * dz);
+                cumulativeLengths.Add(totalLength);
             }
 
-            // 均匀采样
-            double stepLength = totalLength / (targetCount - 1);
-            double currentLength = 0;
-            int currentSegment = 0;
-            
-            // 添加起点
-            result.Add(new CadPoint(originalPoints[0].X, originalPoints[0].Y, originalPoints[0].Z)
-            {
-                Id = "1",
-                AssySite = originalPoints[0].AssySite
-            });
+            if (totalLength < 1e-9)
+                return originalPoints;
 
-            for (int i = 1; i < targetCount - 1; i++)
+            // 均匀采样：所有点统一按等间距插值
+            for (int i = 0; i < targetCount; i++)
             {
-                double targetLength = i * stepLength;
-                
-                // 找到目标点所在的线段
-                while (currentSegment < segmentLengths.Count && 
-                       currentLength + segmentLengths[currentSegment] < targetLength)
+                double t = (targetCount > 1) ? (double)i / (targetCount - 1) : 0;
+                double targetLength = t * totalLength;
+
+                // 找到目标长度所在的线段区间
+                int segIdx = 0;
+                for (int j = 1; j < cumulativeLengths.Count; j++)
                 {
-                    currentLength += segmentLengths[currentSegment];
-                    currentSegment++;
+                    if (cumulativeLengths[j] >= targetLength)
+                    {
+                        segIdx = j - 1;
+                        break;
+                    }
+                    if (j == cumulativeLengths.Count - 1)
+                        segIdx = j - 1;
                 }
 
-                if (currentSegment >= segmentLengths.Count)
-                    break;
-
                 // 在当前线段上插值
-                double segmentProgress = (targetLength - currentLength) / segmentLengths[currentSegment];
-                var p1 = originalPoints[currentSegment];
-                var p2 = originalPoints[currentSegment + 1];
-                
+                double segStart = cumulativeLengths[segIdx];
+                double segEnd = cumulativeLengths[segIdx + 1];
+                double segLen = segEnd - segStart;
+                double progress = segLen > 1e-9 ? (targetLength - segStart) / segLen : 0;
+
+                var p1 = originalPoints[segIdx];
+                var p2 = originalPoints[segIdx + 1];
+
                 result.Add(new CadPoint(
-                    p1.X + (p2.X - p1.X) * segmentProgress,
-                    p1.Y + (p2.Y - p1.Y) * segmentProgress,
-                    p1.Z + (p2.Z - p1.Z) * segmentProgress
-                )
+                    p1.X + (p2.X - p1.X) * progress,
+                    p1.Y + (p2.Y - p1.Y) * progress,
+                    p1.Z + (p2.Z - p1.Z) * progress)
                 {
-                    Id = (i + 1).ToString(),
-                    AssySite = p1.AssySite
+                    Id = (i + 1).ToString()
                 });
             }
-
-            // 添加终点
-            var lastPoint = originalPoints[originalPoints.Count - 1];
-            result.Add(new CadPoint(lastPoint.X, lastPoint.Y, lastPoint.Z)
-            {
-                Id = targetCount.ToString(),
-                AssySite = lastPoint.AssySite
-            });
 
             return result;
         }
@@ -2747,18 +2736,8 @@ namespace Module.ViewModels
                 return;
             }
 
-            string modeDesc = LineDispenseMode == LineDispenseMode.SinglePoint
-                ? L("LineBC_Mode_SinglePoint")
-                : L("LineBC_Mode_ContinuousInterpolation");
-
-            GlobalStatus = string.Format(L("LineBC_Status_PrepareExec"), enabledSegments.Count, modeDesc);
-            OnExecuteRequestRequested();
-        }
-
-        /// <summary>触发执行请求路由事件（由控件 code-behind 进一步转发）</summary>
-        protected virtual void OnExecuteRequestRequested()
-        {
-            // 子类或持有者可重写此方法自定义执行行为
+            // 直接调用统一执行入口
+            ExecuteRun();
         }
 
         #endregion

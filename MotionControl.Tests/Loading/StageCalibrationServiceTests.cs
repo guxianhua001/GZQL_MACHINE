@@ -1,11 +1,11 @@
 using Core.Abstraction;
 using Core.Models;
-using Core.Services;
+using Core.Utilities;
 using Module.Services;
 using Moq;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
+using TCPIPModule.Interfaces;
 using Xunit;
 
 namespace MotionControl.Tests
@@ -14,11 +14,15 @@ namespace MotionControl.Tests
     {
         private StageCalibrationService CreateService(
             out Mock<ILoadUnloadController> controller,
-            out Mock<Core.Utilities.ILoggerService> logger,
+            out Mock<IPositionMotionController> motionController,
+            out Mock<ITCPEventService> tcpEventService,
+            out Mock<ILoggerService> logger,
             out Mock<IZScanConfigService> configService)
         {
             controller = new Mock<ILoadUnloadController>();
-            logger = new Mock<Core.Utilities.ILoggerService>();
+            motionController = new Mock<IPositionMotionController>();
+            tcpEventService = new Mock<ITCPEventService>();
+            logger = new Mock<ILoggerService>();
             configService = new Mock<IZScanConfigService>();
 
             controller.Setup(c => c.CanExecuteMotion()).Returns(true);
@@ -28,13 +32,28 @@ namespace MotionControl.Tests
                     { "X", 100.0 }, { "Y", 150.5 }, { "Z", 25.0 }, { "Rx", 0.123 }, { "Rz", -0.456 }, { "Ry", 0.0 }
                 });
 
-            return new StageCalibrationService(controller.Object, logger.Object, configService.Object);
+            motionController.Setup(m => m.CanExecuteMotion(It.IsAny<string>())).Returns(true);
+            motionController.Setup(m => m.TeachAsync(It.IsAny<string>()))
+                .ReturnsAsync(new Dictionary<string, double>
+                {
+                    { "X", 100.0 }, { "Y", 150.5 }, { "Z", 25.0 }, { "Rx", 0.123 }, { "Rz", -0.456 },
+                    { "Dx", 10.5 }, { "Dy", 20.3 }, { "Dz", 5.0 }
+                });
+            motionController.Setup(m => m.GotoAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, double>>(), It.IsAny<double>()))
+                .Returns(Task.CompletedTask);
+
+            return new StageCalibrationService(
+                controller.Object,
+                motionController.Object,
+                tcpEventService.Object,
+                logger.Object,
+                configService.Object);
         }
 
         [Fact]
         public async Task GoToPhotoPositionAsync_CallsMoveToPosition()
         {
-            var service = CreateService(out var controller, out _, out _);
+            var service = CreateService(out var controller, out _, out _, out _, out _);
 
             await service.GoToPhotoPositionAsync(100, 200, 30, 0.5, -0.2);
 
@@ -44,7 +63,7 @@ namespace MotionControl.Tests
         [Fact]
         public async Task TeachCurrentPositionAsync_ReturnsCurrentPositions()
         {
-            var service = CreateService(out _, out _, out _);
+            var service = CreateService(out _, out _, out _, out _, out _);
 
             var result = await service.TeachCurrentPositionAsync();
 
@@ -57,7 +76,7 @@ namespace MotionControl.Tests
         [Fact]
         public async Task CaptureFiducialAsync_ReturnsResult()
         {
-            var service = CreateService(out _, out _, out _);
+            var service = CreateService(out _, out _, out _, out _, out _);
 
             var result = await service.CaptureFiducialAsync(1);
 
@@ -68,9 +87,52 @@ namespace MotionControl.Tests
         }
 
         [Fact]
+        public async Task MoveToReferencePositionAsync_CallsGoto()
+        {
+            var service = CreateService(out _, out var motion, out _, out _, out _);
+
+            await service.MoveToReferencePositionAsync(0.5, -0.2);
+
+            motion.Verify(m => m.GotoAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, double>>(), It.IsAny<double>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task MoveCameraToPhotoPositionAsync_CallsGoto()
+        {
+            var service = CreateService(out _, out var motion, out _, out _, out _);
+
+            await service.MoveCameraToPhotoPositionAsync(10.5, 20.3, 5.0);
+
+            motion.Verify(m => m.GotoAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, double>>(), It.IsAny<double>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RotateToReferenceAngleAsync_CallsGoto()
+        {
+            var service = CreateService(out _, out var motion, out _, out _, out _);
+
+            await service.RotateToReferenceAngleAsync(-0.456, 0.1);
+
+            motion.Verify(m => m.GotoAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, double>>(), It.IsAny<double>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ReadCurrentPositionsAsync_ReturnsAllAxes()
+        {
+            var service = CreateService(out _, out _, out _, out _, out _);
+
+            var result = await service.ReadCurrentPositionsAsync();
+
+            Assert.NotNull(result);
+            Assert.Equal(10.5, result.Dx, 1);
+            Assert.Equal(20.3, result.Dy, 1);
+            Assert.Equal(5.0, result.Dz, 1);
+        }
+
+        [Fact]
         public async Task ApplyCorrectionAsync_WithValidData_Succeeds()
         {
-            var service = CreateService(out var controller, out _, out _);
+            var service = CreateService(out var controller, out _, out _, out _, out _);
 
             await service.ApplyCorrectionAsync(0.1, -0.05, 0.02);
 
@@ -78,28 +140,9 @@ namespace MotionControl.Tests
         }
 
         [Fact]
-        public async Task SaveCalibrationDataAsync_DoesNotThrow()
-        {
-            var service = CreateService(out _, out _, out var configService);
-            configService.Setup(c => c.Save(It.IsAny<ZScanConfigFile>(), It.IsAny<string>()));
-
-            await service.SaveCalibrationDataAsync();
-        }
-
-        [Fact]
-        public async Task LoadCalibrationDataAsync_DoesNotThrow()
-        {
-            var service = CreateService(out _, out _, out var configService);
-            configService.Setup(c => c.Load(It.IsAny<string>()))
-                .Returns(new ZScanConfigFile());
-
-            await service.LoadCalibrationDataAsync();
-        }
-
-        [Fact]
         public void GetCurrentCalibrationData_ReturnsDefaultData()
         {
-            var service = CreateService(out _, out _, out _);
+            var service = CreateService(out _, out _, out _, out _, out _);
 
             var data = service.GetCurrentCalibrationData();
 
@@ -111,7 +154,7 @@ namespace MotionControl.Tests
         [Fact]
         public void ApplyCalibrationData_UpdatesCurrentData()
         {
-            var service = CreateService(out _, out _, out _);
+            var service = CreateService(out _, out _, out _, out _, out _);
             var newData = new StageCalibrationData
             {
                 Fiducial1 = new StageCalibrationFiducialData
@@ -134,7 +177,7 @@ namespace MotionControl.Tests
         [Fact]
         public void ApplyCalibrationData_NullData_DoesNotThrow()
         {
-            var service = CreateService(out _, out _, out _);
+            var service = CreateService(out _, out _, out _, out _, out _);
 
             service.ApplyCalibrationData(null);
 
@@ -145,7 +188,7 @@ namespace MotionControl.Tests
         [Fact]
         public async Task GoToPhotoPositionAsync_WhenMotionProhibited_Throws()
         {
-            var service = CreateService(out var controller, out _, out _);
+            var service = CreateService(out var controller, out _, out _, out _, out _);
             controller.Setup(c => c.CanExecuteMotion()).Returns(false);
 
             await Assert.ThrowsAsync<System.InvalidOperationException>(
@@ -153,43 +196,13 @@ namespace MotionControl.Tests
         }
 
         [Fact]
-        public async Task ApplyCorrectionAsync_WhenMotionProhibited_Throws()
+        public async Task MoveToReferencePositionAsync_WhenMotionProhibited_Throws()
         {
-            var service = CreateService(out var controller, out _, out _);
-            controller.Setup(c => c.CanExecuteMotion()).Returns(false);
+            var service = CreateService(out _, out var motion, out _, out _, out _);
+            motion.Setup(m => m.CanExecuteMotion(It.IsAny<string>())).Returns(false);
 
             await Assert.ThrowsAsync<System.InvalidOperationException>(
-                () => service.ApplyCorrectionAsync(0.1, 0.2, 0.3));
-        }
-
-        [Fact]
-        public async Task SaveAndLoad_RoundTrip()
-        {
-            var service = CreateService(out _, out _, out _);
-            var tempDir = Path.Combine(Path.GetTempPath(), "StageCalibTest_" + System.Guid.NewGuid().ToString("N")[..8]);
-
-            try
-            {
-                var data = new StageCalibrationData
-                {
-                    Fiducial1 = new StageCalibrationFiducialData { PhotoX = 111, PhotoY = 222, RefX = 100, RefY = 200 },
-                    Fiducial2 = new StageCalibrationFiducialData { PhotoX = 333, PhotoY = 444, RefX = 300, RefY = 400 }
-                };
-                service.ApplyCalibrationData(data);
-                await service.SaveCalibrationDataAsync();
-
-                var service2 = CreateService(out _, out _, out _);
-                await service2.LoadCalibrationDataAsync();
-
-                var loaded = service2.GetCurrentCalibrationData();
-                Assert.Equal(111, loaded.Fiducial1.PhotoX);
-                Assert.Equal(444, loaded.Fiducial2.PhotoY);
-            }
-            finally
-            {
-                if (Directory.Exists(tempDir))
-                    Directory.Delete(tempDir, true);
-            }
+                () => service.MoveToReferencePositionAsync(0.5, -0.2));
         }
     }
 }

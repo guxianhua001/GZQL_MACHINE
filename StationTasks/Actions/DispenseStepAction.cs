@@ -209,28 +209,16 @@ namespace StationTasks.Actions
                     double approachZ = targetZ + approachOffset;
                     await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, token);
 
-                    var moveZTask = _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
+                    // 位置触发开胶：计算触发点Z，慢速移到触发位开胶，再继续到目标位
+                    double triggerDistance = Math.Abs(glueTriggerOffset);
+                    int motionDir = Math.Sign(approachZ - targetZ);
+                    double triggerZ = targetZ + motionDir * triggerDistance;
 
-                    bool glueOpened = false;
-                    while (!moveZTask.IsCompleted && !token.IsCancellationRequested)
-                    {
-                        double currentZ = _motionService.GetAxisPosition(dzAxisId);
-                        if (Math.Abs(currentZ - targetZ) <= glueTriggerOffset)
-                        {
-                            WriteGlueIo(true);
-                            glueOpened = true;
-                            break;
-                        }
-                        await Task.Delay(1, token);
-                    }
+                    await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, token);
+                    WriteGlueIo(true);
+                    _logger.Debug($"DISPENSE 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
-                    if (!glueOpened)
-                    {
-                        WriteGlueIo(true);
-                        _logger.Warn($"DISPENSE 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 兜底开胶");
-                    }
-
-                    await moveZTask;
+                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
 
                     if (seg.PreDelay > 0)
                         await Task.Delay((int)seg.PreDelay, token);
@@ -306,28 +294,16 @@ namespace StationTasks.Actions
                 double approachZ = targetZ + approachOffset;
                 await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, token);
 
-                var moveZTask = _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
+                // 位置触发开胶：计算触发点Z，慢速移到触发位开胶，再继续到目标位
+                double triggerDistance = Math.Abs(glueTriggerOffset);
+                int motionDir = Math.Sign(approachZ - targetZ);
+                double triggerZ = targetZ + motionDir * triggerDistance;
 
-                bool glueOpened = false;
-                while (!moveZTask.IsCompleted && !token.IsCancellationRequested)
-                {
-                    double currentZ = _motionService.GetAxisPosition(dzAxisId);
-                    if (Math.Abs(currentZ - targetZ) <= glueTriggerOffset)
-                    {
-                        WriteGlueIo(true);
-                        glueOpened = true;
-                        break;
-                    }
-                    await Task.Delay(1, token);
-                }
+                await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, token);
+                WriteGlueIo(true);
+                _logger.Debug($"DISPENSE 弧线: 段[{seg.SegmentId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
-                if (!glueOpened)
-                {
-                    WriteGlueIo(true);
-                    _logger.Warn($"DISPENSE 弧线: 段[{seg.SegmentId}] 兜底开胶");
-                }
-
-                await moveZTask;
+                await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
 
                 if (seg.PreDelay > 0)
                     await Task.Delay((int)seg.PreDelay, token);
