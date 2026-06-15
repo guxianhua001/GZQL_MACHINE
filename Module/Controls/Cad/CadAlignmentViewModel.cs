@@ -5,8 +5,10 @@ using Core.Services;
 using Module.Services;
 using MotionControl.Interfaces;
 using Prism.Commands;
+using Prism.Events;
 using Prism.Ioc;
 using Prism.Mvvm;
+using Recipe.Events;
 using Recipe.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -92,11 +94,17 @@ namespace Module.ViewModels
     {
         private readonly IRecipePoolService _recipePoolService;
         private readonly IContainerProvider _containerProvider;
+        private readonly IEventAggregator _eventAggregator;
 
-        public CadAlignmentViewModel(IRecipePoolService recipePoolService, IContainerProvider containerProvider)
+        public CadAlignmentViewModel(IRecipePoolService recipePoolService, IContainerProvider containerProvider, IEventAggregator eventAggregator)
         {
             _recipePoolService = recipePoolService;
             _containerProvider = containerProvider;
+            _eventAggregator = eventAggregator;
+
+            // 订阅全局变量变更事件，其他模块写入 GV 时同步刷新本地下拉列表
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
+                .Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
             // ✅ 初始化统一导入服务
             try
@@ -2582,10 +2590,24 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 UpdateOrAddGlobalVariable(variables, vx, writeX.ToString("F3"), "夹爪最终位置X");
                 UpdateOrAddGlobalVariable(variables, vy, writeY.ToString("F3"), "夹爪最终位置Y");
 
+                // 如果对齐角度已链接全局变量，同步写入当前角度值
+                if (IsAlignmentAngleLinked && !string.IsNullOrWhiteSpace(AlignmentAngleLinkedVar))
+                {
+                    UpdateOrAddGlobalVariable(variables, AlignmentAngleLinkedVar.Trim(),
+                        AlignmentAngle.ToString("F3"), "CAD对齐角度");
+                }
+
                 for (int i = 0; i < variables.Count; i++)
                     variables[i].Index = i + 1;
 
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
+
+                // 发布全局变量变更事件，通知全局变量页面及其他订阅者同步刷新
+                _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>()?.Publish(poolId);
+
+                // 同步更新本地全局变量下拉列表
+                await LoadAvailableGlobalVariablesAsync();
+
                 StatusMessage = string.Format(L("CAD_Write_Global_Var_Success"),
                     vx, writeX.ToString("F3"), vy, writeY.ToString("F3"));
             }
@@ -2593,6 +2615,12 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             {
                 StatusMessage = $"写入全局变量失败: {ex.Message}";
             }
+        }
+
+        /// <summary>外部全局变量变更时重新加载本地下拉列表，保持同步</summary>
+        private async void OnGlobalVariablesChanged(string poolId)
+        {
+            await LoadAvailableGlobalVariablesAsync();
         }
 
         /// <summary>更新或添加全局变量（存在则更新值，不存在则新增）</summary>
