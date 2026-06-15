@@ -1341,6 +1341,7 @@
                                             <TextBlock FontSize="11" Foreground="#1B5E20" FontWeight="Bold">
                                                 <Run Text="X="/><Run Text="{Binding GripperFinalX, StringFormat=F3, Mode=OneWay}"/>
                                                 <Run Text="  Y="/><Run Text="{Binding GripperFinalY, StringFormat=F3, Mode=OneWay}"/>
+                                                <Run Text="  Z="/><Run Text="{Binding GripperFinalZ, StringFormat=F3, Mode=OneWay}"/>
                                             </TextBlock>
                                         </StackPanel>
                                         <Button Grid.Column="3" Command="{Binding CalcGripperFinalCommand}"
@@ -1383,6 +1384,14 @@
                                                 IsLinked="{Binding IsGripperYLinked}"
                                                 UnlinkCommand="{Binding UnlinkGripperYCommand}"
                                                 LinkedVariableName="{Binding FinalGripperYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
+                                                LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
+                                                ComboBoxWidth="160"/>
+                                            <common:GlobalVariableLinkControl Margin="8,0,0,0"
+                                                DisplayValue="{Binding GripperFinalZ}"
+                                                DisplayForeground="#2E7D32"
+                                                IsLinked="{Binding IsGripperZLinked}"
+                                                UnlinkCommand="{Binding UnlinkGripperZCommand}"
+                                                LinkedVariableName="{Binding FinalGripperZLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                 LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
                                                 ComboBoxWidth="160"/>
                                         </StackPanel>

@@ -180,6 +180,7 @@ namespace Module.ViewModels
             LoadConfigCommand = new DelegateCommand(async () => await LoadConfigFromFileAsync());
             UnlinkGripperXCommand = new DelegateCommand(() => { IsGripperXLinked = false; FinalGripperXLinkedVar = ""; });
             UnlinkGripperYCommand = new DelegateCommand(() => { IsGripperYLinked = false; FinalGripperYLinkedVar = ""; });
+            UnlinkGripperZCommand = new DelegateCommand(() => { IsGripperZLinked = false; FinalGripperZLinkedVar = ""; });
             UnlinkAlignmentAngleCommand = new DelegateCommand(() => { IsAlignmentAngleLinked = false; AlignmentAngleLinkedVar = ""; });
             MoveTargetAngleCommand = new DelegateCommand(async () => await OnMoveTargetAngleAsync());
             LinkAlignmentAngleCommand = new DelegateCommand(OnLinkAlignmentAngle);
@@ -790,14 +791,21 @@ public string FinalGripperXLinkedVar { get => _finalGripperXLinkedVar; set => Se
 private string _finalGripperYLinkedVar = "GripperFinalY";
 public string FinalGripperYLinkedVar { get => _finalGripperYLinkedVar; set => SetProperty(ref _finalGripperYLinkedVar, value); }
 
+private string _finalGripperZLinkedVar = "GripperFinalZ";
+public string FinalGripperZLinkedVar { get => _finalGripperZLinkedVar; set => SetProperty(ref _finalGripperZLinkedVar, value); }
+
 private bool _isGripperXLinked;
 public bool IsGripperXLinked { get => _isGripperXLinked; set => SetProperty(ref _isGripperXLinked, value); }
 
 private bool _isGripperYLinked;
 public bool IsGripperYLinked { get => _isGripperYLinked; set => SetProperty(ref _isGripperYLinked, value); }
 
+private bool _isGripperZLinked;
+public bool IsGripperZLinked { get => _isGripperZLinked; set => SetProperty(ref _isGripperZLinked, value); }
+
 public DelegateCommand UnlinkGripperXCommand { get; }
 public DelegateCommand UnlinkGripperYCommand { get; }
+public DelegateCommand UnlinkGripperZCommand { get; }
 
 /// <summary>可选取的全局变量列表（用于ComboBox下拉选择）</summary>
 private ObservableCollection<GlobalVariable> _availableGlobalVariables = new();
@@ -848,6 +856,10 @@ public double GripperFinalX { get => _gripperFinalX; set => SetProperty(ref _gri
 /// <summary>夹爪最终位置Y = 夹爪基准Y + 相机偏移Y</summary>
 private double _gripperFinalY;
 public double GripperFinalY { get => _gripperFinalY; set => SetProperty(ref _gripperFinalY, value); }
+
+/// <summary>夹爪最终位置Z = 夹爪基准高度Z</summary>
+private double _gripperFinalZ;
+public double GripperFinalZ { get => _gripperFinalZ; set => SetProperty(ref _gripperFinalZ, value); }
 
 private string _currentFilePath = "";
 public string CurrentFilePath { get => _currentFilePath; set => SetProperty(ref _currentFilePath, value); }
@@ -2583,12 +2595,15 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 // 优先使用新5步流程的值（GripperFinalX/Y），否则使用旧流程的值（FinalGripperX/Y）
                 double writeX = GripperFinalX != 0 ? GripperFinalX : FinalGripperX;
                 double writeY = GripperFinalY != 0 ? GripperFinalY : FinalGripperY;
+                double writeZ = GripperFinalZ;
 
                 var vx = string.IsNullOrWhiteSpace(FinalGripperXLinkedVar) ? "GripperFinalX" : FinalGripperXLinkedVar.Trim();
                 var vy = string.IsNullOrWhiteSpace(FinalGripperYLinkedVar) ? "GripperFinalY" : FinalGripperYLinkedVar.Trim();
+                var vz = string.IsNullOrWhiteSpace(FinalGripperZLinkedVar) ? "GripperFinalZ" : FinalGripperZLinkedVar.Trim();
 
                 UpdateOrAddGlobalVariable(variables, vx, writeX.ToString("F3"), "夹爪最终位置X");
                 UpdateOrAddGlobalVariable(variables, vy, writeY.ToString("F3"), "夹爪最终位置Y");
+                UpdateOrAddGlobalVariable(variables, vz, writeZ.ToString("F3"), "夹爪最终位置Z");
 
                 // 如果对齐角度已链接全局变量，同步写入当前角度值
                 if (IsAlignmentAngleLinked && !string.IsNullOrWhiteSpace(AlignmentAngleLinkedVar))
@@ -2818,14 +2833,15 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
         }
 
-        /// <summary>步骤4：夹爪最终位置 = 夹爪基准位 + 相机偏移</summary>
+        /// <summary>步骤4：夹爪最终位置 = 夹爪基准位 + 相机偏移，Z = 夹爪基准高度</summary>
         private void OnCalcGripperFinal()
         {
             GripperFinalX = Math.Round(GripperRefX - CameraOffsetX, 3);
             GripperFinalY = Math.Round(GripperRefY + CameraOffsetY, 3);
+            GripperFinalZ = Math.Round(GripperRefZ, 3);
             Step5Done = true;
             (WriteToGlobalVariablesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
-            StatusMessage = $"夹爪最终位置: X={GripperFinalX:F3}, Y={GripperFinalY:F3}";
+            StatusMessage = $"夹爪最终位置: X={GripperFinalX:F3}, Y={GripperFinalY:F3}, Z={GripperFinalZ:F3}";
         }
 
         #endregion
@@ -2954,8 +2970,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["TeachX"] = TeachX, ["TeachY"] = TeachY, ["TeachRy"] = TeachRy, ["TeachZ"] = TeachZ,
                 ["UseCalculatedOffset"] = UseCalculatedOffset,
                 ["FinalGripperX"] = FinalGripperX, ["FinalGripperY"] = FinalGripperY,
-                ["FinalGripperXLinkedVar"] = FinalGripperXLinkedVar, ["FinalGripperYLinkedVar"] = FinalGripperYLinkedVar,
-                ["IsGripperXLinked"] = IsGripperXLinked, ["IsGripperYLinked"] = IsGripperYLinked,
+                ["FinalGripperXLinkedVar"] = FinalGripperXLinkedVar, ["FinalGripperYLinkedVar"] = FinalGripperYLinkedVar, ["FinalGripperZLinkedVar"] = FinalGripperZLinkedVar,
+                ["IsGripperXLinked"] = IsGripperXLinked, ["IsGripperYLinked"] = IsGripperYLinked, ["IsGripperZLinked"] = IsGripperZLinked,
                 ["CadFilePath"] = CadFilePath,
                 ["Step5Done"] = Step5Done,
                 ["InvertXAngle"] = InvertXAngle,
@@ -2965,7 +2981,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["CameraRefX"] = CameraRefX, ["CameraRefY"] = CameraRefY, ["CameraRefZ"] = CameraRefZ,
                 ["GripperRefX"] = GripperRefX, ["GripperRefY"] = GripperRefY, ["GripperRefZ"] = GripperRefZ,
                 ["CameraOffsetX"] = CameraOffsetX, ["CameraOffsetY"] = CameraOffsetY,
-                ["GripperFinalX"] = GripperFinalX, ["GripperFinalY"] = GripperFinalY,
+                ["GripperFinalX"] = GripperFinalX, ["GripperFinalY"] = GripperFinalY, ["GripperFinalZ"] = GripperFinalZ,
             };
         }
 
@@ -3066,8 +3082,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("FinalGripperY", out var fgy)) FinalGripperY = Convert.ToDouble(fgy);
             if (config.TryGetValue("FinalGripperXLinkedVar", out var fgxv)) FinalGripperXLinkedVar = fgxv?.ToString() ?? "";
             if (config.TryGetValue("FinalGripperYLinkedVar", out var fgyv)) FinalGripperYLinkedVar = fgyv?.ToString() ?? "";
+            if (config.TryGetValue("FinalGripperZLinkedVar", out var fgzv)) FinalGripperZLinkedVar = fgzv?.ToString() ?? "";
             if (config.TryGetValue("IsGripperXLinked", out var igxl)) IsGripperXLinked = Convert.ToBoolean(igxl);
             if (config.TryGetValue("IsGripperYLinked", out var igyl)) IsGripperYLinked = Convert.ToBoolean(igyl);
+            if (config.TryGetValue("IsGripperZLinked", out var igzl)) IsGripperZLinked = Convert.ToBoolean(igzl);
             if (config.TryGetValue("CadFilePath", out var cfp2)) CadFilePath = cfp2?.ToString() ?? "";
             if (config.TryGetValue("Step5Done", out var s5)) Step5Done = Convert.ToBoolean(s5);
             if (config.TryGetValue("InvertXAngle", out var ixa)) InvertXAngle = Convert.ToBoolean(ixa);
@@ -3084,6 +3102,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("CameraOffsetY", out var coy)) CameraOffsetY = Convert.ToDouble(coy);
             if (config.TryGetValue("GripperFinalX", out var gfx)) GripperFinalX = Convert.ToDouble(gfx);
             if (config.TryGetValue("GripperFinalY", out var gfy)) GripperFinalY = Convert.ToDouble(gfy);
+            if (config.TryGetValue("GripperFinalZ", out var gfz)) GripperFinalZ = Convert.ToDouble(gfz);
 
             // 拟合点集合
             if (config.TryGetValue("FitPoints", out var fpsObj))
