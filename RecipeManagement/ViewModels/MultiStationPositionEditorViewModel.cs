@@ -581,6 +581,7 @@ namespace Recipe.ViewModels
                         continue;
 
                     var homeResult = await _motionService.CheckHomeDoneAsync(axisId);
+                    
                     if (homeResult != 1)
                         notHomedAxes.Add(kvp.Key);
 

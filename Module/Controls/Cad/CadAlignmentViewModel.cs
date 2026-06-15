@@ -2714,17 +2714,24 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         /// <summary>步骤1：设置相机基准位（=最终变换结果TransResultX/Y + Dz₁轴当前位置）</summary>
         private void OnSetCameraRef()
         {
-            CameraRefX = TransResultX;
-            CameraRefY = TransResultY;
-            // 读取Dz₁轴位置作为相机基准Z
             try
             {
                 var motionService = _containerProvider.Resolve<IMotionService>();
-                var dz1Config = motionService.GetAxisConfigurations().FirstOrDefault(a => a.Name == "Dz1");
-                if (dz1Config != null)
-                    CameraRefZ = Math.Round(motionService.GetAxisPosition(dz1Config.LogicalId), 3);
+                var axisConfigs = motionService.GetAxisConfigurations();
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                var zConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dz₃");
+                if (dxConfig == null || dyConfig == null)
+                {
+                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
+                    return;
+                }
+                CameraRefX = Math.Round(motionService.GetAxisPosition(dxConfig.LogicalId), 3);
+                CameraRefY = Math.Round(motionService.GetAxisPosition(dyConfig.LogicalId), 3);
+                if (zConfig != null)
+                    CameraRefZ = Math.Round(motionService.GetAxisPosition(zConfig.LogicalId), 3);
             }
-            catch { /* Dz₁轴不存在时保持默认值 */ }
+            catch { /*  */ }
             StatusMessage = $"相机基准位已设置: X={CameraRefX:F3}, Y={CameraRefY:F3}, Z={CameraRefZ:F3}";
         }
 
@@ -2735,12 +2742,12 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             {
                 var motionService = _containerProvider.Resolve<IMotionService>();
                 var axisConfigs = motionService.GetAxisConfigurations();
-                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
-                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "X");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Y");
                 var zConfig = axisConfigs.FirstOrDefault(a => a.Name == "Z");
                 if (dxConfig == null || dyConfig == null)
                 {
-                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
+                    StatusMessage = L("CAD_Move_Axis_Failed") + ": X/Y轴未找到";
                     return;
                 }
 
@@ -2761,20 +2768,20 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         {
             try
             {
-                var motionService = _containerProvider.Resolve<IMotionService>();
-                var axisConfigs = motionService.GetAxisConfigurations();
-                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
-                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
-                if (dxConfig == null || dyConfig == null)
-                {
-                    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
-                    return;
-                }
+                //var motionService = _containerProvider.Resolve<IMotionService>();
+                //var axisConfigs = motionService.GetAxisConfigurations();
+                //var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                //var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                //if (dxConfig == null || dyConfig == null)
+                //{
+                //    StatusMessage = L("CAD_Move_Axis_Failed") + ": Dx/Dy轴未找到";
+                //    return;
+                //}
 
-                double currentCamX = Math.Round(motionService.GetAxisPosition(dxConfig.LogicalId), 3);
-                double currentCamY = Math.Round(motionService.GetAxisPosition(dyConfig.LogicalId), 3);
-                CameraOffsetX = Math.Round(currentCamX - CameraRefX, 3);
-                CameraOffsetY = Math.Round(currentCamY - CameraRefY, 3);
+                //double currentCamX = Math.Round(motionService.GetAxisPosition(dxConfig.LogicalId), 3);
+                //double currentCamY = Math.Round(motionService.GetAxisPosition(dyConfig.LogicalId), 3);
+                CameraOffsetX = Math.Round(TransResultX - CameraRefX, 3);
+                CameraOffsetY = Math.Round(TransResultY - CameraRefY, 3);
                 StatusMessage = $"相机偏移已计算: ΔX={CameraOffsetX:F3}, ΔY={CameraOffsetY:F3}";
             }
             catch (Exception ex)
@@ -2786,7 +2793,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         /// <summary>步骤4：夹爪最终位置 = 夹爪基准位 + 相机偏移</summary>
         private void OnCalcGripperFinal()
         {
-            GripperFinalX = Math.Round(GripperRefX + CameraOffsetX, 3);
+            GripperFinalX = Math.Round(GripperRefX - CameraOffsetX, 3);
             GripperFinalY = Math.Round(GripperRefY + CameraOffsetY, 3);
             Step5Done = true;
             (WriteToGlobalVariablesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
