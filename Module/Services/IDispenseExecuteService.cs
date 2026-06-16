@@ -44,11 +44,10 @@ namespace Module.Services
         /// </summary>
         /// <param name="segments">轨迹段集合</param>
         /// <param name="processParams">单点模式工艺参数（复用点涂A参数体系）</param>
-        /// <param name="standbyHeight">待机高度mm（循环结束后Z轴抬升目标）</param>
         /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
         /// <param name="token">取消令牌</param>
         /// <param name="dryRun">空跑模式：true=不下降到工作高度不出胶，false=正常走胶</param>
-        Task ExecuteSinglePointLineAsync(IEnumerable<DispenseSegment> segments, DotProcessParams processParams, double standbyHeight, int needleIndex = 0, CancellationToken token = default, bool dryRun = false);
+        Task ExecuteSinglePointLineAsync(IEnumerable<DispenseSegment> segments, DotProcessParams processParams, int needleIndex = 0, CancellationToken token = default, bool dryRun = false);
 
         /// <summary> 进度变更事件：(状态描述, 当前段索引, 总段数) </summary>
         event Action<string, int, int>? ProgressChanged;

@@ -85,7 +85,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultJumpSpeed, value); }
         }
 
-        private double _defaultMoveSpeed = 10.0;
+        private double _defaultMoveSpeed = 20.0;
         /// <summary>默认运动速度 mm/s</summary>
         public double DefaultMoveSpeed
         {
@@ -93,7 +93,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultMoveSpeed, value); }
         }
 
-        private double _defaultSafeHeight = 5.0;
+        private double _defaultSafeHeight = -25.0;
         /// <summary>默认安全抬升高度 mm</summary>
         public double DefaultSafeHeight
         {
@@ -101,7 +101,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultSafeHeight, value); }
         }
 
-        private double _defaultApproachHeight = 3.0;
+        private double _defaultApproachHeight = -3.0;
         /// <summary>默认逼近高度 mm</summary>
         public double DefaultApproachHeight
         {
@@ -133,7 +133,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultPostDelay, value); }
         }
 
-        private double _defaultDispensingPressure = 0.30;
+        private double _defaultDispensingPressure = -0.30;
         /// <summary>默认点胶气压 MPa</summary>
         public double DefaultDispensingPressure
         {
@@ -149,7 +149,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultSuckBackTime, value); }
         }
 
-        private double _defaultGlueTriggerOffsetMm = 0.5;
+        private double _defaultGlueTriggerOffsetMm = -0.5;
         /// <summary>默认开胶触发距离 mm</summary>
         public double DefaultGlueTriggerOffsetMm
         {
@@ -157,7 +157,23 @@ namespace Core.Models
             set { SetProperty(ref _defaultGlueTriggerOffsetMm, value); }
         }
 
-        private double _defaultCornerDecel = 0.3;
+        private double _defaultPreDispenseDelay = 50.0;
+        /// <summary>默认预出胶延时 ms（到达起点后等待时间）</summary>
+        public double DefaultPreDispenseDelay
+        {
+            get => _defaultPreDispenseDelay;
+            set => SetProperty(ref _defaultPreDispenseDelay, value);
+        }
+
+        private double _defaultDispenseTime = 180.0;
+        /// <summary>默认点胶时间 ms（单点模式出胶持续时间）</summary>
+        public double DefaultDispenseTime
+        {
+            get => _defaultDispenseTime;
+            set => SetProperty(ref _defaultDispenseTime, value);
+        }
+
+        private double _defaultCornerDecel = 0.1;
         /// <summary>默认拐角减速系数</summary>
         public double DefaultCornerDecel
         {

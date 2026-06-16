@@ -3,12 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
-             xmlns:localConverters="clr-namespace:Module.Converters"
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              Width="900">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <localConverters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
-                                                  TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
         <Style x:Key="ParamLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="#FF607D8B"/>
@@ -60,63 +58,35 @@
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_ZCompensation3D}"
-                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBox Grid.Column="1" IsReadOnly="True"
-                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding ZCompensation3D, StringFormat=F3}"
-                                             Padding="4,2" FontSize="11" Margin="0,0,4,0"/>
-                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="Gray" Margin="0,0,8,0"/>
-                                    <Button Grid.Column="3" Command="{Binding UnlinkZCompensation3DCommand}"
-                                            Style="{StaticResource MaterialDesignIconButton}"
-                                            Padding="0" Width="22" Height="22"
-                                            ToolTip="{lang:Lang DispenseDetail_UnlinkGlobalVariable}">
-                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
-                                                                 Foreground="{Binding IsZCompensation3DLinked, Converter={StaticResource LinkedToBrushConverter}}"
-                                                                 VerticalAlignment="Center"/>
-                                    </Button>
-                                    <ComboBox Grid.Column="4" ItemsSource="{Binding AvailableGlobalVariables}"
-                                              SelectedValuePath="Name"
-                                              DisplayMemberPath="Name"
-                                              SelectedValue="{Binding ZCompensation3DLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="120" FontSize="10"
-                                              materialDesign:HintAssist.Hint="{lang:Lang DispenseDetail_LinkGlobalVariable}"/>
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <common:GlobalVariableLinkControl Grid.Column="1"
+                                        DisplayValue="{Binding ZCompensation3DDisplayValue, Mode=OneWay}"
+                                        DisplayForeground="#1565C0"
+                                        IsLinked="{Binding IsZCompensation3DLinked, Mode=OneWay}"
+                                        LinkedVariableName="{Binding ZCompensation3DLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                        UnlinkCommand="{Binding UnlinkZCompensation3DCommand}"
+                                        ComboBoxWidth="120" />
                                 </Grid>
                                 <!-- Z补偿（来自校准器）+ 全局变量链接 -->
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_ZCompensationCalibrator}"
-                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <TextBox Grid.Column="1" IsReadOnly="True"
-                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding ZCompensationCalibrator, StringFormat=F3}"
-                                             Padding="4,2" FontSize="11" Margin="0,0,4,0"/>
-                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="Gray" Margin="0,0,8,0"/>
-                                    <Button Grid.Column="3" Command="{Binding UnlinkZCompensationCalibratorCommand}"
-                                            Style="{StaticResource MaterialDesignIconButton}"
-                                            Padding="0" Width="22" Height="22"
-                                            ToolTip="{lang:Lang DispenseDetail_UnlinkGlobalVariable}">
-                                        <materialDesign:PackIcon Kind="LinkOff" Width="14" Height="14"
-                                                                 Foreground="{Binding IsZCompensationCalibratorLinked, Converter={StaticResource LinkedToBrushConverter}}"
-                                                                 VerticalAlignment="Center"/>
-                                    </Button>
-                                    <ComboBox Grid.Column="4" ItemsSource="{Binding AvailableGlobalVariables}"
-                                              SelectedValuePath="Name"
-                                              DisplayMemberPath="Name"
-                                              SelectedValue="{Binding ZCompensationCalibratorLinkedVar, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="120" FontSize="10"
-                                              materialDesign:HintAssist.Hint="{lang:Lang DispenseDetail_LinkGlobalVariable}"/>
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <common:GlobalVariableLinkControl Grid.Column="1"
+                                        DisplayValue="{Binding ZCompensationCalibratorDisplayValue, Mode=OneWay}"
+                                        DisplayForeground="#1565C0"
+                                        IsLinked="{Binding IsZCompensationCalibratorLinked, Mode=OneWay}"
+                                        LinkedVariableName="{Binding ZCompensationCalibratorLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                        UnlinkCommand="{Binding UnlinkZCompensationCalibratorCommand}"
+                                        ComboBoxWidth="120" />
                                 </Grid>
                                 <!-- 手动Z补偿（人工输入，DecimalUpDown） -->
                                 <Grid>
@@ -148,7 +118,7 @@
                         <!-- Toolbar -->
                         <WrapPanel Margin="0,0,0,6">
                             <Button Command="{Binding ImportLinesCommand}"
-                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0" FontSize="13">
                                 <StackPanel Orientation="Horizontal">
                                     <materialDesign:PackIcon Kind="FileImport" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{lang:Lang DispenseDetail_ImportLines}"/>
@@ -193,7 +163,7 @@
                                   IsReadOnly="True"
                                   SelectionMode="Extended"
                                   materialDesign:DataGridAssist.CellPadding="4"
-                                  MaxHeight="100">
+                                  MaxHeight="120">
                             <DataGrid.Columns>
                                 <DataGridTemplateColumn Header="{lang:Lang Step3_Header_Enabled}" Width="Auto" MinWidth="36">
                                     <DataGridTemplateColumn.CellTemplate>

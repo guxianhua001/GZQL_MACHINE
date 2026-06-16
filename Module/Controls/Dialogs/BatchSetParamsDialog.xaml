@@ -20,7 +20,7 @@
                                        Text="{Binding DisplayName}"
                                        VerticalAlignment="Center"
                                        MinWidth="100"/>
-                            <TextBox Text="{Binding Value, StringFormat=F2, UpdateSourceTrigger=LostFocus}"
+                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                                      VerticalAlignment="Center"
                                      Margin="4,0,0,0"
                                      IsEnabled="{Binding IsEnabled}"

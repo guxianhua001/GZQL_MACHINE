@@ -401,6 +401,9 @@ namespace Module.ViewModels
                     _dispenseSegmentStore.CurrentSelectedSegment = _selectedSegment;
                     _eventAggregator?.GetEvent<SelectedSegmentChangedEvent>().Publish(
                         new SelectedSegmentPayload { Segment = _selectedSegment });
+
+                    // 选中段变化时同步 SinglePointProcessParams 面板显示
+                    UpdateSinglePointProcessParamsFromSegment(_selectedSegment);
                 }
             }
         }
@@ -435,6 +438,90 @@ namespace Module.ViewModels
                 PropertyName = e.PropertyName,
                 Segment = _selectedSegment
             });
+        }
+
+        /// <summary>
+        /// 监听 SinglePointProcessParams 属性变更——
+        /// 单点模式下将参数应用到所有段，并发布同步事件到 DispenseDetailViewModel
+        /// </summary>
+        private void OnSinglePointProcessParamsChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            // 从段同步到 ProcessParams 时，跳过处理以防止反馈循环
+            if (_updatingProcessParams) return;
+
+            double value = e.PropertyName switch
+            {
+                nameof(DotProcessParams.MoveSpeed) => _singlePointProcessParams.MoveSpeed,
+                nameof(DotProcessParams.SafeHeight) => _singlePointProcessParams.SafeHeight,
+                nameof(DotProcessParams.ApproachHeight) => _singlePointProcessParams.ApproachHeight,
+                nameof(DotProcessParams.CornerDecel) => _singlePointProcessParams.CornerDecel,
+                nameof(DotProcessParams.DispenseTime) => _singlePointProcessParams.DispenseTime,
+                nameof(DotProcessParams.PreDispenseDelay) => _singlePointProcessParams.PreDispenseDelay,
+                nameof(DotProcessParams.PostDelay) => _singlePointProcessParams.PostDelay,
+                nameof(DotProcessParams.DotGlueTriggerOffsetMm) => _singlePointProcessParams.DotGlueTriggerOffsetMm,
+                nameof(DotProcessParams.TeachHeight) => _singlePointProcessParams.TeachHeight,
+                nameof(DotProcessParams.HeightCompensation) => _singlePointProcessParams.HeightCompensation,
+                nameof(DotProcessParams.DispensingPressure) => _singlePointProcessParams.DispensingPressure,
+                nameof(DotProcessParams.SuckBackTime) => _singlePointProcessParams.SuckBackTime,
+                _ => double.NaN
+            };
+            if (double.IsNaN(value)) return;
+
+            // 单点模式下：用户在面板编辑参数时，同步到所有启用段
+            if (IsSinglePointMode)
+                ApplySinglePointParamsToAllSegments(e.PropertyName, value);
+
+            _eventAggregator?.GetEvent<ProcessParamsSyncEvent>().Publish(new ProcessParamsSyncPayload
+            {
+                PropertyName = e.PropertyName,
+                Value = value
+            });
+        }
+
+        /// <summary>
+        /// 从指定段同步属性值到 SinglePointProcessParams（不触发反向传播）
+        /// </summary>
+        private void UpdateSinglePointProcessParamsFromSegment(DispenseSegment seg)
+        {
+            if (seg == null) return;
+            _updatingProcessParams = true;
+            try
+            {
+                _singlePointProcessParams.MoveSpeed = seg.MoveSpeed;
+                _singlePointProcessParams.SafeHeight = seg.SafeHeight;
+                _singlePointProcessParams.ApproachHeight = seg.ApproachHeight;
+                _singlePointProcessParams.CornerDecel = seg.CornerDecel;
+                _singlePointProcessParams.PostDelay = seg.PostDelay;
+                _singlePointProcessParams.DotGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
+                _singlePointProcessParams.TeachHeight = seg.TeachHeight;
+                _singlePointProcessParams.HeightCompensation = seg.HeightCompensation;
+                _singlePointProcessParams.DispensingPressure = seg.DispensingPressure;
+                _singlePointProcessParams.SuckBackTime = seg.SuckBackTime;
+            }
+            finally { _updatingProcessParams = false; }
+        }
+
+        /// <summary>
+        /// 将 SinglePointProcessParams 的单个属性变更应用到所有启用段（单点模式专用）
+        /// </summary>
+        private void ApplySinglePointParamsToAllSegments(string propertyName, double value)
+        {
+            foreach (var seg in Segments.Where(s => s.IsEnabled))
+            {
+                switch (propertyName)
+                {
+                    case nameof(DotProcessParams.MoveSpeed): seg.MoveSpeed = value; break;
+                    case nameof(DotProcessParams.SafeHeight): seg.SafeHeight = value; break;
+                    case nameof(DotProcessParams.ApproachHeight): seg.ApproachHeight = value; break;
+                    case nameof(DotProcessParams.CornerDecel): seg.CornerDecel = value; break;
+                    case nameof(DotProcessParams.PostDelay): seg.PostDelay = value; break;
+                    case nameof(DotProcessParams.DotGlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
+                    case nameof(DotProcessParams.TeachHeight): seg.TeachHeight = value; break;
+                    case nameof(DotProcessParams.HeightCompensation): seg.HeightCompensation = value; break;
+                    case nameof(DotProcessParams.DispensingPressure): seg.DispensingPressure = value; break;
+                    case nameof(DotProcessParams.SuckBackTime): seg.SuckBackTime = value; break;
+                }
+            }
         }
 
         /// <summary>是否有选中段（控制 Expander 可见性）</summary>
@@ -945,19 +1032,13 @@ namespace Module.ViewModels
         public bool CanExecute => Segments.Any(s => s.IsEnabled) && !_isSimulating;
 
         private DotProcessParams _singlePointProcessParams = new DotProcessParams();
+        /// <summary>防止从段同步到 SinglePointProcessParams 时触发反向传播的标志</summary>
+        private bool _updatingProcessParams;
         /// <summary>单点模式全局工艺参数（复用点涂A参数体系）</summary>
         public DotProcessParams SinglePointProcessParams
         {
             get => _singlePointProcessParams;
             set => SetProperty(ref _singlePointProcessParams, value);
-        }
-
-        private double _standbyHeight = -20.0;
-        /// <summary>待机高度 mm（单点模式循环结束后Z轴抬升目标，范围 -30~10）</summary>
-        public double StandbyHeight
-        {
-            get => _standbyHeight;
-            set => SetProperty(ref _standbyHeight, Math.Clamp(value, -30.0, 10.0));
         }
 
         /// <summary>是否显示连续插补段参数编辑区（有选中段 且 为连续插补模式）</summary>
@@ -1571,6 +1652,9 @@ namespace Module.ViewModels
             // 从配方参数恢复上次配置路径，并尝试自动加载
             RestorePathFromStationParams();
             TryAutoLoadLastConfig();
+
+            // 监听 SinglePointProcessParams 属性变更，发布同步事件到 DispenseDetailViewModel
+            _singlePointProcessParams.PropertyChanged += OnSinglePointProcessParamsChanged;
         }
 
         #endregion
@@ -2110,6 +2194,10 @@ namespace Module.ViewModels
                             param.ApplyTo(seg);
                         changedCount++;
                     }
+
+                    // 批量设置后，从第一个目标段刷新 SinglePointProcessParams 面板
+                    UpdateSinglePointProcessParamsFromSegment(targets[0]);
+
                     GlobalStatus = string.Format(L("CadPoint_Status_BatchSetResult"), changedCount, targets.Count);
                 }
             }
@@ -2632,7 +2720,7 @@ namespace Module.ViewModels
                             ? L("CadPoint_Status_DryRunStart_Descend") + $" ({L("Step3_Radio_SinglePoint")})"
                             : L("CadPoint_Status_DryRunStart_Safe") + $" ({L("Step3_Radio_SinglePoint")})";
                         await _dispenseExecuteService.ExecuteSinglePointLineAsync(
-                            enabledSegments, SinglePointProcessParams, StandbyHeight, CurrentNeedleIndex, _simCts.Token,
+                            enabledSegments, SinglePointProcessParams, CurrentNeedleIndex, _simCts.Token,
                             dryRun: !DescendInDryRun);
                     }
                     else
@@ -2649,7 +2737,7 @@ namespace Module.ViewModels
                     {
                         GlobalStatus = L("LineBC_Status_SinglePointExecuting");
                         await _dispenseExecuteService.ExecuteSinglePointLineAsync(
-                            enabledSegments, SinglePointProcessParams, StandbyHeight, CurrentNeedleIndex, _simCts.Token);
+                            enabledSegments, SinglePointProcessParams, CurrentNeedleIndex, _simCts.Token);
                         GlobalStatus = L("LineBC_Status_SinglePointCompleted");
                     }
                     else

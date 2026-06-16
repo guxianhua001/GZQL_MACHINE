@@ -295,7 +295,6 @@ namespace Module.Services
         public async Task ExecuteSinglePointLineAsync(
             IEnumerable<DispenseSegment> segments,
             DotProcessParams processParams,
-            double standbyHeight,
             int needleIndex = 0,
             CancellationToken token = default,
             bool dryRun = false)
@@ -386,7 +385,7 @@ namespace Module.Services
                     }
                 }
 
-                await _motionService.MoveAbsAsync(axisDz, standbyHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
                 PublishStatus("Completed");
                 _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_Completed", modeLabel)}");

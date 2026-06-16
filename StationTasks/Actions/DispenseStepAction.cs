@@ -130,8 +130,7 @@ namespace StationTasks.Actions
                 var seg = CreateSegmentWithParams(source, segRef, detail);
 
                 var startPt = seg.Points.First();
-                double startX = startPt.MachineX ?? startPt.X;
-                double startY = startPt.MachineY ?? startPt.Y;
+                var (startX, startY) = GetMachineXY(startPt);
 
                 await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, token);
@@ -139,8 +138,7 @@ namespace StationTasks.Actions
                 foreach (var pt in seg.Points.Skip(1))
                 {
                     token.ThrowIfCancellationRequested();
-                    double px = pt.MachineX ?? pt.X;
-                    double py = pt.MachineY ?? pt.Y;
+                    var (px, py) = GetMachineXY(pt);
                     await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
                         new[] { px, py }, moveSpeed, token);
                 }
@@ -198,8 +196,7 @@ namespace StationTasks.Actions
                 {
                     token.ThrowIfCancellationRequested();
 
-                    double px = point.MachineX ?? point.OffsetX ?? point.X;
-                    double py = point.MachineY ?? point.OffsetY ?? point.Y;
+                    var (px, py) = GetMachineXY(point);
 
                     await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
@@ -286,8 +283,7 @@ namespace StationTasks.Actions
                 await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
                 var startPt = seg.Points.First();
-                double startX = startPt.MachineX ?? startPt.X;
-                double startY = startPt.MachineY ?? startPt.Y;
+                var (startX, startY) = GetMachineXY(startPt);
                 await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, token);
 
@@ -321,8 +317,7 @@ namespace StationTasks.Actions
 
                 foreach (var pt in seg.Points)
                 {
-                    double px = pt.MachineX ?? pt.X;
-                    double py = pt.MachineY ?? pt.Y;
+                    var (px, py) = GetMachineXY(pt);
                     _motionService.AddLineSegment(CoordId, new[] { px, py });
                 }
 
@@ -480,6 +475,18 @@ namespace StationTasks.Actions
         {
             try { _motionService.WriteDo(GlueIoPort, false); }
             catch { }
+        }
+
+        /// <summary>
+        /// 安全获取点的机器坐标——严禁使用 OffsetX/X 等未转换坐标作为运动目标，
+        /// MachineX/MachineY 为空时立即抛出异常中止运动，防止设备撞机
+        /// </summary>
+        private (double X, double Y) GetMachineXY(CadPoint pt)
+        {
+            if (pt.MachineX == null || pt.MachineY == null)
+                throw new InvalidOperationException(
+                    $"DISPENSE 致命错误: 点[Id={pt.Id}] MachineX/MachineY 为空，禁止使用未转换坐标执行运动");
+            return (pt.MachineX.Value, pt.MachineY.Value);
         }
     }
 }

@@ -30,4 +30,19 @@ namespace Core.Events
     {
         public Core.Models.DispenseSegment Segment { get; init; }
     }
+
+    /// <summary>
+    /// 单点模式全局工艺参数变更事件——CadPointEditorViewModel.SinglePointProcessParams 变更时发布，
+    /// 通知 DispenseDetailViewModel 同步更新默认参数
+    /// </summary>
+    public class ProcessParamsSyncEvent : PubSubEvent<ProcessParamsSyncPayload> { }
+
+    /// <summary>
+    /// 单点模式工艺参数同步载荷——携带变更属性名和新值
+    /// </summary>
+    public class ProcessParamsSyncPayload
+    {
+        public string PropertyName { get; init; }
+        public double Value { get; init; }
+    }
 }

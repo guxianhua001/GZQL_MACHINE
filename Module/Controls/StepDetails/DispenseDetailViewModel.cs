@@ -9,6 +9,7 @@ using Prism.Events;
 using Prism.Ioc;
 using Prism.Mvvm;
 using Prism.Regions;
+using Recipe.Events;
 using Recipe.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -67,6 +68,8 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(DefaultDispensingPressure));
                     RaisePropertyChanged(nameof(DefaultSuckBackTime));
                     RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
+                    RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
+                    RaisePropertyChanged(nameof(DefaultDispenseTime));
                     RaisePropertyChanged(nameof(DefaultCornerDecel));
                     RaisePropertyChanged(nameof(DefaultTeachHeight));
                     RaisePropertyChanged(nameof(DefaultHeightCompensation));
@@ -127,17 +130,15 @@ namespace Module.ViewModels
                 {
                     _step.DispenseDetail.ZCompensation3DLinkedVar = value;
                     RaisePropertyChanged(nameof(IsZCompensation3DLinked));
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == value);
-                        if (gv != null && double.TryParse(gv.Value, out var val))
-                            ZCompensation3D = val;
-                    }
+                    RefreshZCompensationDisplayValues();
                 }
             }
         }
 
         public bool IsZCompensation3DLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensation3DLinkedVar);
+
+        /// <summary>Z补偿(3D)链接全局变量的实时显示值</summary>
+        public double ZCompensation3DDisplayValue { get; private set; }
 
         public double ZCompensationCalibrator
         {
@@ -154,17 +155,15 @@ namespace Module.ViewModels
                 {
                     _step.DispenseDetail.ZCompensationCalibratorLinkedVar = value;
                     RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == value);
-                        if (gv != null && double.TryParse(gv.Value, out var val))
-                            ZCompensationCalibrator = val;
-                    }
+                    RefreshZCompensationDisplayValues();
                 }
             }
         }
 
         public bool IsZCompensationCalibratorLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensationCalibratorLinkedVar);
+
+        /// <summary>Z补偿(校准器)链接全局变量的实时显示值</summary>
+        public double ZCompensationCalibratorDisplayValue { get; private set; }
 
         public double ManualZCompensation
         {
@@ -350,6 +349,31 @@ namespace Module.ViewModels
                 if (_step.DispenseDetail.DefaultGlueTriggerOffsetMm == value) return;
                 _step.DispenseDetail.DefaultGlueTriggerOffsetMm = value;
                 PublishParamToSelectedSegment(nameof(DispenseSegment.GlueTriggerOffsetMm), value);
+            }
+        }
+
+        public double DefaultPreDispenseDelay
+        {
+            get => _step?.DispenseDetail?.DefaultPreDispenseDelay ?? 50.0;
+            set
+            {
+                if (_step?.DispenseDetail == null) return;
+                if (_step.DispenseDetail.DefaultPreDispenseDelay == value) return;
+                _step.DispenseDetail.DefaultPreDispenseDelay = value;
+                // 同步到 DispenseSegment.PreDelay（与 DotProcessParams.PreDispenseDelay 对应）
+                PublishParamToSelectedSegment(nameof(DispenseSegment.PreDelay), value);
+            }
+        }
+
+        public double DefaultDispenseTime
+        {
+            get => _step?.DispenseDetail?.DefaultDispenseTime ?? 180.0;
+            set
+            {
+                if (_step?.DispenseDetail == null) return;
+                if (_step.DispenseDetail.DefaultDispenseTime == value) return;
+                _step.DispenseDetail.DefaultDispenseTime = value;
+                // DispenseSegment 无对应字段，仅更新 DispenseDetail
             }
         }
 
@@ -831,6 +855,12 @@ namespace Module.ViewModels
             _eventAggregator?.GetEvent<SelectedSegmentChangedEvent>().Subscribe(
                 OnSelectedSegmentChanged, ThreadOption.PublisherThread, false);
 
+            _eventAggregator?.GetEvent<ProcessParamsSyncEvent>().Subscribe(
+                OnProcessParamsSynced, ThreadOption.PublisherThread, false);
+
+            _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Subscribe(
+                OnGlobalVariablesChanged, ThreadOption.UIThread);
+
             ImportLinesCommand = new DelegateCommand(OnImportLines);
             ImportArcsCommand = new DelegateCommand(OnImportArcs);
             RemoveSelectedCommand = new DelegateCommand(OnRemoveSelected);
@@ -885,10 +915,6 @@ namespace Module.ViewModels
                     _step.DispenseDetail.DefaultDispenseAmount = payload.Segment.DispenseAmount;
                     RaisePropertyChanged(nameof(DefaultDispenseAmount));
                     break;
-                case nameof(DispenseSegment.PreDelay):
-                    _step.DispenseDetail.DefaultPreDelay = payload.Segment.PreDelay;
-                    RaisePropertyChanged(nameof(DefaultPreDelay));
-                    break;
                 case nameof(DispenseSegment.PostDelay):
                     _step.DispenseDetail.DefaultPostDelay = payload.Segment.PostDelay;
                     RaisePropertyChanged(nameof(DefaultPostDelay));
@@ -904,6 +930,12 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.GlueTriggerOffsetMm):
                     _step.DispenseDetail.DefaultGlueTriggerOffsetMm = payload.Segment.GlueTriggerOffsetMm;
                     RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
+                    break;
+                case nameof(DispenseSegment.PreDelay):
+                    _step.DispenseDetail.DefaultPreDelay = payload.Segment.PreDelay;
+                    _step.DispenseDetail.DefaultPreDispenseDelay = payload.Segment.PreDelay;
+                    RaisePropertyChanged(nameof(DefaultPreDelay));
+                    RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
                     break;
                 case nameof(DispenseSegment.TeachHeight):
                     _step.DispenseDetail.DefaultTeachHeight = payload.Segment.TeachHeight;
@@ -972,6 +1004,7 @@ namespace Module.ViewModels
             _step.DispenseDetail.DefaultDispensingPressure = seg.DispensingPressure;
             _step.DispenseDetail.DefaultSuckBackTime = seg.SuckBackTime;
             _step.DispenseDetail.DefaultGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
+            _step.DispenseDetail.DefaultPreDispenseDelay = seg.PreDelay;
             _step.DispenseDetail.DefaultTeachHeight = seg.TeachHeight;
             _step.DispenseDetail.DefaultHeightCompensation = seg.HeightCompensation;
 
@@ -986,10 +1019,73 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultDispensingPressure));
             RaisePropertyChanged(nameof(DefaultSuckBackTime));
             RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
+            RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
             RaisePropertyChanged(nameof(DefaultTeachHeight));
             RaisePropertyChanged(nameof(DefaultHeightCompensation));
 
             _syncingFromSelection = false;
+        }
+
+        /// <summary>
+        /// 响应 CadPointEditorViewModel.SinglePointProcessParams 变更——同步更新 DispenseDetail 默认参数
+        /// </summary>
+        private void OnProcessParamsSynced(ProcessParamsSyncPayload payload)
+        {
+            if (_step?.DispenseDetail == null) return;
+
+            switch (payload.PropertyName)
+            {
+                case nameof(DotProcessParams.MoveSpeed):
+                    _step.DispenseDetail.DefaultMoveSpeed = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultMoveSpeed));
+                    break;
+                case nameof(DotProcessParams.SafeHeight):
+                    _step.DispenseDetail.DefaultSafeHeight = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultSafeHeight));
+                    break;
+                case nameof(DotProcessParams.ApproachHeight):
+                    _step.DispenseDetail.DefaultApproachHeight = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultApproachHeight));
+                    break;
+                case nameof(DotProcessParams.CornerDecel):
+                    _step.DispenseDetail.DefaultCornerDecel = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultCornerDecel));
+                    break;
+                case nameof(DotProcessParams.DispenseTime):
+                    _step.DispenseDetail.DefaultDispenseTime = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultDispenseTime));
+                    break;
+                case nameof(DotProcessParams.PreDispenseDelay):
+                    _step.DispenseDetail.DefaultPreDispenseDelay = payload.Value;
+                    _step.DispenseDetail.DefaultPreDelay = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
+                    RaisePropertyChanged(nameof(DefaultPreDelay));
+                    break;
+                case nameof(DotProcessParams.PostDelay):
+                    _step.DispenseDetail.DefaultPostDelay = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultPostDelay));
+                    break;
+                case nameof(DotProcessParams.DotGlueTriggerOffsetMm):
+                    _step.DispenseDetail.DefaultGlueTriggerOffsetMm = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
+                    break;
+                case nameof(DotProcessParams.TeachHeight):
+                    _step.DispenseDetail.DefaultTeachHeight = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultTeachHeight));
+                    break;
+                case nameof(DotProcessParams.HeightCompensation):
+                    _step.DispenseDetail.DefaultHeightCompensation = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultHeightCompensation));
+                    break;
+                case nameof(DotProcessParams.DispensingPressure):
+                    _step.DispenseDetail.DefaultDispensingPressure = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultDispensingPressure));
+                    break;
+                case nameof(DotProcessParams.SuckBackTime):
+                    _step.DispenseDetail.DefaultSuckBackTime = payload.Value;
+                    RaisePropertyChanged(nameof(DefaultSuckBackTime));
+                    break;
+            }
         }
 
         /// <summary>
@@ -1195,6 +1291,7 @@ namespace Module.ViewModels
 
         private void OnClose()
         {
+            _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
             try
             {
                 var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
@@ -1250,6 +1347,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(IsDryRunMode));
             RaisePropertyChanged(nameof(IsRealDispenseMode));
             RaisePropertyChanged(nameof(StepDescription));
+            RefreshZCompensationDisplayValues();
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
@@ -1272,6 +1370,7 @@ namespace Module.ViewModels
                 foreach (var v in variables)
                     AvailableGlobalVariables.Add(v);
 
+                RefreshZCompensationDisplayValues();
                 RaisePropertyChanged(nameof(IsZCompensation3DLinked));
                 RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
             }
@@ -1279,6 +1378,58 @@ namespace Module.ViewModels
             {
                 _logger.Warn($"[DispenseDetail] 加载全局变量失败: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 全局变量被外部修改时，刷新 Z 补偿链接变量的实时显示值
+        /// </summary>
+        private async void OnGlobalVariablesChanged(string poolName)
+        {
+            try
+            {
+                if (_recipePoolService == null) return;
+                var currentPool = _recipePoolService.CurrentPoolName;
+                if (string.IsNullOrEmpty(currentPool) || poolName != currentPool) return;
+
+                var variables = await _recipePoolService.LoadGlobalVariablesAsync(currentPool);
+                AvailableGlobalVariables.Clear();
+                foreach (var v in variables)
+                    AvailableGlobalVariables.Add(v);
+
+                RefreshZCompensationDisplayValues();
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"[DispenseDetail] 刷新全局变量显示值失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>刷新 Z 补偿链接全局变量的实时显示值</summary>
+        private void RefreshZCompensationDisplayValues()
+        {
+            // Z补偿(3D)
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensation3DLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.ZCompensation3DLinkedVar);
+                ZCompensation3DDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                ZCompensation3DDisplayValue = ZCompensation3D;
+            }
+            RaisePropertyChanged(nameof(ZCompensation3DDisplayValue));
+
+            // Z补偿(校准器)
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensationCalibratorLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.ZCompensationCalibratorLinkedVar);
+                ZCompensationCalibratorDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                ZCompensationCalibratorDisplayValue = ZCompensationCalibrator;
+            }
+            RaisePropertyChanged(nameof(ZCompensationCalibratorDisplayValue));
         }
 
         #endregion
