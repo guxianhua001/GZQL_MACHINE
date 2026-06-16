@@ -113,7 +113,7 @@
                                     UnlinkCommand="{Binding DataContext.UnlinkOffsetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     LinkedVariableName="{Binding OffsetVariableName, UpdateSourceTrigger=PropertyChanged}"
                                     LinkableGlobalVariables="{Binding DataContext.LinkableOffsetVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    ComboBoxWidth="100" />
+                                    ComboBoxWidth="140" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

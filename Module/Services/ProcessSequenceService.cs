@@ -279,6 +279,10 @@ namespace Module.Services
             _isExecuting = true;
             _activeStationTask = stationTask;
             CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
+            // 启动时重置所有工站的暂停信号：StopTask 会取消所有工站的 _pauseCts，
+            // 跨工站执行时目标工站的 PauseAwareToken 也需要处于未取消状态
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.ResetMotionPause();
             // 启动时清除上次运行遗留的报警标记
             foreach (var step in steps)
                 step.HasActiveAlarm = false;

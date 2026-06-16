@@ -233,13 +233,21 @@ namespace MotionControl.Behaviors
                 return;
             }
 
-            // 安全互锁：优先用轮询缓存位置，避免 UI 线程同步读卡
+            // 安全互锁：仅使用轮询缓存位置，禁止 UI 线程同步读卡（避免 Jog 卡顿）
             var safetyMonitor = GetSafetyZoneMonitor(button);
             if (safetyMonitor != null)
             {
-                double currentPosition = motionService.GetAxisState(axisId)?.ActualPosition
-                                         ?? motionService.GetAxisPosition(axisId);
+                // 使用轮询线程推送的缓存位置，绝不在 UI 线程调用 GetAxisPosition（硬件读取）
+                var axisState = motionService.GetAxisState(axisId);
+                if (axisState == null)
+                {
+                    // 缓存不可用时拒绝操作（安全优先）：轮询线程启动后 ~100ms 即可用
+                    System.Diagnostics.Debug.WriteLine($"[SafeJog] 轴{axisId} 缓存位置不可用，拒绝Jog（安全优先）");
+                    state.IsJogging = false;
+                    return;
+                }
 
+                double currentPosition = axisState.ActualPosition;
                 double jogOffset = safetyMonitor.JogEstimateOffset > 0 ? safetyMonitor.JogEstimateOffset : 10.0;
                 double targetPosition = positiveDirection
                     ? currentPosition + jogOffset

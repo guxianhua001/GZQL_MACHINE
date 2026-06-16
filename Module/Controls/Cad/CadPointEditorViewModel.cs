@@ -952,12 +952,12 @@ namespace Module.ViewModels
             set => SetProperty(ref _singlePointProcessParams, value);
         }
 
-        private double _standbyHeight = 10.0;
-        /// <summary>待机高度 mm（单点模式循环结束后Z轴抬升目标，范围 0~200）</summary>
+        private double _standbyHeight = -20.0;
+        /// <summary>待机高度 mm（单点模式循环结束后Z轴抬升目标，范围 -30~10）</summary>
         public double StandbyHeight
         {
             get => _standbyHeight;
-            set => SetProperty(ref _standbyHeight, Math.Clamp(value, 0.0, 200.0));
+            set => SetProperty(ref _standbyHeight, Math.Clamp(value, -30.0, 10.0));
         }
 
         /// <summary>是否显示连续插补段参数编辑区（有选中段 且 为连续插补模式）</summary>
@@ -2262,8 +2262,8 @@ namespace Module.ViewModels
                     point.MachineY = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
 
                     // 根据当前针头读取对应Dz轴
-                    const int AxisDz1 = 4;
-                    const int AxisDz2 = 5;
+                    const int AxisDz1 = 3;
+                    const int AxisDz2 = 4;
                     point.MachineDz = Math.Round(
                         _motionService.GetAxisState(_currentNeedleIndex == 0 ? AxisDz1 : AxisDz2).ActualPosition, 3);
                 }
@@ -2435,8 +2435,8 @@ namespace Module.ViewModels
                     point.MachineDx = Math.Round(_motionService.GetAxisState(AxisDx).ActualPosition, 3);
                     point.MachineDy = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
 
-                    // 根据当前针头选择Z轴: Dz1→AxisDz₂(logicalId=4), Dz2→AxisDz₃(logicalId=5)
-                    int axisDz = _currentNeedleIndex == 0 ? 4 : 5;
+                    // 根据当前针头选择Z轴: Dz1→AxisDz₂(logicalId=3), Dz2→AxisDz₃(logicalId=4)
+                    int axisDz = _currentNeedleIndex == 0 ? 3 : 4;
                     point.MachineDz = Math.Round(_motionService.GetAxisState(axisDz).ActualPosition, 3);
                 }
                 catch (Exception ex)

@@ -62,6 +62,9 @@ namespace MotionControl.Services
         public async Task RunAsync(CancellationToken token)
         {
             if (State == TaskState.Running) return;
+            // 重置暂停信号：StopAsync 会取消 _pauseCts，重新启动时必须重建，
+            // 否则 PauseAwareToken 将因 _pauseCts 已取消而立即处于取消状态
+            ResetMotionPause();
             _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             State = TaskState.Running;
             PublishTaskStatusChanged("Running", State);

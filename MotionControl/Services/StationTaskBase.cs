@@ -175,6 +175,11 @@ namespace StationTasks.Tasks
             if (State == TaskState.Running)
                 throw new InvalidOperationException($"任务 [{TaskName}] 正在运行中，无法启动自定义序列");
 
+            // 重置暂停信号：StopAsync 会取消 _pauseCts，若此处不重建，
+            // PauseAwareToken 将因 _pauseCts 已取消而立即处于取消状态，
+            // 导致 Task.Run(body, token) 跳过执行体直接返回取消 Task
+            ResetMotionPause();
+
             _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             State = TaskState.Running;
             PublishTaskStatusChanged("Running", State);

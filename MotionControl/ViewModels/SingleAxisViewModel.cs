@@ -192,13 +192,19 @@ namespace MotionControl.ViewModels
             SyncInitialStatusFromService();
         }
 
-        /// <summary>订阅轮询事件，100ms 合并刷新（6 轴页减少 Dispatcher 排队，体感更流畅）</summary>
+        /// <summary>
+        /// 订阅轮询事件，100ms 合并刷新。
+        /// 使用 DispatcherPriority.Background 确保鼠标/键盘输入事件优先执行，
+        /// 避免状态刷新占满 Dispatcher 队列导致 Jog 操作延迟或卡顿。
+        /// </summary>
         private void SubscribeToStatusEvents()
         {
             var observable = (_motionService as IObservable<AxisStateChangedEvent>)
                 ?? throw new InvalidOperationException("IMotionService does not implement IObservable<AxisStateChangedEvent>");
 
-            _statusRefreshTimer = new DispatcherTimer(DispatcherPriority.Normal, Application.Current.Dispatcher)
+            // Background 优先级：状态刷新让位于用户输入（Mouse/Keyboard = Normal），
+            // 确保 Jog 按钮的按下/松开事件不被延迟
+            _statusRefreshTimer = new DispatcherTimer(DispatcherPriority.Background, Application.Current.Dispatcher)
             {
                 Interval = TimeSpan.FromMilliseconds(100)
             };
@@ -213,19 +219,21 @@ namespace MotionControl.ViewModels
                     if (Interlocked.CompareExchange(ref _refreshScheduleFlag, 1, 0) != 0)
                         return;
 
+                    // Background 优先级：输入事件优先处理，消除 Jog 卡顿
                     Application.Current?.Dispatcher.BeginInvoke(() =>
                     {
                         Interlocked.Exchange(ref _refreshScheduleFlag, 0);
                         if (!_uiRefreshEnabled) return;
                         _statusRefreshTimer.Stop();
                         _statusRefreshTimer.Start();
-                    }, DispatcherPriority.Normal);
+                    }, DispatcherPriority.Background);
                 },
                 onError: ex => System.Diagnostics.Debug.WriteLine($"Axis {_axisId} status error: {ex.Message}")
             ));
         }
 
-        /// <summary>面板打开时恢复刷新并同步最新缓存；关闭时停止 Timer</summary>
+        /// <summary>面板打开时恢复刷新并同步最新缓存；关闭时停止 Timer。
+        /// 使用 Background 优先级避免阻塞用户输入。</summary>
         private void OnAxisPanelOpenChanged(bool isOpen)
         {
             _uiRefreshEnabled = isOpen;
@@ -246,7 +254,7 @@ namespace MotionControl.ViewModels
                     _statusRefreshTimer?.Stop();
                     _pendingStatusEvent = null;
                 }
-            }, DispatcherPriority.Normal);
+            }, DispatcherPriority.Background);
         }
 
         /// <summary>构造后立即从 MotionService 缓存拉一次，避免等首次变化才显示</summary>
