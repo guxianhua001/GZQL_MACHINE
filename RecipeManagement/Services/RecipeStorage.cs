@@ -177,13 +177,12 @@ namespace Recipe.Services
                 string backupFileName = $"{fileName}_{timestamp}.bak";
                 string backupPath = Path.Combine(backupDir, backupFileName);
                 File.Copy(filePath, backupPath, overwrite: true);
-                // 可选：记录日志（如果注入了 ILoggerService）
-                // _logger?.Info($"已备份配方池文件: {backupPath}");
+                _logger?.Info($"已备份配方池文件: {backupPath}");
             }
-            catch
+            catch (Exception ex)
             {
-                // 备份失败不影响正常保存，静默处理
-                // 可选：记录警告日志
+                // 备份失败不影响正常保存，仅记录警告日志
+                _logger?.Warn($"备份配方池文件失败: {ex.Message}");
             }
         }
     }

@@ -440,7 +440,7 @@ namespace Recipe.ViewModels
                         if (pool != null && pool.CurrentRecipeName == oldName)
                         {
                             pool.CurrentRecipeName = newName;
-                            await _recipeStorage.SaveRecipePoolAsync(pool);
+                            await _recipePoolService.SaveRecipePoolAsync(pool);
                         }
 
                         if (CurrentRecipeName == oldName && CurrentPoolName == poolName)
@@ -499,7 +499,7 @@ namespace Recipe.ViewModels
                         var recipes = await _recipeStorage.LoadAllRecipesAsync(poolId);
                         string newCurrent = recipes.Any() ? recipes.First().Name : "Default";
                         pool.CurrentRecipeName = newCurrent;
-                        await _recipeStorage.SaveRecipePoolAsync(pool);
+                        await _recipePoolService.SaveRecipePoolAsync(pool);
                         CurrentRecipeName = newCurrent;
                     }
 
@@ -653,6 +653,7 @@ namespace Recipe.ViewModels
             {
                 IsLoading = true;
                 StatusMessage = $"正在保存配方池 '{SelectedRecipePool.Name}'...";
+                _logger.Info($"开始保存配方池 '{SelectedRecipePool.Name}'");
 
                 // 从文件加载最新池（包含被编辑器修改的工站参数）
                 var latestPool = await _recipePoolService.GetRecipePoolAsync(SelectedRecipePool.Name);
@@ -662,9 +663,14 @@ namespace Recipe.ViewModels
                 }
 
                 await _recipePoolService.SaveRecipePoolAsync(SelectedRecipePool);
+                _logger.Info($"配方池 '{SelectedRecipePool.Name}' 及全局变量已保存");
                 StatusMessage = $"配方池 '{SelectedRecipePool.Name}' 及全局变量已保存";
             }
-            catch (Exception ex) { /* ... */ }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, $"保存配方池 '{SelectedRecipePool?.Name}' 失败");
+                StatusMessage = $"保存失败: {ex.Message}";
+            }
             finally { IsLoading = false; }
         }
 

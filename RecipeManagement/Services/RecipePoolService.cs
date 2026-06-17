@@ -519,8 +519,19 @@ namespace Recipe
             await _semaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                // 保存池前先让全局变量页面把当前编辑内容写入 pool，统一走 Save Pool 持久化。
+                // 1. 保存前同步全局变量页面编辑内容到内存 pool
                 _eventAggregator.GetEvent<SaveGlobalVariablesEvent>().Publish(pool);
+
+                // 2. 从文件加载最新配方池（保留其他编辑器已提交的工站参数，避免陈旧内存数据覆盖文件）
+                var filePool = await _recipeStorage.LoadRecipePoolAsync(pool.Name).ConfigureAwait(false);
+                if (filePool != null)
+                {
+                    // 仅将内存 pool 的全局变量和顶层元数据合并到文件 pool
+                    filePool.GlobalVariables = pool.GlobalVariables;
+                    filePool.ModifiedTime = DateTime.UtcNow;
+                    pool = filePool;
+                }
+
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
                 // 保存完成后通知依赖全局变量的页面刷新链接值，如 VisionCaptureView。
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(pool.Name);

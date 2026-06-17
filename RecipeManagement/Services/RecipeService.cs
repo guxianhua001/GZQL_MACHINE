@@ -295,20 +295,11 @@ namespace Recipe
             {
                 _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 正在将当前配方 '{recipeName}' 保存到配方池 {poolName}");
 
-                var defaultPool = await _recipeStorage.LoadRecipePoolAsync(poolName);
-                if (defaultPool == null)
+                // 通过 UpdateRecipePoolAsync 走信号量保护，从文件重新加载避免覆盖工站参数
+                await _recipePoolManager.UpdateRecipePoolAsync(poolName, pool =>
                 {
-                    _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 默认配方池不存在，创建新的默认配方池");
-                    defaultPool = new RecipePool
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = poolName,
-                        CreatedTime = DateTime.UtcNow
-                    };
-                }
-
-                defaultPool.SetCurrentRecipeInfo(((IRecipeService)this).StationIdentifier, recipeName, poolName);
-                await _recipeStorage.SaveRecipePoolAsync(defaultPool);
+                    pool.SetCurrentRecipeInfo(((IRecipeService)this).StationIdentifier, recipeName, poolName);
+                }).ConfigureAwait(false);
 
                 _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 当前配方 '{recipeName}' 已保存到配方池{poolName}顶层属性");
             }

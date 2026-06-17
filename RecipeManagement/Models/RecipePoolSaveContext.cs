@@ -67,6 +67,9 @@ namespace Recipe.Models
                     recipe.SetParameter(kv.Key, kv.Value);
                 }
 
+                // 更新配方池修改时间，确保 Save Pool 后 ModifiedTime 反映最新操作
+                pool.ModifiedTime = DateTime.UtcNow;
+
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
                 return true;
             }

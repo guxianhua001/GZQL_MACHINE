@@ -54,6 +54,7 @@ namespace Recipe.Models
             lock (_lock)
             {
                 _dirtyStations.Clear();
+                _stagedParameters.Clear(); // 同步清理暂存区，避免旧数据残留
             }
         }
 

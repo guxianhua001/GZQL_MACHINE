@@ -87,11 +87,13 @@ namespace StationTasks.Actions
                             totalOffset += ResolveVariableOffset(subMove.OffsetVariableName, globalVars);
 
                         double speed = subMove.Speed > 0 ? subMove.Speed : 10.0;
-                        _logger.Info($"PICK SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}) → '{subMove.PositionName}', 偏移{totalOffset:F3}, 速度{speed}");
+                        double posValue = await targetTask.GetPositionValueAsync(subMove.PositionName, axisName);
+                        double targetPos = posValue + totalOffset;
+                        // 记录配方位置值、偏移量和最终目标位置
+                        _logger.Info($"PICK SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}) → '{subMove.PositionName}'={posValue:F3}, 偏移{totalOffset:F3}, 目标位置={targetPos:F3}, 速度{speed}");
 
                         TaskState? overrideState = targetTask != task ? task.State : null;
-                        double posValue = await targetTask.GetPositionValueAsync(subMove.PositionName, axisName);
-                        string moveLabel = $"[{step.Seq}] {axisName} → {subMove.PositionName} ({posValue:F3})";
+                        string moveLabel = $"[{step.Seq}] {axisName} → {subMove.PositionName} ({posValue:F3})+{totalOffset:F3}={targetPos:F3}";
                         targetTask.PublishStepStatus(moveLabel, overrideState);
 
                         await targetTask.ExecuteMoveAsync(axisId, subMove.PositionName, speed, totalOffset);
