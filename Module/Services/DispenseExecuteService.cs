@@ -13,7 +13,8 @@ namespace Module.Services
     /// <summary>
     /// 点胶执行服务实现 — 将 DispenseSegment 轨迹转换为运动控制指令
     /// 空跑和走胶共享同一工艺流程，仅工作高度和出胶行为不同
-    /// 支持双针头：needleIndex=0 使用 AxisDz1，needleIndex=1 使用 AxisDz2
+    /// 支持双针头：needleIndex=0 使用针头1/Dz₂轴，needleIndex=1 使用针头2/Dz₃轴
+    /// Dz₁轴为相机/3D扫描轴，不作为点胶轴使用
     /// </summary>
     public class DispenseExecuteService : IDispenseExecuteService
     {
@@ -24,8 +25,10 @@ namespace Module.Services
         private const int CoordIdContinuous = 1;  // 多段连续插补走轨迹使用坐标系1
         private const int AxisDx = 8;
         private const int AxisDy = 6;
-        private const int AxisDz1 = 3;
-        private const int AxisDz2 = 4;
+        /// <summary>针头1对应的Z轴编号（Dz₂, LogicalId=3）</summary>
+        private const int AxisDzNeedle1 = 3;
+        /// <summary>针头2对应的Z轴编号（Dz₃, LogicalId=4）</summary>
+        private const int AxisDzNeedle2 = 4;
         private const int GlueIoPort = 0;
         private const double DefaultVelocity = 10.0;
         private const double DefaultAcc = 0.05;
@@ -46,12 +49,12 @@ namespace Module.Services
             _logger = logger;
         }
 
-        /// <summary>根据针头索引获取对应的Z轴编号</summary>
-        private static int GetAxisDz(int needleIndex) => needleIndex == 0 ? AxisDz1 : AxisDz2;
+        /// <summary>根据针头索引获取对应的Z轴编号（针头1→Dz₂, 针头2→Dz₃）</summary>
+        private static int GetAxisDz(int needleIndex) => needleIndex == 0 ? AxisDzNeedle1 : AxisDzNeedle2;
 
-        /// <summary>获取针头显示文本</summary>
+        /// <summary>获取针头显示文本（针头1/Dz₂ 或 针头2/Dz₃）</summary>
         private static string NeedleText(int needleIndex) =>
-            ResourceHelper.GetString("DispenseExec_NeedleFormat", needleIndex == 0 ? "1/Dz1" : "2/Dz2");
+            ResourceHelper.GetString("DispenseExec_NeedleFormat", needleIndex == 0 ? "1/Dz₂" : "2/Dz₃");
 
         /// <summary>
         /// 空跑仿真：按行业标准工艺流程执行，可选是否下降到工作高度，不出胶

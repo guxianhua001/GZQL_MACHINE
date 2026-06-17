@@ -73,14 +73,14 @@ namespace Module.ViewModels
 
         // 运动参数（从位置服务或配方加载）
         private int _zAxisIdNeedle1 = 3;
-        /// <summary> Z轴编号（Dz1） </summary>
+        /// <summary> 针头1对应的Z轴编号（Dz₂, LogicalId=3） </summary>
         public int ZAxisIdNeedle1 { get => _zAxisIdNeedle1; set => SetProperty(ref _zAxisIdNeedle1, value); }
 
         private int _zAxisIdNeedle2 = 4;
-        /// <summary> Z轴编号（Dz2），双针头支持 </summary>
+        /// <summary> 针头2对应的Z轴编号（Dz₃, LogicalId=4），双针头支持 </summary>
         public int ZAxisIdNeedle2 { get => _zAxisIdNeedle2; set => SetProperty(ref _zAxisIdNeedle2, value); }
 
-        /// <summary> 根据当前针头索引返回对应 Z 轴 ID（Dz1=ZAxisId, Dz2=ZAxisIdNeedle2） </summary>
+        /// <summary> 根据当前针头索引返回对应 Z 轴 ID（针头1→Dz₂/ZAxisIdNeedle1, 针头2→Dz₃/ZAxisIdNeedle2） </summary>
         private int ResolveCurrentZAxisId() =>
             _currentNeedleIndex == 0 ? ZAxisIdNeedle1 : ZAxisIdNeedle2;
 

@@ -9,17 +9,21 @@ namespace Module.Services
 {
     /// <summary>
     /// 点胶单点执行服务接口——点涂模式下的空跑、真实点胶和示教操作
+    /// 支持双针头：needleIndex=0 使用针头1/Dz₂轴，needleIndex=1 使用针头2/Dz₃轴
     /// </summary>
     public interface IDotDispenseService
     {
         /// <summary>空跑试运行：按工艺流程运动但不出胶，Z轴保持在安全高度</summary>
-        Task DryRunAsync(IEnumerable<DotPoint> points, DotProcessParams processParams, CancellationToken token = default);
+        /// <param name="needleIndex">针头索引（0=针头1/Dz₂, 1=针头2/Dz₃）</param>
+        Task DryRunAsync(IEnumerable<DotPoint> points, DotProcessParams processParams, int needleIndex = 0, CancellationToken token = default);
 
         /// <summary>真实点胶执行：按行业标准流程逐点点胶</summary>
-        Task ExecuteDotDispenseAsync(IEnumerable<DotPoint> points, DotProcessParams processParams, CancellationToken token = default);
+        /// <param name="needleIndex">针头索引（0=针头1/Dz₂, 1=针头2/Dz₃）</param>
+        Task ExecuteDotDispenseAsync(IEnumerable<DotPoint> points, DotProcessParams processParams, int needleIndex = 0, CancellationToken token = default);
 
         /// <summary>示教单点：读取当前运动轴位置填入点位坐标</summary>
-        Task TeachPointAsync(DotPoint point, CancellationToken token = default);
+        /// <param name="needleIndex">针头索引（0=针头1/Dz₂, 1=针头2/Dz₃），决定Dz2/Dz3字段写入</param>
+        Task TeachPointAsync(DotPoint point, int needleIndex = 0, CancellationToken token = default);
 
         /// <summary>安全停止：停止所有相关轴运动并关胶，等待轴完全停止</summary>
         Task StopAsync();

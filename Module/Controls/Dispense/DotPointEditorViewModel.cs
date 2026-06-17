@@ -459,7 +459,9 @@ namespace Module.ViewModels
             if (point == null) return;
             try
             {
-                await _dotDispenseService.TeachPointAsync(point);
+                // ApplyTargetZ: 2=Dz2(针头1), 3=Dz3(针头2) → needleIndex
+                int needleIndex = ApplyTargetZ == 3 ? 1 : 0;
+                await _dotDispenseService.TeachPointAsync(point, needleIndex);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -478,7 +480,9 @@ namespace Module.ViewModels
             IsExecuting = true;
             try
             {
-                await _dotDispenseService.DryRunAsync(Points, ProcessParams, _cts.Token);
+                // ApplyTargetZ: 2=Dz2(针头1), 3=Dz3(针头2) → needleIndex
+                int needleIndex = ApplyTargetZ == 3 ? 1 : 0;
+                await _dotDispenseService.DryRunAsync(Points, ProcessParams, needleIndex, _cts.Token);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -497,7 +501,9 @@ namespace Module.ViewModels
             IsExecuting = true;
             try
             {
-                await _dotDispenseService.ExecuteDotDispenseAsync(Points, ProcessParams, _cts.Token);
+                // ApplyTargetZ: 2=Dz2(针头1), 3=Dz3(针头2) → needleIndex
+                int needleIndex = ApplyTargetZ == 3 ? 1 : 0;
+                await _dotDispenseService.ExecuteDotDispenseAsync(Points, ProcessParams, needleIndex, _cts.Token);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)

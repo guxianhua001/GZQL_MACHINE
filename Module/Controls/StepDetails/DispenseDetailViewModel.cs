@@ -109,6 +109,38 @@ namespace Module.ViewModels
             set { if (value) DispenseMode = DispenseStepMode.Arc; }
         }
 
+        /// <summary>
+        /// 点胶针头索引（0=针头1/Dz₂轴, 1=针头2/Dz₃轴）
+        /// Dz₁轴为相机/3D扫描轴，不作为点胶轴使用
+        /// </summary>
+        public int NeedleIndex
+        {
+            get => _step?.DispenseDetail?.NeedleIndex ?? 0;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.NeedleIndex = value;
+                    RaisePropertyChanged(nameof(IsNeedle1Selected));
+                    RaisePropertyChanged(nameof(IsNeedle2Selected));
+                }
+            }
+        }
+
+        /// <summary>是否选中针头1（Dz₂轴）</summary>
+        public bool IsNeedle1Selected
+        {
+            get => NeedleIndex == 0;
+            set { if (value) NeedleIndex = 0; }
+        }
+
+        /// <summary>是否选中针头2（Dz₃轴）</summary>
+        public bool IsNeedle2Selected
+        {
+            get => NeedleIndex == 1;
+            set { if (value) NeedleIndex = 1; }
+        }
+
         public bool EnableZCalibration
         {
             get => _step?.DispenseDetail?.EnableZCalibration ?? false;

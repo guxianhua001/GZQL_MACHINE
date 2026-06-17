@@ -50,6 +50,18 @@
                                              IsChecked="{Binding IsArcMode}"
                                              GroupName="DispenseModeGroup" Foreground="#212121"/>
                             </StackPanel>
+                            <!-- 针头选择：针头1→Dz₂轴, 针头2→Dz₃轴；Dz₁为相机/3D扫描轴不可选 -->
+                            <TextBlock Text="{lang:Lang DispenseDetail_NeedleSelection}" FontWeight="Bold" FontSize="12"
+                                       Foreground="#1565C0" Margin="0,8,0,4"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <RadioButton Content="{lang:Lang DispenseDetail_Needle1}"
+                                             IsChecked="{Binding IsNeedle1Selected}"
+                                             GroupName="NeedleGroup"
+                                             Margin="0,0,16,0" Foreground="#212121"/>
+                                <RadioButton Content="{lang:Lang DispenseDetail_Needle2}"
+                                             IsChecked="{Binding IsNeedle2Selected}"
+                                             GroupName="NeedleGroup" Foreground="#212121"/>
+                            </StackPanel>
                             <CheckBox Content="{lang:Lang DispenseDetail_EnableZCalibration}"
                                       IsChecked="{Binding EnableZCalibration}"
                                       Margin="0,4,0,0" Foreground="#212121"/>

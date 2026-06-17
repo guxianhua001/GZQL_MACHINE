@@ -18,6 +18,36 @@ namespace Core.Models
             set => SetProperty(ref _dispenseMode, value);
         }
 
+        private int _needleIndex;
+        /// <summary>
+        /// 点胶针头索引（0=针头1/Dz₂轴, 1=针头2/Dz₃轴）
+        /// Dz₁轴为相机/3D扫描轴，不作为点胶轴使用
+        /// </summary>
+        public int NeedleIndex
+        {
+            get => _needleIndex;
+            set => SetProperty(ref _needleIndex, value switch
+            {
+                0 => 0,
+                1 => 1,
+                _ => 0 // 非法值回退到针头1
+            });
+        }
+
+        /// <summary>是否选中针头1（Dz₂轴）</summary>
+        public bool IsNeedle1Selected
+        {
+            get => _needleIndex == 0;
+            set { if (value) NeedleIndex = 0; }
+        }
+
+        /// <summary>是否选中针头2（Dz₃轴）</summary>
+        public bool IsNeedle2Selected
+        {
+            get => _needleIndex == 1;
+            set { if (value) NeedleIndex = 1; }
+        }
+
         private bool _enableZCalibration;
         /// <summary>是否启用Z轴校准（默认 false）</summary>
         public bool EnableZCalibration

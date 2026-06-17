@@ -1,4 +1,4 @@
-﻿using MotionControl.Interfaces;
+﻿﻿using MotionControl.Interfaces;
 using System.Collections.Generic;
 
 namespace MotionControl.Models

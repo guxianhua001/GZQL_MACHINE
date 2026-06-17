@@ -61,7 +61,12 @@ namespace StationTasks.Actions
 
             int dxAxisId = ResolveAxisId("Dx", task);
             int dyAxisId = ResolveAxisId("Dy", task);
-            int dzAxisId = ResolveAxisId("Dz₁", task);
+            // 根据针头索引选择点胶Z轴：针头1→Dz₂, 针头2→Dz₃
+            // Dz₁轴为相机/3D扫描轴，不作为点胶轴使用
+            int needleIndex = detail.NeedleIndex;
+            string dzAxisName = needleIndex == 0 ? "Dz₂" : "Dz₃";
+            int dzAxisId = ResolveAxisId(dzAxisName, task);
+            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId})");
 
             try
             {

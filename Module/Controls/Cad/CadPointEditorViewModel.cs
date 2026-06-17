@@ -2349,11 +2349,11 @@ namespace Module.ViewModels
                     point.MachineX = Math.Round(_motionService.GetAxisState(AxisDx).ActualPosition, 3);
                     point.MachineY = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
 
-                    // 根据当前针头读取对应Dz轴
-                    const int AxisDz1 = 3;
-                    const int AxisDz2 = 4;
+                    // 根据当前针头读取对应Dz轴：针头1→Dz₂(轴3), 针头2→Dz₃(轴4)
+                    const int AxisDzNeedle1 = 3;
+                    const int AxisDzNeedle2 = 4;
                     point.MachineDz = Math.Round(
-                        _motionService.GetAxisState(_currentNeedleIndex == 0 ? AxisDz1 : AxisDz2).ActualPosition, 3);
+                        _motionService.GetAxisState(_currentNeedleIndex == 0 ? AxisDzNeedle1 : AxisDzNeedle2).ActualPosition, 3);
                 }
                 catch (Exception ex)
                 {
@@ -2800,9 +2800,12 @@ namespace Module.ViewModels
 
             try
             {
-                // 读取Z1轴当前位置作为示教高度
-                const int AxisDz1 = 3;
-                double currentZ = _motionService.GetAxisState(AxisDz1).ActualPosition;
+                // 根据当前针头读取对应Z轴位置：针头1→Dz₂(轴3), 针头2→Dz₃(轴4)
+                // Dz₁轴为相机/3D扫描轴，不作为点胶轴使用
+                const int AxisDzNeedle1 = 3;
+                const int AxisDzNeedle2 = 4;
+                int axisDz = _currentNeedleIndex == 0 ? AxisDzNeedle1 : AxisDzNeedle2;
+                double currentZ = _motionService.GetAxisState(axisDz).ActualPosition;
                 _selectedSegment.TeachHeight = currentZ;
                 _selectedSegment.ZHeight = currentZ;
                 GlobalStatus = string.Format(L("CadPoint_Status_TeachHeightSuccess"), _selectedSegment.SegmentId, currentZ);

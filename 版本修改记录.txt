@@ -1,6 +1,57 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.17 — 点胶工具双针头支持修正（Dz₁误用修复）
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - 点胶工位存在三根Z轴：Dz₁(LogicalId=2, 相机/3D扫描轴)、Dz₂(LogicalId=3, 针头1)、Dz₃(LogicalId=4, 针头2)
+   - DispenseStepAction 错误地将 Dz₁ 作为点胶Z轴（ResolveAxisId("Dz₁")），
+     而 Dz₁ 实为相机/3D扫描轴，不应作为点胶轴使用
+   - DispensingTask.MoveToPosition 同样错误使用 Dz₁
+   - CadPointEditorViewModel.ExecuteTeachHeight 未考虑针头切换，硬编码读取 Dz₂
+   - DispenseExecuteService 常量命名误导：AxisDz1=3 实际指向 Dz₂，AxisDz2=4 实际指向 Dz₃
+   - DotDispenseService 不支持双针头，硬编码使用 Dz₂
+   - 双针头支持不完整：配方步骤执行器和单点胶服务都缺少 needleIndex 参数
+
+2. 修复方案
+   - 核心映射关系明确化：针头1→Dz₂(LogicalId=3)，针头2→Dz₃(LogicalId=4)，
+     Dz₁ 为相机/3D扫描轴不作为点胶轴
+   - DispenseDetail 新增 NeedleIndex 字段（0=针头1/Dz₂, 1=针头2/Dz₃），
+     含 IsNeedle1Selected/IsNeedle2Selected 派生属性
+   - DispenseStepAction 根据 detail.NeedleIndex 动态选择 Dz₂/Dz₃ 轴
+   - DispensingTask.MoveToPosition 改用 Dz₂（默认针头1）
+   - DispenseExecuteService 常量重命名为 AxisDzNeedle1/AxisDzNeedle2，消除歧义
+   - DotDispenseService + IDotDispenseService 所有方法新增 needleIndex 参数，
+     通过 GetAxisDz(needleIndex) 动态选择Z轴，GetPointEffectiveZ 按针头读取 Dz2/Dz3 字段
+   - DotPointEditorViewModel 调用服务时传递 needleIndex（ApplyTargetZ: 2→0, 3→1）
+   - CadPointEditorViewModel.ExecuteTeachHeight 根据当前针头读取对应Z轴位置
+   - CadPointEditorViewModel.ExecuteTeachAffineMachineCoord 常量重命名为 AxisDzNeedle1/2
+   - ZScanDetailViewModel 注释修正（Dz1→Dz₂, Dz2→Dz₃）
+   - DispenseDetailViewModel 新增 NeedleIndex/IsNeedle1Selected/IsNeedle2Selected 绑定属性
+   - DispenseDetailView.xaml 新增针头选择 RadioButton UI
+   - 多语言资源新增 DispenseDetail_NeedleSelection/Needle1/Needle2 键（zh-CN/en-US）
+
+3. 影响文件
+   - Core/Models/DispenseDetail.cs
+   - StationTasks/Actions/DispenseStepAction.cs
+   - StationTasks/Tasks/DispensingTask.cs
+   - Module/Services/DispenseExecuteService.cs
+   - Module/Services/IDotDispenseService.cs
+   - Module/Services/DotDispenseService.cs
+   - Module/Controls/Dispense/DotPointEditorViewModel.cs
+   - Module/Controls/Cad/CadPointEditorViewModel.cs
+   - Module/Controls/ZScan/ZScanDetailViewModel.cs
+   - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+   - Module/Controls/StepDetails/DispenseDetailView.xaml
+   - MainApp/Languages/Strings.zh-CN.xaml
+   - MainApp/Languages/Strings.en-US.xaml
+
+4. 安全性
+   - 修正 Dz₁ 误用问题，避免点胶时错误移动相机/3D扫描轴导致设备碰撞
+   - 双针头切换通过配方参数持久化，确保工艺可追溯
+   - 所有Z轴运动仍接受 CancellationToken，支持急停快速打断
+
 v2026.06.12 — 多轴同步运动统一轮询 (MoveAbsMultiAxisAsync)
 -------------------------------------------------------------------------------
 

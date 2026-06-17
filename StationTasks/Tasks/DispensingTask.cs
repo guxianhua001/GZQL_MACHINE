@@ -130,8 +130,9 @@ namespace StationTasks.Tasks
             var x = await GetPositionAsync(posName, "Dx");
             var y = await GetPositionAsync(posName, "Dy");
             await _motion.MoveLineAbsAsync(0, new[] { AxisDx, AxisDy }, new[] { x, y }, 40);
-            var z1 = await GetPositionAsync(posName, "Dz₁");
-            if (!double.IsNaN(z1)) await _motion.MoveAbsAsync(AxisDz1, z1, 20);
+            // 点胶工位默认使用针头1(Dz₂轴)进行位置移动；Dz₁为相机/3D扫描轴，不作为点胶轴
+            var z2 = await GetPositionAsync(posName, "Dz₂");
+            if (!double.IsNaN(z2)) await _motion.MoveAbsAsync(AxisDz2, z2, 20);
         }
     }
 }

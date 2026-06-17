@@ -2731,6 +2731,9 @@
     <sys:String x:Key="Delete">删除</sys:String>
     <sys:String x:Key="DispenseDetail_ArcMode">圆弧模式</sys:String>
     <sys:String x:Key="DispenseDetail_DotMode">点模式</sys:String>
+    <sys:String x:Key="DispenseDetail_NeedleSelection">针头选择（Dz₁为相机轴不可选）</sys:String>
+    <sys:String x:Key="DispenseDetail_Needle1">针头1 / Dz₂</sys:String>
+    <sys:String x:Key="DispenseDetail_Needle2">针头2 / Dz₃</sys:String>
     <sys:String x:Key="GotoDetail_AbsoluteMode">绝对定位</sys:String>
     <sys:String x:Key="GotoDetail_Add">添加</sys:String>
     <sys:String x:Key="GotoDetail_Delete">删除</sys:String>
