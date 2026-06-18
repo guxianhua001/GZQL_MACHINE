@@ -26,6 +26,8 @@ namespace MotionControl.ViewModels
             _ea.GetEvent<TaskStatusChangedEvent>().Subscribe(OnTaskStatusChanged, ThreadOption.PublisherThread, true);
             _ea.GetEvent<StationRegisteredEvent>().Subscribe(OnStationRegistered, ThreadOption.PublisherThread, true);
             _ea.GetEvent<StationUnregisteredEvent>().Subscribe(OnStationUnregistered, ThreadOption.PublisherThread, true);
+            // 订阅工站初始化进度事件，更新各工站回零进度显示
+            _ea.GetEvent<StationInitProgressEvent>().Subscribe(OnInitProgressChanged, ThreadOption.PublisherThread, true);
 
             LoadTasks();
         }
@@ -79,6 +81,24 @@ namespace MotionControl.ViewModels
                 if (task != null)
                 {
                     task.UpdateStatus(payload);
+                }
+            });
+        }
+
+        /// <summary>
+        /// 工站初始化进度事件处理：根据 StationId 匹配对应工站，
+        /// 更新其初始化进度（进度条、描述信息、完成状态）。
+        /// </summary>
+        private void OnInitProgressChanged(StationInitProgressPayload payload)
+        {
+            if (payload == null || string.IsNullOrEmpty(payload.StationId)) return;
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var task = Tasks.FirstOrDefault(t => t.StationId == payload.StationId);
+                if (task != null)
+                {
+                    task.UpdateInitProgress(payload.Progress, payload.Message, payload.IsCompleted);
                 }
             });
         }

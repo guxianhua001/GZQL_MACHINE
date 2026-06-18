@@ -93,6 +93,20 @@
                                 </StackPanel>
                                 <TextBlock Text="{Binding CurrentTime}" HorizontalAlignment="Right" FontSize="13" Foreground="#757575"/>
                             </Grid>
+                            <!-- 初始化进度条：仅在 IsInitializing=True 时显示 -->
+                            <Border DockPanel.Dock="Top" Margin="0,0,0,10" Background="#E3F2FD" CornerRadius="4" Padding="8,6"
+                                    Visibility="{Binding IsInitializing, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="{Binding InitMessage}" FontSize="12" Foreground="#1976D2" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock HorizontalAlignment="Right" FontSize="11" Foreground="#1976D2" FontFamily="Consolas">
+                                            <Run Text="{Binding InitProgress, StringFormat={}{0:F0}%}"/>
+                                        </TextBlock>
+                                    </Grid>
+                                    <ProgressBar Value="{Binding InitProgress}" Maximum="100" Minimum="0" Height="6"
+                                                 Foreground="#1976D2" Background="#BBDEFB" BorderThickness="0"/>
+                                </StackPanel>
+                            </Border>
                             <!-- 中部：当前步骤大字显示与耗时 -->
                             <Border DockPanel.Dock="Top" Margin="0,0,0,10" Background="#F5F5F5" CornerRadius="4" Padding="8,6">
                                 <Grid>

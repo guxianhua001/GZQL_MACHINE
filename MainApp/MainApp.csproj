@@ -56,6 +56,10 @@
     <None Include="NLog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\版本修改记录.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>版本修改记录.txt</Link>
+    </None>
   </ItemGroup>
   <Target Name="GenerateVersionInfo" AfterTargets="Build">
     <ItemGroup>

@@ -28,8 +28,14 @@ namespace StationTasks
                     serviceType == typeof(ITask) ||
                     serviceType == typeof(IStationParameterProvider) ||
                     serviceType == typeof(IBatchSwitchable) ||
-                    serviceType == typeof(Core.Abstraction.IDispensingZScanOperations)
+                    serviceType == typeof(Core.Abstraction.IDispensingZScanOperations) ||
+                    serviceType == typeof(LoadingTask) ||
+                    serviceType == typeof(DispensingTask) ||
+                    serviceType == typeof(AssemblyTask)
             );
+
+            // 注册整机初始化服务（协调三工站初始化时序）
+            containerRegistry.RegisterSingleton<IMachineInitializationService, MachineInitializationService>();
 
             // 注册步骤动作实现
             container.RegisterMany(

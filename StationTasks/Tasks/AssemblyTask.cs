@@ -9,7 +9,10 @@ using Core.Abstraction;
 
 namespace StationTasks.Tasks
 {
-    public class AssemblyTask : RecipeStationBase<AssemblyStationParams>
+    /// <summary>
+    /// 组装工站任务（partial class，初始化动作见 AssemblyTask.Init.cs）
+    /// </summary>
+    public partial class AssemblyTask : RecipeStationBase<AssemblyStationParams>
     {
         private int AxisX => ResolveAxisId("X");
         private int AxisZ => ResolveAxisId("Z");
@@ -17,6 +20,9 @@ namespace StationTasks.Tasks
         private int AxisEy => ResolveAxisId("Ey");
         private int AxisCy => ResolveAxisId("Cy");
         private readonly Random _rand = new Random();
+
+        /// <summary> 本地化服务（用于初始化进度消息多语言支持） </summary>
+        private readonly ILocalizationService _localizationService;
 
         public override string StationIdentifierValue => "AssemblyStation";
 
@@ -29,7 +35,7 @@ namespace StationTasks.Tasks
             ILocalizationService localizationService)
             : base(motion, recipePool, interaction, ea, logger, alarmService, systemState,
                   recipeServiceFactory, recipePoolService, stationRegistry, speedOverride,
-                  3, localizationService?.GetResourceOrDefault("Station_AssemblyStation", "装配系统") ?? "装配系统", "AssemblyStation") { }
+                  3, localizationService?.GetResourceOrDefault("Station_AssemblyStation", "装配系统") ?? "装配系统", "AssemblyStation") { _localizationService = localizationService; }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)
         {
@@ -78,32 +84,6 @@ namespace StationTasks.Tasks
 
             //Logger.Info("=== 装配循环完成，稍后重启 ===");
             //await Task.Delay(500, token);
-        }
-
-        public override async Task HomeAsync()
-        {
-            State = TaskState.Homing;
-            Logger.Info($"[{TaskName}] 开始装配系统初始化...");
-            PublishTaskStatusChanged("初始化中", State);
-
-            try
-            {
-                await RunStep("预加载位置数据", PreloadPositionsAsync);
-
-                //await RunStep("X轴回原点", () => _motion.HomeAsync(AxisX, 1, 5, 20));
-                //await RunStep("Z轴回原点", () => _motion.HomeAsync(AxisZ, 1, 5, 20));
-                //await RunStep("Ry轴回原点", () => _motion.HomeAsync(AxisRy, 1, 5, 20));
-
-                State = TaskState.Idle;
-                Logger.Info($"[{TaskName}] 初始化完成，进入待机。");
-                PublishTaskStatusChanged("待机", State);
-            }
-            catch
-            {
-                State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 初始化失败！");
-                throw;
-            }
         }
 
     }

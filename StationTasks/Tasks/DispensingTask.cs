@@ -20,6 +20,8 @@ namespace StationTasks.Tasks
         private readonly IAxisParameterService _axisParameterService;
         /// <summary> 全局速度比例服务（基类 _speedOverride 为 private，此处额外存储） </summary>
         private readonly ISpeedOverrideService _speedOverrideLocal;
+        /// <summary> 本地化服务（用于初始化进度消息多语言支持） </summary>
+        private readonly ILocalizationService _localizationService;
         /// <summary> Dx轴 — Dispenser gantry X (逻辑ID从hwcfg.xml动态获取) </summary>
         private int AxisDx => ResolveAxisId("Dx");
         /// <summary> Dy轴 — Dispenser gantry Y </summary>
@@ -48,6 +50,7 @@ namespace StationTasks.Tasks
         {
             _axisParameterService = axisParameterService;
             _speedOverrideLocal = speedOverride;
+            _localizationService = localizationService;
         }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)
@@ -97,32 +100,6 @@ namespace StationTasks.Tasks
 
             //Logger.Info("=== 点胶循环完成，稍后重启 ===");
             //await Task.Delay(500, token);
-        }
-
-        public override async Task HomeAsync()
-        {
-            State = TaskState.Homing;
-            Logger.Info($"[{TaskName}] 开始点胶系统初始化...");
-            PublishTaskStatusChanged("初始化中", State);
-
-            try
-            {
-                await RunStep("预加载位置数据", PreloadPositionsAsync);
-
-                await Task.Delay(1800);
-                await Task.Delay(1600);
-                await Task.Delay(1400);
-
-                State = TaskState.Idle;
-                Logger.Info($"[{TaskName}] 初始化完成，进入待机。");
-                PublishTaskStatusChanged("待机", State);
-            }
-            catch
-            {
-                State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 初始化失败！");
-                throw;
-            }
         }
 
         private async Task MoveToPosition(string posName)

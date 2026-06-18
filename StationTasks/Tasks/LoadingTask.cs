@@ -21,6 +21,9 @@ namespace StationTasks.Tasks
         private int AxisRx => ResolveAxisId("Rx");
         private int AxisRz => ResolveAxisId("Rz");
 
+        /// <summary> 本地化服务（用于初始化进度消息多语言支持） </summary>
+        private readonly ILocalizationService _localizationService;
+
         private const int ClawDoId = 100;
         private readonly Random _rand = new Random();
 
@@ -42,39 +45,13 @@ namespace StationTasks.Tasks
             ILocalizationService localizationService)
             : base(motion, positionProvider, interaction, ea, logger, alarmService, systemState,
                   recipeServiceFactory, recipePoolService, stationRegistry, speedOverride,
-                  1, localizationService?.GetResourceOrDefault("Station_LoadingStation", "上下料系统") ?? "上下料系统", "LoadingStation") { _logger = logger; }
+                  1, localizationService?.GetResourceOrDefault("Station_LoadingStation", "上下料系统") ?? "上下料系统", "LoadingStation") { _logger = logger; _localizationService = localizationService; }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)
         {
             // 自动流程待实现，当前仅记录日志
             Logger.Info("=== 上下料循环完成，稍后重启 ===");
             await Task.Delay(500, token);
-        }
-
-        public override async Task HomeAsync()
-        {
-            State = TaskState.Homing;
-            Logger.Info($"[{TaskName}] 开始初始化...");
-            PublishTaskStatusChanged("初始化中", State);
-
-            try
-            {
-                await RunStep("预加载位置数据", PreloadPositionsAsync);
-
-                //await RunStep("Y轴回原点", () => _motion.HomeAsync(AxisY, 1, 5, 20));
-                //await RunStep("Rx轴回原点", () => _motion.HomeAsync(AxisRx, 1, 5, 20));
-                //await RunStep("Rz轴回原点", () => _motion.HomeAsync(AxisRz, 1, 5, 20));
-
-                State = TaskState.Idle;
-                Logger.Info($"[{TaskName}] 初始化完成。");
-                PublishTaskStatusChanged("待机", State);
-            }
-            catch
-            {
-                State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 初始化失败！");
-                throw;
-            }
         }
 
         #region 平台真空控制（Stage）

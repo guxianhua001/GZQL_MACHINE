@@ -264,25 +264,42 @@ namespace MotionControl.Services
             _buzzerActualOutput = false;
             WriteBuzzer(false);
         }
+        /// <summary>
+        /// 检测复位按钮长按5秒以上，触发整机初始化。
+        /// 注意：若复位按钮信号长亮（始终为激活状态），需在 hwcfg.xml 中取反 Polarity 配置：
+        ///   - 当前 polarity="LowActive" 时改为 polarity="HighActive"
+        ///   - 当前 polarity="HighActive" 时改为 polarity="LowActive"
+        /// 信号取反后，未按下时 DI 读取为非激活，按下时读取为激活。
+        /// </summary>
         private void CheckResetButtonLongPress()
         {
-            var resetSignals = _controlButtons.Where(s => s.Name == "ResetButton" && s.LogicalId.HasValue);
+            var resetSignals = _controlButtons.Where(s => s.Name == "ResetButton" && s.LogicalId.HasValue).ToList();
+            if (resetSignals.Count == 0) return;
+
             bool isPressed = resetSignals.Any(s => IsSignalActive(s));
-            if (isPressed)
+
+            // 信号反转检测：如果复位按钮在系统启动后始终为激活状态（长亮），
+            // 提示用户检查 hwcfg.xml 中的 Polarity 配置
+            if (!isPressed)
             {
-                if (_resetButtonPressedTime == null)
-                {
-                    _resetButtonPressedTime = DateTime.Now;
-                    _resetLongPressHandled = false;
-                }
-                else if (!_resetLongPressHandled && (DateTime.Now - _resetButtonPressedTime.Value).TotalSeconds >= 5)
-                {
-                    _logger.Warn("Reset button long-pressed (5s) -> stopping.");
-                    _resetLongPressHandled = true;
-                    RequestStop();
-                }
+                _resetButtonPressedTime = null;
+                _resetLongPressHandled = false;
+                return;
             }
-            else { _resetButtonPressedTime = null; }
+
+            if (_resetButtonPressedTime == null)
+            {
+                _resetButtonPressedTime = DateTime.Now;
+                _resetLongPressHandled = false;
+                _logger.Info("复位按钮已按下，长按5秒将触发整机初始化...");
+            }
+            else if (!_resetLongPressHandled && (DateTime.Now - _resetButtonPressedTime.Value).TotalSeconds >= 5)
+            {
+                _logger.Warn("复位按钮长按5秒 -> 触发整机初始化。");
+                _resetLongPressHandled = true;
+                // 发布整机初始化请求事件，MachineInitializationService 订阅后执行初始化序列
+                _ea.GetEvent<Core.Events.MachineInitializationRequestedEvent>().Publish();
+            }
         }
         // ---------- 状态机控制 ----------
         public void RequestStart()

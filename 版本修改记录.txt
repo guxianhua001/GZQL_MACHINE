@@ -1,6 +1,36 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.19 — 整机初始化序列实现（信号协调+进度显示+多语言）
+-------------------------------------------
+
+1. 变更
+   - 新增整机初始化服务 IMachineInitializationService/MachineInitializationService
+     · 订阅复位按钮长按5秒事件 MachineInitializationRequestedEvent
+     · 调用 ITaskManager.HomeAllAsync() 并行触发各工站 HomeAsync()
+     · 防重入锁 + 异常捕获 + SystemResetResultEvent 发布
+   - 新增三工站 .Init.cs partial class（HomeAsync 重写）
+     · DispensingTask.Init.cs：Dz₁/Dz₂/Dz₃ 回零→待机位 → 等待组装Z → Dx/Dy 回零→待机位
+     · AssemblyTask.Init.cs：Z 回零→待机位 → 等待点胶Z → Cy/Ey 回零→待机位 → 等待点胶完成 → X/Ry 回零→待机位
+     · LoadingTask.Init.cs：等待点胶Z+组装Z → Y/Rz/Rx 回零
+   - 工站间协调使用 SignalToStation / WaitForSignalAsync 信号交互
+     · DispensingZComplete 信号：点胶→组装/上下料
+     · AssemblyZComplete 信号：组装→点胶/上下料
+     · DispensingComplete 信号：点胶→组装
+   - 移除主任务文件 DispensingTask.cs/LoadingTask.cs/AssemblyTask.cs 中的 HomeAsync()
+   - 新增 StationInitProgressEvent + StationInitProgressPayload 用于回零进度上报
+   - TaskMonitorViewModel 新增 OnInitProgressChanged 处理器，按 StationId 匹配更新
+   - TaskMonitorView.xaml 新增初始化进度条（ProgressBar + 描述文本），仅在 IsInitializing=True 时显示
+   - TaskDisplayModel 新增 InitProgress/InitMessage/IsInitializing/StationId 属性及 UpdateInitProgress 方法
+   - SystemStateService.CheckResetButtonLongPress 改为发布 MachineInitializationRequestedEvent
+   - 多语言支持：新增 30+ 初始化进度本地化键到 Strings.zh-CN.xaml / Strings.en-US.xaml
+   - 各工站任务类存储 ILocalizationService，.Init.cs 通过 L() 辅助方法获取本地化字符串
+
+2. 架构
+   - 控制按钮组（MainWindow）→ ControlButtonClickedEvent → OverViewModel → IMachineInitializationService
+   - 初始化服务 → ITaskManager.HomeAllAsync() → 各工站 HomeAsync()（信号协调）
+   - 工站 HomeAsync() → StationInitProgressEvent → TaskMonitorViewModel → TaskMonitorView 进度条
+
 v2026.06.18 — NeedleAligner 寻针动作五阶段流程重构
 -------------------------------------------
 

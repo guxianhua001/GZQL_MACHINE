@@ -4,6 +4,7 @@ using MotionControl.Interfaces;
 using MotionControl.Models;
 using MotionControl.Views;
 using Core.Abstraction;
+using StationTasks.Services;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Ioc;
@@ -29,6 +30,7 @@ namespace Module.ViewModels
         private readonly ISpeedOverrideService _speedOverride;
         private readonly IDialogService _dialogService;
         private readonly ILocalizationService _localization;
+        private readonly IMachineInitializationService _machineInitService;
         private readonly DispatcherTimer _timer;
         #region 绑定属性
         private DateTime _systemTime;
@@ -124,7 +126,8 @@ namespace Module.ViewModels
             ISystemStateService systemState,
             ISpeedOverrideService speedOverride,
             IDialogService dialogService,
-            ILocalizationService localization)
+            ILocalizationService localization,
+            IMachineInitializationService machineInitService)
         {
             _regionManager = regionManager;
             _ea = ea;
@@ -134,6 +137,7 @@ namespace Module.ViewModels
             _speedOverride = speedOverride;
             _dialogService = dialogService;
             _localization = localization;
+            _machineInitService = machineInitService;
             _speedPercent = _speedOverride.SpeedPercent;
             _speedOverride.SpeedChanged += OnSpeedChanged;
             _singleStepButtonText = _localization.GetResource("OverView_Btn_SingleStep_Off");
@@ -196,11 +200,13 @@ namespace Module.ViewModels
         }
 
         #region 命令实现
+        /// <summary>
+        /// 整机初始化：使用 IMachineInitializationService 执行协调式初始化序列。
+        /// 时序：Z轴归零→并行上下料/点胶/组装辅助轴→等待点胶完成→组装主轴→设置等待运行状态。
+        /// </summary>
         private void OnInitialize()
         {
-            // 初始化时，重置所有任务状态
-            _systemState.RequestReset();
-            _taskManager.HomeAllAsync();
+            _ = _machineInitService.InitializeMachineAsync();
         }
         private void OnStart()
         {

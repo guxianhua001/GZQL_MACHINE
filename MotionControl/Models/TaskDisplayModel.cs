@@ -58,6 +58,33 @@ namespace MotionControl.Models
             get => _currentStepElapsed;
             set => SetProperty(ref _currentStepElapsed, value);
         }
+
+        /// <summary>初始化进度百分比（0-100），仅在 Homing 状态下显示</summary>
+        private double _initProgress;
+        public double InitProgress
+        {
+            get => _initProgress;
+            set => SetProperty(ref _initProgress, value);
+        }
+
+        /// <summary>初始化进度描述信息</summary>
+        private string _initMessage;
+        public string InitMessage
+        {
+            get => _initMessage;
+            set => SetProperty(ref _initMessage, value);
+        }
+
+        /// <summary>是否正在初始化（控制进度条显隐）</summary>
+        private bool _isInitializing;
+        public bool IsInitializing
+        {
+            get => _isInitializing;
+            set => SetProperty(ref _isInitializing, value);
+        }
+
+        /// <summary>工站标识（用于匹配初始化进度事件）</summary>
+        public string StationId => (_task as IStationParameterProvider)?.StationIdentifier;
         public ObservableCollection<StepRecord> StepHistory { get; } = new ObservableCollection<StepRecord>();
         public TaskDisplayModel(ITask task, ILocalizationService localization)
         {
@@ -139,6 +166,22 @@ namespace MotionControl.Models
                     }
                     _stepStartTime = DateTime.Now;
                 }
+            });
+        }
+
+        /// <summary>
+        /// 更新初始化进度（由 TaskMonitorViewModel 调用，响应 StationInitProgressEvent）
+        /// </summary>
+        /// <param name="progress">进度百分比 0-100</param>
+        /// <param name="message">进度描述</param>
+        /// <param name="isCompleted">是否完成</param>
+        public void UpdateInitProgress(double progress, string message, bool isCompleted)
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                IsInitializing = !isCompleted;
+                InitProgress = progress;
+                InitMessage = message;
             });
         }
 
