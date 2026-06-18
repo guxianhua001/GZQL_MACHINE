@@ -275,7 +275,7 @@
                                         </Grid>
                                     </GroupBox>
 
-                                    <!-- 搜索点 P1-P4（只读文本 + 示教按钮） -->
+                                    <!-- 搜索点 P1-P4（可编辑数值 + 示教按钮） -->
                                     <GroupBox Grid.Row="3" Foreground="#F57C00" FontWeight="SemiBold" >
                                         <GroupBox.Header>
                                             <StackPanel Orientation="Horizontal">
@@ -289,57 +289,148 @@
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="32"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="116"/>
                                             </Grid.ColumnDefinitions>
 
+                                            <!-- 列标题 -->
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="X" Style="{StaticResource ParamLabel}"
+                                                       Foreground="#E53935" FontWeight="SemiBold" Margin="0,0,4,4"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Y" Style="{StaticResource ParamLabel}"
+                                                       Foreground="#43A047" FontWeight="SemiBold" Margin="0,0,4,4"/>
+
                                             <!-- P1 -->
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="P1" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Parameters.SearchPoint1.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
-                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Parameters.SearchPoint1.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
-                                            <Button Grid.Row="0" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="1"
-                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Margin="0,0,0,4" Width="36"
-                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
-                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
-                                            </Button>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="P1" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,0,4"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="1" Grid.Column="1"
+                                                                          Value="{Binding Parameters.SearchPoint1X, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,4"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="1" Grid.Column="2"
+                                                                          Value="{Binding Parameters.SearchPoint1Y, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,4"/>
+                                            <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal" Margin="0,0,0,4">
+                                                <Button Command="{Binding TeachSearchPointCommand}" CommandParameter="1"
+                                                        Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Width="36"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding MoveSearchPointCommand}" CommandParameter="1"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_MoveSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CursorMove" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding StopSearchPointMoveCommand}"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        BorderBrush="#EF5350" Foreground="#C62828"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_StopSearchPointMove}">
+                                                    <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"/>
+                                                </Button>
+                                            </StackPanel>
 
                                             <!-- P2 -->
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="P2" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Parameters.SearchPoint2.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
-                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Parameters.SearchPoint2.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
-                                            <Button Grid.Row="1" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="2"
-                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Margin="0,0,0,4"
-                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
-                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
-                                            </Button>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="P2" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,0,4"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="2" Grid.Column="1"
+                                                                          Value="{Binding Parameters.SearchPoint2X, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,4"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="2" Grid.Column="2"
+                                                                          Value="{Binding Parameters.SearchPoint2Y, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,4"/>
+                                            <StackPanel Grid.Row="2" Grid.Column="3" Orientation="Horizontal" Margin="0,0,0,4">
+                                                <Button Command="{Binding TeachSearchPointCommand}" CommandParameter="2"
+                                                        Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Width="36"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding MoveSearchPointCommand}" CommandParameter="2"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_MoveSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CursorMove" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding StopSearchPointMoveCommand}"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        BorderBrush="#EF5350" Foreground="#C62828"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_StopSearchPointMove}">
+                                                    <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"/>
+                                                </Button>
+                                            </StackPanel>
 
                                             <!-- P3 -->
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="P3" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Parameters.SearchPoint3.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Parameters.SearchPoint3.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,4"/>
-                                            <Button Grid.Row="2" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="3"
-                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Margin="0,0,0,4"
-                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
-                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
-                                            </Button>
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="P3" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,0,4"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="3" Grid.Column="1"
+                                                                          Value="{Binding Parameters.SearchPoint3X, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,4"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="3" Grid.Column="2"
+                                                                          Value="{Binding Parameters.SearchPoint3Y, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,4"/>
+                                            <StackPanel Grid.Row="3" Grid.Column="3" Orientation="Horizontal" Margin="0,0,0,4">
+                                                <Button Command="{Binding TeachSearchPointCommand}" CommandParameter="3"
+                                                        Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Width="36"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding MoveSearchPointCommand}" CommandParameter="3"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_MoveSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CursorMove" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding StopSearchPointMoveCommand}"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        BorderBrush="#EF5350" Foreground="#C62828"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_StopSearchPointMove}">
+                                                    <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"/>
+                                                </Button>
+                                            </StackPanel>
 
                                             <!-- P4 -->
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="P4" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Parameters.SearchPoint4.X, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,0"/>
-                                            <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding Parameters.SearchPoint4.Y, StringFormat=F3}" Style="{StaticResource ReadOnlyValueText}" Margin="0,0,4,0"/>
-                                            <Button Grid.Row="3" Grid.Column="3" Command="{Binding TeachSearchPointCommand}" CommandParameter="4"
-                                                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2"
-                                                    materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Bottom"
-                                                    ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
-                                                <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
-                                            </Button>
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="P4" Style="{StaticResource ParamLabel}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="4" Grid.Column="1"
+                                                                          Value="{Binding Parameters.SearchPoint4X, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,0"/>
+                                            <materialDesign:DecimalUpDown Grid.Row="4" Grid.Column="2"
+                                                                          Value="{Binding Parameters.SearchPoint4Y, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ValueStep="0.001" Minimum="-99999" Maximum="99999"
+                                                                          Margin="0,0,4,0"/>
+                                            <StackPanel Grid.Row="4" Grid.Column="3" Orientation="Horizontal">
+                                                <Button Command="{Binding TeachSearchPointCommand}" CommandParameter="4"
+                                                        Style="{StaticResource MaterialDesignRaisedButton}" Padding="4,2" Width="36"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_TeachSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding MoveSearchPointCommand}" CommandParameter="4"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_MoveSearchPoint}">
+                                                    <materialDesign:PackIcon Kind="CursorMove" Width="14" Height="14"/>
+                                                </Button>
+                                                <Button Command="{Binding StopSearchPointMoveCommand}"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}" Padding="4,2" Width="36" Margin="4,0,0,0"
+                                                        BorderBrush="#EF5350" Foreground="#C62828"
+                                                        materialDesign:ButtonAssist.CornerRadius="4" VerticalAlignment="Center"
+                                                        ToolTip="{lang:Lang NeedleAligner_StopSearchPointMove}">
+                                                    <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"/>
+                                                </Button>
+                                            </StackPanel>
                                         </Grid>
                                     </GroupBox>
                                 </Grid>
@@ -613,7 +704,8 @@
                                             </GroupBox.Header>
                                             <Grid>
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="62*"/>
+                                                    <RowDefinition Height="107*"/>
                                                     <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
                                                 <ListBox Grid.Row="0" ItemsSource="{Binding CalibrationLogs}"
@@ -621,7 +713,7 @@
                                                          VirtualizingStackPanel.VirtualizationMode="Recycling"
                                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                                                          Background="Transparent" BorderBrush="#E0E0E0"
-                                                         FontFamily="Consolas" FontSize="10" MinHeight="80">
+                                                         FontFamily="Consolas" FontSize="10" MinHeight="80" Grid.RowSpan="2">
                                                     <ListBox.ItemContainerStyle>
                                                         <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
                                                             <Setter Property="Padding" Value="3,1"/>
@@ -629,7 +721,7 @@
                                                         </Style>
                                                     </ListBox.ItemContainerStyle>
                                                 </ListBox>
-                                                <Button Grid.Row="1" Command="{Binding ClearLogCommand}"
+                                                <Button Grid.Row="2" Command="{Binding ClearLogCommand}"
                                                         Style="{StaticResource MaterialDesignOutlinedButton}"
                                                         Padding="6,3" Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="10"
                                                         materialDesign:ButtonAssist.CornerRadius="4"
@@ -679,7 +771,7 @@
                                     <materialDesign:PackIcon Kind="FileDocumentOutline" Width="12" Height="12" Foreground="#9E9E9E"
                                                              VerticalAlignment="Center" Margin="0,0,4,0"/>
                                     <TextBlock Text="{Binding CurrentFileName}" Foreground="#7E57C2" FontSize="9"
-                                               FontFamily="Consolas" TextTrimming="CharacterEllipsis" MaxWidth="120"
+                                               FontFamily="Consolas" TextTrimming="CharacterEllipsis" MaxWidth="280"
                                                ToolTip="{Binding CurrentFilePath}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Border>

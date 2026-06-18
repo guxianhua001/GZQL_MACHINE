@@ -1909,6 +1909,17 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_LinkGlobalVariable">Link Global Variable</sys:String>
     <sys:String x:Key="NeedleAligner_UnlinkGlobalVariable">Unlink</sys:String>
     <sys:String x:Key="NeedleAligner_TeachSearchPoint">Teach</sys:String>
+    <sys:String x:Key="NeedleAligner_MoveSearchPoint">Move to point</sys:String>
+    <sys:String x:Key="NeedleAligner_StopSearchPointMove">Stop move</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_MoveSearchPointTitle">Move to Search Point</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_MoveSearchPointSafeZ">All Z axes are at safe height.&#10;Move to search point P{1} (X={2:F3}, Y={3:F3}) at search speed {0:F1} mm/s?&#10;Continue?</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_MoveSearchPointUnsafeZ">Z axes below safe height: {0}&#10;Current needle Z will be raised to parameter safe height ({1:F3} mm), then move to P{3} (X={4:F3}, Y={5:F3}) at search speed {2:F1} mm/s.&#10;Continue?</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointStart">Moving to search point P{0}: X={1:F3}, Y={2:F3}, speed={3:F1} mm/s</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointDone">Search point P{0} reached: X={1:F3}, Y={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointError">Failed to move to search point: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointStopped">Search point move stopped</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_StopSearchPointMoveError">Failed to stop search point move: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_InvalidSearchPoint">Invalid search point index</sys:String>
     <sys:String x:Key="NeedleAligner_SearchRangeTip">Search movement range in mm</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCountTip">Number of Z-direction search contacts</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeedTip">Coarse search speed in mm/s</sys:String>
@@ -1946,6 +1957,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Log_NoHistory">No TCP compensation history</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">Failed to show TCP history: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ParametersSaved">System {0} parameters saved</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SystemSwitched">Switched to needle system {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SystemSwitchBlocked">Cannot switch needle system while calibration is in progress</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SaveError">Failed to save parameters: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_LoadError">Failed to load parameters: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_FileNotFound">Parameter file not found</sys:String>

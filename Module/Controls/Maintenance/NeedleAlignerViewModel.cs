@@ -29,6 +29,7 @@ namespace Module.ViewModels
     public class NeedleAlignerViewModel : BindableBase
     {
         private readonly INeedleAlignerMotionService _needleMotion;
+        private readonly ISafetyZoneMonitor _safetyZoneMonitor;
         private readonly IParameterStorage _parameterStorage;
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localization;
@@ -40,11 +41,13 @@ namespace Module.ViewModels
         private readonly Timer _logTimer;
         private readonly object _logLock = new();
         private CancellationTokenSource _calibrationCts;
+        /// <summary>搜索点移动取消令牌，供停止按钮中断运动</summary>
+        private CancellationTokenSource _searchPointMoveCts;
         /// <summary>配置文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
 
-        /// <summary>各系统参数内存缓存，切换系统时保留未保存的编辑</summary>
-        private readonly Dictionary<int, NeedleCalibrationParams> _systemParamsCache = new();
+        /// <summary>各系统参数快照缓存（含文件路径），切换系统时保留未保存的编辑</summary>
+        private readonly Dictionary<int, NeedleSystemState> _systemStateCache = new();
 
         private int _systemNumber = 1;
         /// <summary>当前对针系统（1 或 2），切换时加载对应参数集</summary>
@@ -156,6 +159,14 @@ namespace Module.ViewModels
         {
             get => _isCalibrating;
             set => SetProperty(ref _isCalibrating, value);
+        }
+
+        private bool _isSearchPointMoving;
+        /// <summary>搜索点是否正在移动（移动中可点停止）</summary>
+        public bool IsSearchPointMoving
+        {
+            get => _isSearchPointMoving;
+            private set => SetProperty(ref _isSearchPointMoving, value);
         }
 
         private string _currentFilePath;
@@ -477,6 +488,10 @@ namespace Module.ViewModels
         public DelegateCommand LoadParametersCommand { get; }
         public DelegateCommand ClearLogCommand { get; }
         public DelegateCommand<string> TeachSearchPointCommand { get; }
+        /// <summary>移动到搜索点（移动前确认 Z 轴安全高度）</summary>
+        public DelegateCommand<string> MoveSearchPointCommand { get; }
+        /// <summary>停止搜索点移动</summary>
+        public DelegateCommand StopSearchPointMoveCommand { get; }
         public DelegateCommand TeachAlignPositionCommand { get; }
         public DelegateCommand System1Command { get; }
         public DelegateCommand System2Command { get; }
@@ -490,6 +505,7 @@ namespace Module.ViewModels
 
         public NeedleAlignerViewModel(
             INeedleAlignerMotionService needleMotion,
+            ISafetyZoneMonitor safetyZoneMonitor,
             IParameterStorage parameterStorage,
             ILoggerService logger,
             ILocalizationService localization,
@@ -499,6 +515,7 @@ namespace Module.ViewModels
             IRecipePoolService recipePoolService)
         {
             _needleMotion = needleMotion;
+            _safetyZoneMonitor = safetyZoneMonitor;
             _parameterStorage = parameterStorage;
             _logger = logger;
             _localization = localization;
@@ -546,8 +563,20 @@ namespace Module.ViewModels
 
             TeachSearchPointCommand = new DelegateCommand<string>(
                 async step => await TeachSearchPointAsync(int.Parse(step ?? "1")),
-                _ => !IsCalibrating)
-                .ObservesProperty(() => IsCalibrating);
+                _ => !IsCalibrating && !IsSearchPointMoving)
+                .ObservesProperty(() => IsCalibrating)
+                .ObservesProperty(() => IsSearchPointMoving);
+
+            MoveSearchPointCommand = new DelegateCommand<string>(
+                step => MoveSearchPointAsync(int.Parse(step ?? "1")),
+                _ => !IsCalibrating && !IsSearchPointMoving)
+                .ObservesProperty(() => IsCalibrating)
+                .ObservesProperty(() => IsSearchPointMoving);
+
+            StopSearchPointMoveCommand = new DelegateCommand(
+                StopSearchPointMove,
+                () => IsSearchPointMoving)
+                .ObservesProperty(() => IsSearchPointMoving);
 
             TeachAlignPositionCommand = new DelegateCommand(
                 () => TeachAlignPosition(),
@@ -577,14 +606,14 @@ namespace Module.ViewModels
             await EnsureDefaultCompGlobalVariablesAsync();
             await LoadGlobalVariablesAsync();
             await TryAutoLoadConfigAsync();
-            StashParametersToCache(SystemNumber);
+            await EnsureSystemCachedAsync(SystemNumber == 1 ? 2 : 1);
             RaiseSystemUiProperties();
         }
 
         /// <summary>
         /// 执行四点寻针校准（后台线程，避免阻塞 UI）
         /// </summary>
-        private async Task StartCalibrationAsync()
+        private async Task  StartCalibrationAsync()
         {
             IsCalibrating = true;
             CalibrationStatus = _localization.GetResourceOrDefault("NeedleAligner_Status_Starting", "开始校准...");
@@ -618,7 +647,7 @@ namespace Module.ViewModels
                         result.MeasuredCenter.Y,
                         (float)result.MeasuredHeight);
                     Parameters.CompensationXYZ = result.Compensation;
-                    StashParametersToCache(systemNumber);
+                    StashCurrentSystemState(systemNumber);
 
                     CalibrationProgress = 100;
                     OnCalibrationCompleted();
@@ -1107,6 +1136,160 @@ namespace Module.ViewModels
             return Task.CompletedTask;
         }
 
+        /// <summary>移动到搜索点：先提示 Z 轴安全高度，确认后以搜索速度执行 XY 移动</summary>
+        private void MoveSearchPointAsync(int step)
+        {
+            if (!TryGetSearchPointCoordinates(step, out float x, out float y))
+            {
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_MoveSearchPointError", "移动到搜索点失败: {0}"),
+                    _localization.GetResourceOrDefault("NeedleAligner_Error_InvalidSearchPoint", "无效的搜索点编号")));
+                return;
+            }
+
+            var message = BuildMoveSearchPointConfirmMessage(step, x, y);
+            _dialogService.ShowDialog("NotificationDialog", new DialogParameters
+            {
+                {
+                    "title",
+                    _localization.GetResourceOrDefault("NeedleAligner_Dialog_MoveSearchPointTitle", "移动到搜索点")
+                },
+                { "message", message },
+                { "icon", MaterialDesignThemes.Wpf.PackIconKind.ShieldAlertOutline }
+            }, async result =>
+            {
+                if (result.Result != ButtonResult.OK && result.Result != ButtonResult.Yes)
+                    return;
+
+                await ExecuteMoveSearchPointAsync(step, x, y);
+            });
+        }
+
+        /// <summary>读取指定搜索点坐标</summary>
+        private bool TryGetSearchPointCoordinates(int step, out float x, out float y)
+        {
+            x = y = 0;
+            if (Parameters == null)
+                return false;
+
+            switch (step)
+            {
+                case 1:
+                    x = Parameters.SearchPoint1X;
+                    y = Parameters.SearchPoint1Y;
+                    return true;
+                case 2:
+                    x = Parameters.SearchPoint2X;
+                    y = Parameters.SearchPoint2Y;
+                    return true;
+                case 3:
+                    x = Parameters.SearchPoint3X;
+                    y = Parameters.SearchPoint3Y;
+                    return true;
+                case 4:
+                    x = Parameters.SearchPoint4X;
+                    y = Parameters.SearchPoint4Y;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>构建移动前 Z 轴安全高度确认文案</summary>
+        private string BuildMoveSearchPointConfirmMessage(int step, float x, float y)
+        {
+            var speed = Parameters?.SearchSpeed ?? 5.0;
+            var safeHeight = Parameters?.SafeHeight ?? 0;
+            var lowAxes = _safetyZoneMonitor?.GetSafetyStatus()?.LowHeightAxisNames;
+
+            if (lowAxes != null && lowAxes.Count > 0)
+            {
+                return string.Format(
+                    _localization.GetResourceOrDefault(
+                        "NeedleAligner_Dialog_MoveSearchPointUnsafeZ",
+                        "以下 Z 轴未达安全高度：{0}\n移动前将先抬升当前针头 Z 轴至参数安全高度 ({1:F3} mm)，再以搜索速度 {2:F1} mm/s 移动到 P{3} (X={4:F3}, Y={5:F3})。\n是否继续？"),
+                    string.Join(", ", lowAxes),
+                    safeHeight,
+                    speed,
+                    step,
+                    x,
+                    y);
+            }
+
+            return string.Format(
+                _localization.GetResourceOrDefault(
+                    "NeedleAligner_Dialog_MoveSearchPointSafeZ",
+                    "所有 Z 轴已在安全高度。\n将以搜索速度 {0:F1} mm/s 移动到搜索点 P{1} (X={2:F3}, Y={3:F3})。\n是否继续？"),
+                speed,
+                step,
+                x,
+                y);
+        }
+
+        /// <summary>执行搜索点 XY 移动（内部先抬 Z 至安全高度）</summary>
+        private async Task ExecuteMoveSearchPointAsync(int step, float x, float y)
+        {
+            _searchPointMoveCts?.Cancel();
+            _searchPointMoveCts?.Dispose();
+            _searchPointMoveCts = new CancellationTokenSource();
+            var token = _searchPointMoveCts.Token;
+            var systemNumber = SystemNumber;
+            var parametersSnapshot = Parameters?.Clone() ?? new NeedleCalibrationParams();
+
+            try
+            {
+                IsSearchPointMoving = true;
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault(
+                        "NeedleAligner_Log_MoveSearchPointStart",
+                        "开始移动到搜索点 P{0}: X={1:F3}, Y={2:F3}，速度={3:F1} mm/s"),
+                    step, x, y, parametersSnapshot.SearchSpeed));
+
+                await _needleMotion.MoveToSearchPointXYAsync(
+                    parametersSnapshot, systemNumber, x, y, token);
+
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault(
+                        "NeedleAligner_Log_MoveSearchPointDone",
+                        "搜索点 P{0} 移动完成: X={1:F3}, Y={2:F3}"),
+                    step, x, y));
+            }
+            catch (OperationCanceledException)
+            {
+                AddLog(_localization.GetResourceOrDefault(
+                    "NeedleAligner_Log_MoveSearchPointStopped", "搜索点移动已停止"));
+            }
+            catch (Exception ex)
+            {
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_MoveSearchPointError", "移动到搜索点失败: {0}"),
+                    ex.Message));
+                _logger.Warn($"[NeedleAligner] 移动到搜索点 P{step} 失败: {ex.Message}");
+            }
+            finally
+            {
+                IsSearchPointMoving = false;
+                _searchPointMoveCts?.Dispose();
+                _searchPointMoveCts = null;
+            }
+        }
+
+        /// <summary>停止搜索点移动：取消任务并立即停止相关轴</summary>
+        private void StopSearchPointMove()
+        {
+            try
+            {
+                _searchPointMoveCts?.Cancel();
+                _needleMotion.StopMotion(SystemNumber);
+            }
+            catch (Exception ex)
+            {
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_StopSearchPointMoveError", "停止搜索点移动失败: {0}"),
+                    ex.Message));
+            }
+        }
+
         /// <summary>示教当前系统对针位置（内部仍读 Dx/Dy/针尖 Z 轴）</summary>
         private void TeachAlignPosition()
         {
@@ -1124,7 +1307,7 @@ namespace Module.ViewModels
                 }
 
                 SetCurrentAlignPosition(new PointF((float)x, (float)y, (float)z));
-                StashParametersToCache(SystemNumber);
+                StashCurrentSystemState(SystemNumber);
 
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlign", "系统{0}对针位置示教: X={1:F3}, Y={2:F3}, Z={3:F3}"),
@@ -1161,22 +1344,42 @@ namespace Module.ViewModels
             RaisePropertyChanged(propertyName);
         }
 
-        /// <summary>切换系统：缓存旧系统参数，加载新系统缓存或配置文件</summary>
+        /// <summary>切换系统：缓存旧系统完整状态，加载新系统缓存或磁盘配置</summary>
         private async Task SwitchSystemAsync(int previousSystem, int newSystem)
         {
+            if (IsCalibrating)
+            {
+                _systemNumber = previousSystem;
+                RaisePropertyChanged(nameof(SystemNumber));
+                AddLog(_localization.GetResourceOrDefault(
+                    "NeedleAligner_Log_SystemSwitchBlocked",
+                    "校准进行中，无法切换针头系统"));
+                return;
+            }
+
             try
             {
-                StashParametersToCache(previousSystem);
+                StashCurrentSystemState(previousSystem);
 
-                if (_systemParamsCache.TryGetValue(newSystem, out var cached))
+                if (_systemStateCache.TryGetValue(newSystem, out var cached))
                 {
-                    ApplyParametersFromSystem(cached, newSystem);
-                    RaiseSystemUiProperties();
+                    ApplySystemState(cached, newSystem);
+                    AddLog(string.Format(
+                        _localization.GetResourceOrDefault(
+                            "NeedleAligner_Log_SystemSwitched",
+                            "已切换到针头系统{0}"),
+                        newSystem));
                     return;
                 }
 
-                await TryAutoLoadConfigAsync();
-                RaiseSystemUiProperties();
+                var loaded = await LoadSystemStateFromDiskAsync(newSystem);
+                _systemStateCache[newSystem] = loaded;
+                ApplySystemState(loaded, newSystem);
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault(
+                        "NeedleAligner_Log_SystemSwitched",
+                        "已切换到针头系统{0}"),
+                    newSystem));
             }
             catch (Exception ex)
             {
@@ -1184,10 +1387,144 @@ namespace Module.ViewModels
             }
         }
 
-        private void StashParametersToCache(int systemNumber)
+        /// <summary>将当前 UI 状态同步回 Parameters，便于按系统缓存</summary>
+        private void SyncCurrentStateToParameters()
         {
             if (Parameters == null) return;
-            _systemParamsCache[systemNumber] = Parameters.Clone();
+
+            CompensationManager?.SaveToParameters(Parameters);
+            Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
+            Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
+            Parameters.CompensationZLinkedVar = CompensationZLinkedVar;
+            Parameters.CompensationXExpression = CompensationXExpression;
+            Parameters.CompensationYExpression = CompensationYExpression;
+            Parameters.CompensationZExpression = CompensationZExpression;
+        }
+
+        /// <summary>缓存当前系统的参数与文件信息</summary>
+        private void StashCurrentSystemState(int systemNumber)
+        {
+            if (Parameters == null) return;
+
+            SyncCurrentStateToParameters();
+            _systemStateCache[systemNumber] = new NeedleSystemState
+            {
+                Parameters = Parameters.Clone(),
+                CurrentFilePath = CurrentFilePath,
+                CurrentFileName = CurrentFileName
+            };
+        }
+
+        /// <summary>应用指定系统的完整状态到 UI</summary>
+        private void ApplySystemState(NeedleSystemState state, int systemNumber)
+        {
+            if (state?.Parameters == null)
+            {
+                state = new NeedleSystemState
+                {
+                    Parameters = CreateDefaultParametersForSystem(systemNumber)
+                };
+            }
+
+            ApplyParametersFromSystem(state.Parameters, systemNumber);
+            CurrentFilePath = state.CurrentFilePath;
+            CurrentFileName = state.CurrentFileName;
+            RaiseSystemUiProperties();
+        }
+
+        /// <summary>创建指定系统的默认参数集</summary>
+        private static NeedleCalibrationParams CreateDefaultParametersForSystem(int systemNumber)
+        {
+            return new NeedleCalibrationParams
+            {
+                SystemNumber = systemNumber,
+                CalibrationName = "Default",
+                CompensationXLinkedVar = NeedleAlignerGlobalVariableNames.DefaultCompXLinkedVar,
+                CompensationYLinkedVar = NeedleAlignerGlobalVariableNames.DefaultCompYLinkedVar,
+                CompensationZLinkedVar = NeedleAlignerGlobalVariableNames.DefaultCompZLinkedVar
+            };
+        }
+
+        /// <summary>预加载另一系统参数到缓存（不切换 UI）</summary>
+        private async Task EnsureSystemCachedAsync(int systemNumber)
+        {
+            if (_systemStateCache.ContainsKey(systemNumber))
+                return;
+
+            var loaded = await LoadSystemStateFromDiskAsync(systemNumber);
+            _systemStateCache[systemNumber] = loaded;
+        }
+
+        /// <summary>从配方池记录或目录加载指定系统的参数快照</summary>
+        private async Task<NeedleSystemState> LoadSystemStateFromDiskAsync(int systemNumber)
+        {
+            try
+            {
+                if (_recipePoolService != null)
+                {
+                    var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                    var extKey = $"NeedleAligner_CurrentFile_System{systemNumber}";
+                    var extData = await _recipePoolService.GetExtensionDataAsync<NeedleAlignerFileRecord>(poolName, extKey);
+
+                    if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                    {
+                        var loaded = await DeserializeParametersFileAsync(extData.FilePath, systemNumber);
+                        if (loaded != null)
+                        {
+                            return new NeedleSystemState
+                            {
+                                Parameters = loaded,
+                                CurrentFilePath = extData.FilePath,
+                                CurrentFileName = Path.GetFileName(extData.FilePath)
+                            };
+                        }
+                    }
+                }
+
+                var calibrationDir = GetCalibrationDirectory(systemNumber);
+                var latest = Directory
+                    .EnumerateFiles(calibrationDir, $"NeedleCalibration_System{systemNumber}_*.json")
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .FirstOrDefault();
+
+                if (latest != null)
+                {
+                    var loaded = await DeserializeParametersFileAsync(latest, systemNumber);
+                    if (loaded != null)
+                    {
+                        return new NeedleSystemState
+                        {
+                            Parameters = loaded,
+                            CurrentFilePath = latest,
+                            CurrentFileName = Path.GetFileName(latest)
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleAligner] 加载系统{systemNumber}参数失败: {ex.Message}");
+            }
+
+            return new NeedleSystemState
+            {
+                Parameters = CreateDefaultParametersForSystem(systemNumber)
+            };
+        }
+
+        /// <summary>反序列化参数文件并校正系统编号</summary>
+        private static async Task<NeedleCalibrationParams> DeserializeParametersFileAsync(string filePath, int systemNumber)
+        {
+            if (!File.Exists(filePath))
+                return null;
+
+            var json = await File.ReadAllTextAsync(filePath);
+            var loaded = JsonConvert.DeserializeObject<NeedleCalibrationParams>(json);
+            if (loaded == null)
+                return null;
+
+            loaded.SystemNumber = systemNumber;
+            return loaded;
         }
 
         private void ApplyParametersFromSystem(NeedleCalibrationParams loaded, int systemNumber)
@@ -1210,6 +1547,9 @@ namespace Module.ViewModels
 
         private void RaiseSystemUiProperties()
         {
+            RaisePropertyChanged(nameof(Parameters));
+            RaisePropertyChanged(nameof(CurrentFilePath));
+            RaisePropertyChanged(nameof(CurrentFileName));
             RaisePropertyChanged(nameof(CurrentAlignPositionTitle));
             RaisePropertyChanged(nameof(CurrentAlignX));
             RaisePropertyChanged(nameof(CurrentAlignY));
@@ -1225,6 +1565,16 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(PendingIncrementX));
             RaisePropertyChanged(nameof(PendingIncrementY));
             RaisePropertyChanged(nameof(PendingIncrementZ));
+            RaisePropertyChanged(nameof(CompensationXExpression));
+            RaisePropertyChanged(nameof(CompensationYExpression));
+            RaisePropertyChanged(nameof(CompensationZExpression));
+            RaisePropertyChanged(nameof(CompensationXLinkedVar));
+            RaisePropertyChanged(nameof(CompensationYLinkedVar));
+            RaisePropertyChanged(nameof(CompensationZLinkedVar));
+            RaisePropertyChanged(nameof(IsCompensationXLinked));
+            RaisePropertyChanged(nameof(IsCompensationYLinked));
+            RaisePropertyChanged(nameof(IsCompensationZLinked));
+            Parameters?.NotifyUiBindingsRefresh();
             RaiseCalibrationDeltaAndCalculatedChanged();
         }
 
@@ -1257,7 +1607,7 @@ namespace Module.ViewModels
             {
                 CompensationManager.SaveToParameters(Parameters);
                 Parameters.SystemNumber = SystemNumber;
-                StashParametersToCache(SystemNumber);
+                StashCurrentSystemState(SystemNumber);
                 Parameters.LastCalibrationTime = DateTime.Now;
                 Parameters.CompensationXLinkedVar = CompensationXLinkedVar;
                 Parameters.CompensationYLinkedVar = CompensationYLinkedVar;
@@ -1356,23 +1706,31 @@ namespace Module.ViewModels
                 if (loaded != null)
                 {
                     var sn = loaded.SystemNumber > 0 ? loaded.SystemNumber : SystemNumber;
-                    ApplyParametersFromSystem(loaded, sn);
+                    var state = new NeedleSystemState
+                    {
+                        Parameters = loaded,
+                        CurrentFilePath = filePath,
+                        CurrentFileName = Path.GetFileName(filePath)
+                    };
+
                     if (_systemNumber != sn)
                     {
                         _systemNumber = sn;
                         RaisePropertyChanged(nameof(SystemNumber));
                     }
 
-                    StashParametersToCache(sn);
+                    ApplySystemState(state, sn);
+                    _systemStateCache[sn] = new NeedleSystemState
+                    {
+                        Parameters = Parameters.Clone(),
+                        CurrentFilePath = CurrentFilePath,
+                        CurrentFileName = CurrentFileName
+                    };
 
                     await EnsureLinkedCompVariablesExistAsync(
                         CompensationXLinkedVar, CompensationYLinkedVar, CompensationZLinkedVar);
                     await LoadGlobalVariablesAsync();
 
-                    CurrentFilePath = filePath;
-                    CurrentFileName = Path.GetFileName(filePath);
-
-                    RaiseSystemUiProperties();
                     RaisePropertyChanged(nameof(CompensationManager));
 
                     AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_ParametersLoaded", "针头校准参数加载成功"));
@@ -1690,11 +2048,11 @@ namespace Module.ViewModels
         }
 
         /// <summary>获取校准参数存储目录：Config/Calibration/System{N}</summary>
-        private string GetCalibrationDirectory()
+        private string GetCalibrationDirectory(int? systemNumber = null)
         {
             var dir = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
-                "Config", "Calibration", $"System{SystemNumber}");
+                "Config", "Calibration", $"System{systemNumber ?? SystemNumber}");
             Directory.CreateDirectory(dir);
             return dir;
         }
@@ -1715,38 +2073,25 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>尝试从配方池记录自动加载最近使用的校准参数文件</summary>
+        /// <summary>启动时自动加载当前系统的校准参数</summary>
         private async Task TryAutoLoadConfigAsync()
         {
             try
             {
-                var poolName = _recipePoolService?.CurrentPoolName ?? "Default";
-                var extKey = $"NeedleAligner_CurrentFile_System{SystemNumber}";
-                var extData = await _recipePoolService.GetExtensionDataAsync<NeedleAlignerFileRecord>(poolName, extKey);
+                var state = await LoadSystemStateFromDiskAsync(SystemNumber);
+                ApplySystemState(state, SystemNumber);
+                StashCurrentSystemState(SystemNumber);
 
-                if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                if (state.CurrentFilePath == null)
                 {
-                    _logger.Info($"[NeedleAligner] 从配方池记录加载: {extData.FilePath}");
-                    await LoadFromPathAsync(extData.FilePath);
-                    return;
+                    await ApplyDefaultLinkedVariablesAsync();
+                    StashCurrentSystemState(SystemNumber);
+                    _logger.Info($"[NeedleAligner] 系统{SystemNumber}无可加载的校准配置文件，已应用默认参数");
                 }
-
-                // 回退：加载目录中最新的配置文件
-                var calibrationDir = GetCalibrationDirectory();
-                var latest = Directory
-                    .EnumerateFiles(calibrationDir, $"NeedleCalibration_System{SystemNumber}_*.json")
-                    .OrderByDescending(f => File.GetLastWriteTime(f))
-                    .FirstOrDefault();
-
-                if (latest != null)
+                else
                 {
-                    _logger.Info($"[NeedleAligner] 配方池无记录，加载最新文件: {latest}");
-                    await LoadFromPathAsync(latest);
-                    return;
+                    _logger.Info($"[NeedleAligner] 系统{SystemNumber}已加载: {state.CurrentFilePath}");
                 }
-
-                await ApplyDefaultLinkedVariablesAsync();
-                _logger.Info($"[NeedleAligner] 系统{SystemNumber}无可加载的校准配置文件，已应用默认补偿链接");
             }
             catch (Exception ex)
             {
@@ -1793,6 +2138,14 @@ namespace Module.ViewModels
                 }
             });
         }
+    }
+
+    /// <summary>单套针头系统的参数与文件快照</summary>
+    internal sealed class NeedleSystemState
+    {
+        public NeedleCalibrationParams Parameters { get; init; }
+        public string CurrentFilePath { get; init; }
+        public string CurrentFileName { get; init; }
     }
 
     /// <summary>记录最后使用的对针参数文件路径</summary>

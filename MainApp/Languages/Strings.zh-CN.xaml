@@ -1909,6 +1909,17 @@
     <sys:String x:Key="NeedleAligner_LinkGlobalVariable">链接全局变量</sys:String>
     <sys:String x:Key="NeedleAligner_UnlinkGlobalVariable">取消链接</sys:String>
     <sys:String x:Key="NeedleAligner_TeachSearchPoint">示教</sys:String>
+    <sys:String x:Key="NeedleAligner_MoveSearchPoint">移到搜索点</sys:String>
+    <sys:String x:Key="NeedleAligner_StopSearchPointMove">停止移动</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_MoveSearchPointTitle">移动到搜索点</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_MoveSearchPointSafeZ">所有 Z 轴已在安全高度。&#10;将以搜索速度 {0:F1} mm/s 移动到搜索点 P{1} (X={2:F3}, Y={3:F3})。&#10;是否继续？</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_MoveSearchPointUnsafeZ">以下 Z 轴未达安全高度：{0}&#10;移动前将先抬升当前针头 Z 轴至参数安全高度 ({1:F3} mm)，再以搜索速度 {2:F1} mm/s 移动到 P{3} (X={4:F3}, Y={5:F3})。&#10;是否继续？</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointStart">开始移动到搜索点 P{0}: X={1:F3}, Y={2:F3}，速度={3:F1} mm/s</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointDone">搜索点 P{0} 移动完成: X={1:F3}, Y={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointError">移动到搜索点失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveSearchPointStopped">搜索点移动已停止</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_StopSearchPointMoveError">停止搜索点移动失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Error_InvalidSearchPoint">无效的搜索点编号</sys:String>
     <sys:String x:Key="NeedleAligner_SearchRangeTip">搜索时的移动范围，单位mm</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCountTip">Z方向搜索接触的次数</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeedTip">粗搜索移动速度，单位mm/s</sys:String>
@@ -1946,6 +1957,8 @@
     <sys:String x:Key="NeedleAligner_Log_NoHistory">无 TCP 补偿历史</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ShowHistoryError">显示 TCP 历史失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ParametersSaved">对针系统{0}参数保存成功</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SystemSwitched">已切换到针头系统{0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SystemSwitchBlocked">校准进行中，无法切换针头系统</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SaveError">保存参数失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_LoadError">加载参数失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_FileNotFound">参数文件不存在</sys:String>
