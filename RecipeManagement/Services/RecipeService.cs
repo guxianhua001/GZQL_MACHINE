@@ -38,6 +38,7 @@ namespace Recipe
 
         private SubscriptionToken _recipeChangedToken;
         private SubscriptionToken _saveParametersToken;
+        private SubscriptionToken _saveParametersCompletedToken;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         // 内部强类型事件存储（私有）
@@ -124,6 +125,16 @@ namespace Recipe
 
             _saveParametersToken = _eventAggregator.GetEvent<SaveParametersEvent>()
                 .Subscribe(OnSaveParameters);
+
+            // 配方池参数提交后从文件重新加载，避免内存中保留陈旧 Positions 再次覆盖文件
+            _saveParametersCompletedToken = _eventAggregator.GetEvent<SaveParametersCompletedEvent>()
+                .Subscribe(async recipeName =>
+                {
+                    if (string.Equals(recipeName, _currentRecipeName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await LoadRecipeParameters(_currentRecipePool, _currentRecipeName).ConfigureAwait(false);
+                    }
+                });
         }
 
         private async Task InitializeCurrentRecipeFromDefaultPoolAsync()
@@ -712,6 +723,7 @@ namespace Recipe
             {
                 _recipeChangedToken?.Dispose();
                 _saveParametersToken?.Dispose();
+                _saveParametersCompletedToken?.Dispose();
             }
             catch { }
         }

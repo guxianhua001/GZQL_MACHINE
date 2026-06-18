@@ -1113,6 +1113,9 @@
     <sys:String x:Key="Menu_View">视图(_V)</sys:String>
     <sys:String x:Key="MidpointXY">中间点(X,Y):</sys:String>
     <sys:String x:Key="Motion_Parameters">运动参数</sys:String>
+    <sys:String x:Key="Motion_ContiAxisIdsRequired">连续插补初始化失败：轴列表不能为空</sys:String>
+    <sys:String x:Key="Motion_ContiNotInitialized">坐标系 {0} 未初始化连续插补，请先调用 InitializeContinuousInterpolation</sys:String>
+    <sys:String x:Key="Motion_ContiPositionMismatch">连续插补目标位置维度({0})与轴数({1})不匹配</sys:String>
     <sys:String x:Key="MotionSet">轴卡设置</sys:String>
     <sys:String x:Key="MovementSpeed">移动速度</sys:String>
     <sys:String x:Key="MoveToDispensingPathPosition">移到点胶轨迹位置</sys:String>
@@ -2062,6 +2065,7 @@
     <sys:String x:Key="DispenseDetail_OverrideParams">选中段覆盖参数</sys:String>
     <sys:String x:Key="DispenseDetail_JumpSpeed">空移速度</sys:String>
     <sys:String x:Key="DispenseDetail_MoveSpeed">速度</sys:String>
+    <sys:String x:Key="DispenseDetail_InterpSpeed">插补速度</sys:String>
     <sys:String x:Key="DispenseDetail_SafeHeight">安全高度</sys:String>
     <sys:String x:Key="DispenseDetail_ApproachHeight">接近高度</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseAmount">出胶量</sys:String>

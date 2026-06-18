@@ -66,6 +66,14 @@ namespace Core.Models
             set => SetProperty(ref _overrideJumpSpeed, value);
         }
 
+        private double _overrideInterpSpeed = 10.0;
+        /// <summary>覆盖连续插补速度 mm/s</summary>
+        public double OverrideInterpSpeed
+        {
+            get => _overrideInterpSpeed;
+            set => SetProperty(ref _overrideInterpSpeed, value);
+        }
+
         private double _overrideMoveSpeed = 10.0;
         /// <summary>覆盖运动速度 mm/s</summary>
         public double OverrideMoveSpeed

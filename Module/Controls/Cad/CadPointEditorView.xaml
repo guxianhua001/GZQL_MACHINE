@@ -5,7 +5,6 @@
              xmlns:prism="http://prismlibrary.com/"
              xmlns:converters="clr-namespace:Module.Converters"
              xmlns:controls="clr-namespace:Module.Controls"
-             prism:ViewModelLocator.AutoWireViewModel="True"
              MinHeight="600">
     <!-- 薄包装：内嵌新的 CadPointEditorControl -->
     <controls:CadPointEditorControl x:Name="CadEditor"

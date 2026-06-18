@@ -602,6 +602,7 @@ namespace MotionControl.Card
         {
             lock (_lockObj)
             {
+                // 设置向量参数
                 ushort[] axs = new ushort[axisCount];
                 for (int i = 0; i < axisCount; i++) axs[i] = (ushort)axisIds[i];
                 return LTDMC.dmc_conti_line_unit(_cardId, (ushort)coordId, (ushort)axisCount, axs, targetPos, posiMode, mark);

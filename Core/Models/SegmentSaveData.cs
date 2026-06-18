@@ -13,5 +13,8 @@ namespace Core.Models
 
         /// <summary>坐标对齐数据（可为 null，兼容旧版本文件）</summary>
         public CoordinateAlignData AlignData { get; set; }
+
+        /// <summary>Step5/Step6 面板操作选项（可为 null，兼容旧版本文件）</summary>
+        public CadPointPanelOptions PanelOptions { get; set; }
     }
 }

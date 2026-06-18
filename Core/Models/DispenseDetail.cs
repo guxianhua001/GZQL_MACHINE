@@ -115,6 +115,14 @@ namespace Core.Models
             set { SetProperty(ref _defaultJumpSpeed, value); }
         }
 
+        private double _defaultInterpSpeed = 10.0;
+        /// <summary>默认连续插补速度 mm/s</summary>
+        public double DefaultInterpSpeed
+        {
+            get => _defaultInterpSpeed;
+            set { SetProperty(ref _defaultInterpSpeed, value); }
+        }
+
         private double _defaultMoveSpeed = 20.0;
         /// <summary>默认运动速度 mm/s</summary>
         public double DefaultMoveSpeed

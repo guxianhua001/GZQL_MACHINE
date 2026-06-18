@@ -29,7 +29,7 @@ namespace Module.Services
         private const int AxisDzNeedle1 = 3;
         /// <summary>针头2对应的Z轴编号（Dz₃, LogicalId=4）</summary>
         private const int AxisDzNeedle2 = 4;
-        private const int GlueIoPort = 0;
+        private const int GlueIoPort = 12;
         private const double DefaultVelocity = 10.0;
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
@@ -103,7 +103,7 @@ namespace Module.Services
                     if (seg.Points == null || seg.Points.Count == 0) continue;
 
                     PublishProgress(ResourceHelper.GetString("DispenseExec_SegmentProgress", modeLabel, seg.SegmentId, seg.EntityType), index + 1, total);
-                    _logger?.Debug($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]");
+                    _logger?.Info($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]");
 
                     // 1. Z 抬升到安全高度
                     await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, DefaultVelocity, token);
@@ -141,7 +141,7 @@ namespace Module.Services
                             // 3c. 慢速移到触发位开胶
                             await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
                             WriteGlueIo(true);
-                            _logger?.Debug($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_TriggerGlueOn", seg.SegmentId, triggerZ, targetZ, seg.GlueTriggerOffsetMm)}");
+                            _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_TriggerGlueOn", seg.SegmentId, triggerZ, targetZ, seg.GlueTriggerOffsetMm)}");
 
                             // 3d. 继续慢速移到目标位
                             await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
@@ -172,7 +172,7 @@ namespace Module.Services
                     // 4. 连续插补走轨迹
                     _motionService.InitializeContinuousInterpolation(
                         CoordIdContinuous, new[] { AxisDx, AxisDy },
-                        startVel: 0, maxVel: seg.MoveSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
+                        startVel: 0, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
 
                     foreach (var pt in seg.Points)
                     {
@@ -197,7 +197,7 @@ namespace Module.Services
                     if (dispenseGlue)
                     {
                         WriteGlueIo(false);
-                        _logger?.Debug($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_GlueOff", seg.SegmentId)}");
+                        _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_GlueOff", seg.SegmentId)}");
 
                         if (seg.PostDelay > 0)
                             await Task.Delay((int)seg.PostDelay, token);

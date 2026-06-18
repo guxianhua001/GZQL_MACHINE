@@ -173,7 +173,8 @@ namespace Recipe.Services
 
                 string backupDir = Path.Combine(baseDir, "Recipes", "BackUp", poolId, DateTime.Now.ToString("yyyy-MM-dd"));
                 Directory.CreateDirectory(backupDir);
-                string timestamp = DateTime.Now.ToString("HHmmss");
+                // 毫秒精度避免同一秒内多次备份互相覆盖
+                string timestamp = DateTime.Now.ToString("HHmmssfff");
                 string backupFileName = $"{fileName}_{timestamp}.bak";
                 string backupPath = Path.Combine(backupDir, backupFileName);
                 File.Copy(filePath, backupPath, overwrite: true);

@@ -1119,6 +1119,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Menu_View">_View</sys:String>
     <sys:String x:Key="MidpointXY">MidPt(X,Y):</sys:String>
     <sys:String x:Key="Motion_Parameters">Motion Parameters</sys:String>
+    <sys:String x:Key="Motion_ContiAxisIdsRequired">Continuous interpolation init failed: axis list cannot be empty</sys:String>
+    <sys:String x:Key="Motion_ContiNotInitialized">Coordinate system {0} is not initialized for continuous interpolation; call InitializeContinuousInterpolation first</sys:String>
+    <sys:String x:Key="Motion_ContiPositionMismatch">Continuous interpolation target dimension ({0}) does not match axis count ({1})</sys:String>
     <sys:String x:Key="MotionSet">MotionSet</sys:String>
     <sys:String x:Key="MovementSpeed">Speed</sys:String>
     <sys:String x:Key="MoveToDispensingPathPosition">MoveToPhoto</sys:String>
@@ -2062,6 +2065,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_OverrideParams">Segment Override Parameters</sys:String>
     <sys:String x:Key="DispenseDetail_JumpSpeed">Jump Speed</sys:String>
     <sys:String x:Key="DispenseDetail_MoveSpeed">Speed</sys:String>
+    <sys:String x:Key="DispenseDetail_InterpSpeed">Interp Speed</sys:String>
     <sys:String x:Key="DispenseDetail_SafeHeight">Safe Height</sys:String>
     <sys:String x:Key="DispenseDetail_ApproachHeight">Approach Height</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseAmount">Glue Amount</sys:String>

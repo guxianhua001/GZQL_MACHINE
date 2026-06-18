@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -412,6 +415,7 @@ namespace Module.ViewModels
         private static readonly HashSet<string> ParamPropertyNames = new()
         {
             nameof(DispenseSegment.JumpSpeed),
+            nameof(DispenseSegment.InterpSpeed),
             nameof(DispenseSegment.MoveSpeed),
             nameof(DispenseSegment.SafeHeight),
             nameof(DispenseSegment.ApproachHeight),
@@ -1146,6 +1150,21 @@ namespace Module.ViewModels
             set => SetProperty(ref _isRealDispenseMode, value);
         }
 
+        /// <summary>加载/应用面板选项时抑制写回 JSON，避免循环持久化</summary>
+        private bool _suppressPanelOptionsPersist;
+
+        private static readonly HashSet<string> PanelOptionPropertyNames = new(StringComparer.Ordinal)
+        {
+            nameof(IsSimMode),
+            nameof(IsRealDryRunMode),
+            nameof(DescendInDryRun),
+            nameof(SelectedSegmentId),
+            nameof(LineDispenseMode),
+            nameof(ZCorrectionEnabled),
+            nameof(IsSinglePointMode),
+            nameof(IsContinuousInterpolationMode)
+        };
+
         #endregion
 
         #region 委托命令 — 步骤导航
@@ -1646,6 +1665,9 @@ namespace Module.ViewModels
             // 监听 Segments 集合变化以更新状态栏摘要和 CanExecute
             _segments.CollectionChanged += OnSegmentsCollectionChanged;
 
+            // Step5/Step6 面板选项变更时写回当前轨迹 JSON
+            PropertyChanged += OnPanelOptionPropertyChanged;
+
             // 将 Segments 注册到共享存储，供 DispenseDetailViewModel 导入使用
             _dispenseSegmentStore?.RegisterSegments(_segments);
 
@@ -1669,6 +1691,7 @@ namespace Module.ViewModels
             if (detail == null) return;
 
             segment.JumpSpeed = detail.DefaultJumpSpeed;
+            segment.InterpSpeed = detail.DefaultInterpSpeed;
             segment.MoveSpeed = detail.DefaultMoveSpeed;
             segment.SafeHeight = detail.DefaultSafeHeight;
             segment.ApproachHeight = detail.DefaultApproachHeight;
@@ -2129,7 +2152,7 @@ namespace Module.ViewModels
                 WindowStyle = WindowStyle.ToolWindow
             };
 
-            dialog.DataContext = new BatchSetSpeedViewModel(firstSeg.MoveSpeed, firstSeg.JumpSpeed, window);
+            dialog.DataContext = new BatchSetSpeedViewModel(firstSeg.MoveSpeed, firstSeg.InterpSpeed, window);
 
             if (window.ShowDialog() == true)
             {
@@ -2139,7 +2162,7 @@ namespace Module.ViewModels
                     foreach (var seg in targets)
                     {
                         seg.MoveSpeed = vm.MoveSpeed;
-                        seg.JumpSpeed = vm.InterpSpeed;
+                        seg.InterpSpeed = vm.InterpSpeed;
                     }
                     GlobalStatus = string.Format(L("CadPoint_Status_BatchSetSpeed"), vm.MoveSpeed, vm.InterpSpeed, targets.Count);
                 }
@@ -3032,6 +3055,7 @@ namespace Module.ViewModels
                 ExecuteRunCommand.RaiseCanExecuteChanged();
                 ExecutePathCommand.RaiseCanExecuteChanged();
                 DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
+                RefreshSegmentIds();
             }
             if (e.PropertyName == nameof(DispenseSegment.SegmentId))
             {
@@ -3039,13 +3063,104 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>刷新 SegmentIds 集合（Step6 下拉框数据源）</summary>
+        /// <summary>刷新 SegmentIds 集合（Step6 下拉框：仅启用段）</summary>
         private void RefreshSegmentIds()
         {
             SegmentIds.Clear();
-            foreach (var seg in Segments)
+            foreach (var seg in Segments.Where(s => s.IsEnabled))
                 SegmentIds.Add(seg.SegmentId);
+            EnsureDefaultSelectedSegmentId();
         }
+
+        /// <summary>
+        /// Step6 目标线段默认选中第一个启用段；若当前选中仍有效则保留
+        /// </summary>
+        private void EnsureDefaultSelectedSegmentId()
+        {
+            var enabledIds = Segments.Where(s => s.IsEnabled).Select(s => s.SegmentId).ToList();
+            if (enabledIds.Count == 0)
+            {
+                if (!string.IsNullOrEmpty(_selectedSegmentId))
+                {
+                    _selectedSegmentId = null;
+                    RaisePropertyChanged(nameof(SelectedSegmentId));
+                }
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_selectedSegmentId) || !enabledIds.Contains(_selectedSegmentId))
+                SelectedSegmentId = enabledIds[0];
+        }
+
+        /// <summary>捕获 Step5/Step6 面板当前操作选项</summary>
+        private CadPointPanelOptions CapturePanelOptions() => new()
+        {
+            IsSimMode = IsSimMode,
+            IsRealDryRunMode = IsRealDryRunMode,
+            DescendInDryRun = DescendInDryRun,
+            SelectedSegmentId = SelectedSegmentId ?? string.Empty,
+            LineDispenseMode = LineDispenseMode,
+            ZCorrectionEnabled = ZCorrectionEnabled
+        };
+
+        /// <summary>从 JSON 恢复 Step5/Step6 面板操作选项</summary>
+        private void ApplyPanelOptions(CadPointPanelOptions options)
+        {
+            _suppressPanelOptionsPersist = true;
+            try
+            {
+                if (options != null)
+                {
+                    IsSimMode = options.IsSimMode;
+                    IsRealDryRunMode = options.IsRealDryRunMode;
+                    DescendInDryRun = options.DescendInDryRun;
+                    LineDispenseMode = options.LineDispenseMode;
+                    ZCorrectionEnabled = options.ZCorrectionEnabled;
+                    _selectedSegmentId = options.SelectedSegmentId;
+                    RaisePropertyChanged(nameof(SelectedSegmentId));
+                }
+                EnsureDefaultSelectedSegmentId();
+            }
+            finally
+            {
+                _suppressPanelOptionsPersist = false;
+            }
+        }
+
+        /// <summary>面板选项变更时写回当前轨迹 JSON（仅更新 PanelOptions 字段）</summary>
+        private void OnPanelOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (_suppressPanelOptionsPersist || e.PropertyName == null) return;
+            if (!PanelOptionPropertyNames.Contains(e.PropertyName)) return;
+            PersistPanelOptionsToFile();
+        }
+
+        /// <summary>将 PanelOptions 合并写回当前 SegmentFilePath 对应 JSON</summary>
+        private void PersistPanelOptionsToFile()
+        {
+            if (!HasSegmentFilePath) return;
+            try
+            {
+                var path = _segmentFilePath;
+                var options = CreateSegmentJsonOptions();
+                string json = System.IO.File.ReadAllText(path);
+                var saveData = System.Text.Json.JsonSerializer.Deserialize<SegmentSaveData>(json, options)
+                                 ?? new SegmentSaveData();
+                saveData.PanelOptions = CapturePanelOptions();
+                System.IO.File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(saveData, options));
+            }
+            catch
+            {
+                // 静默处理：文件被占用或格式异常时不阻断 UI 操作
+            }
+        }
+
+        private static System.Text.Json.JsonSerializerOptions CreateSegmentJsonOptions() => new()
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
         /// <summary>刷新状态栏摘要（段数、总长度、对齐状态）</summary>
         private void RefreshStatusBarSummary()
@@ -3243,15 +3358,11 @@ namespace Module.ViewModels
                             RmsError = _affineResultNeedle2.RmsError,
                             PointCount = _affineResultNeedle2.PointCount
                         } : null
-                    }
+                    },
+                    PanelOptions = CapturePanelOptions()
                 };
 
-                var options = new System.Text.Json.JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNameCaseInsensitive = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
+                var options = CreateSegmentJsonOptions();
                 string json = System.Text.Json.JsonSerializer.Serialize(saveData, options);
                 System.IO.File.WriteAllText(fullSavePath, json);
                 RecordSegmentConfigPath(fullSavePath);
@@ -3278,11 +3389,7 @@ namespace Module.ViewModels
 
             try
             {
-                var options = new System.Text.Json.JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
+                var options = CreateSegmentJsonOptions();
                 string json = System.IO.File.ReadAllText(path);
 
                 // 尝试按新格式（SegmentSaveData）反序列化
@@ -3432,6 +3539,8 @@ namespace Module.ViewModels
                     LoadNeedleData(_currentNeedleIndex);
                 }
 
+                ApplyPanelOptions(saveData?.PanelOptions);
+
                 // 适配视口
                 FitCanvasToExtents();
 
@@ -3477,7 +3586,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 同步路径到 DispenserStationParams 并触发配方持久化保存
+        /// 同步路径到 DispenserStationParams 并持久化 LastSegmentConfigPath（仅更新该字段，不覆盖 Positions）
         /// </summary>
         private void SyncPathToStationParams(string path)
         {
@@ -3489,17 +3598,46 @@ namespace Module.ViewModels
                     provider.CurrentParameters is StationTasks.Params.DispenserStationParams dsp)
                 {
                     dsp.LastSegmentConfigPath = path;
-
-                    var recipePoolService = ContainerLocator.Container?.Resolve<IRecipePoolService>();
-                    if (recipePoolService != null)
-                    {
-                        recipePoolService.StageStationParameters(provider.StationIdentifier, dsp);
-                        recipePoolService.CommitStagedParametersAsync(
-                            provider.CurrentPoolName, provider.CurrentRecipeName).ConfigureAwait(false);
-                    }
+                    _ = PersistLastSegmentConfigPathAsync(provider, path);
                 }
             }
             catch { /* 静默处理，不影响主流程 */ }
+        }
+
+        /// <summary>
+        /// 通过 UpdateRecipePoolAsync 仅更新 LastSegmentConfigPath，避免整对象提交导致 Positions 回退
+        /// </summary>
+        private static async Task PersistLastSegmentConfigPathAsync(IStationParameterProvider provider, string path)
+        {
+            var recipePoolService = ContainerLocator.Container?.Resolve<IRecipePoolService>();
+            if (recipePoolService == null) return;
+
+            var poolName = provider.CurrentPoolName ?? "Default";
+            var recipeName = provider.CurrentRecipeName ?? "Default";
+            var stationId = provider.StationIdentifier;
+
+            await recipePoolService.UpdateRecipePoolAsync(poolName, pool =>
+            {
+                var recipe = pool.GetRecipeByName(recipeName);
+                if (recipe == null) return;
+
+                JsonObject stationObj;
+                if (recipe.Parameters.TryGetValue(stationId, out var existing) && existing != null)
+                {
+                    stationObj = existing is JsonElement je
+                        ? JsonNode.Parse(je.GetRawText())?.AsObject() ?? new JsonObject()
+                        : JsonNode.Parse(JsonSerializer.Serialize(existing))?.AsObject() ?? new JsonObject();
+                }
+                else
+                {
+                    stationObj = new JsonObject();
+                }
+
+                stationObj["LastSegmentConfigPath"] = path;
+                recipe.Parameters[stationId] = JsonSerializer.SerializeToElement(stationObj);
+                recipe.ModifiedTime = DateTime.Now;
+                pool.ModifiedTime = DateTime.Now;
+            }).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -3748,7 +3886,7 @@ namespace Module.ViewModels
         public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
 
         private double _interpSpeed;
-        /// <summary>插补速度（绑定 DispenseSegment.JumpSpeed，复用为插补速度）</summary>
+        /// <summary>批量设速对话框：插补速度</summary>
         public double InterpSpeed { get => _interpSpeed; set => SetProperty(ref _interpSpeed, value); }
 
         public DelegateCommand ConfirmCommand { get; }

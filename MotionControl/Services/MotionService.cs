@@ -1,6 +1,7 @@
 using AlarmModule.Interfaces;
 using AlarmModule.Models;
 using Core.Abstraction;
+using Core.Extensions;
 using Core.Utilities;
 using MotionControl.Card;
 using MotionControl.Events;
@@ -46,6 +47,8 @@ namespace MotionControl.Services
         private Dictionary<int, IoState> _outputs = new();
         private Dictionary<int, IMotionCard> _axisCardMap = new();
         private Dictionary<int, IMotionCard> _ioCardMap = new();
+        /// <summary>连续插补坐标系 → 参与插补的卡物理轴号（由 InitializeContinuousInterpolation 写入）</summary>
+        private readonly Dictionary<int, int[]> _coordAxisMap = new();
 
         /// <summary> 是否运行在模拟环境（无真实雷赛/硬件卡） </summary>
         public bool IsSimulationMode => !_cards.Any(c => c is not VirtualMotionCard);
@@ -1145,19 +1148,32 @@ namespace MotionControl.Services
         /// <summary> 初始化连续插补：设置速度曲线、前瞻模式、打开插补列表 </summary>
         public void InitializeContinuousInterpolation(int coordId, int[] axisIds, double startVel = 0, double maxVel = 5, double acc = 0.1, double dec = 0.1, double endVel = 0,double sPara = 0.05)
         {
+            if (axisIds == null || axisIds.Length == 0)
+                throw new ArgumentException(ResourceHelper.GetString("Motion_ContiAxisIdsRequired"), nameof(axisIds));
+
             var card = GetCardForCoord(coordId);
+            // 转换为卡物理轴号，与 MoveLineAbsAsync 保持一致
+            var physicalIds = axisIds.Select(ToPhysicalAxisId).ToArray();
+            _coordAxisMap[coordId] = physicalIds;
+
             card.SetVectorProfileUnit(coordId, startVel, maxVel, acc, dec, endVel);
             card.ContiSetLookaheadMode(coordId, 1, 200, 0, 0);
             card.SetVectorSProfile(coordId, 0, sPara);
             card.SetArcLimit(coordId, 0, 0, 0);
-            card.ContiOpenList(coordId, axisIds.Length, axisIds);
+            card.ContiOpenList(coordId, physicalIds.Length, physicalIds);
         }
 
-        /// <summary> 添加直线插补段到连续插补列表 </summary>
+        /// <summary> 添加直线插补段到连续插补列表（轴列表取自 InitializeContinuousInterpolation） </summary>
         public void AddLineSegment(int coordId, double[] targetPos, ushort posiMode = 1, int mark = 0)
         {
+            if (!_coordAxisMap.TryGetValue(coordId, out var axisIds))
+                throw new InvalidOperationException(ResourceHelper.GetString("Motion_ContiNotInitialized", coordId));
+
+            if (targetPos == null || targetPos.Length != axisIds.Length)
+                throw new ArgumentException(ResourceHelper.GetString("Motion_ContiPositionMismatch", targetPos?.Length ?? 0, axisIds.Length));
+
             var card = GetCardForCoord(coordId);
-            card.ContiLineUnit(coordId, targetPos.Length, new int[targetPos.Length], targetPos, posiMode, mark);
+            card.ContiLineUnit(coordId, axisIds.Length, axisIds, targetPos, posiMode, mark);
         }
 
         /// <summary> 执行连续插补（启动并关闭列表） </summary>

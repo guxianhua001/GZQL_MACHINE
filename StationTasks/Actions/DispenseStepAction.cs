@@ -318,7 +318,7 @@ namespace StationTasks.Actions
 
                 _motionService.InitializeContinuousInterpolation(
                     CoordId, new[] { dxAxisId, dyAxisId },
-                    startVel: 5, maxVel: seg.MoveSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
+                    startVel: 5, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
 
                 foreach (var pt in seg.Points)
                 {
@@ -381,6 +381,7 @@ namespace StationTasks.Actions
             if (segRef.UseDefaultParams)
             {
                 seg.JumpSpeed = detail.DefaultJumpSpeed;
+                seg.InterpSpeed = detail.DefaultInterpSpeed;
                 seg.MoveSpeed = detail.DefaultMoveSpeed;
                 seg.SafeHeight = detail.DefaultSafeHeight;
                 seg.ApproachHeight = detail.DefaultApproachHeight;
@@ -397,6 +398,7 @@ namespace StationTasks.Actions
             else
             {
                 seg.JumpSpeed = segRef.OverrideJumpSpeed;
+                seg.InterpSpeed = segRef.OverrideInterpSpeed;
                 seg.MoveSpeed = segRef.OverrideMoveSpeed;
                 seg.SafeHeight = segRef.OverrideSafeHeight;
                 seg.ApproachHeight = segRef.OverrideApproachHeight;

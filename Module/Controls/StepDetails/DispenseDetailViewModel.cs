@@ -59,6 +59,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(ManualZCompensation));
                     RaisePropertyChanged(nameof(SegmentRefs));
                     RaisePropertyChanged(nameof(DefaultJumpSpeed));
+                    RaisePropertyChanged(nameof(DefaultInterpSpeed));
                     RaisePropertyChanged(nameof(DefaultMoveSpeed));
                     RaisePropertyChanged(nameof(DefaultSafeHeight));
                     RaisePropertyChanged(nameof(DefaultApproachHeight));
@@ -230,6 +231,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(ProcessParamsTitle));
                     RaisePropertyChanged(nameof(ShowOverrideParams));
                     RaisePropertyChanged(nameof(EffectiveJumpSpeed));
+                    RaisePropertyChanged(nameof(EffectiveInterpSpeed));
                     RaisePropertyChanged(nameof(EffectiveMoveSpeed));
                     RaisePropertyChanged(nameof(EffectiveSafeHeight));
                     RaisePropertyChanged(nameof(EffectiveApproachHeight));
@@ -243,6 +245,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(EffectiveTeachHeight));
                     RaisePropertyChanged(nameof(EffectiveHeightCompensation));
                     RaisePropertyChanged(nameof(OverrideJumpSpeed));
+                    RaisePropertyChanged(nameof(OverrideInterpSpeed));
                     RaisePropertyChanged(nameof(OverrideSafeHeight));
                     RaisePropertyChanged(nameof(OverrideApproachHeight));
                     RaisePropertyChanged(nameof(OverrideDispenseAmount));
@@ -273,6 +276,18 @@ namespace Module.ViewModels
                 if (_step.DispenseDetail.DefaultJumpSpeed == value) return;
                 _step.DispenseDetail.DefaultJumpSpeed = value;
                 PublishParamToSelectedSegment(nameof(DispenseSegment.JumpSpeed), value);
+            }
+        }
+
+        public double DefaultInterpSpeed
+        {
+            get => _step?.DispenseDetail?.DefaultInterpSpeed ?? 10.0;
+            set
+            {
+                if (_step?.DispenseDetail == null) return;
+                if (_step.DispenseDetail.DefaultInterpSpeed == value) return;
+                _step.DispenseDetail.DefaultInterpSpeed = value;
+                PublishParamToSelectedSegment(nameof(DispenseSegment.InterpSpeed), value);
             }
         }
 
@@ -485,6 +500,26 @@ namespace Module.ViewModels
                     if (_step.DispenseDetail.DefaultJumpSpeed == value) return;
                     _step.DispenseDetail.DefaultJumpSpeed = value;
                     PublishParamToSelectedSegment(nameof(DispenseSegment.JumpSpeed), value);
+                }
+            }
+        }
+
+        public double EffectiveInterpSpeed
+        {
+            get => _selectedSegmentRef?.OverrideInterpSpeed ?? _step?.DispenseDetail?.DefaultInterpSpeed ?? 10.0;
+            set
+            {
+                if (_selectedSegmentRef != null)
+                {
+                    _selectedSegmentRef.OverrideInterpSpeed = value;
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.InterpSpeed), value);
+                }
+                else
+                {
+                    if (_step?.DispenseDetail == null) return;
+                    if (_step.DispenseDetail.DefaultInterpSpeed == value) return;
+                    _step.DispenseDetail.DefaultInterpSpeed = value;
+                    PublishParamToSelectedSegment(nameof(DispenseSegment.InterpSpeed), value);
                 }
             }
         }
@@ -745,6 +780,12 @@ namespace Module.ViewModels
             set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideMoveSpeed = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.MoveSpeed), value); } }
         }
 
+        public double OverrideInterpSpeed
+        {
+            get => _selectedSegmentRef?.OverrideInterpSpeed ?? 10.0;
+            set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideInterpSpeed = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.InterpSpeed), value); } }
+        }
+
         public double OverrideSafeHeight
         {
             get => _selectedSegmentRef?.OverrideSafeHeight ?? 5.0;
@@ -824,6 +865,7 @@ namespace Module.ViewModels
             switch (propertyName)
             {
                 case nameof(DispenseSegment.JumpSpeed): seg.JumpSpeed = value; break;
+                case nameof(DispenseSegment.InterpSpeed): seg.InterpSpeed = value; break;
                 case nameof(DispenseSegment.MoveSpeed): seg.MoveSpeed = value; break;
                 case nameof(DispenseSegment.SafeHeight): seg.SafeHeight = value; break;
                 case nameof(DispenseSegment.ApproachHeight): seg.ApproachHeight = value; break;
@@ -927,6 +969,10 @@ namespace Module.ViewModels
                     _step.DispenseDetail.DefaultJumpSpeed = payload.Segment.JumpSpeed;
                     RaisePropertyChanged(nameof(DefaultJumpSpeed));
                     break;
+                case nameof(DispenseSegment.InterpSpeed):
+                    _step.DispenseDetail.DefaultInterpSpeed = payload.Segment.InterpSpeed;
+                    RaisePropertyChanged(nameof(DefaultInterpSpeed));
+                    break;
                 case nameof(DispenseSegment.MoveSpeed):
                     _step.DispenseDetail.DefaultMoveSpeed = payload.Segment.MoveSpeed;
                     RaisePropertyChanged(nameof(DefaultMoveSpeed));
@@ -991,6 +1037,7 @@ namespace Module.ViewModels
             switch (propertyName)
             {
                 case nameof(DispenseSegment.JumpSpeed): segRef.OverrideJumpSpeed = seg.JumpSpeed; break;
+                case nameof(DispenseSegment.InterpSpeed): segRef.OverrideInterpSpeed = seg.InterpSpeed; break;
                 case nameof(DispenseSegment.MoveSpeed): segRef.OverrideMoveSpeed = seg.MoveSpeed; break;
                 case nameof(DispenseSegment.SafeHeight): segRef.OverrideSafeHeight = seg.SafeHeight; break;
                 case nameof(DispenseSegment.ApproachHeight): segRef.OverrideApproachHeight = seg.ApproachHeight; break;
@@ -1026,6 +1073,7 @@ namespace Module.ViewModels
             _syncingFromSelection = true;
 
             _step.DispenseDetail.DefaultJumpSpeed = seg.JumpSpeed;
+            _step.DispenseDetail.DefaultInterpSpeed = seg.InterpSpeed;
             _step.DispenseDetail.DefaultMoveSpeed = seg.MoveSpeed;
             _step.DispenseDetail.DefaultSafeHeight = seg.SafeHeight;
             _step.DispenseDetail.DefaultApproachHeight = seg.ApproachHeight;
@@ -1041,6 +1089,7 @@ namespace Module.ViewModels
             _step.DispenseDetail.DefaultHeightCompensation = seg.HeightCompensation;
 
             RaisePropertyChanged(nameof(DefaultJumpSpeed));
+            RaisePropertyChanged(nameof(DefaultInterpSpeed));
             RaisePropertyChanged(nameof(DefaultMoveSpeed));
             RaisePropertyChanged(nameof(DefaultSafeHeight));
             RaisePropertyChanged(nameof(DefaultApproachHeight));
@@ -1132,6 +1181,7 @@ namespace Module.ViewModels
             switch (propertyName)
             {
                 case nameof(DispenseSegment.JumpSpeed): seg.JumpSpeed = value; break;
+                case nameof(DispenseSegment.InterpSpeed): seg.InterpSpeed = value; break;
                 case nameof(DispenseSegment.MoveSpeed): seg.MoveSpeed = value; break;
                 case nameof(DispenseSegment.SafeHeight): seg.SafeHeight = value; break;
                 case nameof(DispenseSegment.ApproachHeight): seg.ApproachHeight = value; break;
@@ -1241,6 +1291,7 @@ namespace Module.ViewModels
                 SourcePointCount = seg.Points?.Count ?? 0,
                 UseDefaultParams = false,
                 OverrideJumpSpeed = seg.JumpSpeed,
+                OverrideInterpSpeed = seg.InterpSpeed,
                 OverrideMoveSpeed = seg.MoveSpeed,
                 OverrideSafeHeight = seg.SafeHeight,
                 OverrideApproachHeight = seg.ApproachHeight,
@@ -1364,6 +1415,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(ManualZCompensation));
             RaisePropertyChanged(nameof(SegmentRefs));
             RaisePropertyChanged(nameof(DefaultJumpSpeed));
+            RaisePropertyChanged(nameof(DefaultInterpSpeed));
             RaisePropertyChanged(nameof(DefaultMoveSpeed));
             RaisePropertyChanged(nameof(DefaultSafeHeight));
             RaisePropertyChanged(nameof(DefaultApproachHeight));

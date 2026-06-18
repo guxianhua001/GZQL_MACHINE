@@ -135,11 +135,20 @@ namespace Core.Models
 
         #region 工艺参数
         private double _jumpSpeed = 20.0;
-        /// <summary>空移速度 mm/s（范围 1~100，非出胶状态下的移动速度）</summary>
+        /// <summary>空移速度 mm/s（范围 1~160，段间跳转时的 XY 移动速度）</summary>
         public double JumpSpeed
         {
             get => _jumpSpeed;
             set => SetProperty(ref _jumpSpeed, Math.Clamp(value, 1.0, 160.0));
+        }
+
+        private double _interpSpeed = 0;
+        /// <summary>连续插补速度 mm/s（范围 0.1~160，走胶轨迹插补使用）</summary>
+        public double InterpSpeed
+        {
+            // 兼容旧数据：Step3 面板曾将插补速度误绑到 JumpSpeed
+            get => _interpSpeed > 0 ? _interpSpeed : _jumpSpeed;
+            set => SetProperty(ref _interpSpeed, Math.Clamp(value, 0.1, 160.0));
         }
 
         private double _moveSpeed = 10.0;

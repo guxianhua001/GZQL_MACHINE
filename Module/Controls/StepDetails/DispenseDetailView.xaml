@@ -238,6 +238,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_JumpSpeed}" Margin="0,2,8,0"/>
@@ -250,18 +251,23 @@
                                              Text="{Binding EffectiveMoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                     <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_SafeHeight}" Margin="0,2,8,0"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_InterpSpeed}" Margin="0,2,8,0"/>
                                     <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding EffectiveSafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+                                             Text="{Binding EffectiveInterpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_ApproachHeight}" Margin="0,2,8,0"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_SafeHeight}" Margin="0,2,8,0"/>
                                     <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding EffectiveApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                             Text="{Binding EffectiveSafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                     <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_CornerDecel}" Margin="0,2,8,0"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_ApproachHeight}" Margin="0,2,8,0"/>
                                     <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectiveApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_CornerDecel}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                              Text="{Binding EffectiveCornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                 </Grid>
                             </StackPanel>

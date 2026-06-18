@@ -1,6 +1,88 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.18 — Step5/Step6 面板选项 JSON 持久化 & Step6 默认目标线段
+--------------------------------------------------------------------
+
+1. 需求
+   - Step5SimulatePanel、Step6ExecutePanel 操作选项需写入轨迹 JSON
+   - Step6 目标线段下拉默认选中 Step3 第一个启用段
+
+2. 实现
+   - 新增 CadPointPanelOptions（IsSimMode、DescendInDryRun、SelectedSegmentId 等）
+   - SegmentSaveData 增加 PanelOptions 字段
+   - 保存/加载轨迹时同步 PanelOptions；选项变更时自动写回当前 JSON
+   - Step6 下拉仅显示 IsEnabled 段，EnsureDefaultSelectedSegmentId 默认首项
+
+v2026.06.18 — 连续插补速度 InterpSpeed 独立属性
+------------------------------------------------
+
+1. 问题
+   - 连续插补 InitializeContinuousInterpolation 误用 seg.JumpSpeed（空移速度）
+   - Step3 面板「插补速度」误绑 JumpSpeed，语义混淆
+
+2. 修复
+   - DispenseSegment 新增 InterpSpeed（旧数据未设置时回退 JumpSpeed）
+   - DispenseDetail / DispenseSegmentRef 新增 DefaultInterpSpeed / OverrideInterpSpeed
+   - DispenseExecuteService、DispenseStepAction 连续插补改用 seg.InterpSpeed
+   - Step3EditParamsPanel、DispenseDetailView 绑定 InterpSpeed
+   - 批量设速、参数同步链路全部改用 InterpSpeed
+
+v2026.06.18 — 连续插补 AddLineSegment 轴列表未传递修复
+-------------------------------------------------------
+
+1. 问题现象
+   - dmc_conti_line_unit 调用时 AxisList 全为 0，连续插补轨迹无法正确执行
+
+2. 根因
+   - MotionService.AddLineSegment 使用 new int[targetPos.Length] 作为轴号，未传递真实轴 ID
+
+3. 修复
+   - InitializeContinuousInterpolation 将逻辑轴号转为卡物理轴号并缓存至 _coordAxisMap
+   - AddLineSegment 从 _coordAxisMap 读取轴列表传给 ContiLineUnit
+   - ContiOpenList 同步使用物理轴号，与 MoveLineAbsAsync 保持一致
+   - 新增 Motion_Conti* 多语言资源键
+
+v2026.06.18 — 配方池数据回退修复（竞态条件 & 陈旧内存覆盖 Positions）
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - 08:43:43 保存池后备份文件 recipe_pool_Default.json_084343.bak 数据正确
+   - 08:44:14 备份文件 recipe_pool_Default.json_084414.bak 中 Positions 等数据回退到旧版本
+   - 日志显示两次「[DispenserStation] 参数已暂存」+「暂存区参数已提交到配方池」，无位置编辑器暂存日志
+
+2. 根因分析
+   2.1 SetExtensionDataAsync 未获取 _semaphore（已修复）
+       - 旧实现：Load → 改 ExtensionData → Save 整池，可与 SaveRecipePoolAsync 并发，
+         用陈旧内存覆盖文件后再被 SaveRecipePoolAsync 持久化
+       - 新实现：通过 UpdateRecipePoolAsync 获取信号量互斥
+   2.2 陈旧内存整对象覆盖（主因，对应 08:44:14 日志）
+       - 打开 DispensingView 时 TabControl  eager 加载 CadPointEditorView
+       - CadPointEditorView 同时存在 Prism AutoWireViewModel 与 CadPointEditorControl 内部 VM，
+         两个实例均执行 TryAutoLoadLastConfig → SyncPathToStationParams
+       - SyncPathToStationParams 将内存中 DispenserStationParams（仅含少量默认 Positions）
+         整对象提交，覆盖位置编辑器已保存的 187 个 Positions
+   2.3 备份时间戳仅秒级（HHmmss），同一秒内多次备份互相覆盖
+
+3. 修复方案
+   3.1 RecipeInfo.MergeStationParameter
+       - Commit 时合并工站参数；incoming Positions 条目数少于文件时保留文件 Positions
+   3.2 RecipePoolSaveContext.CommitAsync 改用 MergeStationParameter
+   3.3 CadPointEditorViewModel.SyncPathToStationParams
+       - 仅通过 UpdateRecipePoolAsync 更新 LastSegmentConfigPath 字段
+   3.4 CadPointEditorView.xaml 移除 AutoWireViewModel，消除重复 ViewModel
+   3.5 RecipeService 订阅 SaveParametersCompletedEvent，提交后从文件重新加载工站参数
+   3.6 RecipeStorage 备份时间戳改为 HHmmssfff（毫秒精度）
+
+4. 影响范围
+   - RecipeManagement、Module 模块
+   - 配方池并发写入与工站参数合并逻辑
+
+5. 验证
+   - 保存池后打开点胶/维护页面，Positions 不应回退
+   - 同一秒内多次保存应产生不同备份文件名
+
+
 v2026.06.18 — DispensingView 导航失败修复（DoubleAnimation NaN 错误）
 -------------------------------------------------------------------------------
 

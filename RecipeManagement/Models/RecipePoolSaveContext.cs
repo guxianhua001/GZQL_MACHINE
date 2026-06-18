@@ -62,9 +62,10 @@ namespace Recipe.Models
                     recipe.ModifiedTime = DateTime.Now;
                 }
 
+                // 合并写入工站参数，避免陈旧内存对象整对象覆盖位置编辑器等已持久化的 Positions
                 foreach (var kv in _stationParameters)
                 {
-                    recipe.SetParameter(kv.Key, kv.Value);
+                    recipe.MergeStationParameter(kv.Key, kv.Value);
                 }
 
                 // 更新配方池修改时间，确保 Save Pool 后 ModifiedTime 反映最新操作

@@ -604,13 +604,17 @@ namespace Recipe
             }
             return null;
         }
+        /// <summary>
+        /// 将扩展数据写入配方池。通过 UpdateRecipePoolAsync 获取信号量，
+        /// 确保与 SaveRecipePoolAsync 等其他写操作互斥，避免竞态条件导致数据回退。
+        /// </summary>
         public async Task SetExtensionDataAsync<T>(string poolId, string key, T data) where T : class
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
-            var pool = await _recipeStorage.LoadRecipePoolAsync(poolId).ConfigureAwait(false)
-                       ?? new RecipePool { Id = poolId, Name = poolId, CreatedTime = DateTime.Now };
-            pool.ExtensionData[key] = JsonSerializer.SerializeToElement(data);
-            await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
+            await UpdateRecipePoolAsync(poolId, pool =>
+            {
+                pool.ExtensionData[key] = JsonSerializer.SerializeToElement(data);
+            }).ConfigureAwait(false);
         }
         #endregion
     }
