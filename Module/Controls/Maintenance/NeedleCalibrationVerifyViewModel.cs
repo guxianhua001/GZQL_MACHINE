@@ -262,8 +262,8 @@ namespace Module.ViewModels
         public bool CanVerify => !IsVerifying;
 
         public DelegateCommand ExecuteVerificationCommand { get; }
+        public DelegateCommand CancelVerificationCommand { get; }
         public DelegateCommand SaveReportCommand { get; }
-        public DelegateCommand SaveParametersCommand { get; }
         public DelegateCommand LoadParametersCommand { get; }
         public DelegateCommand ClearLogCommand { get; }
         public DelegateCommand System1Command { get; }
@@ -289,8 +289,9 @@ namespace Module.ViewModels
 
             ExecuteVerificationCommand = new DelegateCommand(async () => await ExecuteVerificationAsync(), () => CanVerify)
                 .ObservesCanExecute(() => CanVerify);
+            CancelVerificationCommand = new DelegateCommand(CancelVerification, () => IsVerifying)
+                .ObservesCanExecute(() => IsVerifying);
             SaveReportCommand = new DelegateCommand(async () => await SaveVerificationRecordAsync());
-            SaveParametersCommand = new DelegateCommand(async () => await SaveVerificationRecordAsync());
             LoadParametersCommand = new DelegateCommand(async () => await LoadVerificationRecordAsync());
             ClearLogCommand = new DelegateCommand(ClearLog);
             System1Command = new DelegateCommand(() => SelectedSystemNumber = 1);
@@ -454,6 +455,27 @@ namespace Module.ViewModels
 
             if (verificationSucceeded)
                 await SaveVerificationRecordAsync();
+        }
+
+        /// <summary>
+        /// 取消验证：先触发 CancellationToken 通知异步流程退出，再显式停止运动轴，双重保险。
+        /// 工业控制安全要求：取消时必须立即停止物理运动，避免运动残留。
+        /// </summary>
+        private void CancelVerification()
+        {
+            try
+            {
+                AddLog(L("NeedleVerify_Log_CancelRequest", "用户请求取消验证..."));
+                _verificationCts?.Cancel();
+
+                // 显式停止运动轴，防止 token 传播延迟期间运动继续
+                _needleMotion.StopMotion(SelectedSystemNumber);
+                _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber} 验证已取消，运动轴已停止");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error($"[NeedleVerify] 取消验证异常: {ex.Message}");
+            }
         }
 
         /// <summary>从 NeedleTcp 同款路径加载最新校准 JSON</summary>
@@ -703,9 +725,10 @@ namespace Module.ViewModels
             ResultYColor = yColor;
             ResultZColor = zColor;
 
-            OverallResult = string.IsNullOrWhiteSpace(record.OverallResult) ? ResultX : record.OverallResult;
+            // 综合结果取 X/Y/Z 最差值，避免回退到单一轴导致误判
             var worstDeviation = new[] { DeviationX, DeviationY, DeviationZ }.Max();
-            var (_, overallColor) = EvaluateDeviation(worstDeviation);
+            var (overallResultText, overallColor) = EvaluateDeviation(worstDeviation);
+            OverallResult = string.IsNullOrWhiteSpace(record.OverallResult) ? overallResultText : record.OverallResult;
             OverallResultColor = overallColor;
 
             LastReportSummary = record.LastReportSummary ?? BuildReportSummary(record.SavedAt);
@@ -833,7 +856,8 @@ namespace Module.ViewModels
             {
                 var message = args.Length > 0 ? string.Format(format, args) : format;
                 var timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
-                Application.Current?.Dispatcher.Invoke(() => VerificationLogs.Add(timestamped));
+                // 使用 BeginInvoke 异步派发，避免 UI 线程阻塞时死锁
+                Application.Current?.Dispatcher.BeginInvoke(() => VerificationLogs.Add(timestamped));
             }
             catch
             {

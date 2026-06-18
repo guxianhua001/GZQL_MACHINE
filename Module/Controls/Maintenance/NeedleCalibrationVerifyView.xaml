@@ -128,7 +128,7 @@
                     <!-- Card: Verification Execution -->
                     <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
                                          Background="{DynamicResource MaterialDesignCardBackground}">
-                        <StackPanel IsEnabled="{Binding IsVerifying, Converter={StaticResource InverseBooleanConverter}}">
+                        <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                 <materialDesign:PackIcon Kind="PlayCircleOutline" Width="18" Height="18"
                                                          Foreground="{DynamicResource PrimaryHueMidBrush}"
@@ -138,16 +138,40 @@
                                            Foreground="{DynamicResource PrimaryHueMidBrush}" />
                             </StackPanel>
 
-                            <Button Command="{Binding ExecuteVerificationCommand}"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    HorizontalAlignment="Stretch"
-                                    Padding="12,8"
-                                    materialDesign:ButtonAssist.CornerRadius="6">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="Play" Width="17" Height="17" Margin="0,0,8,0" />
-                                    <TextBlock Text="{lang:Lang NeedleVerify_Execute}" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Button>
+                            <Grid Margin="0,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 执行验证按钮：CanExecute 已绑定 CanVerify(=!IsVerifying)，验证中自动禁用 -->
+                                <Button Grid.Column="0"
+                                        Command="{Binding ExecuteVerificationCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        HorizontalAlignment="Stretch"
+                                        Padding="12,8"
+                                        materialDesign:ButtonAssist.CornerRadius="6">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="Play" Width="17" Height="17" Margin="0,0,8,0" />
+                                        <TextBlock Text="{lang:Lang NeedleVerify_Execute}" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 取消验证按钮：CanExecute 绑定 IsVerifying，仅验证中可用，工业安全要求可随时中断 -->
+                                <Button Grid.Column="2"
+                                        Command="{Binding CancelVerificationCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        HorizontalAlignment="Stretch"
+                                        Padding="12,8"
+                                        materialDesign:ButtonAssist.CornerRadius="6"
+                                        BorderBrush="#F44336" Foreground="#F44336">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="Stop" Width="17" Height="17" Margin="0,0,8,0" />
+                                        <TextBlock Text="{lang:Lang NeedleVerify_Cancel}" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
 
                             <ProgressBar Value="{Binding VerificationProgress}" Minimum="0" Maximum="100"
                                          Height="6" Margin="0,12,0,6"

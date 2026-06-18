@@ -1997,6 +1997,7 @@
     <sys:String x:Key="NeedleVerify_CurrentSystem">当前系统</sys:String>
     <sys:String x:Key="NeedleVerify_Execution">验证执行</sys:String>
     <sys:String x:Key="NeedleVerify_Execute">执行验证</sys:String>
+    <sys:String x:Key="NeedleVerify_Cancel">取消验证</sys:String>
     <sys:String x:Key="NeedleVerify_Results">验证结果</sys:String>
     <sys:String x:Key="NeedleVerify_Axis">轴</sys:String>
     <sys:String x:Key="NeedleVerify_Deviation">偏差</sys:String>

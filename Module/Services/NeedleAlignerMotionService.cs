@@ -291,7 +291,7 @@ namespace Module.Services
                 L("NeedleAligner_Status_SearchPointX", "在点{0}进行X方向搜索", pointIndex + 1),
                 10 + pointIndex * 12 + 2));
 
-            // X 轴边界精细扫描：负向偏移起点 → 正向入光沿 → 反向出光沿
+            // X 轴边界精细扫描：负向偏移起点 → 正向入光沿 → 对侧反向入光沿
             double? xMid = await ScanAxisBoundaryMidAsync(
                 dxId, dyId,
                 searchPoint.X - range, searchPoint.Y,
@@ -315,7 +315,8 @@ namespace Module.Services
         }
 
         /// <summary>
-        /// 单轴边界双向扫描：正向捕捉入光上升沿，反向捕捉出光上升沿，返回 (Enter+Exit)/2。
+        /// 单轴边界双向扫描：正向捕获入光上升沿 → 移至对侧 → 反向捕获入光上升沿，返回两次入光中点。
+        /// 几何原理：正向入光 X1=L-w/2，反向入光 X2=L+w/2，中点 (X1+X2)/2=L，抵消针头半宽 w。
         /// </summary>
         private async Task<double?> ScanAxisBoundaryMidAsync(
             int dxId, int dyId,
@@ -326,43 +327,47 @@ namespace Module.Services
             NeedleCalibrationParams parameters,
             CancellationToken token)
         {
+            // 计算扫描终点（对侧起始位置）
+            double scanEndX = sensorAxis == SearchDirection.X ? scanStartX + scanSpan : scanStartX;
+            double scanEndY = sensorAxis == SearchDirection.Y ? scanStartY + scanSpan : scanStartY;
+
+            // 移至扫描起点（激光左侧/下侧）
             await MoveXYLineAsync(dxId, dyId, scanStartX, scanStartY, fineSpeed, token);
 
             int moveAxisId = sensorAxis == SearchDirection.X ? dxId : dyId;
-            double forwardDist = scanSpan;
-            double backwardDist = -scanSpan;
 
-            // 正向慢移：针头刚挡住激光，捕捉 SensorDi 上升沿（未触发→触发）
-            double enterPos = await SearchBoundaryEdgeAsync(
-                moveAxisId, forwardDist, fineSpeed, sensorAxis,
-                SensorEdgeKind.EnterBlocked, parameters, token);
-            if (double.IsNaN(enterPos)) return null;
+            // 正向慢移：针头从激光左侧切入，捕捉 SensorDi 上升沿（未触发→触发）
+            double enterPos1 = await SearchBoundaryEdgeAsync(
+                moveAxisId, scanSpan, fineSpeed, sensorAxis, parameters, token);
+            if (double.IsNaN(enterPos1)) return null;
 
-            // 反向慢移：激光完全透出，捕捉上升沿（触发→未触发，激光恢复高电平）
-            double exitPos = await SearchBoundaryEdgeAsync(
-                moveAxisId, backwardDist, fineSpeed, sensorAxis,
-                SensorEdgeKind.ExitExposed, parameters, token);
-            if (double.IsNaN(exitPos)) return null;
+            // 移至对侧起点（激光右侧/上侧），穿过激光后传感器恢复未触发态
+            await MoveXYLineAsync(dxId, dyId, scanEndX, scanEndY, fineSpeed, token);
 
-            double mid = (enterPos + exitPos) / 2.0;
-            _logger.Info($"[NeedleAligner] {sensorAxis}边界: Enter={enterPos:F3}, Exit={exitPos:F3}, Mid={mid:F3}");
+            // 反向慢移：针头从激光右侧反向切入，再次捕捉上升沿（未触发→触发）
+            double enterPos2 = await SearchBoundaryEdgeAsync(
+                moveAxisId, -scanSpan, fineSpeed, sensorAxis, parameters, token);
+            if (double.IsNaN(enterPos2)) return null;
+
+            // 两次入光中点 = 激光中心，抵消针头半宽 w
+            double mid = (enterPos1 + enterPos2) / 2.0;
+            _logger.Info($"[NeedleAligner] {sensorAxis}边界: Enter1={enterPos1:F3}, Enter2={enterPos2:F3}, Mid={mid:F3}");
             return mid;
         }
 
         /// <summary>
-        /// 边扫描边轮询传感器上升沿；检测到沿后立即停轴并记录当前坐标。
+        /// 边扫描边轮询传感器入光上升沿（未触发→触发）；检测到沿后立即停轴并记录当前坐标。
         /// </summary>
         private async Task<double> SearchBoundaryEdgeAsync(
             int axisId,
             double searchDistance,
             double speed,
             SearchDirection sensorDirection,
-            SensorEdgeKind edgeKind,
             NeedleCalibrationParams parameters,
             CancellationToken token)
         {
             bool prevTriggered = IsNeedleSensorTriggered(sensorDirection, parameters);
-            _logger.Info($"[NeedleAligner] {sensorDirection} {edgeKind} 扫描: 轴={axisId}, 距离={searchDistance:F3}, 速度={speed:F2}");
+            _logger.Info($"[NeedleAligner] {sensorDirection} 入光扫描: 轴={axisId}, 距离={searchDistance:F3}, 速度={speed:F2}");
 
             await _motion.MoveRelStartAsync(axisId, searchDistance, speed);
 
@@ -372,25 +377,17 @@ namespace Module.Services
                 if (DateTime.UtcNow > deadline)
                 {
                     StopAxisSafe(axisId);
-                    _logger.Warn($"[NeedleAligner] {sensorDirection} {edgeKind} 扫描超时");
+                    _logger.Warn($"[NeedleAligner] {sensorDirection} 入光扫描超时");
                     return double.NaN;
                 }
 
                 bool triggered = IsNeedleSensorTriggered(sensorDirection, parameters);
-                bool edgeDetected = edgeKind switch
-                {
-                    // 入光：针头挡住激光，DI 低电平触发态上升沿
-                    SensorEdgeKind.EnterBlocked => !prevTriggered && triggered,
-                    // 出光：激光透出恢复，触发态下降沿（对应 DI 上升沿）
-                    SensorEdgeKind.ExitExposed => prevTriggered && !triggered,
-                    _ => false
-                };
-
-                if (edgeDetected)
+                // 入光上升沿：针头切入激光，触发态由 false→true（DI 高→低）
+                if (!prevTriggered && triggered)
                 {
                     double pos = _motion.GetAxisPosition(axisId);
                     StopAxisSafe(axisId);
-                    _logger.Info($"[NeedleAligner] {sensorDirection} {edgeKind} 捕获: {pos:F3}");
+                    _logger.Info($"[NeedleAligner] {sensorDirection} 入光捕获: {pos:F3}");
                     return pos;
                 }
 
@@ -539,9 +536,6 @@ namespace Module.Services
             try { _motion.StopAxis(axisId); }
             catch (Exception ex) { _logger.Warn($"[NeedleAligner] 停止轴{axisId}失败: {ex.Message}"); }
         }
-
-        /// <summary>传感器边沿类型：入光遮挡 / 出光恢复</summary>
-        private enum SensorEdgeKind { EnterBlocked, ExitExposed }
 
         #endregion
 

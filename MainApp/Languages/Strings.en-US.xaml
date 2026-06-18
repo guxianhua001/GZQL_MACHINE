@@ -1997,6 +1997,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleVerify_CurrentSystem">Current System</sys:String>
     <sys:String x:Key="NeedleVerify_Execution">Verification Execution</sys:String>
     <sys:String x:Key="NeedleVerify_Execute">Execute Verification</sys:String>
+    <sys:String x:Key="NeedleVerify_Cancel">Cancel Verification</sys:String>
     <sys:String x:Key="NeedleVerify_Results">Verification Results</sys:String>
     <sys:String x:Key="NeedleVerify_Axis">Axis</sys:String>
     <sys:String x:Key="NeedleVerify_Deviation">Deviation</sys:String>
