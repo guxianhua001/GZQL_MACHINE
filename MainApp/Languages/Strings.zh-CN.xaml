@@ -2083,8 +2083,8 @@
     <sys:String x:Key="DispenseDetail_RealDispenseMode">真实点胶</sys:String>
     <sys:String x:Key="DispenseDetail_SegmentFor">段:</sys:String>
     <sys:String x:Key="DispenseDetail_SourceDeleted">⚠ 来源已删除</sys:String>
-    <sys:String x:Key="DispenseDetail_NoSegmentsToImport">没有可导入的线段</sys:String>
-    <sys:String x:Key="DispenseDetail_NoArcsToImport">没有可导入的圆弧</sys:String>
+    <sys:String x:Key="DispenseDetail_NoSegmentsToImport">Step3 中没有已勾选的线段可导入（请先在 CAD 编辑器 Step3 勾选目标段）</sys:String>
+    <sys:String x:Key="DispenseDetail_NoArcsToImport">Step3 中没有已勾选的圆弧可导入（请先在 CAD 编辑器 Step3 勾选目标段）</sys:String>
     <sys:String x:Key="DispenseDetail_ImportDialogTitle">选择要导入的线段</sys:String>
     <sys:String x:Key="DispenseDetail_ImportArcDialogTitle">选择要导入的圆弧</sys:String>
     <sys:String x:Key="DispenseDetail_UnitMmS">mm/s</sys:String>

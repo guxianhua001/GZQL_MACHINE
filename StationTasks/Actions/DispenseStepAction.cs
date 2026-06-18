@@ -23,6 +23,7 @@ namespace StationTasks.Actions
         private readonly ILoggerService _logger;
         private readonly IStationRegistry _stationRegistry;
         private readonly IMotionService _motionService;
+        private readonly IDispenseSegmentSourceService _segmentSourceService;
 
         private const int CoordId = 0;
         private const int GlueIoPort = 0;
@@ -35,12 +36,14 @@ namespace StationTasks.Actions
             IRecipePoolService recipePoolService,
             ILoggerService logger,
             IStationRegistry stationRegistry,
-            IMotionService motionService)
+            IMotionService motionService,
+            IDispenseSegmentSourceService segmentSourceService)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _stationRegistry = stationRegistry;
             _motionService = motionService;
+            _segmentSourceService = segmentSourceService;
         }
 
         /// <summary>
@@ -55,9 +58,10 @@ namespace StationTasks.Actions
                 return;
             }
 
-            var sourceSegments = GetSourceSegments();
+            var sourceSegments = _segmentSourceService.GetSourceSegments();
             var segDict = sourceSegments.Where(s => !string.IsNullOrEmpty(s.SegmentId))
                 .ToDictionary(s => s.SegmentId, s => s);
+            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 源轨迹段 {segDict.Count} 条");
 
             int dxAxisId = ResolveDispenseAxisId("Dx");
             int dyAxisId = ResolveDispenseAxisId("Dy");
@@ -362,27 +366,6 @@ namespace StationTasks.Actions
                 await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
 
             _logger.Info("DISPENSE 弧线模式完成");
-        }
-
-        /// <summary>
-        /// 从点胶工站参数获取源段数据
-        /// </summary>
-        private List<DispenseSegment> GetSourceSegments()
-        {
-            try
-            {
-                var station = _stationRegistry.GetStation("DispenserStation");
-                if (station is IStationParameterProvider provider)
-                {
-                    if (provider.CurrentParameters is DispenserStationParams dispenserParams)
-                        return dispenserParams.Segments ?? new List<DispenseSegment>();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"获取点胶工站段数据失败: {ex.Message}");
-            }
-            return new List<DispenseSegment>();
         }
 
         /// <summary>

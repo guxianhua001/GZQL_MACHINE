@@ -460,7 +460,7 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 监听 SinglePointProcessParams 属性变更——
-        /// 单点模式下将参数应用到所有段，并发布同步事件到 DispenseDetailViewModel
+        /// 单点模式下仅同步到当前选中段；批量设置命令另行处理全部已勾选段
         /// </summary>
         private void OnSinglePointProcessParamsChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -485,9 +485,9 @@ namespace Module.ViewModels
             };
             if (double.IsNaN(value)) return;
 
-            // 单点模式下：用户在面板编辑参数时，同步到所有启用段
-            if (IsSinglePointMode)
-                ApplySinglePointParamsToAllSegments(e.PropertyName, value);
+            // 单点模式：文本框编辑仅写回当前选中段，不波及其它已勾选段
+            if (IsSinglePointMode && _selectedSegment != null)
+                ApplySinglePointParamToSegment(_selectedSegment, e.PropertyName, value);
 
             _eventAggregator?.GetEvent<ProcessParamsSyncEvent>().Publish(new ProcessParamsSyncPayload
             {
@@ -522,27 +522,26 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 将 SinglePointProcessParams 的单个属性变更应用到所有启用段（单点模式专用）
+        /// 将 SinglePointProcessParams 的单个属性变更应用到指定轨迹段
         /// </summary>
-        private void ApplySinglePointParamsToAllSegments(string propertyName, double value)
+        private static void ApplySinglePointParamToSegment(DispenseSegment seg, string propertyName, double value)
         {
-            foreach (var seg in Segments.Where(s => s.IsEnabled))
+            if (seg == null) return;
+
+            switch (propertyName)
             {
-                switch (propertyName)
-                {
-                    case nameof(DotProcessParams.MoveSpeed): seg.MoveSpeed = value; seg.JumpSpeed = value; break;
-                    case nameof(DotProcessParams.SafeHeight): seg.SafeHeight = value; break;
-                    case nameof(DotProcessParams.ApproachHeight): seg.ApproachHeight = value; break;
-                    case nameof(DotProcessParams.CornerDecel): seg.CornerDecel = value; break;
-                    case nameof(DotProcessParams.DispenseTime): seg.DispenseTime = value; break;
-                    case nameof(DotProcessParams.PreDispenseDelay): seg.PreDelay = value; break;
-                    case nameof(DotProcessParams.PostDelay): seg.PostDelay = value; break;
-                    case nameof(DotProcessParams.DotGlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
-                    case nameof(DotProcessParams.TeachHeight): seg.TeachHeight = value; break;
-                    case nameof(DotProcessParams.HeightCompensation): seg.HeightCompensation = value; break;
-                    case nameof(DotProcessParams.DispensingPressure): seg.DispensingPressure = value; break;
-                    case nameof(DotProcessParams.SuckBackTime): seg.SuckBackTime = value; break;
-                }
+                case nameof(DotProcessParams.MoveSpeed): seg.MoveSpeed = value; seg.JumpSpeed = value; break;
+                case nameof(DotProcessParams.SafeHeight): seg.SafeHeight = value; break;
+                case nameof(DotProcessParams.ApproachHeight): seg.ApproachHeight = value; break;
+                case nameof(DotProcessParams.CornerDecel): seg.CornerDecel = value; break;
+                case nameof(DotProcessParams.DispenseTime): seg.DispenseTime = value; break;
+                case nameof(DotProcessParams.PreDispenseDelay): seg.PreDelay = value; break;
+                case nameof(DotProcessParams.PostDelay): seg.PostDelay = value; break;
+                case nameof(DotProcessParams.DotGlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
+                case nameof(DotProcessParams.TeachHeight): seg.TeachHeight = value; break;
+                case nameof(DotProcessParams.HeightCompensation): seg.HeightCompensation = value; break;
+                case nameof(DotProcessParams.DispensingPressure): seg.DispensingPressure = value; break;
+                case nameof(DotProcessParams.SuckBackTime): seg.SuckBackTime = value; break;
             }
         }
 

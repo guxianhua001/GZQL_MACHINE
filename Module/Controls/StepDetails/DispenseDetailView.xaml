@@ -326,12 +326,12 @@
 
                                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_TeachHeight}" Margin="0,2,8,0"/>
                                     <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding EffectiveTeachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                             Text="{Binding EffectiveTeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                     <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
 
                                     <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_HeightCompensation}" Margin="0,2,8,0"/>
                                     <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding EffectiveHeightCompensation, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                             Text="{Binding EffectiveHeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                     <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
                                 </Grid>
                             </StackPanel>

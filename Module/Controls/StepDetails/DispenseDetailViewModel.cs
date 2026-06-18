@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace Module.ViewModels
@@ -30,6 +31,7 @@ namespace Module.ViewModels
         private readonly IRecipePoolService _recipePoolService;
         private readonly IStationRegistry _stationRegistry;
         private readonly IDispenseSegmentStore _dispenseSegmentStore;
+        private readonly IDispenseSegmentSourceService _segmentSourceService;
         private readonly IEventAggregator _eventAggregator;
         private bool _syncingFromSelection;
         private ProcessStep _step;
@@ -958,6 +960,7 @@ namespace Module.ViewModels
             IRecipePoolService recipePoolService,
             IStationRegistry stationRegistry,
             IDispenseSegmentStore dispenseSegmentStore,
+            IDispenseSegmentSourceService segmentSourceService,
             IEventAggregator eventAggregator)
         {
             _containerProvider = containerProvider;
@@ -965,6 +968,7 @@ namespace Module.ViewModels
             _recipePoolService = recipePoolService;
             _stationRegistry = stationRegistry;
             _dispenseSegmentStore = dispenseSegmentStore;
+            _segmentSourceService = segmentSourceService;
             _eventAggregator = eventAggregator;
 
             _eventAggregator?.GetEvent<SegmentParamChangedEvent>().Subscribe(
@@ -1324,76 +1328,62 @@ namespace Module.ViewModels
         #region 导入逻辑
 
         /// <summary>
-        /// 获取源分段集合——优先使用共享存储（来自 CAD 编辑器），回退到工站参数
+        /// 获取源分段集合——委托统一数据源服务（共享存储 → 工站参数 → JSON 配置文件）
         /// </summary>
         private List<DispenseSegment> GetSourceSegments()
         {
-            if (_dispenseSegmentStore?.CurrentSegments != null && _dispenseSegmentStore.CurrentSegments.Count > 0)
-                return _dispenseSegmentStore.CurrentSegments.ToList();
-
-            try
-            {
-                var station = _stationRegistry.GetStation("DispenserStation");
-                if (station is IStationParameterProvider provider)
-                {
-                    var paramsObj = provider.CurrentParameters;
-                    if (paramsObj is DispenserStationParams dispenserParams)
-                    {
-                        return dispenserParams.Segments ?? new List<DispenseSegment>();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"获取点胶工站段数据失败: {ex.Message}");
-            }
-            return new List<DispenseSegment>();
+            return _segmentSourceService.GetSourceSegments().ToList();
         }
 
         /// <summary>
-        /// 导入线段类型的源分段到 SegmentRefs
+        /// 导入线段类型的源分段到 SegmentRefs（仅 Step3 已勾选段）
         /// </summary>
         private void OnImportLines()
         {
-            ImportSegmentsByType(CadEntityType.Line);
+            ImportSegmentsByType(
+                CadEntityType.Line,
+                "DispenseDetail_NoSegmentsToImport");
         }
 
         /// <summary>
-        /// 导入弧线/圆类型的源分段到 SegmentRefs
+        /// 导入弧线/圆类型的源分段到 SegmentRefs（仅 Step3 已勾选段）
         /// </summary>
         private void OnImportArcs()
         {
-            var sources = GetSourceSegments();
-            var existingIds = SegmentRefs?.Select(r => r.SourceSegmentId).ToHashSet() ?? new HashSet<string>();
-
-            var candidates = sources.Where(s =>
-                (s.EntityType == CadEntityType.Arc || s.EntityType == CadEntityType.Circle)
-                && !existingIds.Contains(s.SegmentId)).ToList();
-
-            DispenseSegmentRef lastImported = null;
-            DispenseSegment lastSource = null;
-            foreach (var seg in candidates)
-            {
-                var refItem = CreateSegmentRef(seg);
-                SegmentRefs?.Add(refItem);
-                lastImported = refItem;
-                lastSource = seg;
-            }
-
-            RefreshSourceSegmentInfo();
-            FinalizeImportSync(lastImported, lastSource);
+            ImportSegmentsByType(
+                s => s.EntityType == CadEntityType.Arc || s.EntityType == CadEntityType.Circle,
+                "DispenseDetail_NoArcsToImport");
         }
 
         /// <summary>
-        /// 按图元类型导入源分段
+        /// 按图元类型导入 Step3EditParamsPanel 中已勾选（IsEnabled）的源分段
         /// </summary>
-        private void ImportSegmentsByType(CadEntityType entityType)
+        private void ImportSegmentsByType(CadEntityType entityType, string emptyMessageKey)
+        {
+            ImportSegmentsByType(s => s.EntityType == entityType, emptyMessageKey);
+        }
+
+        /// <summary>
+        /// 按条件导入 Step3EditParamsPanel 中已勾选（IsEnabled）的源分段
+        /// </summary>
+        private void ImportSegmentsByType(Func<DispenseSegment, bool> typeFilter, string emptyMessageKey)
         {
             var sources = GetSourceSegments();
             var existingIds = SegmentRefs?.Select(r => r.SourceSegmentId).ToHashSet() ?? new HashSet<string>();
 
+            // 仅导入 Step3 轨迹列表中已勾选的段，而非全部同类型段
             var candidates = sources.Where(s =>
-                s.EntityType == entityType && !existingIds.Contains(s.SegmentId)).ToList();
+                s.IsEnabled
+                && typeFilter(s)
+                && !existingIds.Contains(s.SegmentId)).ToList();
+
+            if (candidates.Count == 0)
+            {
+                _logger.Warn($"[DispenseDetail] {L(emptyMessageKey)}");
+                MessageBox.Show(L(emptyMessageKey), L("DispenseDetail_SegmentImport"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
             DispenseSegmentRef lastImported = null;
             DispenseSegment lastSource = null;
@@ -1405,8 +1395,22 @@ namespace Module.ViewModels
                 lastSource = seg;
             }
 
+            _logger.Info($"[DispenseDetail] 导入 {candidates.Count} 段（Step3 已勾选）");
             RefreshSourceSegmentInfo();
             FinalizeImportSync(lastImported, lastSource);
+        }
+
+        /// <summary>多语言便捷方法</summary>
+        private string L(string key)
+        {
+            try
+            {
+                return _containerProvider.Resolve<ILocalizationService>().GetResource(key);
+            }
+            catch
+            {
+                return key;
+            }
         }
 
         /// <summary>

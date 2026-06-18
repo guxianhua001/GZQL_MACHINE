@@ -1,6 +1,47 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.18 — Step3 单点模式参数编辑仅作用于当前选中段
+--------------------------------------------------
+
+1. 问题
+   - 单点模式 Step3 参数文本框变更时 ApplySinglePointParamsToAllSegments
+     会把修改同步到所有 IsEnabled 已勾选段
+
+2. 修复
+   - OnSinglePointProcessParamsChanged 改为 ApplySinglePointParamToSegment
+     仅写回 SelectedSegment
+   - 连续插补模式仍绑定 SelectedSegment.*，行为不变
+   - 批量设置速度/胶量/全部参数命令仍对 IsEnabled 段批量生效
+
+v2026.06.18 — DISPENSE 导入仅带入 Step3 已勾选段
+------------------------------------------------
+
+1. 问题
+   - DISPENSE 工具「导入线段/圆弧」会导入全部同类型段
+   - 未尊重 Step3EditParamsPanel 轨迹列表中的勾选（IsEnabled）状态
+
+2. 修复
+   - ImportSegmentsByType 增加 s.IsEnabled 过滤，仅导入 Step3 已勾选段
+   - 无可用段时提示多语言消息（中英）
+   - 导入段仍携带 Step3 段级工艺参数（Override）
+
+v2026.06.18 — DISPENSE 步骤/导入在不打开 CAD 编辑器时读取线段
+----------------------------------------------------------
+
+1. 问题
+   - ExecuteAsync → ExecuteDotModeAsync 中 segDict 为 0
+   - DispenseStepAction 仅从 DispenserStationParams.Segments 读取，该列表通常为空
+   - 轨迹段实际保存在 LastSegmentConfigPath 指向的 JSON 文件中
+   - 只有打开 CadPointEditorView 注册到 DispenseSegmentStore 后才有数据
+   - DispenseDetailViewModel 重新导入线段同样为 0
+
+2. 修复
+   - 新增 IDispenseSegmentSourceService / DispenseSegmentSourceService 统一数据源
+   - 读取优先级：共享存储(CAD 实时) → 工站参数 Segments → LastSegmentConfigPath JSON 文件
+   - DispenseStepAction、DispenseDetailViewModel 均改用该服务
+   - 配置路径以工站参数(当前配方)为准，避免配方切换后 store 路径过期
+
 v2026.06.18 — DISPENSE 步骤轴解析改为全局查找
 --------------------------------------------
 

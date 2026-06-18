@@ -129,6 +129,7 @@ namespace MainApp
             containerRegistry.RegisterSingleton<IAppSettingService, ConfigurationService>();
             containerRegistry.RegisterSingleton<IStationRegistry, StationRegistry>();
             containerRegistry.RegisterSingleton<IDispenseSegmentStore, DispenseSegmentStore>();
+            containerRegistry.RegisterSingleton<IDispenseSegmentSourceService, Core.Services.DispenseSegmentSourceService>();
 
             _logger = Container.Resolve<ILoggerService>();
         }

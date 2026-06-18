@@ -2083,8 +2083,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_RealDispenseMode">Real Dispense</sys:String>
     <sys:String x:Key="DispenseDetail_SegmentFor">Segment:</sys:String>
     <sys:String x:Key="DispenseDetail_SourceDeleted">⚠ Source Deleted</sys:String>
-    <sys:String x:Key="DispenseDetail_NoSegmentsToImport">No line segments to import</sys:String>
-    <sys:String x:Key="DispenseDetail_NoArcsToImport">No arcs to import</sys:String>
+    <sys:String x:Key="DispenseDetail_NoSegmentsToImport">No checked line segments in Step3 to import (check target segments in CAD Editor Step3 first)</sys:String>
+    <sys:String x:Key="DispenseDetail_NoArcsToImport">No checked arcs in Step3 to import (check target segments in CAD Editor Step3 first)</sys:String>
     <sys:String x:Key="DispenseDetail_ImportDialogTitle">Select Lines to Import</sys:String>
     <sys:String x:Key="DispenseDetail_ImportArcDialogTitle">Select Arcs to Import</sys:String>
     <sys:String x:Key="DispenseDetail_UnitMmS">mm/s</sys:String>
