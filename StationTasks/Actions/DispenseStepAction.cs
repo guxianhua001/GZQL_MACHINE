@@ -115,10 +115,7 @@ namespace StationTasks.Actions
             _logger.Info("DISPENSE 开始空跑");
 
             var enabledRefs = detail.SegmentRefs.Where(r => r.IsEnabled).ToList();
-            double safeHeight = detail.DefaultSafeHeight;
-            double moveSpeed = detail.DefaultMoveSpeed;
-
-            await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+            DispenseSegment lastSeg = null;
 
             foreach (var segRef in enabledRefs)
             {
@@ -133,6 +130,11 @@ namespace StationTasks.Actions
                 if (source.Points == null || source.Points.Count == 0) continue;
 
                 var seg = CreateSegmentWithParams(source, segRef, detail);
+                lastSeg = seg;
+                double moveSpeed = seg.MoveSpeed;
+                double safeHeight = seg.SafeHeight;
+
+                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt);
@@ -151,7 +153,11 @@ namespace StationTasks.Actions
                 await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
             }
 
-            await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, moveSpeed, token);
+            if (lastSeg != null)
+                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, token);
+            else
+                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
+
             _logger.Info("DISPENSE 空跑完成");
         }
 
@@ -170,11 +176,7 @@ namespace StationTasks.Actions
             var enabledRefs = detail.SegmentRefs.Where(r => r.IsEnabled).ToList();
             int totalRefs = enabledRefs.Count;
             int currentRef = 0;
-
-            double moveSpeed = detail.DefaultMoveSpeed;
-            double safeHeight = detail.DefaultSafeHeight;
-
-            await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+            DispenseSegment lastSeg = null;
 
             foreach (var segRef in enabledRefs)
             {
@@ -190,12 +192,18 @@ namespace StationTasks.Actions
                 if (source.Points == null || source.Points.Count == 0) continue;
 
                 var seg = CreateSegmentWithParams(source, segRef, detail);
+                lastSeg = seg;
+
+                // 与 DISPENSE 工具页面 Effective* 一致：使用段级工艺参数
+                double moveSpeed = seg.MoveSpeed;
+                double safeHeight = seg.SafeHeight;
                 double targetZ = seg.EffectiveZHeight;
                 double approachOffset = seg.ApproachHeight;
                 double slowVel = seg.MoveSpeed * seg.CornerDecel;
                 double glueTriggerOffset = seg.GlueTriggerOffsetMm;
 
-                _logger.Info($"DISPENSE 单点: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点");
+                _logger.Info($"DISPENSE 单点: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
+                             $"MoveSpeed={moveSpeed:F1}, SafeHeight={safeHeight:F1}, DispenseTime={seg.DispenseTime:F0}ms");
 
                 foreach (var (point, ptIndex) in seg.Points.Select((p, i) => (p, i)))
                 {
@@ -236,7 +244,11 @@ namespace StationTasks.Actions
                 }
             }
 
-            await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, moveSpeed, token);
+            if (lastSeg != null)
+                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, token);
+            else
+                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
+
             _logger.Info("DISPENSE 单点模式完成");
         }
 
@@ -258,11 +270,7 @@ namespace StationTasks.Actions
                 .ToList();
             int totalRefs = enabledRefs.Count;
             int currentRef = 0;
-
-            double moveSpeed = detail.DefaultMoveSpeed;
-            double safeHeight = detail.DefaultSafeHeight;
-
-            await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+            DispenseSegment lastSeg = null;
 
             foreach (var segRef in enabledRefs)
             {
@@ -278,12 +286,18 @@ namespace StationTasks.Actions
                 if (source.Points == null || source.Points.Count == 0) continue;
 
                 var seg = CreateSegmentWithParams(source, segRef, detail);
+                lastSeg = seg;
+
+                // 与 DISPENSE 工具页面 Effective* 一致：使用段级工艺参数
+                double moveSpeed = seg.MoveSpeed;
+                double safeHeight = seg.SafeHeight;
                 double targetZ = seg.EffectiveZHeight;
                 double approachOffset = seg.ApproachHeight;
                 double slowVel = seg.MoveSpeed * seg.CornerDecel;
                 double glueTriggerOffset = seg.GlueTriggerOffsetMm;
 
-                _logger.Info($"DISPENSE 弧线: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点");
+                _logger.Info($"DISPENSE 弧线: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
+                             $"MoveSpeed={moveSpeed:F1}, InterpSpeed={seg.InterpSpeed:F1}, SafeHeight={safeHeight:F1}");
 
                 await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
@@ -342,7 +356,11 @@ namespace StationTasks.Actions
                 await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
             }
 
-            await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, moveSpeed, token);
+            if (lastSeg != null)
+                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, token);
+            else
+                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
+
             _logger.Info("DISPENSE 弧线模式完成");
         }
 
@@ -368,7 +386,9 @@ namespace StationTasks.Actions
         }
 
         /// <summary>
-        /// 根据源段和引用参数创建带工艺参数的临时段
+        /// 根据源段和引用参数创建带工艺参数的临时段。
+        /// 参数解析与 DISPENSE 工具页面 Effective* 一致：
+        /// UseDefaultParams=true 取 DispenseDetail.Default*，否则取 SegmentRef.Override*。
         /// </summary>
         private DispenseSegment CreateSegmentWithParams(DispenseSegment source, DispenseSegmentRef segRef, DispenseDetail detail)
         {
@@ -380,12 +400,13 @@ namespace StationTasks.Actions
 
             if (segRef.UseDefaultParams)
             {
-                seg.JumpSpeed = detail.DefaultJumpSpeed;
-                seg.InterpSpeed = detail.DefaultInterpSpeed;
                 seg.MoveSpeed = detail.DefaultMoveSpeed;
+                seg.JumpSpeed = detail.DefaultMoveSpeed;
+                seg.InterpSpeed = detail.DefaultInterpSpeed;
                 seg.SafeHeight = detail.DefaultSafeHeight;
                 seg.ApproachHeight = detail.DefaultApproachHeight;
                 seg.DispenseAmount = detail.DefaultDispenseAmount;
+                seg.DispenseTime = detail.DefaultDispenseTime;
                 seg.PreDelay = detail.DefaultPreDelay;
                 seg.PostDelay = detail.DefaultPostDelay;
                 seg.DispensingPressure = detail.DefaultDispensingPressure;
@@ -397,12 +418,13 @@ namespace StationTasks.Actions
             }
             else
             {
-                seg.JumpSpeed = segRef.OverrideJumpSpeed;
-                seg.InterpSpeed = segRef.OverrideInterpSpeed;
                 seg.MoveSpeed = segRef.OverrideMoveSpeed;
+                seg.JumpSpeed = segRef.OverrideMoveSpeed;
+                seg.InterpSpeed = segRef.OverrideInterpSpeed;
                 seg.SafeHeight = segRef.OverrideSafeHeight;
                 seg.ApproachHeight = segRef.OverrideApproachHeight;
                 seg.DispenseAmount = segRef.OverrideDispenseAmount;
+                seg.DispenseTime = segRef.OverrideDispenseTime;
                 seg.PreDelay = segRef.OverridePreDelay;
                 seg.PostDelay = segRef.OverridePostDelay;
                 seg.DispensingPressure = segRef.OverrideDispensingPressure;

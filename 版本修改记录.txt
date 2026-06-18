@@ -13,6 +13,11 @@ v2026.06.18 — DISPENSE 步骤轴解析改为全局查找
    - 改为 ResolveDispenseAxisId，从 IMotionService.GetAxisConfigurations() 全局查找
    - 支持 Dz₂/Dz2、Dz₃/Dz3 轴名别名
 
+3. 执行参数与 DISPENSE 工具页面同步
+   - ExecuteDryRun/Dot/Arc 不再使用 detail.DefaultMoveSpeed/SafeHeight 作为全局速度
+   - 每段通过 CreateSegmentWithParams 解析 Effective* 等效参数（Override 或 Default）
+   - CreateSegmentWithParams 补充 DispenseTime，JumpSpeed 与 MoveSpeed 同步
+
 v2026.06.18 — DISPENSE 工具工艺参数与 Step3 同步修复
 ------------------------------------------------
 
