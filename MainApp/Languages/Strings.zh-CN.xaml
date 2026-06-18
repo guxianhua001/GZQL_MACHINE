@@ -1943,6 +1943,8 @@
     <sys:String x:Key="NeedleAligner_Status_CalibrationDoneMotion">针头校准完成</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointX">在点{0}进行X方向搜索</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointY">在点{0}进行Y方向搜索</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchPointScan">在点{0}进行边界搜索</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_MoveToFittedCenter">移动到拟合中心点</sys:String>
     <sys:String x:Key="NeedleAligner_Status_ZHeightSearch">第 {0}/{1} 次高度搜索</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationSuccess">针头校准成功完成</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationCancelled">针头校准已取消</sys:String>

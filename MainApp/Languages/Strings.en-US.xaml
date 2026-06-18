@@ -1943,6 +1943,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Status_CalibrationDoneMotion">Needle calibration finished</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointX">Searching X at point {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointY">Searching Y at point {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_SearchPointScan">Boundary search at point {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_MoveToFittedCenter">Moving to fitted center point</sys:String>
     <sys:String x:Key="NeedleAligner_Status_ZHeightSearch">Z height search {0}/{1}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationSuccess">Needle calibration completed successfully</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationCancelled">Needle calibration cancelled</sys:String>

@@ -2,7 +2,6 @@
 using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
-using HalconDotNet;
 using MotionControl.Interfaces;
 using MotionControl.Services;
 using System;
@@ -15,7 +14,7 @@ namespace Module.Services
 {
     /// <summary>
     /// 针头对针运动实现：使用 IMotionService 直接控制 Dx/Dy/Dz₂/Dz₃
-    /// 流程：抬安全高度 → 对针位 XY → 对针高度 → 四点寻边 → Z 寻高 → 计算补偿
+    /// 五阶段流程：①Z 安全高度 → ②四点 XY 边界扫描 → ③拟合中心 → ④Z 零点检测 → ⑤增量补偿
     /// </summary>
     public class NeedleAlignerMotionService : INeedleAlignerMotionService
     {
@@ -141,19 +140,23 @@ namespace Module.Services
         {
             try
             {
-                progress?.Report((L("NeedleAligner_Status_RaiseSafeHeight", "抬升到安全高度"), 10));
+                // 阶段 1：Z 抬升至安全高度，水平移动前防碰撞
+                progress?.Report((L("NeedleAligner_Status_RaiseSafeHeight", "抬升到安全高度"), 5));
                 await MoveToSafeHeightAsync(parameters, systemNumber, token);
 
-                progress?.Report((L("NeedleAligner_Status_SearchCenterXY", "搜索中心点XY"), 20));
+                // 阶段 2+3：四点边界扫描 → 拟合中心 → 移至 (X0,Y0)
+                progress?.Report((L("NeedleAligner_Status_SearchCenterXY", "搜索中心点XY"), 10));
                 var center = await SearchCenterPointAsync(parameters, systemNumber, progress, token);
                 if (center == null)
                     return Fail(L("NeedleAligner_Error_SearchCenterFailed", "搜索中心点失败"));
 
-                progress?.Report((L("NeedleAligner_Status_SearchNeedleHeight", "搜索针尖高度"), 60));
+                // 阶段 4：Z 向高度零点检测（双激光同时遮挡触发）
+                progress?.Report((L("NeedleAligner_Status_SearchNeedleHeight", "搜索针尖高度"), 65));
                 var needleHeight = await SearchNeedleHeightAsync(center, parameters, systemNumber, progress, token);
                 if (double.IsNaN(needleHeight))
                     return Fail(L("NeedleAligner_Error_SearchHeightFailed", "搜索针尖高度失败"));
 
+                // 阶段 5：增量法计算本次补偿偏移
                 progress?.Report((L("NeedleAligner_Status_CalcCompensation", "计算补偿值"), 90));
                 var compensation = CalculateCompensation(center, needleHeight, parameters);
 
@@ -196,7 +199,10 @@ namespace Module.Services
 
         #region 寻针核心逻辑
 
-        private async Task<PointF> SearchCenterPointAsync(
+        /// <summary>
+        /// 阶段 2+3：遍历 4 个搜索点采集 XY 中值，拟合针尖中心并移至 (X0,Y0)。
+        /// </summary>
+        private async Task<PointF?> SearchCenterPointAsync(
             NeedleCalibrationParams parameters,
             int systemNumber,
             IProgress<(string Status, double Progress)> progress,
@@ -209,123 +215,186 @@ namespace Module.Services
                 parameters.SearchPoint3,
                 parameters.SearchPoint4
             };
-            // 移到第一个搜索点（轴设置速度×全局百分比）；其余搜索点使用 SearchSpeed
-            await MoveToSearchPointXYAsync(parameters, systemNumber, searchPoints[0].X, searchPoints[0].Y, useAxisMotionSpeed: true, token);
-            await MoveToSearchNeedleHeightAsync(parameters, systemNumber, token);
 
-            var xEdgePoints = new List<PointF>();
-            var yEdgePoints = new List<PointF>();
+            var xMidSamples = new List<double>(4);
+            var yMidSamples = new List<double>(4);
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < searchPoints.Length; i++)
             {
                 token.ThrowIfCancellationRequested();
-                progress?.Report((L("NeedleAligner_Status_SearchPointX", "在点{0}进行X方向搜索", i + 1), 20 + i * 10));
-                var xEdge = await SearchEdgeInDirectionAsync(searchPoints[i], SearchDirection.XPositive, SearchDirection.X, parameters, systemNumber, token);
-                if (xEdge == null) return null;
-                xEdgePoints.Add(xEdge);
+                double pointProgress = 10 + i * 12;
+                progress?.Report((
+                    L("NeedleAligner_Status_SearchPointScan", "在点{0}进行边界搜索", i + 1),
+                    pointProgress));
+
+                // 安全高度下移至搜索点 XY（首点用轴速度，其余用 SearchSpeed）
+                await MoveToSearchPointXYAsync(
+                    parameters, systemNumber,
+                    searchPoints[i].X, searchPoints[i].Y,
+                    useAxisMotionSpeed: i == 0, token);
+
+                // 下降至 Z 向寻探高度，针头进入十字激光检测平面
+                await MoveToSearchNeedleHeightAsync(parameters, systemNumber, token);
+
+                var midpoint = await ScanSearchPointBoundariesAsync(
+                    searchPoints[i], parameters, progress, i, token);
+                if (midpoint == null)
+                {
+                    _logger.Error($"[NeedleAligner] 搜索点{i + 1}边界扫描失败");
+                    return null;
+                }
+
+                xMidSamples.Add(midpoint.X);
+                yMidSamples.Add(midpoint.Y);
+                _logger.Info($"[NeedleAligner] 点{i + 1}中值: X_Mid={midpoint.X:F3}, Y_Mid={midpoint.Y:F3}");
             }
 
-            for (int i = 2; i < 4; i++)
+            if (xMidSamples.Count < 4 || yMidSamples.Count < 4)
             {
-                token.ThrowIfCancellationRequested();
-                progress?.Report((L("NeedleAligner_Status_SearchPointY", "在点{0}进行Y方向搜索", i + 1), 40 + (i - 2) * 10));
-                var yEdge = await SearchEdgeInDirectionAsync(searchPoints[i], SearchDirection.XPositive, SearchDirection.Y, parameters, systemNumber, token);
-                if (yEdge == null) return null;
-                yEdgePoints.Add(yEdge);
-            }
-
-            if (xEdgePoints.Count < 2 || yEdgePoints.Count < 2)
-            {
-                _logger.Error($"[NeedleAligner] 有效边缘点不足: X={xEdgePoints.Count}, Y={yEdgePoints.Count}");
+                _logger.Error($"[NeedleAligner] 有效中值不足: X={xMidSamples.Count}, Y={yMidSamples.Count}");
                 return null;
             }
 
-            var center = CalculateCenterPointWithHalcon(xEdgePoints, yEdgePoints);
-            if (center != null)
-            {
-                _logger.Info($"[NeedleAligner] Halcon中心点: X={center.X:F3}, Y={center.Y:F3}");
-                return center;
-            }
+            // 阶段 3：四点拟合 — 4 组 X/Y 中值取平均得到针尖 XY 基准原点
+            float x0 = (float)xMidSamples.Average();
+            float y0 = (float)yMidSamples.Average();
+            _logger.Info($"[NeedleAligner] 拟合中心: X0={x0:F3}, Y0={y0:F3}");
 
-            float centerX = xEdgePoints.Average(p => p.X);
-            float centerY = yEdgePoints.Average(p => p.Y);
-            _logger.Warn("[NeedleAligner] Halcon交点失败，使用平均值");
-            return new PointF(centerX, centerY);
+            progress?.Report((L("NeedleAligner_Status_MoveToFittedCenter", "移动到拟合中心点"), 58));
+            await MoveToSafeHeightAsync(parameters, systemNumber, token);
+
+            var map = ResolveAxisMap();
+            var dxId = ResolveAxisId(map, "Dx");
+            var dyId = ResolveAxisId(map, "Dy");
+            await MoveXYLineAsync(dxId, dyId, x0, y0, parameters.SearchSpeed, token);
+
+            return new PointF(x0, y0);
         }
 
-        private async Task<PointF> SearchEdgeInDirectionAsync(
-            PointF startPoint,
-            SearchDirection moveDirection,
-            SearchDirection sensorDirection,
+        /// <summary>
+        /// 单点位标准动作：X 边界双向精细扫描 → Y 边界双向精细扫描，返回该点 XY 中值。
+        /// </summary>
+        private async Task<PointF?> ScanSearchPointBoundariesAsync(
+            PointF searchPoint,
             NeedleCalibrationParams parameters,
-            int systemNumber,
+            IProgress<(string Status, double Progress)> progress,
+            int pointIndex,
             CancellationToken token)
         {
             var map = ResolveAxisMap();
-            int axisId = GetAxisIdForDirection(map, moveDirection);
-
-            double startX = startPoint.X - parameters.SearchRange;
             var dxId = ResolveAxisId(map, "Dx");
             var dyId = ResolveAxisId(map, "Dy");
+            double range = parameters.SearchRange;
+            double fineSpeed = parameters.FineSearchSpeed;
 
-            await MoveXYLineAsync(dxId, dyId, startX, startPoint.Y, parameters.SearchSpeed, token);
+            progress?.Report((
+                L("NeedleAligner_Status_SearchPointX", "在点{0}进行X方向搜索", pointIndex + 1),
+                10 + pointIndex * 12 + 2));
 
-            double forwardEdge = await SearchSingleEdgeAsync(moveDirection, sensorDirection, parameters.SearchRange * 2, parameters.FineSearchSpeed, axisId, parameters, token);
-            if (double.IsNaN(forwardEdge)) return null;
+            // X 轴边界精细扫描：负向偏移起点 → 正向入光沿 → 反向出光沿
+            double? xMid = await ScanAxisBoundaryMidAsync(
+                dxId, dyId,
+                searchPoint.X - range, searchPoint.Y,
+                range * 2, fineSpeed,
+                SearchDirection.X, parameters, token);
+            if (xMid == null) return null;
 
-            double backwardEdge = await SearchSingleEdgeAsync(GetOppositeDirection(moveDirection), sensorDirection, parameters.SearchRange * 2, parameters.FineSearchSpeed, axisId, parameters, token);
-            if (double.IsNaN(backwardEdge)) return null;
+            progress?.Report((
+                L("NeedleAligner_Status_SearchPointY", "在点{0}进行Y方向搜索", pointIndex + 1),
+                10 + pointIndex * 12 + 5));
 
-            double center = (forwardEdge + backwardEdge) / 2;
-            var result = new PointF(startPoint.X, startPoint.Y);
-            if (moveDirection is SearchDirection.XPositive or SearchDirection.XNegative)
-                result.X = (float)center;
-            else
-                result.Y = (float)center;
+            // Y 轴边界精细扫描：在 X 中值处沿 Y 方向双向扫描
+            double? yMid = await ScanAxisBoundaryMidAsync(
+                dxId, dyId,
+                xMid.Value, searchPoint.Y - range,
+                range * 2, fineSpeed,
+                SearchDirection.Y, parameters, token);
+            if (yMid == null) return null;
 
-            return result;
+            return new PointF((float)xMid.Value, (float)yMid.Value);
         }
 
-        private async Task<double> SearchSingleEdgeAsync(
-            SearchDirection direction,
-            SearchDirection sensorDirection,
-            double searchRange,
+        /// <summary>
+        /// 单轴边界双向扫描：正向捕捉入光上升沿，反向捕捉出光上升沿，返回 (Enter+Exit)/2。
+        /// </summary>
+        private async Task<double?> ScanAxisBoundaryMidAsync(
+            int dxId, int dyId,
+            double scanStartX, double scanStartY,
+            double scanSpan,
+            double fineSpeed,
+            SearchDirection sensorAxis,
+            NeedleCalibrationParams parameters,
+            CancellationToken token)
+        {
+            await MoveXYLineAsync(dxId, dyId, scanStartX, scanStartY, fineSpeed, token);
+
+            int moveAxisId = sensorAxis == SearchDirection.X ? dxId : dyId;
+            double forwardDist = scanSpan;
+            double backwardDist = -scanSpan;
+
+            // 正向慢移：针头刚挡住激光，捕捉 SensorDi 上升沿（未触发→触发）
+            double enterPos = await SearchBoundaryEdgeAsync(
+                moveAxisId, forwardDist, fineSpeed, sensorAxis,
+                SensorEdgeKind.EnterBlocked, parameters, token);
+            if (double.IsNaN(enterPos)) return null;
+
+            // 反向慢移：激光完全透出，捕捉上升沿（触发→未触发，激光恢复高电平）
+            double exitPos = await SearchBoundaryEdgeAsync(
+                moveAxisId, backwardDist, fineSpeed, sensorAxis,
+                SensorEdgeKind.ExitExposed, parameters, token);
+            if (double.IsNaN(exitPos)) return null;
+
+            double mid = (enterPos + exitPos) / 2.0;
+            _logger.Info($"[NeedleAligner] {sensorAxis}边界: Enter={enterPos:F3}, Exit={exitPos:F3}, Mid={mid:F3}");
+            return mid;
+        }
+
+        /// <summary>
+        /// 边扫描边轮询传感器上升沿；检测到沿后立即停轴并记录当前坐标。
+        /// </summary>
+        private async Task<double> SearchBoundaryEdgeAsync(
+            int axisId,
+            double searchDistance,
             double speed,
-            int axisId,
-            NeedleCalibrationParams parameters,
-            CancellationToken token)
-        {
-            double searchDistance = direction is SearchDirection.XPositive or SearchDirection.YPositive
-                ? searchRange
-                : -searchRange;
-
-            _logger.Info($"[NeedleAligner] {direction}边缘搜索: 轴={axisId}, 距离={searchDistance:F3}");
-            await _motion.MoveRelAsync(axisId, searchDistance, speed, token);
-
-            var edgePos = await WaitForSensorTriggerAsync(sensorDirection, axisId, parameters, token);
-            if (!double.IsNaN(edgePos))
-                _logger.Info($"[NeedleAligner] {direction}边缘位置: {edgePos:F3}");
-            else
-                _logger.Warn($"[NeedleAligner] {direction}边缘搜索超时");
-
-            return edgePos;
-        }
-
-        private async Task<double> WaitForSensorTriggerAsync(
             SearchDirection sensorDirection,
-            int axisId,
+            SensorEdgeKind edgeKind,
             NeedleCalibrationParams parameters,
             CancellationToken token)
         {
-            var startTime = DateTime.UtcNow;
+            bool prevTriggered = IsNeedleSensorTriggered(sensorDirection, parameters);
+            _logger.Info($"[NeedleAligner] {sensorDirection} {edgeKind} 扫描: 轴={axisId}, 距离={searchDistance:F3}, 速度={speed:F2}");
+
+            await _motion.MoveRelStartAsync(axisId, searchDistance, speed);
+
+            var deadline = DateTime.UtcNow.AddMilliseconds(SensorTimeoutMs);
             while (!token.IsCancellationRequested)
             {
-                if ((DateTime.UtcNow - startTime).TotalMilliseconds > SensorTimeoutMs)
+                if (DateTime.UtcNow > deadline)
+                {
+                    StopAxisSafe(axisId);
+                    _logger.Warn($"[NeedleAligner] {sensorDirection} {edgeKind} 扫描超时");
                     return double.NaN;
+                }
 
-                if (IsNeedleSensorTriggered(sensorDirection, parameters))
-                    return _motion.GetAxisPosition(axisId);
+                bool triggered = IsNeedleSensorTriggered(sensorDirection, parameters);
+                bool edgeDetected = edgeKind switch
+                {
+                    // 入光：针头挡住激光，DI 低电平触发态上升沿
+                    SensorEdgeKind.EnterBlocked => !prevTriggered && triggered,
+                    // 出光：激光透出恢复，触发态下降沿（对应 DI 上升沿）
+                    SensorEdgeKind.ExitExposed => prevTriggered && !triggered,
+                    _ => false
+                };
 
+                if (edgeDetected)
+                {
+                    double pos = _motion.GetAxisPosition(axisId);
+                    StopAxisSafe(axisId);
+                    _logger.Info($"[NeedleAligner] {sensorDirection} {edgeKind} 捕获: {pos:F3}");
+                    return pos;
+                }
+
+                prevTriggered = triggered;
                 await Task.Delay(SensorPollMs, token);
             }
 
@@ -334,7 +403,7 @@ namespace Module.Services
         }
 
         /// <summary>
-        /// 针尖 Z：对针高度 + Z 下探补偿后定位，多次采样取平均（无 Z 向 DI）。
+        /// 阶段 4：在拟合中心 (X0,Y0) 多次 Z 下探，双激光同时遮挡时记录 Z 坐标，取中值。
         /// </summary>
         private async Task<double> SearchNeedleHeightAsync(
             PointF centerPoint,
@@ -343,44 +412,119 @@ namespace Module.Services
             IProgress<(string Status, double Progress)> progress,
             CancellationToken token)
         {
-            var map = ResolveAxisMap();
-            var dxId = ResolveAxisId(map, "Dx");
-            var dyId = ResolveAxisId(map, "Dy");
             var zId = ResolveZAxisId(systemNumber);
-            // 对针高度 + 下探补偿：换针后针尖偏高时，先多下探再读 Z
-            var alignZ = GetSearchNeedleTargetZ(parameters, systemNumber);
-
-            var xySpeed = GetXYInterpSpeed(dxId, dyId);
-            await MoveXYLineAsync(dxId, dyId, centerPoint.X, centerPoint.Y, xySpeed, token);
-
-            double totalHeight = 0;
+            var probeZ = GetSearchNeedleTargetZ(parameters, systemNumber);
             int count = Math.Max(1, parameters.ZSearchCount);
-            var zFastSpeed = GetAxisMotionSpeed(zId);
+            var zSamples = new List<double>(count);
 
             for (int i = 0; i < count; i++)
             {
                 token.ThrowIfCancellationRequested();
-                progress?.Report((L("NeedleAligner_Status_ZHeightSearch", "第 {0}/{1} 次高度定位", i + 1, count), 60 + i * 10));
+                progress?.Report((
+                    L("NeedleAligner_Status_ZHeightSearch", "第 {0}/{1} 次高度定位", i + 1, count),
+                    65 + i * (20.0 / count)));
 
-                await MoveToSafeHeightAsync(parameters, systemNumber, token);
-                await MoveXYLineAsync(dxId, dyId, centerPoint.X, centerPoint.Y, xySpeed, token);
-                await MoveZAbsWithApproachAsync(zId, alignZ, zFastSpeed, parameters.FineSearchSpeed, token);
+                if (i > 0)
+                    await MoveToSafeHeightAsync(parameters, systemNumber, token);
 
-                totalHeight += _motion.GetAxisPosition(zId);
+                double zTrigger = await SearchSingleZHeightSampleAsync(
+                    zId, parameters.SafeHeight, probeZ, parameters, token);
+                if (double.IsNaN(zTrigger))
+                {
+                    _logger.Warn($"[NeedleAligner] 第{i + 1}次 Z 高度采样失败");
+                    continue;
+                }
+
+                zSamples.Add(zTrigger);
+                _logger.Info($"[NeedleAligner] 第{i + 1}次 Z 触发高度: {zTrigger:F3}mm");
             }
 
-            double average = totalHeight / count;
-            _logger.Info($"[NeedleAligner] 针尖 Z(对针高度+下探={parameters.ZProbeDescentHeight:F3}): {average:F3}mm, 次数={count}");
-            return average;
+            if (zSamples.Count == 0)
+                return double.NaN;
+
+            double z0 = AggregateZSamples(zSamples);
+            await MoveToSafeHeightAsync(parameters, systemNumber, token);
+            _logger.Info($"[NeedleAligner] 针尖 Z 基准 Z0={z0:F3}mm, 有效采样={zSamples.Count}/{count}");
+            return z0;
         }
 
-        /// <summary>寻针 Z 目标 = 对针位置 Z + Z 下探高度</summary>
+        /// <summary>
+        /// 单次 Z 高度采样：从安全高度以精细速度下探，双传感器同时触发时记录 Z 并停轴。
+        /// </summary>
+        private async Task<double> SearchSingleZHeightSampleAsync(
+            int zId,
+            double safeHeight,
+            double probeZ,
+            NeedleCalibrationParams parameters,
+            CancellationToken token)
+        {
+            double currentZ = _motion.GetAxisPosition(zId);
+            if (Math.Abs(currentZ - safeHeight) > 0.01)
+            {
+                var zFastSpeed = GetAxisMotionSpeed(zId);
+                await MoveZAbsWithApproachAsync(zId, safeHeight, zFastSpeed, parameters.FineSearchSpeed, token);
+            }
+
+            double descendDistance = probeZ - safeHeight;
+            if (descendDistance >= 0)
+            {
+                _logger.Warn($"[NeedleAligner] Z 下探目标({probeZ:F3})不在安全高度({safeHeight:F3})下方，跳过本次采样");
+                return double.NaN;
+            }
+
+            bool prevBothTriggered = AreBothSensorsTriggered(parameters);
+            await _motion.MoveRelStartAsync(zId, descendDistance, parameters.FineSearchSpeed);
+
+            var deadline = DateTime.UtcNow.AddMilliseconds(SensorTimeoutMs);
+            while (!token.IsCancellationRequested)
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    StopAxisSafe(zId);
+                    _logger.Warn("[NeedleAligner] Z 高度搜索超时");
+                    return double.NaN;
+                }
+
+                bool bothTriggered = AreBothSensorsTriggered(parameters);
+                // 双激光同时被针头遮挡的临界上升沿
+                if (!prevBothTriggered && bothTriggered)
+                {
+                    double zPos = _motion.GetAxisPosition(zId);
+                    StopAxisSafe(zId);
+                    return zPos;
+                }
+
+                prevBothTriggered = bothTriggered;
+                await Task.Delay(SensorPollMs, token);
+            }
+
+            token.ThrowIfCancellationRequested();
+            return double.NaN;
+        }
+
+        /// <summary>双路激光同时被针头遮挡（X+Y 传感器均触发）</summary>
+        private bool AreBothSensorsTriggered(NeedleCalibrationParams parameters) =>
+            IsNeedleSensorTriggered(SearchDirection.X, parameters) &&
+            IsNeedleSensorTriggered(SearchDirection.Y, parameters);
+
+        /// <summary>对 N 组 Z 采样取中值（偶数时取中间两值平均）</summary>
+        private static double AggregateZSamples(IReadOnlyList<double> samples)
+        {
+            var sorted = samples.OrderBy(z => z).ToList();
+            int n = sorted.Count;
+            if (n == 0) return double.NaN;
+            if (n % 2 == 1) return sorted[n / 2];
+            return (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
+        }
+
+        /// <summary>寻针 Z 下探极限 = 对针位置 Z + Z 下探补偿高度</summary>
         private static double GetSearchNeedleTargetZ(NeedleCalibrationParams parameters, int systemNumber)
         {
             var alignZ = GetAlignPosition(parameters, systemNumber).Z;
             return alignZ + parameters.ZProbeDescentHeight;
         }
 
+        /// <summary>增量法：本次测量值相对固定基准 ReferenceXYZ 的偏移，取反作为补偿增量</summary>
         private static PointF CalculateCompensation(PointF measured, double measuredHeight, NeedleCalibrationParams parameters)
         {
             float deltaX = measured.X - parameters.ReferenceXYZ.X;
@@ -389,31 +533,15 @@ namespace Module.Services
             return new PointF(-deltaX, -deltaY, -deltaZ);
         }
 
-        private PointF? CalculateCenterPointWithHalcon(List<PointF> xPoints, List<PointF> yPoints)
+        /// <summary>安全停轴，忽略单次停轴异常以保证急停路径畅通</summary>
+        private void StopAxisSafe(int axisId)
         {
-            try
-            {
-                HTuple intersectionRow, intersectionColumn, isOverlapping;
-                HOperatorSet.IntersectionLines(
-                    new HTuple(xPoints[0].Y), new HTuple(xPoints[0].X),
-                    new HTuple(xPoints[1].Y), new HTuple(xPoints[1].X),
-                    new HTuple(yPoints[0].Y), new HTuple(yPoints[0].X),
-                    new HTuple(yPoints[1].Y), new HTuple(yPoints[1].X),
-                    out intersectionRow, out intersectionColumn, out isOverlapping);
-
-                if (intersectionRow.TupleLength() > 0 && intersectionColumn.TupleLength() > 0 &&
-                    !isOverlapping.TupleEqual(1))
-                {
-                    return new PointF((float)intersectionColumn.D, (float)intersectionRow.D);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"[NeedleAligner] Halcon交点计算异常: {ex.Message}");
-            }
-
-            return null;
+            try { _motion.StopAxis(axisId); }
+            catch (Exception ex) { _logger.Warn($"[NeedleAligner] 停止轴{axisId}失败: {ex.Message}"); }
         }
+
+        /// <summary>传感器边沿类型：入光遮挡 / 出光恢复</summary>
+        private enum SensorEdgeKind { EnterBlocked, ExitExposed }
 
         #endregion
 
@@ -509,7 +637,7 @@ namespace Module.Services
         /// </summary>
         private bool IsNeedleSensorTriggered(SearchDirection sensorAxis, NeedleCalibrationParams parameters)
         {
-            int port = sensorAxis is SearchDirection.X or SearchDirection.XPositive or SearchDirection.XNegative
+            int port = sensorAxis == SearchDirection.X
                 ? parameters.SensorDiX
                 : parameters.SensorDiY;
 
@@ -577,28 +705,13 @@ namespace Module.Services
                 ? new[] { "Dz₂", "Dz2" }
                 : new[] { "Dz₃", "Dz3" };
 
-        private static int GetAxisIdForDirection(Dictionary<string, int> map, SearchDirection direction) =>
-            direction is SearchDirection.XPositive or SearchDirection.XNegative or SearchDirection.X
-                ? ResolveAxisId(map, "Dx")
-                : ResolveAxisId(map, "Dy");
-
         private static PointF GetAlignPosition(NeedleCalibrationParams parameters, int systemNumber) =>
             systemNumber == 1 ? parameters.AlignPositionSystem1 : parameters.AlignPositionSystem2;
 
         private static NeedleCalibrationResult Fail(string message) =>
             new() { Success = false, ErrorMessage = message };
 
-        private static SearchDirection GetOppositeDirection(SearchDirection direction) =>
-            direction switch
-            {
-                SearchDirection.XPositive => SearchDirection.XNegative,
-                SearchDirection.XNegative => SearchDirection.XPositive,
-                SearchDirection.YPositive => SearchDirection.YNegative,
-                SearchDirection.YNegative => SearchDirection.YPositive,
-                _ => direction
-            };
-
-        private enum SearchDirection { XPositive, XNegative, YPositive, YNegative, X, Y }
+        private enum SearchDirection { X, Y }
 
         #endregion
     }
