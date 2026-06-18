@@ -123,7 +123,7 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="{lang:Lang Name}"
                                     Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="150" />
+                                    Width="280" />
                 <DataGridTextColumn Header="{lang:Lang Value}"
                                     Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                     Width="200" />
