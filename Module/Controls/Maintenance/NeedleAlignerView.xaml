@@ -143,7 +143,7 @@
                                                                   ValueStep="0.1" Minimum="0.1" Maximum="5.0"/>
                                     <TextBlock Text="{lang:Lang NeedleAligner_SafeHeight}" Style="{StaticResource ParamLabel}"/>
                                     <materialDesign:DecimalUpDown Value="{Binding Parameters.SafeHeight}"
-                                                                  ValueStep="1" Minimum="0" Maximum="500"/>
+                                                                  ValueStep="1" Minimum="-50" Maximum="50"/>
                                     <TextBlock Text="{lang:Lang NeedleAligner_ZProbeDescentHeight}" Style="{StaticResource ParamLabel}"
                                                ToolTip="{lang:Lang NeedleAligner_ZProbeDescentHeightTip}"/>
                                     <materialDesign:DecimalUpDown Value="{Binding Parameters.ZProbeDescentHeight}"
