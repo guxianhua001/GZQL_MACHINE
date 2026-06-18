@@ -11,7 +11,7 @@ namespace Recipe.Models
         public string RecipeName { get; set; } = "Default";
         public string RecipePool { get; set; } = "Default";
         public string StationIdentifier { get; set; } = string.Empty;
-        public DateTime SwitchTime { get; set; } = DateTime.UtcNow;
+        public DateTime SwitchTime { get; set; } = DateTime.Now;
         public bool IsDefault { get; set; } = true;
         public bool IsValid { get; set; } = false;
 

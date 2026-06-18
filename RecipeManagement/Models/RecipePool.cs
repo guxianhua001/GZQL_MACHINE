@@ -39,7 +39,7 @@ namespace Recipe.Models
             set { _description = value; OnPropertyChanged(); }
         }
 
-        private DateTime _createdTime = DateTime.UtcNow;
+        private DateTime _createdTime = DateTime.Now;
         public DateTime CreatedTime
         {
             get => _createdTime;
@@ -67,14 +67,14 @@ namespace Recipe.Models
             set { _currentRecipePoolName = value; OnPropertyChanged(); }
         }
 
-        private DateTime _switchTime = DateTime.UtcNow;
+        private DateTime _switchTime = DateTime.Now;
         public DateTime SwitchTime
         {
             get => _switchTime;
             set { _switchTime = value; OnPropertyChanged(); }
         }
 
-        private DateTime _modifiedTime = DateTime.UtcNow;
+        private DateTime _modifiedTime = DateTime.Now;
         public DateTime ModifiedTime
         {
             get => _modifiedTime;
@@ -158,7 +158,7 @@ namespace Recipe.Models
             // 通过属性 setter 触发通知
             CurrentRecipeName = recipeName;
             CurrentRecipePoolName = recipePool;
-            SwitchTime = DateTime.UtcNow;
+            SwitchTime = DateTime.Now;
             //IsDefault = recipeName == "Default";
         }
 

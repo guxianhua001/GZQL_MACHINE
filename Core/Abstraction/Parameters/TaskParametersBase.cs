@@ -1,4 +1,4 @@
-﻿// Core.Abstraction/Parameters/TaskParametersBase.cs
+// Core.Abstraction/Parameters/TaskParametersBase.cs
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -15,7 +15,7 @@ namespace Core.Abstraction
         public event PropertyChangedEventHandler PropertyChanged;
 
         private string _configVersion = "1.0";
-        private DateTime _lastModified = DateTime.UtcNow;
+        private DateTime _lastModified = DateTime.Now;
 
         /// <summary>
         /// 参数唯一标识（由派生类实现）
@@ -43,6 +43,15 @@ namespace Core.Abstraction
         {
             get => _lastModified;
             protected set => SetProperty(ref _lastModified, value);
+        }
+
+        /// <summary>
+        /// 更新最后修改时间为当前本地时间。
+        /// 由外部（如 RecipeService）在保存前调用，确保 LastModified 反映最新保存时刻。
+        /// </summary>
+        public void UpdateLastModified()
+        {
+            _lastModified = DateTime.Now;
         }
 
         /// <summary>

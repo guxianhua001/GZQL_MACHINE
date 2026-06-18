@@ -51,9 +51,12 @@
             </Grid>
         </Border>
 
-        <!-- ========== 主内容区：Tab切换 ========== -->
-        <TabControl Grid.Row="1" 
+        <!-- ========== 主内容区：Tab切换 ==========
+             关键：必须绑定 SelectedIndex，确保 TabControl 初始化时有明确选中项，
+             避免 MaterialDesign Underline 在 ActualWidth=NaN 时触发 DoubleAnimation 报错 -->
+        <TabControl Grid.Row="1"
             Style="{StaticResource MaterialDesignTabControl}"
+            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
             Margin="0"
             Padding="0">
 

@@ -2109,7 +2109,7 @@ namespace Module.ViewModels
             DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
         }
 
-        /// <summary>批量设置速度——对 IsEnabled 为 true 的段设置目标速度</summary>
+        /// <summary>批量设置速度——对 IsEnabled 为 true 的段设置移动速度与插补速度</summary>
         private void ExecuteBatchSetSpeed()
         {
             var targets = Segments.Where(s => s.IsEnabled).ToList();
@@ -2129,7 +2129,7 @@ namespace Module.ViewModels
                 WindowStyle = WindowStyle.ToolWindow
             };
 
-            dialog.DataContext = new BatchSetSpeedViewModel(firstSeg.JumpSpeed, firstSeg.MoveSpeed, window);
+            dialog.DataContext = new BatchSetSpeedViewModel(firstSeg.MoveSpeed, firstSeg.JumpSpeed, window);
 
             if (window.ShowDialog() == true)
             {
@@ -2138,10 +2138,10 @@ namespace Module.ViewModels
                 {
                     foreach (var seg in targets)
                     {
-                        seg.JumpSpeed = vm.JumpSpeed;
                         seg.MoveSpeed = vm.MoveSpeed;
+                        seg.JumpSpeed = vm.InterpSpeed;
                     }
-                    GlobalStatus = string.Format(L("CadPoint_Status_BatchSetSpeed"), vm.JumpSpeed, vm.MoveSpeed, targets.Count);
+                    GlobalStatus = string.Format(L("CadPoint_Status_BatchSetSpeed"), vm.MoveSpeed, vm.InterpSpeed, targets.Count);
                 }
             }
         }
@@ -3712,8 +3712,6 @@ namespace Module.ViewModels
         {
             _dialogWindow = dialogWindow;
 
-            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_JumpSpeed"), "mm/s", referenceSegment.JumpSpeed,
-                (seg, val) => seg.JumpSpeed = val));
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_MoveSpeed"), "mm/s", referenceSegment.MoveSpeed,
                 (seg, val) => seg.MoveSpeed = val));
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_SafeHeight"), "mm", referenceSegment.SafeHeight,
@@ -3745,22 +3743,24 @@ namespace Module.ViewModels
 
     public class BatchSetSpeedViewModel : BindableBase
     {
-        private double _jumpSpeed;
-        public double JumpSpeed { get => _jumpSpeed; set => SetProperty(ref _jumpSpeed, value); }
-
         private double _moveSpeed;
+        /// <summary>移动速度（绑定 DispenseSegment.MoveSpeed）</summary>
         public double MoveSpeed { get => _moveSpeed; set => SetProperty(ref _moveSpeed, value); }
+
+        private double _interpSpeed;
+        /// <summary>插补速度（绑定 DispenseSegment.JumpSpeed，复用为插补速度）</summary>
+        public double InterpSpeed { get => _interpSpeed; set => SetProperty(ref _interpSpeed, value); }
 
         public DelegateCommand ConfirmCommand { get; }
         public DelegateCommand CancelCommand { get; }
 
         private readonly Window _dialogWindow;
 
-        public BatchSetSpeedViewModel(double jumpSpeed, double moveSpeed, Window dialogWindow)
+        public BatchSetSpeedViewModel(double moveSpeed, double interpSpeed, Window dialogWindow)
         {
             _dialogWindow = dialogWindow;
-            JumpSpeed = jumpSpeed;
             MoveSpeed = moveSpeed;
+            InterpSpeed = interpSpeed;
 
             ConfirmCommand = new DelegateCommand(() =>
             {

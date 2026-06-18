@@ -307,7 +307,7 @@ namespace Recipe.ViewModels
                 if (currentPool != null)
                 {
                     currentPool.CurrentRecipeName = recipeName;
-                    currentPool.ModifiedTime = DateTime.UtcNow;
+                    currentPool.ModifiedTime = DateTime.Now;
                     await _recipePoolService.SaveRecipePoolAsync(currentPool);
                 }
 
@@ -316,7 +316,7 @@ namespace Recipe.ViewModels
                 if (SelectedRecipePool != null && poolId == SelectedRecipePool.Id)
                 {
                     SelectedRecipePool.CurrentRecipeName = recipeName;
-                    SelectedRecipePool.ModifiedTime = DateTime.UtcNow;
+                    SelectedRecipePool.ModifiedTime = DateTime.Now;
                     RaisePropertyChanged(nameof(SelectedRecipePool));
                 }
 
@@ -374,8 +374,8 @@ namespace Recipe.ViewModels
                         {
                             Name = recipeName,
                             Description = description,
-                            CreatedTime = DateTime.UtcNow,
-                            ModifiedTime = DateTime.UtcNow,
+                            CreatedTime = DateTime.Now,
+                            ModifiedTime = DateTime.Now,
                             Parameters = sourceRecipe?.Parameters != null ? new Dictionary<string, object>(sourceRecipe.Parameters) : new Dictionary<string, object>()
                         };
 
@@ -430,7 +430,7 @@ namespace Recipe.ViewModels
                         bool nameChanged = newName != oldName;
                         originalRecipe.Name = newName;
                         originalRecipe.Description = description;
-                        originalRecipe.ModifiedTime = DateTime.UtcNow;
+                        originalRecipe.ModifiedTime = DateTime.Now;
 
                         if (nameChanged)
                             await _recipeStorage.DeleteRecipeAsync(poolName, oldName);
@@ -661,6 +661,10 @@ namespace Recipe.ViewModels
                 {
                     SelectedRecipePool = latestPool;
                 }
+
+                // 保存池前通知位置编辑器暂存当前编辑的位置参数，
+                // 由 SaveRecipePoolAsync 内部统一提交到文件，避免位置编辑器参数丢失
+                _eventAggregator.GetEvent<SavePositionEditorEvent>().Publish(SelectedRecipePool.Name);
 
                 await _recipePoolService.SaveRecipePoolAsync(SelectedRecipePool);
                 _logger.Info($"配方池 '{SelectedRecipePool.Name}' 及全局变量已保存");

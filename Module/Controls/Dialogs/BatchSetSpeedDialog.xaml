@@ -18,9 +18,9 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_JumpSpeed}"
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_MoveSpeed}"
                        VerticalAlignment="Center" Margin="0,0,8,8" FontSize="12"/>
-            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding JumpSpeed, StringFormat=F1, UpdateSourceTrigger=PropertyChanged}"
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding MoveSpeed, StringFormat=F1, UpdateSourceTrigger=PropertyChanged}"
                      VerticalAlignment="Center" Margin="0,0,4,8"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}" Padding="6,2" FontSize="12"/>
             <TextBlock Grid.Row="0" Grid.Column="2" Text="{lang:Lang Unit_MmPerS}" VerticalAlignment="Center" Margin="0,0,0,8"
@@ -28,7 +28,7 @@
 
             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_InterpolationSpeed}"
                        VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"/>
-            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MoveSpeed, StringFormat=F1, UpdateSourceTrigger=PropertyChanged}"
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding InterpSpeed, StringFormat=F1, UpdateSourceTrigger=PropertyChanged}"
                      VerticalAlignment="Center" Margin="0,0,4,0"
                      Style="{StaticResource MaterialDesignOutlinedTextBox}" Padding="6,2" FontSize="12"/>
             <TextBlock Grid.Row="1" Grid.Column="2" Text="{lang:Lang Unit_MmPerS}" VerticalAlignment="Center"

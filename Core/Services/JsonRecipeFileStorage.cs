@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using Core.Abstractions.Storages;
 
@@ -36,6 +37,10 @@ namespace Core.Services
             var baseDir = AppDomain.CurrentDomain.BaseDirectory ?? Directory.GetCurrentDirectory();
             _basePath = basePath ?? Path.Combine(baseDir, "Recipes");
             Directory.CreateDirectory(_basePath);
+
+            // 注册 DateTime 转换器：序列化时输出无时区后缀的本地时间，
+            // 与计算机当前时间显示一致，避免 UTC 偏移导致用户困惑
+            _jsonOptions.Converters.Add(new LocalDateTimeConverter());
         }
 
         public async Task<T> LoadAsync<T>(string identifier) where T : class, new()
@@ -119,6 +124,40 @@ namespace Core.Services
             var typeName = typeof(T).Name.ToLower();
             var safeIdentifier = Path.GetFileName(identifier);
             return Path.Combine(_basePath, typeName, $"{safeIdentifier}.json");
+        }
+    }
+
+    /// <summary>
+    /// DateTime 自定义 JSON 转换器。
+    /// 序列化时统一输出无时区后缀的本地时间格式（如 2026-06-18T14:59:06.8346289），
+    /// 与计算机当前时间显示一致，避免 UTC（Z 后缀）或时区偏移（+08:00）导致用户困惑。
+    /// 反序列化时兼容 ISO 8601 各种格式（Z、+08:00、无后缀），并转换为 Local Kind。
+    /// </summary>
+    public class LocalDateTimeConverter : JsonConverter<DateTime>
+    {
+        private const string LocalFormat = "yyyy-MM-ddTHH:mm:ss.fffffff";
+
+        public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            // 使用默认解析，兼容带 Z、带偏移、无后缀的多种 ISO 8601 格式
+            var dt = reader.GetDateTime();
+            // 统一转换为 Local Kind，确保内存中时间与计算机时区一致
+            if (dt.Kind == DateTimeKind.Utc)
+            {
+                return dt.ToLocalTime();
+            }
+            if (dt.Kind == DateTimeKind.Unspecified)
+            {
+                return DateTime.SpecifyKind(dt, DateTimeKind.Local);
+            }
+            return dt;
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+        {
+            // 统一转换为本地时间后输出无时区后缀格式
+            var local = value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value;
+            writer.WriteStringValue(local.ToString(LocalFormat));
         }
     }
 }

@@ -54,6 +54,7 @@ namespace Recipe.ViewModels
         private SubscriptionToken _recipeChangedToken;
         private SubscriptionToken _poolChangedToken;
         private SubscriptionToken _stationRegisteredToken;
+        private SubscriptionToken _savePositionEditorToken;
         #endregion
 
         #region Public Properties
@@ -160,6 +161,10 @@ namespace Recipe.ViewModels
             // 订阅配方/配方池切换事件，实现热刷新
             _recipeChangedToken = _eventAggregator.GetEvent<RecipeChangedEvent>().Subscribe(OnRecipeChanged);
             _poolChangedToken = _eventAggregator.GetEvent<RecipePoolChangedEvent>().Subscribe(OnPoolChanged);
+
+            // 订阅保存池事件：保存池前将当前编辑的位置数据暂存到 RecipePoolService，
+            // 由 SaveRecipePoolAsync 统一提交到文件，避免位置编辑器参数丢失
+            _savePositionEditorToken = _eventAggregator.GetEvent<SavePositionEditorEvent>().Subscribe(OnSavePositionEditorRequested);
 
             SaveCommand = new DelegateCommand(Save);
             AddPositionCommand = new DelegateCommand(AddPosition);
@@ -824,6 +829,97 @@ namespace Recipe.ViewModels
             RequestClose?.Invoke(new DialogResult(ButtonResult.OK));
         }
 
+        /// <summary>
+        /// 构建当前工站的位置参数节点（JsonObject），供暂存或保存使用。
+        /// 提取自 Save 方法的构建逻辑，避免重复代码。
+        /// </summary>
+        /// <returns>待保存的工站节点；若未选择工站则返回 null</returns>
+        private JsonObject BuildStationNodeToSave()
+        {
+            if (string.IsNullOrEmpty(_currentStationIdentifier)) return null;
+
+            var axes = _axisConfig.GetAxesForStation(_currentStationIdentifier).ToList();
+
+            // 构建新的 Positions 节点
+            var newPosObj = new JsonObject();
+            foreach (DataRow row in PositionsTable.Rows)
+            {
+                var name = row["PositionName"].ToString();
+                if (string.IsNullOrEmpty(name)) continue;
+
+                // 保持 Axes 子对象格式，与配方文件结构一致
+                var axesObj = new JsonObject();
+                foreach (var axis in axes)
+                {
+                    var cellValue = row[axis.Name];
+                    if (cellValue != DBNull.Value && cellValue != null)
+                    {
+                        axesObj[axis.Name] = Convert.ToDouble(cellValue);
+                    }
+                }
+
+                var positionObj = new JsonObject();
+                positionObj["Axes"] = axesObj;
+                positionObj["Comment"] = row["Comment"]?.ToString() ?? "";
+                newPosObj[name] = positionObj;
+            }
+
+            // 基于已加载的工站节点合并 Positions，避免保存前额外读盘
+            JsonObject stationNodeToSave;
+            try
+            {
+                stationNodeToSave = _currentStationNode != null
+                    ? JsonNode.Parse(_currentStationNode.ToJsonString()).AsObject()
+                    : CreateEmptyStationNode();
+                stationNodeToSave["Positions"] = newPosObj;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"构建工站保存节点失败: {ex.Message}，将仅保存位置数据");
+                stationNodeToSave = CreateEmptyStationNode();
+                stationNodeToSave["Positions"] = newPosObj;
+            }
+
+            return stationNodeToSave;
+        }
+
+        /// <summary>
+        /// 将当前编辑的位置数据暂存到 RecipePoolService（同步操作，不涉及文件 I/O）。
+        /// 由 SavePositionEditorEvent 触发，在保存池前调用，确保位置编辑器参数不丢失。
+        /// </summary>
+        private void StageCurrentPositions()
+        {
+            if (string.IsNullOrEmpty(_currentStationIdentifier)) return;
+
+            var stationNodeToSave = BuildStationNodeToSave();
+            if (stationNodeToSave == null) return;
+
+            // 仅暂存到暂存区，由 SaveRecipePoolAsync 统一提交到文件
+            _recipePoolService.StageStationParameters(_currentStationIdentifier, stationNodeToSave);
+            _currentStationNode = stationNodeToSave;
+            _logger.Info($"[{_currentStationIdentifier}] 位置参数已暂存（由 Save Pool 触发）");
+        }
+
+        /// <summary>
+        /// SavePositionEditorEvent 事件处理：保存池前暂存当前位置编辑器参数。
+        /// 参数为当前配方池名称，用于校验是否为当前激活的池。
+        /// </summary>
+        private void OnSavePositionEditorRequested(string poolName)
+        {
+            // 仅处理当前激活池的保存请求
+            if (string.IsNullOrEmpty(poolName) || poolName != _recipePoolService.CurrentPoolName)
+                return;
+
+            try
+            {
+                StageCurrentPositions();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"暂存位置编辑器参数失败: {ex.Message}");
+            }
+        }
+
         #endregion
 
         #region Events
@@ -851,6 +947,7 @@ namespace Recipe.ViewModels
             _recipeChangedToken?.Dispose();
             _poolChangedToken?.Dispose();
             _stationRegisteredToken?.Dispose();
+            _savePositionEditorToken?.Dispose();
             if (_isMoving)
             {
                 Stop();

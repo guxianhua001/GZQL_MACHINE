@@ -40,7 +40,7 @@ namespace Recipe.Models
                     {
                         Id = _poolId,
                         Name = _poolId,
-                        CreatedTime = DateTime.UtcNow
+                        CreatedTime = DateTime.Now
                     };
                 }
 
@@ -52,14 +52,14 @@ namespace Recipe.Models
                         Id = Guid.NewGuid().ToString(),
                         Name = _recipeName,
                         Description = $"Recipe - {_recipeName}",
-                        CreatedTime = DateTime.UtcNow,
-                        ModifiedTime = DateTime.UtcNow
+                        CreatedTime = DateTime.Now,
+                        ModifiedTime = DateTime.Now
                     };
                     pool.AddRecipe(recipe);
                 }
                 else
                 {
-                    recipe.ModifiedTime = DateTime.UtcNow;
+                    recipe.ModifiedTime = DateTime.Now;
                 }
 
                 foreach (var kv in _stationParameters)
@@ -68,7 +68,7 @@ namespace Recipe.Models
                 }
 
                 // 更新配方池修改时间，确保 Save Pool 后 ModifiedTime 反映最新操作
-                pool.ModifiedTime = DateTime.UtcNow;
+                pool.ModifiedTime = DateTime.Now;
 
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
                 return true;
