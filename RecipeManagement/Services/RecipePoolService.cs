@@ -103,7 +103,7 @@ namespace Recipe
         }
         public async Task CreateRecipePoolAsync(string poolId, string name)
         {
-            var pool = new RecipePool { Id = poolId, Name = name, CreatedTime = DateTime.UtcNow };
+            var pool = new RecipePool { Id = poolId, Name = name, CreatedTime = DateTime.Now };
             await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
         }
         public async Task<bool> DeleteRecipePoolAsync(string poolName)
@@ -356,14 +356,14 @@ namespace Recipe
             newPool.Id = Guid.NewGuid().ToString();
             newPool.Name = newName;
             newPool.Description = Description;
-            newPool.CreatedTime = DateTime.UtcNow;
-            newPool.ModifiedTime = DateTime.UtcNow;
+            newPool.CreatedTime = DateTime.Now;
+            newPool.ModifiedTime = DateTime.Now;
             newPool.IsDefault = false;
             foreach (var recipe in newPool.Recipes)
             {
                 recipe.Id = Guid.NewGuid().ToString();
-                recipe.CreatedTime = DateTime.UtcNow;
-                recipe.ModifiedTime = DateTime.UtcNow;
+                recipe.CreatedTime = DateTime.Now;
+                recipe.ModifiedTime = DateTime.Now;
             }
             await _recipeStorage.SaveRecipePoolAsync(newPool).ConfigureAwait(false);
             _logger.Info($"已复制配方池 {sourcePoolId} -> {newPoolId}，包含 {newPool.Recipes.Count} 个配方");
@@ -498,7 +498,7 @@ namespace Recipe
             bool nameChanged = pool.Name != newPoolName;
             pool.Name = newPoolName;
             pool.Description = newDescription;
-            pool.ModifiedTime = DateTime.UtcNow;
+            pool.ModifiedTime = DateTime.Now;
             if (nameChanged)
             {
                 foreach (var recipe in pool.Recipes)
@@ -522,13 +522,36 @@ namespace Recipe
                 // 1. 保存前同步全局变量页面编辑内容到内存 pool
                 _eventAggregator.GetEvent<SaveGlobalVariablesEvent>().Publish(pool);
 
-                // 2. 从文件加载最新配方池（保留其他编辑器已提交的工站参数，避免陈旧内存数据覆盖文件）
+                // 2. 提交位置编辑器暂存的工站参数到文件（由 SavePositionEditorEvent 触发暂存）
+                //    必须在加载 filePool 之前完成，确保后续合并能读到最新位置参数
+                if (_stagingArea.HasAnyDirty())
+                {
+                    var dirtyParams = _stagingArea.GetDirtyParameters();
+                    var recipeName = pool.CurrentRecipeName ?? "Default";
+                    var context = new RecipePoolSaveContext(_recipeStorage, pool.Name, recipeName);
+                    foreach (var kv in dirtyParams)
+                    {
+                        context.AddStation(kv.Key, kv.Value);
+                    }
+                    var commitSuccess = await context.CommitAsync().ConfigureAwait(false);
+                    if (commitSuccess)
+                    {
+                        _stagingArea.ClearDirty();
+                        _logger.Info($"保存池前已提交位置编辑器暂存参数: 池 '{pool.Name}' -> 配方 '{recipeName}', 共 {dirtyParams.Count} 个工站");
+                    }
+                    else
+                    {
+                        _logger.Warn($"保存池前提交位置编辑器暂存参数失败: 池 '{pool.Name}' -> 配方 '{recipeName}'");
+                    }
+                }
+
+                // 3. 从文件加载最新配方池（保留其他编辑器已提交的工站参数，避免陈旧内存数据覆盖文件）
                 var filePool = await _recipeStorage.LoadRecipePoolAsync(pool.Name).ConfigureAwait(false);
                 if (filePool != null)
                 {
                     // 仅将内存 pool 的全局变量和顶层元数据合并到文件 pool
                     filePool.GlobalVariables = pool.GlobalVariables;
-                    filePool.ModifiedTime = DateTime.UtcNow;
+                    filePool.ModifiedTime = DateTime.Now;
                     pool = filePool;
                 }
 
@@ -547,7 +570,7 @@ namespace Recipe
             try
             {
                 var pool = await _recipeStorage.LoadRecipePoolAsync(poolId).ConfigureAwait(false)
-                         ?? new RecipePool { Id = poolId, Name = poolId, CreatedTime = DateTime.UtcNow };
+                         ?? new RecipePool { Id = poolId, Name = poolId, CreatedTime = DateTime.Now };
                 updateAction(pool);
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
             }
@@ -585,7 +608,7 @@ namespace Recipe
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
             var pool = await _recipeStorage.LoadRecipePoolAsync(poolId).ConfigureAwait(false)
-                       ?? new RecipePool { Id = poolId, Name = poolId, CreatedTime = DateTime.UtcNow };
+                       ?? new RecipePool { Id = poolId, Name = poolId, CreatedTime = DateTime.Now };
             pool.ExtensionData[key] = JsonSerializer.SerializeToElement(data);
             await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
         }

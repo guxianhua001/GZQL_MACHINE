@@ -2378,7 +2378,7 @@
     <sys:String x:Key="CadPoint_Status_ImportException">导入异常: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_ImportError">DXF 导入异常</sys:String>
     <sys:String x:Key="CadPoint_Status_DxfServiceUnavailable">错误：DXF 解析服务不可用</sys:String>
-    <sys:String x:Key="CadPoint_Status_BatchSetSpeed">批量设速: 空移={0:F1}, 插补={1:F1} mm/s ({2} 段)</sys:String>
+    <sys:String x:Key="CadPoint_Status_BatchSetSpeed">批量设速: 移动={0:F1}, 插补={1:F1} mm/s ({2} 段)</sys:String>
     <sys:String x:Key="CadPoint_Status_BatchSetGlue">批量设胶: {0:F2} ({1} 段)</sys:String>
     <sys:String x:Key="CadPoint_Dialog_BatchSetTitle">批量设置参数</sys:String>
     <sys:String x:Key="CadPoint_Status_BatchSetResult">批量设置: {0} 个参数已应用到 {1} 段</sys:String>
@@ -2514,6 +2514,7 @@
     <sys:String x:Key="Step3_Label_HeightCompensation">高度补偿</sys:String>
     <sys:String x:Key="Step3_Label_InterpolationSpeed">插补速度</sys:String>
     <sys:String x:Key="Step3_Label_JumpSpeed">跳转速度</sys:String>
+    <sys:String x:Key="Step3_Label_MoveSpeed">移动速度</sys:String>
     <sys:String x:Key="Step3_Label_PointCount">分割点数</sys:String>
     <sys:String x:Key="Step3_Label_PostDelay">关胶后延时</sys:String>
     <sys:String x:Key="Step3_Label_PreDelay">开胶前延时</sys:String>

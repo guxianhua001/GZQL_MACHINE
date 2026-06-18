@@ -1,6 +1,102 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.18 — DispensingView 导航失败修复（DoubleAnimation NaN 错误）
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - 打开 DispensingView（点胶工站视图）时报错：
+     "导航失败，system.windows.media.animation.doubleAnimation cannot use default origin value of NaN"
+   - 错误发生在 Prism 导航到 DispensingView 时，导致视图无法正常显示
+
+2. 根因分析
+   - DispensingView 的 TabControl 使用了 MaterialDesignTabControl 样式
+   - MaterialDesignTabControl 内部使用 Underline 控件作为选中项指示器
+   - Underline 控件通过 VisualStateManager 在 "Active"/"Inactive" 状态间切换，
+     状态切换动画依赖 TabItem 的 ActualWidth
+   - DispensingView 的 TabControl 未绑定 SelectedIndex（与其他正常工作的视图不同），
+     导致 TabControl 初始化时选中项不确定，Underline 在 TabItem 布局未完成时
+     （ActualWidth=NaN）触发 DoubleAnimation，引发 NaN 错误
+   - 对比验证：CadAlignmentView、MaintenanceView 均绑定了 SelectedIndex，无此问题
+
+3. 修复方案
+   3.1 DispensingViewModel.cs
+       - 新增 SelectedTabIndex 属性（int，双向绑定）
+       - 构造函数中初始化为 0，确保 TabControl 加载时立即有明确选中项
+   3.2 DispensingView.xaml
+       - TabControl 添加 SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}" 绑定
+       - 添加注释说明绑定必要性
+
+4. 影响范围
+   - Module 模块（Module.dll）
+   - 仅影响 DispensingView 视图初始化流程，不影响业务逻辑
+
+5. 验证
+   - dotnet build Module.csproj 成功，无编译错误
+   - 修复后 TabControl 初始化时 SelectedIndex=0，Underline 控件有确定状态，
+     不再触发 NaN 动画错误
+
+
+v2026.06.18 — 配方管理页面保存池修复（位置编辑器参数丢失 & ModifiedTime本地时间）
+-------------------------------------------------------------------------------
+
+1. 问题现象
+   - 配方管理页面点击"保存池"按钮后，位置编辑器（MultiStationPositionEditor）的参数未保存成功
+     原因：位置编辑器UI无独立保存按钮（注释说明由Save Pool统一保存），
+           但Save Pool流程仅同步全局变量，未触发位置编辑器参数提交
+   - ModifiedTime 字段使用 DateTime.UtcNow 存储UTC时间，
+     显示时与当前计算机本地时间不一致（差8小时）
+   - JSON 序列化 DateTime.Now 时仍带 +08:00 时区偏移后缀，
+     用户期望与计算机时间显示完全一致（无时区后缀）
+
+2. 修复方案
+   2.1 位置编辑器参数保存修复
+       - 新增 SavePositionEditorEvent 事件（RecipeEventDefinitions.cs），
+         用于保存池前通知位置编辑器暂存参数
+       - MultiStationPositionEditorViewModel 订阅 SavePositionEditorEvent，
+         新增 StageCurrentPositions 方法：构建位置节点并调用
+         IRecipePoolService.StageStationParameters 暂存（同步操作，无文件I/O）
+       - 提取 BuildStationNodeToSave 公共方法，避免与 Save 方法重复构建逻辑
+       - RecipeManagerViewModel.SaveRecipePoolAsync 在调用服务层保存前发布
+         SavePositionEditorEvent 事件
+       - RecipePoolService.SaveRecipePoolAsync 在加载filePool前，
+         检查暂存区是否有脏数据，使用 RecipePoolSaveContext 直接提交到文件
+         （避免调用 CommitStagedParametersAsync 导致信号量死锁）
+
+   2.2 ModifiedTime 本地时间修复
+       - 将 RecipeManagement 模块所有 DateTime.UtcNow 替换为 DateTime.Now
+       - 涉及文件：RecipeInfo.cs、RecipePool.cs、CurrentRecipeInfo.cs、
+         RecipePoolSaveContext.cs、RecipePoolService.cs、RecipeManagerViewModel.cs
+       - 涵盖字段：CreatedTime、ModifiedTime、SwitchTime
+
+   2.3 JSON 序列化时间格式修复
+       - 在 JsonRecipeFileStorage 新增 LocalDateTimeConverter 自定义转换器（System.Text.Json）
+       - 在 JsonParameterStorage 新增 LocalNewtonsoftDateTimeConverter 自定义转换器（Newtonsoft.Json）
+       - 两者均输出无时区后缀的本地时间格式（如 2026-06-18T14:59:06.8346289）
+       - 反序列化时兼容 ISO 8601 各种格式（Z、+08:00、无后缀），统一转换为 Local Kind
+       - 确保历史文件（UTC格式）加载时自动转换为本地时间
+
+   2.4 工站参数 LastModified 修复（DispenserStation 等）
+       - TaskParametersBase._lastModified 初始化从 DateTime.UtcNow 改为 DateTime.Now
+       - 新增 TaskParametersBase.UpdateLastModified() 公共方法，供外部保存前调用
+       - RecipeService.SaveParametersToRecipe / SaveRecipeParameters 保存前调用 UpdateLastModified()
+       - 确保 Config\Parameters\{recipeName}\{Station}_Recipe_{recipeName}.json 的 lastModified 字段更新
+
+3. 影响范围
+   - RecipeManagement 模块（Recipe.dll）、Core 模块（Core.dll）
+   - 位置编辑器参数现在可通过"保存池"按钮正确持久化
+   - 所有时间字段显示与计算机本地时间一致，JSON 文件无时区后缀
+
+4. 架构说明
+   - 事件驱动：SavePositionEditorEvent 与 SaveGlobalVariablesEvent 模式一致，
+     均为保存池前的同步事件
+   - 线程安全：位置编辑器仅暂存（无I/O），RecipePoolService 在信号量内统一提交，
+     避免死锁
+   - 数据流：位置编辑器 → StageStationParameters → RecipePoolSaveContext.CommitAsync
+     → 文件存储 → SaveRecipePoolAsync 加载filePool合并 → 保存
+   - 序列化：LocalDateTimeConverter 集中处理时间格式，无需修改各 Model 字段
+
+
 v2026.06.17 — 点胶工具双针头支持修正（Dz₁误用修复）
 -------------------------------------------------------------------------------
 

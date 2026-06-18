@@ -10,8 +10,8 @@ namespace Recipe.Models
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
-        public DateTime ModifiedTime { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedTime { get; set; } = DateTime.Now;
+        public DateTime ModifiedTime { get; set; } = DateTime.Now;
         public string Category { get; set; } = "Default";
         public string Version { get; set; } = "1.0";
         public List<string> Tags { get; set; } = new List<string>();
@@ -24,8 +24,8 @@ namespace Recipe.Models
             Id = Guid.NewGuid().ToString();
             Name = other.Name;
             Description = other.Description;
-            CreatedTime = DateTime.UtcNow;
-            ModifiedTime = DateTime.UtcNow;
+            CreatedTime = DateTime.Now;
+            ModifiedTime = DateTime.Now;
             Category = other.Category;
             Version = other.Version;
             Tags = new List<string>(other.Tags);
@@ -66,7 +66,7 @@ namespace Recipe.Models
         public void SetParameter<T>(string key, T value)
         {
             Parameters[key] = value;
-            ModifiedTime = DateTime.UtcNow;
+            ModifiedTime = DateTime.Now;
         }
     }
 }

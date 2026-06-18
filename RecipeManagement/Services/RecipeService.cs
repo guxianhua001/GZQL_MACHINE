@@ -1,4 +1,4 @@
-﻿using Core.Abstraction;
+using Core.Abstraction;
 using Core.Utilities;
 using Prism.Commands;
 using Prism.Events;
@@ -396,6 +396,9 @@ namespace Recipe
 
                 _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始保存参数到配方: {recipeName}");
 
+                // 保存前更新最后修改时间为当前本地时间，确保 LastModified 反映最新保存时刻
+                _internalParameters.UpdateLastModified();
+
                 await SaveParametersToRecipeSystem(poolName, recipeName);
                 SaveParametersToLocalFile(recipeName);
 
@@ -421,6 +424,9 @@ namespace Recipe
                 _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始保存参数到配方: {recipeName}");
 
                 _internalParameters = parameters;
+                // 保存前更新最后修改时间为当前本地时间，确保 LastModified 反映最新保存时刻
+                _internalParameters.UpdateLastModified();
+
                 await SaveParametersToRecipeSystem(poolName, recipeName);
                 SaveParametersToLocalFile(recipeName);
 

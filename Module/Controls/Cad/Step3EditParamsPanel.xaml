@@ -138,13 +138,16 @@
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_JumpSpeed}" Margin="0,2,8,0"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_MoveSpeed}" Margin="0,2,8,0"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Text="{Binding SelectedSegment.JumpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                     Text="{Binding SelectedSegment.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                             <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_SafeHeight}" Margin="0,2,8,0"/>
@@ -163,7 +166,7 @@
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_InterpolationSpeed}" Margin="0,2,8,0"/>
                             <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Text="{Binding SelectedSegment.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                     Text="{Binding SelectedSegment.JumpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                             <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
                         </Grid>
                     </StackPanel>
@@ -323,7 +326,7 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_JumpSpeed}" Margin="0,2,8,0"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang Step3_Label_MoveSpeed}" Margin="0,2,8,0"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      Text="{Binding SinglePointProcessParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                             <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm/s"/>
