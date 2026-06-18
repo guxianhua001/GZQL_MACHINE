@@ -2045,7 +2045,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_ManualZCompensation">Manual Comp</sys:String>
     <sys:String x:Key="DispenseDetail_LinkGlobalVariable">Link Global Variable</sys:String>
     <sys:String x:Key="DispenseDetail_UnlinkGlobalVariable">Unlink</sys:String>
-    <sys:String x:Key="DispenseDetail_SegmentImport">Segment Data Import</sys:String>
+    <sys:String x:Key="DispenseDetail_SegmentImport">Segment Import</sys:String>
+    <sys:String x:Key="DispenseDetail_SegmentImportDot">Line Import (Dot Mode)</sys:String>
+    <sys:String x:Key="DispenseDetail_SegmentImportArc">Arc Import (Arc Mode)</sys:String>
     <sys:String x:Key="DispenseDetail_ImportLines">Import Lines</sys:String>
     <sys:String x:Key="DispenseDetail_ImportArcs">Import Arcs</sys:String>
     <sys:String x:Key="DispenseDetail_RemoveSelected">Remove Selected</sys:String>
@@ -2084,7 +2086,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_SegmentFor">Segment:</sys:String>
     <sys:String x:Key="DispenseDetail_SourceDeleted">⚠ Source Deleted</sys:String>
     <sys:String x:Key="DispenseDetail_NoSegmentsToImport">No checked line segments in Step3 to import (check target segments in CAD Editor Step3 first)</sys:String>
-    <sys:String x:Key="DispenseDetail_NoArcsToImport">No checked arcs in Step3 to import (check target segments in CAD Editor Step3 first)</sys:String>
+    <sys:String x:Key="DispenseDetail_NoArcsToImport">No checked arc segments in Step3 to import (Arc/Circle/Ellipse or arc polyline; check targets in CAD Editor Step3 first)</sys:String>
     <sys:String x:Key="DispenseDetail_ImportDialogTitle">Select Lines to Import</sys:String>
     <sys:String x:Key="DispenseDetail_ImportArcDialogTitle">Select Arcs to Import</sys:String>
     <sys:String x:Key="DispenseDetail_UnitMmS">mm/s</sys:String>

@@ -1,6 +1,36 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.18 — DispenseStepAction 双针头出胶 IO 分端口
+-------------------------------------------
+
+1. 变更
+   - 针头1（NeedleIndex=0/Dz₂）使用 GlueIoPort1=12
+   - 针头2（NeedleIndex=1/Dz₃）使用 GlueIoPort2=13
+   - 与 DispenseExecuteService 保持一致
+
+v2026.06.18 — DispenseStepAction 直线/连续插补分坐标系
+---------------------------------------------
+
+1. 变更
+   - 直线插补 MoveLineAbsAsync 使用坐标系 0（CoordIdLinear）
+   - 连续插补 InitializeContinuousInterpolation/走轨迹 使用坐标系 1（CoordIdContinuous）
+   - 与 DispenseExecuteService 保持一致，避免与相机/扫描等插补系冲突
+
+v2026.06.18 — DISPENSE Arc 模式圆弧导入与类型识别扩展
+------------------------------------------------
+
+1. 问题
+   - Arc 模式仅匹配 EntityType Arc/Circle，LwPolyline/Ellipse 等圆弧段无法导入
+   - 界面同时显示「导入线段/圆弧」，Arc 模式下易误点线段导入并提示无线段
+   - ExecuteArcModeAsync 同样只执行 Arc/Circle 类型引用
+
+2. 修复
+   - 新增 DispenseSegmentClassification 统一判定圆弧/线段兼容类型
+   - 圆弧导入支持 Arc/Circle/Ellipse/Spline 及含 OriginalEntityData 的弧段多段线
+   - UI 按模式仅显示对应导入按钮，标题随模式切换
+   - ExecuteArcModeAsync 与导入逻辑使用相同分类规则
+
 v2026.06.18 — Step3 单点模式参数编辑仅作用于当前选中段
 --------------------------------------------------
 

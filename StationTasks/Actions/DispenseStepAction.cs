@@ -25,8 +25,18 @@ namespace StationTasks.Actions
         private readonly IMotionService _motionService;
         private readonly IDispenseSegmentSourceService _segmentSourceService;
 
-        private const int CoordId = 0;
-        private const int GlueIoPort = 0;
+        /// <summary>直线插补坐标系 ID（MoveLineAbsAsync）</summary>
+        private const int CoordIdLinear = 0;
+
+        /// <summary>连续插补坐标系 ID（InitializeContinuousInterpolation / 走轨迹）</summary>
+        private const int CoordIdContinuous = 1;
+
+        /// <summary>针头1（Dz₂）出胶 IO 端口编号——与 DispenseExecuteService 一致</summary>
+        private const int GlueIoPort1 = 12;
+
+        /// <summary>针头2（Dz₃）出胶 IO 端口编号——与 DispenseExecuteService 一致</summary>
+        private const int GlueIoPort2 = 13;
+
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
 
@@ -70,7 +80,8 @@ namespace StationTasks.Actions
             int needleIndex = detail.NeedleIndex;
             string dzAxisName = needleIndex == 0 ? "Dz₂" : "Dz₃";
             int dzAxisId = ResolveDispenseAxisId(dzAxisName);
-            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId}), Dx={dxAxisId}, Dy={dyAxisId}");
+            int glueIoPort = GetGlueIoPort(needleIndex);
+            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId}), Dx={dxAxisId}, Dy={dyAxisId}, 出胶IO={glueIoPort}");
 
             try
             {
@@ -82,10 +93,10 @@ namespace StationTasks.Actions
                     switch (detail.DispenseMode)
                     {
                         case DispenseStepMode.Dot:
-                            await ExecuteDotModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, token);
+                            await ExecuteDotModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, token);
                             break;
                         case DispenseStepMode.Arc:
-                            await ExecuteArcModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, token);
+                            await ExecuteArcModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, token);
                             break;
                         default:
                             _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未知点胶模式: {detail.DispenseMode}");
@@ -95,13 +106,13 @@ namespace StationTasks.Actions
             }
             catch (OperationCanceledException)
             {
-                SafeGlueOff();
+                SafeGlueOff(needleIndex);
                 _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 已取消，已安全关胶");
                 throw;
             }
             catch (Exception ex)
             {
-                SafeGlueOff();
+                SafeGlueOff(needleIndex);
                 _logger.Error(ex, $"DISPENSE 步骤 [{step.Seq}] 执行异常，已安全关胶");
                 throw;
             }
@@ -143,14 +154,14 @@ namespace StationTasks.Actions
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt);
 
-                await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
+                await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, token);
 
                 foreach (var pt in seg.Points.Skip(1))
                 {
                     token.ThrowIfCancellationRequested();
                     var (px, py) = GetMachineXY(pt);
-                    await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
+                    await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                         new[] { px, py }, moveSpeed, token);
                 }
 
@@ -173,6 +184,7 @@ namespace StationTasks.Actions
             DispenseDetail detail,
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
+            int needleIndex,
             CancellationToken token)
         {
             _logger.Info($"DISPENSE 单点模式开始");
@@ -217,7 +229,7 @@ namespace StationTasks.Actions
 
                     await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
-                    await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
+                    await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                         new[] { px, py }, moveSpeed, token);
 
                     double approachZ = targetZ + approachOffset;
@@ -229,7 +241,7 @@ namespace StationTasks.Actions
                     double triggerZ = targetZ + motionDir * triggerDistance;
 
                     await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, token);
-                    WriteGlueIo(true);
+                    WriteGlueIo(true, needleIndex);
                     _logger.Debug($"DISPENSE 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
                     await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
@@ -239,7 +251,7 @@ namespace StationTasks.Actions
 
                     await Task.Delay((int)seg.DispenseTime, token);
 
-                    WriteGlueIo(false);
+                    WriteGlueIo(false, needleIndex);
 
                     if (seg.PostDelay > 0)
                         await Task.Delay((int)seg.PostDelay, token);
@@ -264,14 +276,22 @@ namespace StationTasks.Actions
             DispenseDetail detail,
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
+            int needleIndex,
             CancellationToken token)
         {
             _logger.Info($"DISPENSE 弧线模式开始");
 
             var enabledRefs = detail.SegmentRefs
-                .Where(r => r.IsEnabled &&
-                       (r.SourceEntityType == CadEntityType.Arc || r.SourceEntityType == CadEntityType.Circle))
+                .Where(r => r.IsEnabled)
+                .Where(r => segDict.TryGetValue(r.SourceSegmentId, out var src)
+                            && DispenseSegmentClassification.IsArcCompatibleRef(r, src))
                 .ToList();
+
+            if (enabledRefs.Count == 0)
+            {
+                _logger.Warn("DISPENSE 弧线模式: 无已启用的圆弧类分段（请导入 Arc/Circle/Ellipse 或含弧段的多段线）");
+                return;
+            }
             int totalRefs = enabledRefs.Count;
             int currentRef = 0;
             DispenseSegment lastSeg = null;
@@ -307,7 +327,7 @@ namespace StationTasks.Actions
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt);
-                await _motionService.MoveLineAbsAsync(CoordId, new[] { dxAxisId, dyAxisId },
+                await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, token);
 
                 double approachZ = targetZ + approachOffset;
@@ -319,7 +339,7 @@ namespace StationTasks.Actions
                 double triggerZ = targetZ + motionDir * triggerDistance;
 
                 await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, token);
-                WriteGlueIo(true);
+                WriteGlueIo(true, needleIndex);
                 _logger.Debug($"DISPENSE 弧线: 段[{seg.SegmentId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
                 await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
@@ -335,24 +355,24 @@ namespace StationTasks.Actions
                 }
 
                 _motionService.InitializeContinuousInterpolation(
-                    CoordId, new[] { dxAxisId, dyAxisId },
+                    CoordIdContinuous, new[] { dxAxisId, dyAxisId },
                     startVel: 5, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
 
                 foreach (var pt in seg.Points)
                 {
                     var (px, py) = GetMachineXY(pt);
-                    _motionService.AddLineSegment(CoordId, new[] { px, py });
+                    _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
                 }
 
-                _motionService.ExecuteContinuousInterpolation(CoordId);
+                _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
 
                 bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
-                    CoordId, TimeSpan.FromMinutes(5), token);
+                    CoordIdContinuous, TimeSpan.FromMinutes(5), token);
 
                 if (!completed)
                     throw new TimeoutException($"DISPENSE 弧线: 段[{seg.SegmentId}] 运动超时");
 
-                WriteGlueIo(false);
+                WriteGlueIo(false, needleIndex);
 
                 if (seg.PostDelay > 0)
                     await Task.Delay((int)seg.PostDelay, token);
@@ -500,15 +520,22 @@ namespace StationTasks.Actions
             }
         }
 
-        private void WriteGlueIo(bool value)
+        /// <summary>根据针头索引选择出胶 IO 端口（0=针头1/Dz₂, 1=针头2/Dz₃）</summary>
+        private static int GetGlueIoPort(int needleIndex) =>
+            needleIndex == 0 ? GlueIoPort1 : GlueIoPort2;
+
+        /// <summary>写出胶 IO——按所选针头使用对应端口</summary>
+        private void WriteGlueIo(bool value, int needleIndex)
         {
-            try { _motionService.WriteDo(GlueIoPort, value); }
-            catch (Exception ex) { _logger.Error(ex, $"DISPENSE 写出胶IO失败 port={GlueIoPort} value={value}"); }
+            int port = GetGlueIoPort(needleIndex);
+            try { _motionService.WriteDo(port, value); }
+            catch (Exception ex) { _logger.Error(ex, $"DISPENSE 写出胶IO失败 port={port} value={value}"); }
         }
 
-        private void SafeGlueOff()
+        /// <summary>安全关胶——按所选针头关闭对应 IO</summary>
+        private void SafeGlueOff(int needleIndex)
         {
-            try { _motionService.WriteDo(GlueIoPort, false); }
+            try { _motionService.WriteDo(GetGlueIoPort(needleIndex), false); }
             catch { }
         }
 

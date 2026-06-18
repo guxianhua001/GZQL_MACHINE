@@ -125,19 +125,21 @@
                 <!-- Segment Import Section -->
                 <materialDesign:Card Padding="10" Margin="0,0,0,8">
                     <StackPanel>
-                        <TextBlock Text="{lang:Lang DispenseDetail_SegmentImport}" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
+                        <TextBlock Text="{Binding SegmentImportTitle}" FontWeight="Bold" FontSize="13" Margin="0,0,0,6"/>
 
-                        <!-- Toolbar -->
+                        <!-- Toolbar：按点胶模式显示对应导入按钮 -->
                         <WrapPanel Margin="0,0,0,6">
                             <Button Command="{Binding ImportLinesCommand}"
-                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0" FontSize="13">
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0" FontSize="13"
+                                    Visibility="{Binding ShowImportLines, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <StackPanel Orientation="Horizontal">
                                     <materialDesign:PackIcon Kind="FileImport" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{lang:Lang DispenseDetail_ImportLines}"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding ImportArcsCommand}"
-                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0">
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="10,4" Margin="0,0,4,0"
+                                    Visibility="{Binding ShowImportArcs, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <StackPanel Orientation="Horizontal">
                                     <materialDesign:PackIcon Kind="FileImport" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{lang:Lang DispenseDetail_ImportArcs}"/>

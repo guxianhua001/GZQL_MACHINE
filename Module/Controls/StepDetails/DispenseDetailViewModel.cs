@@ -51,7 +51,9 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(DispenseMode));
                     RaisePropertyChanged(nameof(IsDotMode));
                     RaisePropertyChanged(nameof(IsArcMode));
-                    RaisePropertyChanged(nameof(EnableZCalibration));
+                    RaisePropertyChanged(nameof(ShowImportLines));
+                    RaisePropertyChanged(nameof(ShowImportArcs));
+                    RaisePropertyChanged(nameof(SegmentImportTitle));
                     RaisePropertyChanged(nameof(ZCompensation3D));
                     RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensation3DLinked));
@@ -97,6 +99,9 @@ namespace Module.ViewModels
                 if (_step?.DispenseDetail != null) _step.DispenseDetail.DispenseMode = value;
                 RaisePropertyChanged(nameof(IsDotMode));
                 RaisePropertyChanged(nameof(IsArcMode));
+                RaisePropertyChanged(nameof(ShowImportLines));
+                RaisePropertyChanged(nameof(ShowImportArcs));
+                RaisePropertyChanged(nameof(SegmentImportTitle));
             }
         }
 
@@ -111,6 +116,17 @@ namespace Module.ViewModels
             get => DispenseMode == DispenseStepMode.Arc;
             set { if (value) DispenseMode = DispenseStepMode.Arc; }
         }
+
+        /// <summary>点模式显示「导入线段」按钮</summary>
+        public bool ShowImportLines => IsDotMode;
+
+        /// <summary>圆弧模式显示「导入圆弧」按钮</summary>
+        public bool ShowImportArcs => IsArcMode;
+
+        /// <summary>导入区域标题——随点胶模式切换</summary>
+        public string SegmentImportTitle => IsArcMode
+            ? L("DispenseDetail_SegmentImportArc")
+            : L("DispenseDetail_SegmentImportDot");
 
         /// <summary>
         /// 点胶针头索引（0=针头1/Dz₂轴, 1=针头2/Dz₃轴）
@@ -1341,7 +1357,7 @@ namespace Module.ViewModels
         private void OnImportLines()
         {
             ImportSegmentsByType(
-                CadEntityType.Line,
+                DispenseSegmentClassification.IsLineCompatible,
                 "DispenseDetail_NoSegmentsToImport");
         }
 
@@ -1351,20 +1367,12 @@ namespace Module.ViewModels
         private void OnImportArcs()
         {
             ImportSegmentsByType(
-                s => s.EntityType == CadEntityType.Arc || s.EntityType == CadEntityType.Circle,
+                DispenseSegmentClassification.IsArcCompatible,
                 "DispenseDetail_NoArcsToImport");
         }
 
         /// <summary>
         /// 按图元类型导入 Step3EditParamsPanel 中已勾选（IsEnabled）的源分段
-        /// </summary>
-        private void ImportSegmentsByType(CadEntityType entityType, string emptyMessageKey)
-        {
-            ImportSegmentsByType(s => s.EntityType == entityType, emptyMessageKey);
-        }
-
-        /// <summary>
-        /// 按条件导入 Step3EditParamsPanel 中已勾选（IsEnabled）的源分段
         /// </summary>
         private void ImportSegmentsByType(Func<DispenseSegment, bool> typeFilter, string emptyMessageKey)
         {
@@ -1554,6 +1562,9 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DispenseMode));
             RaisePropertyChanged(nameof(IsDotMode));
             RaisePropertyChanged(nameof(IsArcMode));
+            RaisePropertyChanged(nameof(ShowImportLines));
+            RaisePropertyChanged(nameof(ShowImportArcs));
+            RaisePropertyChanged(nameof(SegmentImportTitle));
             RaisePropertyChanged(nameof(EnableZCalibration));
             RaisePropertyChanged(nameof(ZCompensation3D));
             RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
