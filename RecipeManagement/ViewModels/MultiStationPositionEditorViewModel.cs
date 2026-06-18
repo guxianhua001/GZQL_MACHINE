@@ -805,7 +805,11 @@ namespace Recipe.ViewModels
                 stationNodeToSave["Positions"] = newPosObj;
             }
 
-            string currentRecipeName = _recipePoolService.CurrentRecipeName;
+            var pool = await _recipePoolService.GetRecipePoolAsync(_recipePoolService.CurrentPoolName);
+            // 与 LoadPositionsForCurrentStationAsync 一致：优先使用配方池文件中的 CurrentRecipeName
+            string currentRecipeName = pool?.CurrentRecipeName;
+            if (string.IsNullOrEmpty(currentRecipeName))
+                currentRecipeName = _recipePoolService.CurrentRecipeName;
             if (string.IsNullOrEmpty(currentRecipeName))
                 currentRecipeName = "Default";
 

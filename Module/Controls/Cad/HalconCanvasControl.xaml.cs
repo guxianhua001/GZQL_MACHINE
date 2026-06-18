@@ -12,6 +12,8 @@ using System.Windows.Input;
 using Core.Models;
 using HalconWrapper;
 using HalconDotNet;
+using MotionControl.Interfaces;
+using Prism.Ioc;
 using ToolStripItem = System.Windows.Forms.ToolStripItem;
 using ToolStripMenuItem = System.Windows.Forms.ToolStripMenuItem;
 
@@ -340,6 +342,9 @@ namespace Module.Controls
         // 涂抹/擦除模式的笔刷预览
         private HRegion _brushPreviewRegion;
 
+        // 轴控面板打开时隐藏 WinFormsHost，避免 airspace 遮挡右侧 Drawer
+        private IAxisOperationPanelState _axisPanelState;
+
         #endregion
 
         #region 构造函数与初始化
@@ -363,6 +368,46 @@ namespace Module.Controls
 
             InitHalconControl();
             RegisterMouseEvents();
+            SubscribeAxisPanelState();
+        }
+
+        /// <summary>
+        /// 订阅轴控面板开关状态：打开时折叠 WindowsFormsHost，解决 WinForms airspace 始终置顶问题
+        /// </summary>
+        private void SubscribeAxisPanelState()
+        {
+            try
+            {
+                _axisPanelState = ContainerLocator.Container?.Resolve<IAxisOperationPanelState>();
+                if (_axisPanelState == null) return;
+
+                _axisPanelState.PanelOpenChanged += OnAxisPanelOpenChanged;
+                OnAxisPanelOpenChanged(_axisPanelState.IsPanelOpen);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HalconCanvas] SubscribeAxisPanelState 异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>轴控面板开关回调——隐藏/恢复 Halcon WinForms 宿主</summary>
+        private void OnAxisPanelOpenChanged(bool isOpen)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => OnAxisPanelOpenChanged(isOpen)));
+                return;
+            }
+
+            if (_winFormHost == null) return;
+            _winFormHost.Visibility = isOpen ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void UnsubscribeAxisPanelState()
+        {
+            if (_axisPanelState == null) return;
+            _axisPanelState.PanelOpenChanged -= OnAxisPanelOpenChanged;
+            _axisPanelState = null;
         }
 
         /// <summary>
@@ -2112,6 +2157,8 @@ namespace Module.Controls
 
             if (disposing)
             {
+                UnsubscribeAxisPanelState();
+
                 // 注销 HWindow 鼠标事件
                 try
                 {

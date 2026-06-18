@@ -228,6 +228,7 @@ namespace Module.ViewModels
             {
                 if (SetProperty(ref _selectedSegmentRef, value))
                 {
+                    RefreshSelectedRefFromSource();
                     RaisePropertyChanged(nameof(ProcessParamsTitle));
                     RaisePropertyChanged(nameof(ShowOverrideParams));
                     RaisePropertyChanged(nameof(EffectiveJumpSpeed));
@@ -237,6 +238,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(EffectiveApproachHeight));
                     RaisePropertyChanged(nameof(EffectiveCornerDecel));
                     RaisePropertyChanged(nameof(EffectiveDispenseAmount));
+                    RaisePropertyChanged(nameof(EffectiveDispenseTime));
                     RaisePropertyChanged(nameof(EffectivePreDelay));
                     RaisePropertyChanged(nameof(EffectivePostDelay));
                     RaisePropertyChanged(nameof(EffectiveDispensingPressure));
@@ -249,6 +251,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(OverrideSafeHeight));
                     RaisePropertyChanged(nameof(OverrideApproachHeight));
                     RaisePropertyChanged(nameof(OverrideDispenseAmount));
+                    RaisePropertyChanged(nameof(OverrideDispenseTime));
                     RaisePropertyChanged(nameof(OverridePreDelay));
                     RaisePropertyChanged(nameof(OverridePostDelay));
                     RaisePropertyChanged(nameof(OverrideDispensingPressure));
@@ -299,7 +302,10 @@ namespace Module.ViewModels
                 if (_step?.DispenseDetail == null) return;
                 if (_step.DispenseDetail.DefaultMoveSpeed == value) return;
                 _step.DispenseDetail.DefaultMoveSpeed = value;
+                // 空移速度与运动速度保持一致
+                _step.DispenseDetail.DefaultJumpSpeed = value;
                 PublishParamToSelectedSegment(nameof(DispenseSegment.MoveSpeed), value);
+                PublishParamToSelectedSegment(nameof(DispenseSegment.JumpSpeed), value);
             }
         }
 
@@ -420,7 +426,7 @@ namespace Module.ViewModels
                 if (_step?.DispenseDetail == null) return;
                 if (_step.DispenseDetail.DefaultDispenseTime == value) return;
                 _step.DispenseDetail.DefaultDispenseTime = value;
-                // DispenseSegment 无对应字段，仅更新 DispenseDetail
+                PublishParamToSelectedSegment(nameof(DispenseSegment.DispenseTime), value);
             }
         }
 
@@ -533,13 +539,16 @@ namespace Module.ViewModels
                 {
                     _selectedSegmentRef.OverrideMoveSpeed = value;
                     SyncOverrideToSourceSegment(nameof(DispenseSegment.MoveSpeed), value);
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.JumpSpeed), value);
                 }
                 else
                 {
                     if (_step?.DispenseDetail == null) return;
                     if (_step.DispenseDetail.DefaultMoveSpeed == value) return;
                     _step.DispenseDetail.DefaultMoveSpeed = value;
+                    _step.DispenseDetail.DefaultJumpSpeed = value;
                     PublishParamToSelectedSegment(nameof(DispenseSegment.MoveSpeed), value);
+                    PublishParamToSelectedSegment(nameof(DispenseSegment.JumpSpeed), value);
                 }
             }
         }
@@ -620,6 +629,26 @@ namespace Module.ViewModels
                     if (_step.DispenseDetail.DefaultDispenseAmount == value) return;
                     _step.DispenseDetail.DefaultDispenseAmount = value;
                     PublishParamToSelectedSegment(nameof(DispenseSegment.DispenseAmount), value);
+                }
+            }
+        }
+
+        public double EffectiveDispenseTime
+        {
+            get => _selectedSegmentRef?.OverrideDispenseTime ?? _step?.DispenseDetail?.DefaultDispenseTime ?? 180.0;
+            set
+            {
+                if (_selectedSegmentRef != null)
+                {
+                    _selectedSegmentRef.OverrideDispenseTime = value;
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.DispenseTime), value);
+                }
+                else
+                {
+                    if (_step?.DispenseDetail == null) return;
+                    if (_step.DispenseDetail.DefaultDispenseTime == value) return;
+                    _step.DispenseDetail.DefaultDispenseTime = value;
+                    PublishParamToSelectedSegment(nameof(DispenseSegment.DispenseTime), value);
                 }
             }
         }
@@ -777,7 +806,15 @@ namespace Module.ViewModels
         public double OverrideMoveSpeed
         {
             get => _selectedSegmentRef?.OverrideMoveSpeed ?? 10.0;
-            set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideMoveSpeed = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.MoveSpeed), value); } }
+            set
+            {
+                if (_selectedSegmentRef != null)
+                {
+                    _selectedSegmentRef.OverrideMoveSpeed = value;
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.MoveSpeed), value);
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.JumpSpeed), value);
+                }
+            }
         }
 
         public double OverrideInterpSpeed
@@ -802,6 +839,12 @@ namespace Module.ViewModels
         {
             get => _selectedSegmentRef?.OverrideDispenseAmount ?? 1.0;
             set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideDispenseAmount = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.DispenseAmount), value); } }
+        }
+
+        public double OverrideDispenseTime
+        {
+            get => _selectedSegmentRef?.OverrideDispenseTime ?? 180.0;
+            set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideDispenseTime = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.DispenseTime), value); } }
         }
 
         public double OverridePreDelay
@@ -864,13 +907,14 @@ namespace Module.ViewModels
 
             switch (propertyName)
             {
-                case nameof(DispenseSegment.JumpSpeed): seg.JumpSpeed = value; break;
+                case nameof(DispenseSegment.MoveSpeed): seg.MoveSpeed = value; seg.JumpSpeed = value; break;
+                case nameof(DispenseSegment.JumpSpeed): seg.JumpSpeed = value; seg.MoveSpeed = value; break;
                 case nameof(DispenseSegment.InterpSpeed): seg.InterpSpeed = value; break;
-                case nameof(DispenseSegment.MoveSpeed): seg.MoveSpeed = value; break;
                 case nameof(DispenseSegment.SafeHeight): seg.SafeHeight = value; break;
                 case nameof(DispenseSegment.ApproachHeight): seg.ApproachHeight = value; break;
                 case nameof(DispenseSegment.CornerDecel): seg.CornerDecel = value; break;
                 case nameof(DispenseSegment.DispenseAmount): seg.DispenseAmount = value; break;
+                case nameof(DispenseSegment.DispenseTime): seg.DispenseTime = value; break;
                 case nameof(DispenseSegment.PreDelay): seg.PreDelay = value; break;
                 case nameof(DispenseSegment.PostDelay): seg.PostDelay = value; break;
                 case nameof(DispenseSegment.DispensingPressure): seg.DispensingPressure = value; break;
@@ -966,16 +1010,15 @@ namespace Module.ViewModels
             switch (payload.PropertyName)
             {
                 case nameof(DispenseSegment.JumpSpeed):
-                    _step.DispenseDetail.DefaultJumpSpeed = payload.Segment.JumpSpeed;
+                case nameof(DispenseSegment.MoveSpeed):
+                    _step.DispenseDetail.DefaultMoveSpeed = payload.Segment.MoveSpeed;
+                    _step.DispenseDetail.DefaultJumpSpeed = payload.Segment.MoveSpeed;
+                    RaisePropertyChanged(nameof(DefaultMoveSpeed));
                     RaisePropertyChanged(nameof(DefaultJumpSpeed));
                     break;
                 case nameof(DispenseSegment.InterpSpeed):
                     _step.DispenseDetail.DefaultInterpSpeed = payload.Segment.InterpSpeed;
                     RaisePropertyChanged(nameof(DefaultInterpSpeed));
-                    break;
-                case nameof(DispenseSegment.MoveSpeed):
-                    _step.DispenseDetail.DefaultMoveSpeed = payload.Segment.MoveSpeed;
-                    RaisePropertyChanged(nameof(DefaultMoveSpeed));
                     break;
                 case nameof(DispenseSegment.SafeHeight):
                     _step.DispenseDetail.DefaultSafeHeight = payload.Segment.SafeHeight;
@@ -992,6 +1035,10 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.DispenseAmount):
                     _step.DispenseDetail.DefaultDispenseAmount = payload.Segment.DispenseAmount;
                     RaisePropertyChanged(nameof(DefaultDispenseAmount));
+                    break;
+                case nameof(DispenseSegment.DispenseTime):
+                    _step.DispenseDetail.DefaultDispenseTime = payload.Segment.DispenseTime;
+                    RaisePropertyChanged(nameof(DefaultDispenseTime));
                     break;
                 case nameof(DispenseSegment.PostDelay):
                     _step.DispenseDetail.DefaultPostDelay = payload.Segment.PostDelay;
@@ -1024,6 +1071,9 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(DefaultHeightCompensation));
                     break;
             }
+
+            // UI 绑定 Effective* 属性，段参数变更后必须刷新显示
+            RaiseAllEffectiveParamsChanged();
         }
 
         /// <summary>
@@ -1036,13 +1086,17 @@ namespace Module.ViewModels
 
             switch (propertyName)
             {
-                case nameof(DispenseSegment.JumpSpeed): segRef.OverrideJumpSpeed = seg.JumpSpeed; break;
+                case nameof(DispenseSegment.JumpSpeed):
+                case nameof(DispenseSegment.MoveSpeed):
+                    segRef.OverrideMoveSpeed = seg.MoveSpeed;
+                    segRef.OverrideJumpSpeed = seg.MoveSpeed;
+                    break;
                 case nameof(DispenseSegment.InterpSpeed): segRef.OverrideInterpSpeed = seg.InterpSpeed; break;
-                case nameof(DispenseSegment.MoveSpeed): segRef.OverrideMoveSpeed = seg.MoveSpeed; break;
                 case nameof(DispenseSegment.SafeHeight): segRef.OverrideSafeHeight = seg.SafeHeight; break;
                 case nameof(DispenseSegment.ApproachHeight): segRef.OverrideApproachHeight = seg.ApproachHeight; break;
                 case nameof(DispenseSegment.CornerDecel): segRef.OverrideCornerDecel = seg.CornerDecel; break;
                 case nameof(DispenseSegment.DispenseAmount): segRef.OverrideDispenseAmount = seg.DispenseAmount; break;
+                case nameof(DispenseSegment.DispenseTime): segRef.OverrideDispenseTime = seg.DispenseTime; break;
                 case nameof(DispenseSegment.PreDelay): segRef.OverridePreDelay = seg.PreDelay; break;
                 case nameof(DispenseSegment.PostDelay): segRef.OverridePostDelay = seg.PostDelay; break;
                 case nameof(DispenseSegment.DispensingPressure): segRef.OverrideDispensingPressure = seg.DispensingPressure; break;
@@ -1070,23 +1124,41 @@ namespace Module.ViewModels
             var seg = payload.Segment;
             if (seg == null) return;
 
-            _syncingFromSelection = true;
+            SyncDefaultParamsFromSegment(seg);
+            RaiseAllEffectiveParamsChanged();
+        }
 
-            _step.DispenseDetail.DefaultJumpSpeed = seg.JumpSpeed;
-            _step.DispenseDetail.DefaultInterpSpeed = seg.InterpSpeed;
-            _step.DispenseDetail.DefaultMoveSpeed = seg.MoveSpeed;
-            _step.DispenseDetail.DefaultSafeHeight = seg.SafeHeight;
-            _step.DispenseDetail.DefaultApproachHeight = seg.ApproachHeight;
-            _step.DispenseDetail.DefaultCornerDecel = seg.CornerDecel;
-            _step.DispenseDetail.DefaultDispenseAmount = seg.DispenseAmount;
-            _step.DispenseDetail.DefaultPreDelay = seg.PreDelay;
-            _step.DispenseDetail.DefaultPostDelay = seg.PostDelay;
-            _step.DispenseDetail.DefaultDispensingPressure = seg.DispensingPressure;
-            _step.DispenseDetail.DefaultSuckBackTime = seg.SuckBackTime;
-            _step.DispenseDetail.DefaultGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
-            _step.DispenseDetail.DefaultPreDispenseDelay = seg.PreDelay;
-            _step.DispenseDetail.DefaultTeachHeight = seg.TeachHeight;
-            _step.DispenseDetail.DefaultHeightCompensation = seg.HeightCompensation;
+        /// <summary>
+        /// 将源段工艺参数同步到 DispenseDetail 默认参数
+        /// </summary>
+        private void SyncDefaultParamsFromSegment(DispenseSegment seg)
+        {
+            if (_step?.DispenseDetail == null || seg == null) return;
+
+            _syncingFromSelection = true;
+            try
+            {
+                _step.DispenseDetail.DefaultMoveSpeed = seg.MoveSpeed;
+                _step.DispenseDetail.DefaultJumpSpeed = seg.MoveSpeed;
+                _step.DispenseDetail.DefaultInterpSpeed = seg.InterpSpeed;
+                _step.DispenseDetail.DefaultSafeHeight = seg.SafeHeight;
+                _step.DispenseDetail.DefaultApproachHeight = seg.ApproachHeight;
+                _step.DispenseDetail.DefaultCornerDecel = seg.CornerDecel;
+                _step.DispenseDetail.DefaultDispenseAmount = seg.DispenseAmount;
+                _step.DispenseDetail.DefaultDispenseTime = seg.DispenseTime;
+                _step.DispenseDetail.DefaultPreDelay = seg.PreDelay;
+                _step.DispenseDetail.DefaultPostDelay = seg.PostDelay;
+                _step.DispenseDetail.DefaultDispensingPressure = seg.DispensingPressure;
+                _step.DispenseDetail.DefaultSuckBackTime = seg.SuckBackTime;
+                _step.DispenseDetail.DefaultGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
+                _step.DispenseDetail.DefaultPreDispenseDelay = seg.PreDelay;
+                _step.DispenseDetail.DefaultTeachHeight = seg.TeachHeight;
+                _step.DispenseDetail.DefaultHeightCompensation = seg.HeightCompensation;
+            }
+            finally
+            {
+                _syncingFromSelection = false;
+            }
 
             RaisePropertyChanged(nameof(DefaultJumpSpeed));
             RaisePropertyChanged(nameof(DefaultInterpSpeed));
@@ -1095,6 +1167,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultApproachHeight));
             RaisePropertyChanged(nameof(DefaultCornerDecel));
             RaisePropertyChanged(nameof(DefaultDispenseAmount));
+            RaisePropertyChanged(nameof(DefaultDispenseTime));
             RaisePropertyChanged(nameof(DefaultPreDelay));
             RaisePropertyChanged(nameof(DefaultPostDelay));
             RaisePropertyChanged(nameof(DefaultDispensingPressure));
@@ -1103,8 +1176,52 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
             RaisePropertyChanged(nameof(DefaultTeachHeight));
             RaisePropertyChanged(nameof(DefaultHeightCompensation));
+        }
 
-            _syncingFromSelection = false;
+        /// <summary>
+        /// 刷新 UI 绑定的 Effective* 工艺参数显示
+        /// </summary>
+        private void RaiseAllEffectiveParamsChanged()
+        {
+            RaisePropertyChanged(nameof(EffectiveMoveSpeed));
+            RaisePropertyChanged(nameof(EffectiveInterpSpeed));
+            RaisePropertyChanged(nameof(EffectiveSafeHeight));
+            RaisePropertyChanged(nameof(EffectiveApproachHeight));
+            RaisePropertyChanged(nameof(EffectiveCornerDecel));
+            RaisePropertyChanged(nameof(EffectiveDispenseTime));
+            RaisePropertyChanged(nameof(EffectivePreDelay));
+            RaisePropertyChanged(nameof(EffectivePostDelay));
+            RaisePropertyChanged(nameof(EffectiveGlueTriggerOffsetMm));
+            RaisePropertyChanged(nameof(EffectiveTeachHeight));
+            RaisePropertyChanged(nameof(EffectiveHeightCompensation));
+        }
+
+        /// <summary>
+        /// 从共享存储中的源段刷新当前选中引用的 Override 参数
+        /// </summary>
+        private void RefreshSelectedRefFromSource()
+        {
+            if (_selectedSegmentRef == null) return;
+            var seg = _dispenseSegmentStore?.CurrentSegments?
+                .FirstOrDefault(s => s.SegmentId == _selectedSegmentRef.SourceSegmentId);
+            if (seg == null) return;
+
+            _selectedSegmentRef.OverrideMoveSpeed = seg.MoveSpeed;
+            _selectedSegmentRef.OverrideJumpSpeed = seg.MoveSpeed;
+            _selectedSegmentRef.OverrideInterpSpeed = seg.InterpSpeed;
+            _selectedSegmentRef.OverrideSafeHeight = seg.SafeHeight;
+            _selectedSegmentRef.OverrideApproachHeight = seg.ApproachHeight;
+            _selectedSegmentRef.OverrideCornerDecel = seg.CornerDecel;
+            _selectedSegmentRef.OverrideDispenseAmount = seg.DispenseAmount;
+            _selectedSegmentRef.OverrideDispenseTime = seg.DispenseTime;
+            _selectedSegmentRef.OverridePreDelay = seg.PreDelay;
+            _selectedSegmentRef.OverridePostDelay = seg.PostDelay;
+            _selectedSegmentRef.OverrideDispensingPressure = seg.DispensingPressure;
+            _selectedSegmentRef.OverrideSuckBackTime = seg.SuckBackTime;
+            _selectedSegmentRef.OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
+            _selectedSegmentRef.OverrideTeachHeight = seg.TeachHeight;
+            _selectedSegmentRef.OverrideHeightCompensation = seg.HeightCompensation;
+            _selectedSegmentRef.UseDefaultParams = false;
         }
 
         /// <summary>
@@ -1118,7 +1235,9 @@ namespace Module.ViewModels
             {
                 case nameof(DotProcessParams.MoveSpeed):
                     _step.DispenseDetail.DefaultMoveSpeed = payload.Value;
+                    _step.DispenseDetail.DefaultJumpSpeed = payload.Value;
                     RaisePropertyChanged(nameof(DefaultMoveSpeed));
+                    RaisePropertyChanged(nameof(DefaultJumpSpeed));
                     break;
                 case nameof(DotProcessParams.SafeHeight):
                     _step.DispenseDetail.DefaultSafeHeight = payload.Value;
@@ -1167,6 +1286,8 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(DefaultSuckBackTime));
                     break;
             }
+
+            RaiseAllEffectiveParamsChanged();
         }
 
         /// <summary>
@@ -1180,13 +1301,14 @@ namespace Module.ViewModels
 
             switch (propertyName)
             {
-                case nameof(DispenseSegment.JumpSpeed): seg.JumpSpeed = value; break;
+                case nameof(DispenseSegment.MoveSpeed): seg.MoveSpeed = value; seg.JumpSpeed = value; break;
+                case nameof(DispenseSegment.JumpSpeed): seg.JumpSpeed = value; seg.MoveSpeed = value; break;
                 case nameof(DispenseSegment.InterpSpeed): seg.InterpSpeed = value; break;
-                case nameof(DispenseSegment.MoveSpeed): seg.MoveSpeed = value; break;
                 case nameof(DispenseSegment.SafeHeight): seg.SafeHeight = value; break;
                 case nameof(DispenseSegment.ApproachHeight): seg.ApproachHeight = value; break;
                 case nameof(DispenseSegment.CornerDecel): seg.CornerDecel = value; break;
                 case nameof(DispenseSegment.DispenseAmount): seg.DispenseAmount = value; break;
+                case nameof(DispenseSegment.DispenseTime): seg.DispenseTime = value; break;
                 case nameof(DispenseSegment.PreDelay): seg.PreDelay = value; break;
                 case nameof(DispenseSegment.PostDelay): seg.PostDelay = value; break;
                 case nameof(DispenseSegment.DispensingPressure): seg.DispensingPressure = value; break;
@@ -1248,13 +1370,18 @@ namespace Module.ViewModels
                 (s.EntityType == CadEntityType.Arc || s.EntityType == CadEntityType.Circle)
                 && !existingIds.Contains(s.SegmentId)).ToList();
 
+            DispenseSegmentRef lastImported = null;
+            DispenseSegment lastSource = null;
             foreach (var seg in candidates)
             {
                 var refItem = CreateSegmentRef(seg);
                 SegmentRefs?.Add(refItem);
+                lastImported = refItem;
+                lastSource = seg;
             }
 
             RefreshSourceSegmentInfo();
+            FinalizeImportSync(lastImported, lastSource);
         }
 
         /// <summary>
@@ -1268,13 +1395,30 @@ namespace Module.ViewModels
             var candidates = sources.Where(s =>
                 s.EntityType == entityType && !existingIds.Contains(s.SegmentId)).ToList();
 
+            DispenseSegmentRef lastImported = null;
+            DispenseSegment lastSource = null;
             foreach (var seg in candidates)
             {
                 var refItem = CreateSegmentRef(seg);
                 SegmentRefs?.Add(refItem);
+                lastImported = refItem;
+                lastSource = seg;
             }
 
             RefreshSourceSegmentInfo();
+            FinalizeImportSync(lastImported, lastSource);
+        }
+
+        /// <summary>
+        /// 导入完成后选中最后一段并同步工艺参数到 DISPENSE 面板
+        /// </summary>
+        private void FinalizeImportSync(DispenseSegmentRef lastImported, DispenseSegment lastSource)
+        {
+            if (lastImported == null || lastSource == null) return;
+
+            SelectedSegmentRef = lastImported;
+            SyncDefaultParamsFromSegment(lastSource);
+            RaiseAllEffectiveParamsChanged();
         }
 
         /// <summary>
@@ -1290,12 +1434,13 @@ namespace Module.ViewModels
                 SourceLength = seg.Length,
                 SourcePointCount = seg.Points?.Count ?? 0,
                 UseDefaultParams = false,
-                OverrideJumpSpeed = seg.JumpSpeed,
+                OverrideJumpSpeed = seg.MoveSpeed,
                 OverrideInterpSpeed = seg.InterpSpeed,
                 OverrideMoveSpeed = seg.MoveSpeed,
                 OverrideSafeHeight = seg.SafeHeight,
                 OverrideApproachHeight = seg.ApproachHeight,
                 OverrideDispenseAmount = seg.DispenseAmount,
+                OverrideDispenseTime = seg.DispenseTime,
                 OverridePreDelay = seg.PreDelay,
                 OverridePostDelay = seg.PostDelay,
                 OverrideDispensingPressure = seg.DispensingPressure,

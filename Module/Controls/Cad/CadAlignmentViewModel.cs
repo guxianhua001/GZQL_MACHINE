@@ -175,6 +175,7 @@ namespace Module.ViewModels
             WriteToGlobalVariablesCommand = new DelegateCommand(OnWriteToGlobalVariables, () => Step5Done);
             AddAffineCalibrationPointCommand = new DelegateCommand(OnAddAffineCalibrationPoint);
             DeleteAffineCalibrationPointCommand = new DelegateCommand<AffineCalibrationPoint>(OnDeleteAffineCalibrationPoint);
+            PickAffineCadCoordCommand = new DelegateCommand<AffineCalibrationPoint>(OnPickAffineCadCoord);
             TeachAffineMachineCoordCommand = new DelegateCommand<object>(OnTeachAffineMachineCoord);
             SaveConfigCommand = new DelegateCommand(async () => await SaveConfigToFileAsync());
             LoadConfigCommand = new DelegateCommand(async () => await LoadConfigFromFileAsync());
@@ -670,6 +671,10 @@ namespace Module.ViewModels
         // 选取模式状态
         private bool _isPickingBaseline;
         private bool _isPickingTarget;
+        /// <summary>仿射标定CAD坐标拾取模式（在画布上点击写入 CadX/CadY）</summary>
+        private bool _isPickingAffineCadCoord;
+        /// <summary>当前正在拾取CAD坐标的仿射标定点</summary>
+        private AffineCalibrationPoint _selectedAffineCalibrationPoint;
 
         /// <summary>图形窗口上显示X标记的点位集合（绑定到HalconCanvasControl.SelectedSegmentPoints）</summary>
         private List<CadPoint> _cadSelectedSegmentPoints;
@@ -923,6 +928,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         public ICommand AddAffineCalibrationPointCommand { get; private set; }
         /// <summary>删除仿射标定点命令</summary>
         public ICommand DeleteAffineCalibrationPointCommand { get; private set; }
+        /// <summary>从CAD画布选取仿射标定点坐标命令</summary>
+        public ICommand PickAffineCadCoordCommand { get; private set; }
         /// <summary>示教仿射标定点机械坐标命令</summary>
         public ICommand TeachAffineMachineCoordCommand { get; private set; }
         public DelegateCommand SaveConfigCommand { get; }
@@ -1169,6 +1176,23 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             });
         }
 
+        /// <summary>从CAD画布选取仿射标定点坐标——进入拾取模式，等待画布点击</summary>
+        private void OnPickAffineCadCoord(AffineCalibrationPoint point)
+        {
+            if (point == null) return;
+            if (!HasCadDrawingLoaded)
+            {
+                StatusMessage = L("CAD_ImportDXF_First");
+                return;
+            }
+
+            _isPickingAffineCadCoord = true;
+            _isPickingBaseline = false;
+            _isPickingTarget = false;
+            _selectedAffineCalibrationPoint = point;
+            StatusMessage = L("Step4_Status_PickCadCoord");
+        }
+
         /// <summary>删除指定的仿射标定点（重新索引）</summary>
         private void OnDeleteAffineCalibrationPoint(AffineCalibrationPoint point)
         {
@@ -1310,6 +1334,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             _isPickingBaseline = true;
             _isPickingTarget = false;
+            _isPickingAffineCadCoord = false;
 
             BaseStartIndex = -1;
             BaseEndIndex = -1;
@@ -1334,6 +1359,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             _isPickingTarget = true;
             _isPickingBaseline = false;
+            _isPickingAffineCadCoord = false;
 
             TargetStartIndex = -1;
             TargetEndIndex = -1;
@@ -1410,6 +1436,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 BaseStartIndex = BaseEndIndex = -1;
                 TargetStartIndex = TargetEndIndex = -1;
                 _isPickingBaseline = _isPickingTarget = false;
+                _isPickingAffineCadCoord = false;
+                _selectedAffineCalibrationPoint = null;
                 AlphaBaseDeg = AlphaTargetDeg = ThetaDeg = 0;
                 Step3Done = false;
                 UpdateCadPointRoles();
@@ -1960,9 +1988,20 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             CanvasDisplayEntities = newList; // 必须赋值给属性而非字段，触发 SetProperty → PropertyChanged → 绑定刷新
         }
 
-        /// <summary>HalconCanvas 点击回调：根据点击坐标找到最近点位并分配角色</summary>
+        /// <summary>HalconCanvas 点击回调：仿射CAD取点 / 基准·目标线段点位选取</summary>
         public void OnCanvasPointClicked(double cadX, double cadY)
         {
+            // 仿射标定：直接使用点击处的 CAD 坐标（与 Step4AlignPanel 一致）
+            if (_isPickingAffineCadCoord && _selectedAffineCalibrationPoint != null)
+            {
+                _selectedAffineCalibrationPoint.CadX = Math.Round(cadX, 3);
+                _selectedAffineCalibrationPoint.CadY = Math.Round(cadY, 3);
+                _isPickingAffineCadCoord = false;
+                StatusMessage = string.Format(L("Step4_Status_PickedAffineCad"),
+                    _selectedAffineCalibrationPoint.Name, cadX, cadY);
+                return;
+            }
+
             if (!_isPickingBaseline && !_isPickingTarget) return;
             if (ImportedCadPoints.Count == 0) return;
 

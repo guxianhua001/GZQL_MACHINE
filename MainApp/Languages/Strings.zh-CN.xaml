@@ -2069,6 +2069,7 @@
     <sys:String x:Key="DispenseDetail_SafeHeight">安全高度</sys:String>
     <sys:String x:Key="DispenseDetail_ApproachHeight">接近高度</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseAmount">出胶量</sys:String>
+    <sys:String x:Key="DispenseDetail_DispenseTime">点胶时间</sys:String>
     <sys:String x:Key="DispenseDetail_PreDelay">开胶前延时</sys:String>
     <sys:String x:Key="DispenseDetail_PostDelay">关胶后延时</sys:String>
     <sys:String x:Key="DispenseDetail_DispensingPressure">气压</sys:String>
@@ -2387,7 +2388,8 @@
     <sys:String x:Key="CadPoint_Dialog_BatchSetTitle">批量设置参数</sys:String>
     <sys:String x:Key="CadPoint_Status_BatchSetResult">批量设置: {0} 个参数已应用到 {1} 段</sys:String>
     <sys:String x:Key="CadPoint_Status_RoiAdded">已添加 ROI 轨迹段: {0}</sys:String>
-    <sys:String x:Key="CadPoint_Status_SimPaused">仿真已暂停（点击 Dry Run 可继续）</sys:String>
+    <sys:String x:Key="CadPoint_Status_SimPaused">仿真已暂停（点击「继续」恢复）</sys:String>
+    <sys:String x:Key="CadPoint_Status_SimResumed">仿真已继续</sys:String>
     <sys:String x:Key="CadPoint_Status_DispenseUnavailable">点胶执行服务不可用，无法执行真实运动</sys:String>
     <sys:String x:Key="CadPoint_Status_MotionUnavailable">运动服务不可用，无法读取Z轴位置</sys:String>
     <sys:String x:Key="CadPoint_Status_TeachHeightSuccess">已示教 {0} 高度: {1:F3} mm</sys:String>
@@ -2411,6 +2413,8 @@
     <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">开胶距离</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PreDelay">起点延时</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PostDelay">终点延时</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_TeachHeight">示教高度</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">高度补偿</sys:String>
 
     <!-- PrincipleWindow -->
     <sys:String x:Key="Principle_Bar1">回转中心</sys:String>
@@ -2526,6 +2530,12 @@
     <sys:String x:Key="Step3_Label_RoiTools">ROI工具</sys:String>
     <sys:String x:Key="Step3_Label_SafeHeight">安全高度</sys:String>
     <sys:String x:Key="Step3_Label_SuckBackTime">回吸时间</sys:String>
+    <sys:String x:Key="Step3_Label_XyCompensationX">XY补偿X</sys:String>
+    <sys:String x:Key="Step3_Label_XyCompensationY">XY补偿Y</sys:String>
+    <sys:String x:Key="Step3_Tip_XyCompensation">段内所有插补点机械坐标统一叠加补偿（mm），应用后更新 MX/MY</sys:String>
+    <sys:String x:Key="Step3_Btn_ApplyXyCompensation">应用XY补偿</sys:String>
+    <sys:String x:Key="CadPoint_Status_XyCompApplied">段 [{0}] XY补偿已应用：ΔX={1:F3}mm, ΔY={2:F3}mm，机械坐标已更新</sys:String>
+    <sys:String x:Key="CadPoint_Status_XyCompNeedAlign">请先完成 Step4 坐标对齐并应用变换，或保留原有点位的机械坐标后再重采样</sys:String>
     <sys:String x:Key="Step3_Label_TeachHeight">示教高度</sys:String>
     <sys:String x:Key="Step3_Radio_ContinuousInterpolation">连续插补</sys:String>
     <sys:String x:Key="Step3_Radio_SinglePoint">单点模式</sys:String>
@@ -2592,6 +2602,7 @@
 
     <!-- Step5 Simulate -->
     <sys:String x:Key="Step5_Btn_Pause">暂停</sys:String>
+    <sys:String x:Key="Step5_Btn_Resume">继续</sys:String>
     <sys:String x:Key="Step5_Btn_StartExec">开始执行</sys:String>
     <sys:String x:Key="Step5_Btn_Stop">停止</sys:String>
     <sys:String x:Key="Step5_CheckBox_DescendToWorkHeight">空跑时下降至工作高度</sys:String>
@@ -3170,6 +3181,18 @@
     <sys:String x:Key="Step3_BatchSet_Cancel">取消</sys:String>
     <sys:String x:Key="Step3_BatchSet_Confirm">确认</sys:String>
     <sys:String x:Key="Step3_BatchSet_SpeedTitle">批量设置速度</sys:String>
+    <sys:String x:Key="Step3_BatchSet_TypeHint">每行可单独选择目标图元类型；选「全部」则应用到所有已启用段。</sys:String>
+    <sys:String x:Key="Step3_BatchSet_Column_Param">参数</sys:String>
+    <sys:String x:Key="Step3_BatchSet_Column_Value">数值</sys:String>
+    <sys:String x:Key="Step3_BatchSet_Column_Unit">单位</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_All">全部</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Line">Line</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Arc">Arc</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Circle">Circle</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_LwPolyline">LwPolyline</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Polyline">Polyline</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Ellipse">Ellipse</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Spline">Spline</sys:String>
     <sys:String x:Key="CoordCalib_Title">坐标系标定</sys:String>
     <sys:String x:Key="CoordCalib_Column_Name">名称</sys:String>
     <sys:String x:Key="CoordCalib_Column_CameraDx">相机Dx</sys:String>

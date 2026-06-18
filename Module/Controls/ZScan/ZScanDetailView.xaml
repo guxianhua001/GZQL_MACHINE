@@ -197,11 +197,8 @@
                 <WrapPanel Margin="0,0,0,6">
                     <materialDesign:PackIcon Kind="Numeric1Circle" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#1565C0" />
                     <TextBlock Text="{lang:Lang ZScanDetail_Step1_BaseZ}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Medium" FontSize="12" />
-                    <TextBox Text="{Binding BaseZInput, StringFormat=F3}" Width="80" VerticalAlignment="Center" FontSize="12"
+                    <TextBox Text="{Binding BaseZInput, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Width="80" VerticalAlignment="Center" FontSize="12"
                              materialDesign:HintAssist.Hint="{lang:Lang ZScanDetail_3DCameraHeight}" Margin="0,0,8,0" />
-                    <Button Command="{Binding SetBaseZCommand}"
-                            Padding="8,4" FontSize="11"
-                            Content="{lang:Lang ZScanDetail_SetBaseZBtn}" />
                 </WrapPanel>
 
                 <WrapPanel Margin="0,0,0,6">

@@ -99,11 +99,19 @@ namespace Core.Models
         }
 
         private double _overrideDispenseAmount = 1.0;
-        /// <summary>覆盖出胶量（相对值）</summary>
+        /// <summary>覆盖出胶量（相对值，保留兼容）</summary>
         public double OverrideDispenseAmount
         {
             get => _overrideDispenseAmount;
             set => SetProperty(ref _overrideDispenseAmount, value);
+        }
+
+        private double _overrideDispenseTime = 180.0;
+        /// <summary>覆盖点胶时间 ms</summary>
+        public double OverrideDispenseTime
+        {
+            get => _overrideDispenseTime;
+            set => SetProperty(ref _overrideDispenseTime, value);
         }
 
         private double _overridePreDelay = 0.0;

@@ -1,3 +1,4 @@
+using Core.Events;
 using MotionControl.Interfaces;
 using Prism.Events;
 using Recipe.Events;
@@ -27,16 +28,18 @@ namespace StationTasks.Services
             _recipePool = recipePool;
             _ea = ea;
 
-            _ea.GetEvent<RecipeChangedEvent>().Subscribe(OnRecipeChanged);
-            _ea.GetEvent<RecipePoolChangedEvent>().Subscribe(OnPoolChanged);
-            // 位置参数保存后刷新缓存，确保自定义编辑器流程获取最新位置
-            _ea.GetEvent<SaveParametersCompletedEvent>().Subscribe(OnParametersSaved);
+            _ea.GetEvent<RecipeChangedEvent>().Subscribe(recipeName => { _ = ReloadCacheAsync(); });
+            _ea.GetEvent<RecipePoolChangedEvent>().Subscribe(poolName => { _ = ReloadCacheAsync(); });
+            // 工站参数保存（含位置编辑器 SaveStationParametersAsync）
+            _ea.GetEvent<SaveParametersCompletedEvent>().Subscribe(stationId => { _ = ReloadCacheAsync(); });
+            // 位置编辑器单独发布的事件（ParameterEditor / MultiStationPositionEditor）
+            _ea.GetEvent<StationParameterSavedEvent>().Subscribe(stationId => { _ = ReloadCacheAsync(); });
         }
 
         public async Task PreloadAsync()
         {
             var poolName = _recipePool.CurrentPoolName;
-            var recipeName = _recipePool.CurrentRecipeName;
+            var recipeName = await ResolveCurrentRecipeNameAsync(poolName);
 
             lock (_cacheLock)
             {
@@ -50,7 +53,7 @@ namespace StationTasks.Services
         public async Task<Dictionary<string, double>> GetPositionsAsync(string stationId)
         {
             var poolName = _recipePool.CurrentPoolName;
-            var recipeName = _recipePool.CurrentRecipeName;
+            var recipeName = await ResolveCurrentRecipeNameAsync(poolName);
 
             lock (_cacheLock)
             {
@@ -58,7 +61,8 @@ namespace StationTasks.Services
                     && _positionsCache != null
                     && _positionsCache.TryGetValue(stationId, out var cached))
                 {
-                    return cached;
+                    // 返回副本，避免外部持有旧缓存引用
+                    return new Dictionary<string, double>(cached);
                 }
             }
 
@@ -66,9 +70,9 @@ namespace StationTasks.Services
 
             lock (_cacheLock)
             {
-                return _positionsCache != null && _positionsCache.TryGetValue(stationId, out var result)
-                    ? result
-                    : new Dictionary<string, double>();
+                if (_positionsCache != null && _positionsCache.TryGetValue(stationId, out var result))
+                    return new Dictionary<string, double>(result);
+                return new Dictionary<string, double>();
             }
         }
 
@@ -95,28 +99,6 @@ namespace StationTasks.Services
             System.Diagnostics.Debug.WriteLine($"[RecipePositionProvider] Cache loaded: pool={poolName}, recipe={recipeName}, stations={allStationPositions.Count}, total positions={allStationPositions.Values.Sum(v => v.Count)}");
         }
 
-        private void OnRecipeChanged(string recipeName)
-        {
-            _ = ReloadCacheAsync();
-        }
-
-        private void OnPoolChanged(string poolName)
-        {
-            _ = ReloadCacheAsync();
-        }
-
-        /// <summary>
-        /// 位置参数保存完成后刷新缓存，确保后续位置查询获取最新数据
-        /// </summary>
-        private void OnParametersSaved(string recipeName)
-        {
-            lock (_cacheLock)
-            {
-                _positionsCache = null;
-            }
-            System.Diagnostics.Debug.WriteLine($"[RecipePositionProvider] Cache cleared after parameters saved. Recipe: {recipeName}");
-        }
-
         public Task InvalidateCacheAsync()
         {
             lock (_cacheLock)
@@ -127,11 +109,35 @@ namespace StationTasks.Services
             return Task.CompletedTask;
         }
 
-        private async Task ReloadCacheAsync()
+        /// <summary>
+        /// 立即从配方文件重新加载位置缓存
+        /// </summary>
+        public async Task RefreshCacheAsync()
         {
+            lock (_cacheLock)
+            {
+                _positionsCache = null;
+            }
             var poolName = _recipePool.CurrentPoolName;
-            var recipeName = _recipePool.CurrentRecipeName;
+            var recipeName = await ResolveCurrentRecipeNameAsync(poolName);
             await LoadAndCacheAsync(poolName, recipeName);
+            System.Diagnostics.Debug.WriteLine($"[RecipePositionProvider] Cache refreshed: pool={poolName}, recipe={recipeName}");
+        }
+
+        private Task ReloadCacheAsync() => RefreshCacheAsync();
+
+        /// <summary>
+        /// 与位置编辑器一致：优先使用配方池文件中的 CurrentRecipeName
+        /// </summary>
+        private async Task<string> ResolveCurrentRecipeNameAsync(string poolName)
+        {
+            var pool = await _recipePool.GetRecipePoolAsync(poolName);
+            var recipeName = pool?.CurrentRecipeName;
+            if (string.IsNullOrEmpty(recipeName))
+                recipeName = _recipePool.CurrentRecipeName;
+            if (string.IsNullOrEmpty(recipeName))
+                recipeName = "Default";
+            return recipeName;
         }
 
         /// <summary>

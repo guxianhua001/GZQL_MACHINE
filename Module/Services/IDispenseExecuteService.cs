@@ -18,7 +18,7 @@ namespace Module.Services
         /// <param name="descendToWorkHeight">是否下降到工作高度</param>
         /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
         /// <param name="token">取消令牌</param>
-        Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default);
+        Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null);
 
         /// <summary>
         /// 执行完整走胶路径：按段顺序执行出胶+插补运动
@@ -27,15 +27,16 @@ namespace Module.Services
         /// <param name="site">站点标识</param>
         /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
         /// <param name="token">取消令牌</param>
-        Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default);
+        Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null);
 
         /// <summary>
         /// 执行单点点胶：定点下降→开胶→延时→关胶→上升
         /// </summary>
         /// <param name="point">目标点</param>
+        /// <param name="processParams">Step3EditParamsPanel 单点模式工艺参数</param>
         /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
         /// <param name="token">取消令牌</param>
-        Task ExecuteSinglePointAsync(CadPoint point, int needleIndex = 0, CancellationToken token = default);
+        Task ExecuteSinglePointAsync(CadPoint point, DotProcessParams processParams, int needleIndex = 0, CancellationToken token = default);
 
         /// <summary>
         /// 单点模式执行线条走胶：逐点下降→开胶→出胶→关胶→抬升→循环
@@ -47,7 +48,7 @@ namespace Module.Services
         /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
         /// <param name="token">取消令牌</param>
         /// <param name="dryRun">空跑模式：true=不下降到工作高度不出胶，false=正常走胶</param>
-        Task ExecuteSinglePointLineAsync(IEnumerable<DispenseSegment> segments, DotProcessParams processParams, int needleIndex = 0, CancellationToken token = default, bool dryRun = false);
+        Task ExecuteSinglePointLineAsync(IEnumerable<DispenseSegment> segments, DotProcessParams processParams, int needleIndex = 0, CancellationToken token = default, bool dryRun = false, ManualResetEventSlim? pauseEvent = null);
 
         /// <summary> 进度变更事件：(状态描述, 当前段索引, 总段数) </summary>
         event Action<string, int, int>? ProgressChanged;

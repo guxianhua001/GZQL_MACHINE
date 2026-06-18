@@ -2069,6 +2069,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_SafeHeight">Safe Height</sys:String>
     <sys:String x:Key="DispenseDetail_ApproachHeight">Approach Height</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseAmount">Glue Amount</sys:String>
+    <sys:String x:Key="DispenseDetail_DispenseTime">Dispensing Time</sys:String>
     <sys:String x:Key="DispenseDetail_PreDelay">Pre Delay</sys:String>
     <sys:String x:Key="DispenseDetail_PostDelay">Post Delay</sys:String>
     <sys:String x:Key="DispenseDetail_DispensingPressure">Pressure</sys:String>
@@ -2387,7 +2388,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_Dialog_BatchSetTitle">Batch Set Parameters</sys:String>
     <sys:String x:Key="CadPoint_Status_BatchSetResult">Batch set: {0} params applied to {1} segments</sys:String>
     <sys:String x:Key="CadPoint_Status_RoiAdded">ROI segment added: {0}</sys:String>
-    <sys:String x:Key="CadPoint_Status_SimPaused">Simulation paused (click Dry Run to continue)</sys:String>
+    <sys:String x:Key="CadPoint_Status_SimPaused">Simulation paused (click Resume to continue)</sys:String>
+    <sys:String x:Key="CadPoint_Status_SimResumed">Simulation resumed</sys:String>
     <sys:String x:Key="CadPoint_Status_DispenseUnavailable">Dispense service unavailable, cannot execute real motion</sys:String>
     <sys:String x:Key="CadPoint_Status_MotionUnavailable">Motion service unavailable, cannot read Z position</sys:String>
     <sys:String x:Key="CadPoint_Status_TeachHeightSuccess">Taught {0} height: {1:F3} mm</sys:String>
@@ -2411,6 +2413,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">Glue Trigger Offset</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PreDelay">Pre Delay</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PostDelay">Post Delay</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_TeachHeight">Teach Height</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">Height Compensation</sys:String>
 
     <!-- PrincipleWindow -->
     <sys:String x:Key="Principle_Bar1">Rotation Center</sys:String>
@@ -2526,6 +2530,12 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step3_Label_RoiTools">ROI Tools</sys:String>
     <sys:String x:Key="Step3_Label_SafeHeight">Safe Height</sys:String>
     <sys:String x:Key="Step3_Label_SuckBackTime">Suck-back Time</sys:String>
+    <sys:String x:Key="Step3_Label_XyCompensationX">XY Offset X</sys:String>
+    <sys:String x:Key="Step3_Label_XyCompensationY">XY Offset Y</sys:String>
+    <sys:String x:Key="Step3_Tip_XyCompensation">Uniform XY offset (mm) added to all interpolation machine coordinates; click Apply to update MX/MY</sys:String>
+    <sys:String x:Key="Step3_Btn_ApplyXyCompensation">Apply XY Offset</sys:String>
+    <sys:String x:Key="CadPoint_Status_XyCompApplied">Segment [{0}] XY offset applied: ΔX={1:F3}mm, ΔY={2:F3}mm, machine coords updated</sys:String>
+    <sys:String x:Key="CadPoint_Status_XyCompNeedAlign">Complete Step4 alignment and apply transform first, or keep existing machine coords before resampling</sys:String>
     <sys:String x:Key="Step3_Label_TeachHeight">Teach Height</sys:String>
     <sys:String x:Key="Step3_Radio_ContinuousInterpolation">Continuous Interpolation</sys:String>
     <sys:String x:Key="Step3_Radio_SinglePoint">Single Point</sys:String>
@@ -2592,6 +2602,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
 
     <!-- Step5 Simulate -->
     <sys:String x:Key="Step5_Btn_Pause">Pause</sys:String>
+    <sys:String x:Key="Step5_Btn_Resume">Resume</sys:String>
     <sys:String x:Key="Step5_Btn_StartExec">Start Execution</sys:String>
     <sys:String x:Key="Step5_Btn_Stop">Stop</sys:String>
     <sys:String x:Key="Step5_CheckBox_DescendToWorkHeight">Descend to work height in dry run</sys:String>
@@ -3170,6 +3181,18 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step3_BatchSet_Cancel">Cancel</sys:String>
     <sys:String x:Key="Step3_BatchSet_Confirm">Confirm</sys:String>
     <sys:String x:Key="Step3_BatchSet_SpeedTitle">Batch Set Speed</sys:String>
+    <sys:String x:Key="Step3_BatchSet_TypeHint">Select target entity type per row; All applies to every enabled segment.</sys:String>
+    <sys:String x:Key="Step3_BatchSet_Column_Param">Parameter</sys:String>
+    <sys:String x:Key="Step3_BatchSet_Column_Value">Value</sys:String>
+    <sys:String x:Key="Step3_BatchSet_Column_Unit">Unit</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_All">All</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Line">Line</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Arc">Arc</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Circle">Circle</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_LwPolyline">LwPolyline</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Polyline">Polyline</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Ellipse">Ellipse</sys:String>
+    <sys:String x:Key="Step3_BatchTarget_Spline">Spline</sys:String>
     <sys:String x:Key="CoordCalib_Title">Coordinate System Calibration</sys:String>
     <sys:String x:Key="CoordCalib_Column_Name">Name</sys:String>
     <sys:String x:Key="CoordCalib_Column_CameraDx">Camera Dx</sys:String>

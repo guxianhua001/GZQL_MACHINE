@@ -29,12 +29,11 @@ namespace Module.Services
         private const int AxisDzNeedle1 = 3;
         /// <summary>针头2对应的Z轴编号（Dz₃, LogicalId=4）</summary>
         private const int AxisDzNeedle2 = 4;
-        private const int GlueIoPort = 12;
-        private const double DefaultVelocity = 10.0;
+        private const int GlueIoPort1 = 12;   // 1/Dz₂出胶IO端口编号（LogicalId=12）
+        private const int GlueIoPort2 = 13;   // 2/Dz₃出胶IO端口编号（LogicalId=13）
+
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
-        private const int DefaultGlueDurationMs = 200;
-        private const int DefaultPostDelayMs = 30;
 
         private int _isRunning;
 
@@ -52,26 +51,40 @@ namespace Module.Services
         /// <summary>根据针头索引获取对应的Z轴编号（针头1→Dz₂, 针头2→Dz₃）</summary>
         private static int GetAxisDz(int needleIndex) => needleIndex == 0 ? AxisDzNeedle1 : AxisDzNeedle2;
 
+        /// <summary>根据针头索引获取对应的出胶IO端口（针头1→LogicalId=12, 针头2→LogicalId=13）</summary>
+        private static int GetGlueIoPort(int needleIndex) => needleIndex == 0 ? GlueIoPort1 : GlueIoPort2;
+
         /// <summary>获取针头显示文本（针头1/Dz₂ 或 针头2/Dz₃）</summary>
         private static string NeedleText(int needleIndex) =>
             ResourceHelper.GetString("DispenseExec_NeedleFormat", needleIndex == 0 ? "1/Dz₂" : "2/Dz₃");
 
+        /// <summary>暂停检查——pauseEvent 未置位时阻塞，支持取消</summary>
+        private static void WaitIfPaused(ManualResetEventSlim? pauseEvent, CancellationToken token)
+        {
+            if (pauseEvent == null) return;
+            while (!pauseEvent.IsSet)
+            {
+                token.ThrowIfCancellationRequested();
+                pauseEvent.Wait(100, token);
+            }
+        }
+
         /// <summary>
         /// 空跑仿真：按行业标准工艺流程执行，可选是否下降到工作高度，不出胶
         /// </summary>
-        public async Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default)
+        public async Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null)
         {
             var modeLabel = ResourceHelper.GetString("DispenseExec_DryRun");
-            await ExecuteSegmentsAsync(segments, descendToWorkHeight: descendToWorkHeight, dispenseGlue: false, modeLabel: modeLabel, needleIndex: needleIndex, token: token);
+            await ExecuteSegmentsAsync(segments, descendToWorkHeight: descendToWorkHeight, dispenseGlue: false, modeLabel: modeLabel, needleIndex: needleIndex, token: token, pauseEvent: pauseEvent);
         }
 
         /// <summary>
         /// 执行走胶路径：按行业标准工艺流程执行，下降到工作高度并出胶
         /// </summary>
-        public async Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default)
+        public async Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null)
         {
             var modeLabel = ResourceHelper.GetString("DispenseExec_Dispense", site);
-            await ExecuteSegmentsAsync(segments, descendToWorkHeight: true, dispenseGlue: true, modeLabel: modeLabel, needleIndex: needleIndex, token: token);
+            await ExecuteSegmentsAsync(segments, descendToWorkHeight: true, dispenseGlue: true, modeLabel: modeLabel, needleIndex: needleIndex, token: token, pauseEvent: pauseEvent);
         }
 
         /// <summary>
@@ -85,7 +98,8 @@ namespace Module.Services
             bool dispenseGlue,
             string modeLabel,
             int needleIndex,
-            CancellationToken token)
+            CancellationToken token,
+            ManualResetEventSlim? pauseEvent = null)
         {
             SetRunning(true);
             PublishStatus("Running");
@@ -100,13 +114,15 @@ namespace Module.Services
                 foreach (var (seg, index) in segmentList.Select((s, i) => (s, i)))
                 {
                     token.ThrowIfCancellationRequested();
+                    WaitIfPaused(pauseEvent, token);
                     if (seg.Points == null || seg.Points.Count == 0) continue;
 
                     PublishProgress(ResourceHelper.GetString("DispenseExec_SegmentProgress", modeLabel, seg.SegmentId, seg.EntityType), index + 1, total);
                     _logger?.Info($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]");
 
-                    // 1. Z 抬升到安全高度
-                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, DefaultVelocity, token);
+                    // 1. Z 抬升到安全高度（使用 Step3 段参数 MoveSpeed）
+                    double moveSpeed = seg.MoveSpeed;
+                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, moveSpeed, token);
 
                     // 2. XY 移动到段起点上方（必须使用对齐后的机械坐标，CAD坐标不可用于运动）
                     var startPt = seg.Points.First();
@@ -116,7 +132,7 @@ namespace Module.Services
                     double startX = startPt.MachineX.Value;
                     double startY = startPt.MachineY.Value;
                     await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { AxisDx, AxisDy },
-                        new[] { startX, startY }, DefaultVelocity, token);
+                        new[] { startX, startY }, moveSpeed, token);
 
                     // 3. Z 下降到工作高度（根据 descendToWorkHeight 标志决定是否下降）
                     double targetZ = descendToWorkHeight ? seg.EffectiveZHeight : seg.SafeHeight;
@@ -126,10 +142,10 @@ namespace Module.Services
                         // 两段式下降：快速接近 + 慢速到位
                         double approachOffset = seg.ApproachHeight;
                         double approachZ = targetZ + approachOffset;
-                        double slowVel = DefaultVelocity * seg.CornerDecel;
+                        double slowVel = moveSpeed * seg.CornerDecel;
 
                         // 3a. 快速下降到接近高度
-                        await _motionService.MoveAbsAsync(axisDz, approachZ, DefaultVelocity, token);
+                        await _motionService.MoveAbsAsync(axisDz, approachZ, moveSpeed, token);
 
                         if (dispenseGlue)
                         {
@@ -140,7 +156,7 @@ namespace Module.Services
 
                             // 3c. 慢速移到触发位开胶
                             await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
-                            WriteGlueIo(true);
+                            WriteGlueIo(true, needleIndex);
                             _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_TriggerGlueOn", seg.SegmentId, triggerZ, targetZ, seg.GlueTriggerOffsetMm)}");
 
                             // 3d. 继续慢速移到目标位
@@ -164,8 +180,8 @@ namespace Module.Services
                         if (Math.Abs(currentZPos - targetZ) > 0.5)
                         {
                             _logger?.Warn($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_ZNotReached", seg.SegmentId, currentZPos, targetZ)}");
-                            double slowVel = DefaultVelocity * seg.CornerDecel;
-                            await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
+                            double retrySlowVel = moveSpeed * seg.CornerDecel;
+                            await _motionService.MoveAbsAsync(axisDz, targetZ, retrySlowVel, token);
                         }
                     }
 
@@ -196,7 +212,7 @@ namespace Module.Services
                     // 6. 关胶 + 尾端延时
                     if (dispenseGlue)
                     {
-                        WriteGlueIo(false);
+                        WriteGlueIo(false, needleIndex);
                         _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_GlueOff", seg.SegmentId)}");
 
                         if (seg.PostDelay > 0)
@@ -204,7 +220,7 @@ namespace Module.Services
                     }
 
                     // 7. Z 抬升到安全高度
-                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, DefaultVelocity, token);
+                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, moveSpeed, token);
                 }
 
                 PublishStatus("Completed");
@@ -212,14 +228,14 @@ namespace Module.Services
             }
             catch (OperationCanceledException)
             {
-                if (dispenseGlue) SafeGlueOff();
+                if (dispenseGlue) SafeGlueOff(needleIndex);
                 PublishStatus("Canceled");
                 _logger?.Warn($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_Canceled", modeLabel)}");
                 throw;
             }
             catch (Exception ex)
             {
-                if (dispenseGlue) SafeGlueOff();
+                if (dispenseGlue) SafeGlueOff(needleIndex);
                 PublishStatus("Error");
                 _logger?.Error(ex, $"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_Error", modeLabel)}");
                 throw;
@@ -232,12 +248,26 @@ namespace Module.Services
 
         /// <summary>
         /// 执行单点点胶：定点下降 → 开胶 → 延时 → 关胶 → 上升
+        /// 工艺参数来自 Step3EditParamsPanel 单点模式全局参数（DotProcessParams）
         /// </summary>
-        public async Task ExecuteSinglePointAsync(CadPoint point, int needleIndex = 0, CancellationToken token = default)
+        public async Task ExecuteSinglePointAsync(
+            CadPoint point,
+            DotProcessParams processParams,
+            int needleIndex = 0,
+            CancellationToken token = default)
         {
+            if (processParams == null)
+                throw new ArgumentNullException(nameof(processParams));
+
             SetRunning(true);
             PublishStatus("Running");
             int axisDz = GetAxisDz(needleIndex);
+
+            // Step3 单点工艺参数：MoveSpeed / DispenseTime / PostDelay
+            double moveSpeed = processParams.MoveSpeed;
+            int dispenseTimeMs = (int)processParams.DispenseTime;
+            int postDelayMs = (int)processParams.PostDelay;
+            double safeHeight = processParams.SafeHeight;
 
             try
             {
@@ -250,38 +280,39 @@ namespace Module.Services
                 _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_SinglePointStart", NeedleText(needleIndex), mx, my, mz)}");
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_MoveToSafeHeight"), 1, 1);
-                await _motionService.MoveAbsAsync(axisDz, 5.0, DefaultVelocity, token);
+                await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_XYPositioning"), 1, 1);
                 await _motionService.MoveLineAbsAsync(
                     CoordIdLinear, new[] { AxisDx, AxisDy }, new[] { mx, my },
-                    DefaultVelocity, token);
+                    moveSpeed, token);
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_ZDescending"), 1, 1);
-                await _motionService.MoveAbsAsync(axisDz, mz, DefaultVelocity, token);
+                await _motionService.MoveAbsAsync(axisDz, mz, moveSpeed, token);
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_GlueOn"), 1, 1);
-                WriteGlueIo(true);
-                await Task.Delay(DefaultGlueDurationMs, token);
-                WriteGlueIo(false);
-                await Task.Delay(DefaultPostDelayMs, token);
+                WriteGlueIo(true, needleIndex);
+                await Task.Delay(dispenseTimeMs, token);
+                WriteGlueIo(false, needleIndex);
+                if (postDelayMs > 0)
+                    await Task.Delay(postDelayMs, token);
 
                 PublishProgress(ResourceHelper.GetString("DispenseExec_SinglePointDispense") + " - " + ResourceHelper.GetString("DispenseExec_ZAscending"), 1, 1);
-                await _motionService.MoveAbsAsync(axisDz, 5.0, DefaultVelocity, token);
+                await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
                 PublishStatus("Completed");
                 _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_SinglePointCompleted")}");
             }
             catch (OperationCanceledException)
             {
-                SafeGlueOff();
+                SafeGlueOff(needleIndex);
                 PublishStatus("Error");
                 _logger?.Warn($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_SinglePointCanceled")}");
                 throw;
             }
             catch (Exception ex)
             {
-                SafeGlueOff();
+                SafeGlueOff(needleIndex);
                 PublishStatus("Error");
                 _logger?.Error(ex, $"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_SinglePointError")}");
                 throw;
@@ -300,7 +331,8 @@ namespace Module.Services
             DotProcessParams processParams,
             int needleIndex = 0,
             CancellationToken token = default,
-            bool dryRun = false)
+            bool dryRun = false,
+            ManualResetEventSlim? pauseEvent = null)
         {
             SetRunning(true);
             PublishStatus("Running");
@@ -326,6 +358,7 @@ namespace Module.Services
                 foreach (var (seg, index) in segmentList.Select((s, i) => (s, i)))
                 {
                     token.ThrowIfCancellationRequested();
+                    WaitIfPaused(pauseEvent, token);
                     if (seg.Points == null || seg.Points.Count == 0) continue;
 
                     PublishProgress(ResourceHelper.GetString("DispenseExec_SegmentProgressWithIndex", modeLabel, seg.SegmentId, index + 1, total), index + 1, total);
@@ -336,6 +369,7 @@ namespace Module.Services
                     foreach (var (point, ptIndex) in seg.Points.Select((p, i) => (p, i)))
                     {
                         token.ThrowIfCancellationRequested();
+                        WaitIfPaused(pauseEvent, token);
 
                         double px = point.MachineX ?? throw new InvalidOperationException(
                             ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId,
@@ -362,7 +396,7 @@ namespace Module.Services
 
                             // 慢速移到触发位开胶
                             await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
-                            WriteGlueIo(true);
+                            WriteGlueIo(true, needleIndex);
                             _logger?.Debug($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_PointTriggerGlueOn", seg.SegmentId, ptIndex + 1, triggerZ, targetZ, glueTriggerOffset)}");
 
                             // 继续慢速移到目标位
@@ -373,7 +407,7 @@ namespace Module.Services
 
                             await Task.Delay((int)processParams.DispenseTime, token);
 
-                            WriteGlueIo(false);
+                            WriteGlueIo(false, needleIndex);
 
                             if (processParams.PostDelay > 0)
                                 await Task.Delay((int)processParams.PostDelay, token);
@@ -395,14 +429,14 @@ namespace Module.Services
             }
             catch (OperationCanceledException)
             {
-                SafeGlueOff();
+                SafeGlueOff(needleIndex);
                 PublishStatus("Canceled");
                 _logger?.Warn($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_Canceled", modeLabel)}");
                 throw;
             }
             catch (Exception ex)
             {
-                SafeGlueOff();
+                SafeGlueOff(needleIndex);
                 PublishStatus("Error");
                 _logger?.Error(ex, $"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_Error", modeLabel)}");
                 throw;
@@ -413,15 +447,18 @@ namespace Module.Services
             }
         }
 
-        private void WriteGlueIo(bool value)
+        /// <summary>写入指定针头的出胶IO</summary>
+        private void WriteGlueIo(bool value, int needleIndex)
         {
-            try { _motionService.WriteDo(GlueIoPort, value); }
-            catch (Exception ex) { _logger?.Error(ex, $"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_WriteIoFailed", GlueIoPort, value)}"); }
+            int port = GetGlueIoPort(needleIndex);
+            try { _motionService.WriteDo(port, value); }
+            catch (Exception ex) { _logger?.Error(ex, $"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_WriteIoFailed", port, value)}"); }
         }
 
-        private void SafeGlueOff()
+        /// <summary>安全关胶——仅关闭当前针头对应的出胶IO</summary>
+        private void SafeGlueOff(int needleIndex)
         {
-            try { _motionService.WriteDo(GlueIoPort, false); }
+            try { _motionService.WriteDo(GetGlueIoPort(needleIndex), false); }
             catch { }
         }
 

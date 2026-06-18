@@ -215,6 +215,22 @@ namespace Core.Models
             set => SetProperty(ref _heightCompensation, Math.Clamp(value, -50.0, 50.0));
         }
 
+        private double _xyCompensationX = 0.0;
+        /// <summary>XY机械坐标统一补偿 X mm（段内所有插补点 MachineX 叠加）</summary>
+        public double XyCompensationX
+        {
+            get => _xyCompensationX;
+            set => SetProperty(ref _xyCompensationX, Math.Clamp(value, -50.0, 50.0));
+        }
+
+        private double _xyCompensationY = 0.0;
+        /// <summary>XY机械坐标统一补偿 Y mm（段内所有插补点 MachineY 叠加）</summary>
+        public double XyCompensationY
+        {
+            get => _xyCompensationY;
+            set => SetProperty(ref _xyCompensationY, Math.Clamp(value, -50.0, 50.0));
+        }
+
         /// <summary>有效工作高度（只读，= TeachHeight + HeightCompensation）</summary>
         [JsonIgnore]
         public double EffectiveZHeight => TeachHeight + HeightCompensation;

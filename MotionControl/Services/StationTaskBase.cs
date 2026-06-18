@@ -227,6 +227,12 @@ namespace StationTasks.Tasks
             await _positionProvider.PreloadAsync();
         }
 
+        /// <summary>强制从配方文件刷新位置缓存后再读取（运动前确保最新位置参数）</summary>
+        protected async Task RefreshPositionsCacheAsync()
+        {
+            await _positionProvider.RefreshCacheAsync();
+        }
+
         protected async Task<Dictionary<string, double>> LoadPositionsAsync()
         {
             return await _positionProvider.GetPositionsAsync(_stationId);

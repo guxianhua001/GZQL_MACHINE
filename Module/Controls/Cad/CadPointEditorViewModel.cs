@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -219,7 +220,16 @@ namespace Module.ViewModels
         private string _simStatusText;
 
         // 仿真取消令牌源
-        private System.Threading.CancellationTokenSource _simCts;
+        private CancellationTokenSource _simCts;
+
+        // 仿真暂停信号（置位=运行，复位=暂停）
+        private readonly ManualResetEventSlim _simPauseEvent = new ManualResetEventSlim(true);
+
+        // 是否处于暂停状态
+        private bool _isSimPaused;
+
+        /// <summary>批量修改段 IsEnabled 时抑制逐段刷新，避免画布反复 RenderEntities</summary>
+        private int _bulkSegmentEnableUpdateDepth;
 
         #endregion
 
@@ -399,6 +409,7 @@ namespace Module.ViewModels
                     SegmentSplitCount = value?.SamplePointCount > 0 ? value.SamplePointCount : value?.Points?.Count ?? 1;
                     SyncSelectedEntityFromSegment(value);
                     ApplySegmentSplitCommand.RaiseCanExecuteChanged();
+                    ApplyXyCompensationCommand.RaiseCanExecuteChanged();
                     ExtractCADZValuesCommand.RaiseCanExecuteChanged();
 
                     _dispenseSegmentStore.CurrentSelectedSegment = _selectedSegment;
@@ -421,13 +432,16 @@ namespace Module.ViewModels
             nameof(DispenseSegment.ApproachHeight),
             nameof(DispenseSegment.CornerDecel),
             nameof(DispenseSegment.DispenseAmount),
+            nameof(DispenseSegment.DispenseTime),
             nameof(DispenseSegment.PreDelay),
             nameof(DispenseSegment.PostDelay),
             nameof(DispenseSegment.DispensingPressure),
             nameof(DispenseSegment.SuckBackTime),
             nameof(DispenseSegment.GlueTriggerOffsetMm),
             nameof(DispenseSegment.TeachHeight),
-            nameof(DispenseSegment.HeightCompensation)
+            nameof(DispenseSegment.HeightCompensation),
+            nameof(DispenseSegment.XyCompensationX),
+            nameof(DispenseSegment.XyCompensationY)
         };
 
         /// <summary>
@@ -495,6 +509,8 @@ namespace Module.ViewModels
                 _singlePointProcessParams.SafeHeight = seg.SafeHeight;
                 _singlePointProcessParams.ApproachHeight = seg.ApproachHeight;
                 _singlePointProcessParams.CornerDecel = seg.CornerDecel;
+                _singlePointProcessParams.DispenseTime = seg.DispenseTime;
+                _singlePointProcessParams.PreDispenseDelay = seg.PreDelay;
                 _singlePointProcessParams.PostDelay = seg.PostDelay;
                 _singlePointProcessParams.DotGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
                 _singlePointProcessParams.TeachHeight = seg.TeachHeight;
@@ -514,10 +530,12 @@ namespace Module.ViewModels
             {
                 switch (propertyName)
                 {
-                    case nameof(DotProcessParams.MoveSpeed): seg.MoveSpeed = value; break;
+                    case nameof(DotProcessParams.MoveSpeed): seg.MoveSpeed = value; seg.JumpSpeed = value; break;
                     case nameof(DotProcessParams.SafeHeight): seg.SafeHeight = value; break;
                     case nameof(DotProcessParams.ApproachHeight): seg.ApproachHeight = value; break;
                     case nameof(DotProcessParams.CornerDecel): seg.CornerDecel = value; break;
+                    case nameof(DotProcessParams.DispenseTime): seg.DispenseTime = value; break;
+                    case nameof(DotProcessParams.PreDispenseDelay): seg.PreDelay = value; break;
                     case nameof(DotProcessParams.PostDelay): seg.PostDelay = value; break;
                     case nameof(DotProcessParams.DotGlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
                     case nameof(DotProcessParams.TeachHeight): seg.TeachHeight = value; break;
@@ -983,12 +1001,10 @@ namespace Module.ViewModels
             get => _selectedSegmentId;
             set
             {
-                if (SetProperty(ref _selectedSegmentId, value))
-                {
-                    var seg = Segments.FirstOrDefault(s => s.SegmentId == value);
-                    if (seg != null)
-                        SelectedSegment = seg;
-                }
+                if (!SetProperty(ref _selectedSegmentId, value)) return;
+                var seg = Segments.FirstOrDefault(s => s.SegmentId == value);
+                if (seg != null && seg != _selectedSegment)
+                    SelectedSegment = seg;
             }
         }
 
@@ -1107,9 +1123,27 @@ namespace Module.ViewModels
                 if (SetProperty(ref _isSimulating, value))
                 {
                     RaisePropertyChanged(nameof(CanExecute));
+                    PauseSimCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
+
+        /// <summary>仿真是否已暂停</summary>
+        public bool IsSimPaused
+        {
+            get => _isSimPaused;
+            private set
+            {
+                if (SetProperty(ref _isSimPaused, value))
+                {
+                    RaisePropertyChanged(nameof(PauseSimButtonText));
+                    PauseSimCommand?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>暂停/继续按钮文本</summary>
+        public string PauseSimButtonText => IsSimPaused ? L("Step5_Btn_Resume") : L("Step5_Btn_Pause");
 
         /// <summary>仿真状态描述文本</summary>
         public string SimStatusText
@@ -1123,7 +1157,15 @@ namespace Module.ViewModels
         public bool IsSimMode
         {
             get => _isSimMode;
-            set => SetProperty(ref _isSimMode, value);
+            set
+            {
+                if (!SetProperty(ref _isSimMode, value)) return;
+                if (value && _isRealDryRunMode)
+                {
+                    _isRealDryRunMode = false;
+                    RaisePropertyChanged(nameof(IsRealDryRunMode));
+                }
+            }
         }
 
         private bool _isRealDryRunMode;
@@ -1131,7 +1173,15 @@ namespace Module.ViewModels
         public bool IsRealDryRunMode
         {
             get => _isRealDryRunMode;
-            set => SetProperty(ref _isRealDryRunMode, value);
+            set
+            {
+                if (!SetProperty(ref _isRealDryRunMode, value)) return;
+                if (value && _isSimMode)
+                {
+                    _isSimMode = false;
+                    RaisePropertyChanged(nameof(IsSimMode));
+                }
+            }
         }
 
         private bool _descendInDryRun;
@@ -1325,6 +1375,12 @@ namespace Module.ViewModels
             _applySegmentSplitCommand ??= new DelegateCommand(ExecuteApplySegmentSplit,
                 () => _selectedSegment != null && _segmentSplitCount >= 2);
 
+        private DelegateCommand _applyXyCompensationCommand;
+        /// <summary>应用段级 XY 补偿——刷新段内所有点机械坐标</summary>
+        public DelegateCommand ApplyXyCompensationCommand =>
+            _applyXyCompensationCommand ??= new DelegateCommand(ExecuteApplyXyCompensation,
+                () => _selectedSegment?.Points != null && _selectedSegment.Points.Count > 0);
+
         private DelegateCommand _teachHeightCommand;
         public DelegateCommand TeachHeightCommand =>
             _teachHeightCommand ??= new DelegateCommand(ExecuteTeachHeight, () => _selectedSegment != null);
@@ -1371,6 +1427,7 @@ namespace Module.ViewModels
             try
             {
                 List<CadPoint> newPoints = null;
+                var oldPoints = _selectedSegment.Points?.ToList();
 
                 // 优先使用 OriginalSourceEntity（原始图元，如 CadArc/CadCircle）进行重新离散化
                 if (_selectedSegment.OriginalSourceEntity != null && _dxfParser != null
@@ -1402,6 +1459,10 @@ namespace Module.ViewModels
                 // 只更新采样点，不替换 SourceEntity，保持原始轨迹形状
                 _selectedSegment.Points = newPoints;
                 _selectedSegment.SamplePointCount = _segmentSplitCount;
+
+                // 重采样后恢复/重算机械坐标（仿射变换 + XY补偿，或沿旧点插值）
+                RefreshSegmentMachineCoordinates(_selectedSegment, oldPoints);
+
                 SelectedSegmentPoints = newPoints;
                 RaisePropertyChanged(nameof(SegmentSummaryDisplay));
 
@@ -1411,6 +1472,141 @@ namespace Module.ViewModels
             {
                 GlobalStatus = string.Format(L("CadPoint_Status_ResampleError"), ex.Message);
             }
+        }
+
+        /// <summary>应用段级 XY 补偿——基于仿射变换重算机械坐标并叠加补偿量</summary>
+        private void ExecuteApplyXyCompensation()
+        {
+            if (_selectedSegment?.Points == null || _selectedSegment.Points.Count == 0)
+                return;
+
+            if (!RefreshSegmentMachineCoordinates(_selectedSegment))
+            {
+                GlobalStatus = L("CadPoint_Status_XyCompNeedAlign");
+                return;
+            }
+
+            SelectedSegmentPoints = _selectedSegment.Points.ToList();
+            GlobalStatus = string.Format(L("CadPoint_Status_XyCompApplied"),
+                _selectedSegment.SegmentId, _selectedSegment.XyCompensationX, _selectedSegment.XyCompensationY);
+        }
+
+        /// <summary>获取仿射标定 Z 基准高度（标定点 Dz 均值）</summary>
+        private double GetAffineZBaseline()
+        {
+            var validDz = _affineCalibrationPoints.Where(p => p.MachineDz != 0).ToList();
+            return validDz.Count > 0 ? validDz.Average(p => p.MachineDz) : 0;
+        }
+
+        /// <summary>
+        /// 刷新段内所有点的机械坐标：优先仿射变换 + 段级 XY 补偿；
+        /// 无仿射时沿重采样前旧点插值机械坐标以保持显示
+        /// </summary>
+        /// <returns>是否成功写入至少一个点的机械坐标</returns>
+        private bool RefreshSegmentMachineCoordinates(DispenseSegment seg, List<CadPoint> resampleFallbackOldPoints = null)
+        {
+            if (seg?.Points == null || seg.Points.Count == 0)
+                return false;
+
+            var affineResult = _currentNeedleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+            if (affineResult != null)
+            {
+                double avgDz = GetAffineZBaseline();
+                foreach (var pt in seg.Points)
+                {
+                    var (mx, my) = AffineCalibrationService.Transform(affineResult, pt.X, pt.Y);
+                    pt.MachineX = Math.Round(mx + seg.XyCompensationX, 3);
+                    pt.MachineY = Math.Round(my + seg.XyCompensationY, 3);
+                    pt.MachineZ = avgDz;
+                }
+                return true;
+            }
+
+            if (resampleFallbackOldPoints != null && resampleFallbackOldPoints.Count >= 2
+                && resampleFallbackOldPoints.Any(p => p.MachineX.HasValue && p.MachineY.HasValue))
+            {
+                InterpolateMachineCoordinatesFromOld(resampleFallbackOldPoints, seg.Points);
+                return seg.Points.Any(p => p.MachineX.HasValue && p.MachineY.HasValue);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 沿 CAD 弧长参数在旧点与新点之间插值机械坐标（重采样且无仿射结果时的回退方案）
+        /// </summary>
+        private static void InterpolateMachineCoordinatesFromOld(List<CadPoint> oldPoints, List<CadPoint> newPoints)
+        {
+            if (oldPoints == null || newPoints == null || oldPoints.Count < 2 || newPoints.Count == 0)
+                return;
+
+            var oldLengths = BuildCumulativeLengths(oldPoints, out double oldTotal);
+            var newLengths = BuildCumulativeLengths(newPoints, out double newTotal);
+            if (oldTotal < 1e-9 || newTotal < 1e-9)
+                return;
+
+            for (int i = 0; i < newPoints.Count; i++)
+            {
+                double targetLength = newLengths[i];
+                // 将新点弧长映射到旧点弧长比例
+                double mappedLength = oldTotal > 1e-9 ? targetLength / newTotal * oldTotal : 0;
+                InterpolateMachineAtLength(oldPoints, oldLengths, mappedLength, newPoints[i]);
+            }
+        }
+
+        /// <summary>构建点列累积弧长（首点为 0）</summary>
+        private static List<double> BuildCumulativeLengths(List<CadPoint> points, out double totalLength)
+        {
+            totalLength = 0;
+            var cumulative = new List<double> { 0 };
+            for (int i = 1; i < points.Count; i++)
+            {
+                double dx = points[i].X - points[i - 1].X;
+                double dy = points[i].Y - points[i - 1].Y;
+                double dz = points[i].Z - points[i - 1].Z;
+                totalLength += Math.Sqrt(dx * dx + dy * dy + dz * dz);
+                cumulative.Add(totalLength);
+            }
+            return cumulative;
+        }
+
+        /// <summary>在指定弧长位置插值机械坐标写入目标点</summary>
+        private static void InterpolateMachineAtLength(List<CadPoint> points, List<double> cumulativeLengths, double targetLength, CadPoint target)
+        {
+            int segIdx = 0;
+            for (int j = 1; j < cumulativeLengths.Count; j++)
+            {
+                if (cumulativeLengths[j] >= targetLength)
+                {
+                    segIdx = j - 1;
+                    break;
+                }
+                if (j == cumulativeLengths.Count - 1)
+                    segIdx = j - 1;
+            }
+
+            double segStart = cumulativeLengths[segIdx];
+            double segEnd = cumulativeLengths[segIdx + 1];
+            double segLen = segEnd - segStart;
+            double progress = segLen > 1e-9 ? (targetLength - segStart) / segLen : 0;
+
+            var p1 = points[segIdx];
+            var p2 = points[segIdx + 1];
+
+            if (p1.MachineX.HasValue && p2.MachineX.HasValue)
+                target.MachineX = Math.Round(p1.MachineX.Value + (p2.MachineX.Value - p1.MachineX.Value) * progress, 3);
+            else if (p1.MachineX.HasValue)
+                target.MachineX = p1.MachineX;
+
+            if (p1.MachineY.HasValue && p2.MachineY.HasValue)
+                target.MachineY = Math.Round(p1.MachineY.Value + (p2.MachineY.Value - p1.MachineY.Value) * progress, 3);
+            else if (p1.MachineY.HasValue)
+                target.MachineY = p1.MachineY;
+
+            if (p1.MachineZ.HasValue && p2.MachineZ.HasValue)
+                target.MachineZ = Math.Round(p1.MachineZ.Value + (p2.MachineZ.Value - p1.MachineZ.Value) * progress, 3);
+            else if (p1.MachineZ.HasValue)
+                target.MachineZ = p1.MachineZ;
         }
 
         /// <summary>
@@ -1553,10 +1749,10 @@ namespace Module.ViewModels
         private DelegateCommand _executeRunCommand;
         /// <summary>统一执行命令——根据当前模式选择仿真/真实空跑/真实点胶</summary>
         public DelegateCommand ExecuteRunCommand =>
-            _executeRunCommand ??= new DelegateCommand(ExecuteRun, () => CanExecute);
+            _executeRunCommand ??= new DelegateCommand(() => ExecuteRun(), () => CanExecute);
 
         private DelegateCommand _pauseSimCommand;
-        /// <summary>暂停仿真命令</summary>
+        /// <summary>暂停/继续仿真命令</summary>
         public DelegateCommand PauseSimCommand =>
             _pauseSimCommand ??= new DelegateCommand(ExecutePauseSim, () => _isSimulating);
 
@@ -2111,25 +2307,33 @@ namespace Module.ViewModels
         /// <summary>全选所有轨迹段（设置 IsEnabled = true）</summary>
         private void ExecuteSelectAllSegments()
         {
-            foreach (var seg in Segments)
+            _bulkSegmentEnableUpdateDepth++;
+            try
             {
-                seg.IsEnabled = true;
+                foreach (var seg in Segments)
+                    seg.IsEnabled = true;
             }
-            RaisePropertyChanged(nameof(SegmentCountDisplay));
-            RaisePropertyChanged(nameof(TotalLengthDisplay));
-            DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
+            finally
+            {
+                _bulkSegmentEnableUpdateDepth--;
+            }
+            RefreshSegmentSelectionState();
         }
 
         /// <summary>反选轨迹段的启用状态</summary>
         private void ExecuteInvertSelection()
         {
-            foreach (var seg in Segments)
+            _bulkSegmentEnableUpdateDepth++;
+            try
             {
-                seg.IsEnabled = !seg.IsEnabled;
+                foreach (var seg in Segments)
+                    seg.IsEnabled = !seg.IsEnabled;
             }
-            RaisePropertyChanged(nameof(SegmentCountDisplay));
-            RaisePropertyChanged(nameof(TotalLengthDisplay));
-            DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
+            finally
+            {
+                _bulkSegmentEnableUpdateDepth--;
+            }
+            RefreshSegmentSelectionState();
         }
 
         /// <summary>批量设置速度——对 IsEnabled 为 true 的段设置移动速度与插补速度</summary>
@@ -2195,8 +2399,8 @@ namespace Module.ViewModels
             {
                 Title = L("CadPoint_Dialog_BatchSetTitle"),
                 Content = dialog,
-                Width = 470,
-                Height = 520,
+                Width = 540,
+                Height = 580,
                 ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = Application.Current.MainWindow,
@@ -2439,23 +2643,11 @@ namespace Module.ViewModels
 
             try
             {
-                // 计算当前针头的Z基准高度（当前标定点的Z平均值）
-                double avgDz = 0;
-                var validDz = _affineCalibrationPoints.Where(p => p.MachineDz != 0).ToList();
-                if (validDz.Count > 0) avgDz = validDz.Average(p => p.MachineDz);
-
                 int count = 0;
                 foreach (var seg in Segments)
                 {
-                    if (seg.Points == null) continue;
-                    foreach (var pt in seg.Points)
-                    {
-                        var (mx, my) = AffineCalibrationService.Transform(currentResult, pt.X, pt.Y);
-                        pt.MachineX = mx;
-                        pt.MachineY = my;
-                        pt.MachineZ = avgDz;
-                        count++;
-                    }
+                    if (RefreshSegmentMachineCoordinates(seg))
+                        count += seg.Points?.Count ?? 0;
                 }
 
                 // 同步到对齐服务
@@ -2473,7 +2665,7 @@ namespace Module.ViewModels
 
                 // 刷新采样点位列表，使 Step3 DataGrid 显示更新后的 MachineX/MachineY
                 if (_selectedSegment != null)
-                    SelectedSegmentPoints = _selectedSegment.Points;
+                    SelectedSegmentPoints = _selectedSegment.Points?.ToList();
             }
             catch (Exception ex)
             {
@@ -2593,8 +2785,8 @@ namespace Module.ViewModels
                 return;
             }
 
-            _simCts = new System.Threading.CancellationTokenSource();
-            IsSimulating = true;
+            _simCts = new CancellationTokenSource();
+            PrepareSimTaskState();
             SimProgress = 0;
 
             try
@@ -2621,9 +2813,70 @@ namespace Module.ViewModels
             }
             finally
             {
-                IsSimulating = false;
-                _simCts?.Dispose();
-                _simCts = null;
+                CleanupSimTaskState();
+            }
+        }
+
+        /// <summary>初始化仿真任务状态</summary>
+        private void PrepareSimTaskState()
+        {
+            IsSimPaused = false;
+            _simPauseEvent.Set();
+            IsSimulating = true;
+            RaisePropertyChanged(nameof(PauseSimButtonText));
+        }
+
+        /// <summary>清理仿真任务状态</summary>
+        private void CleanupSimTaskState()
+        {
+            IsSimPaused = false;
+            _simPauseEvent.Set();
+            IsSimulating = false;
+            _simCts?.Dispose();
+            _simCts = null;
+            RaisePropertyChanged(nameof(PauseSimButtonText));
+        }
+
+        /// <summary>等待暂停解除（支持取消）</summary>
+        private async Task WaitSimPauseAsync(CancellationToken token)
+        {
+            while (!_simPauseEvent.IsSet)
+            {
+                token.ThrowIfCancellationRequested();
+                await Task.Run(() => _simPauseEvent.Wait(100, token), token);
+            }
+        }
+
+        /// <summary>可暂停的延时——用于 UI 仿真</summary>
+        private async Task SimDelayAsync(int delayMs, CancellationToken token)
+        {
+            const int chunkMs = 50;
+            int elapsed = 0;
+            while (elapsed < delayMs)
+            {
+                token.ThrowIfCancellationRequested();
+                await WaitSimPauseAsync(token);
+                int step = Math.Min(chunkMs, delayMs - elapsed);
+                await Task.Delay(step, token);
+                elapsed += step;
+            }
+        }
+
+        /// <summary>停止点胶相关运动轴（暂停/停止时安全减速）</summary>
+        private void StopDispenseMotionAxes()
+        {
+            if (_motionService == null) return;
+            try
+            {
+                const int AxisDx = 8, AxisDy = 6, AxisDzNeedle1 = 3, AxisDzNeedle2 = 4;
+                _motionService.StopAxis(AxisDx);
+                _motionService.StopAxis(AxisDy);
+                _motionService.StopAxis(AxisDzNeedle1);
+                _motionService.StopAxis(AxisDzNeedle2);
+            }
+            catch
+            {
+                // 停止轴失败不阻断 UI 流程
             }
         }
 
@@ -2634,6 +2887,7 @@ namespace Module.ViewModels
             for (int i = 0; i < total; i++)
             {
                 _simCts!.Token.ThrowIfCancellationRequested();
+                await WaitSimPauseAsync(_simCts.Token);
 
                 var seg = enabledSegments[i];
                 SimStatusText = $"[{L("Step3_Radio_ContinuousInterpolation")}] {seg.SegmentId} ({i + 1}/{total})...";
@@ -2643,7 +2897,7 @@ namespace Module.ViewModels
 
                 // 模拟每段执行耗时（按长度比例，至少 200ms）
                 int delayMs = Math.Max(200, (int)(seg.Length * 50));
-                await Task.Delay(delayMs, _simCts.Token);
+                await SimDelayAsync(delayMs, _simCts!.Token);
             }
         }
 
@@ -2670,6 +2924,7 @@ namespace Module.ViewModels
                 for (int ptIdx = 0; ptIdx < seg.Points.Count; ptIdx++)
                 {
                     _simCts!.Token.ThrowIfCancellationRequested();
+                    await WaitSimPauseAsync(_simCts.Token);
                     pointIndex++;
 
                     // 高亮当前执行的点位
@@ -2680,7 +2935,7 @@ namespace Module.ViewModels
 
                     // 模拟单点工艺周期：抬升→XY定位→Z下降→出胶→关胶→抬升
                     int delayMs = Math.Max(100, (int)(SinglePointProcessParams.DispenseTime + SinglePointProcessParams.PreDispenseDelay + SinglePointProcessParams.PostDelay));
-                    await Task.Delay(delayMs, _simCts.Token);
+                    await SimDelayAsync(delayMs, _simCts!.Token);
                 }
             }
 
@@ -2688,24 +2943,45 @@ namespace Module.ViewModels
             SelectedPointIndex = -1;
         }
 
-        /// <summary>暂停仿真（通过取消令牌实现）</summary>
+        /// <summary>暂停/继续仿真——UI 仿真与真实执行均通过 _simPauseEvent 阻塞</summary>
         private void ExecutePauseSim()
         {
-            // TODO: 实现真正的暂停逻辑（需要更复杂的异步状态机）
-            // 目前简化为停止后可重新开始
+            if (!_isSimulating) return;
+
+            if (IsSimPaused)
+            {
+                IsSimPaused = false;
+                _simPauseEvent.Set();
+                SimStatusText = L("CadPoint_Status_SimResumed");
+                GlobalStatus = L("CadPoint_Status_SimResumed");
+                return;
+            }
+
+            IsSimPaused = true;
+            _simPauseEvent.Reset();
+            StopDispenseMotionAxes();
+            SimStatusText = L("CadPoint_Status_SimPaused");
             GlobalStatus = L("CadPoint_Status_SimPaused");
         }
 
-        /// <summary>停止仿真——取消正在进行的异步任务</summary>
+        /// <summary>停止仿真/执行——取消异步任务并安全停止运动轴</summary>
         private void ExecuteStopSim()
         {
+            if (!_isSimulating && _simCts == null) return;
+
+            IsSimPaused = false;
+            _simPauseEvent.Set();
             _simCts?.Cancel();
+            StopDispenseMotionAxes();
+            SimStatusText = L("CadPoint_Status_SimStopped");
+            GlobalStatus = L("CadPoint_Status_SimStopped");
         }
 
         /// <summary>
-        /// 统一执行入口——Step5 仅支持仿真/真实空跑，真实点胶在 Step6
+        /// 统一执行入口——Step5 走仿真/真实空跑；Step6 路径执行强制真实点胶
         /// </summary>
-        private async void ExecuteRun()
+        /// <param name="realDispenseOnly">true 时忽略 Step5 模式，仅执行真实点胶（Step6）</param>
+        private async void ExecuteRun(bool realDispenseOnly = false)
         {
             var enabledSegments = Segments.Where(s => s.IsEnabled).ToList();
             if (enabledSegments.Count == 0)
@@ -2714,7 +2990,8 @@ namespace Module.ViewModels
                 return;
             }
 
-            if (IsSimMode)
+            // Step5：UI 仿真
+            if (!realDispenseOnly && IsSimMode)
             {
                 ExecuteDryRun();
                 return;
@@ -2726,15 +3003,16 @@ namespace Module.ViewModels
                 return;
             }
 
-            _simCts = new System.Threading.CancellationTokenSource();
-            IsSimulating = true;
+            _simCts = new CancellationTokenSource();
+            PrepareSimTaskState();
             SimProgress = 0;
 
             try
             {
                 _dispenseExecuteService.ProgressChanged += OnExecuteProgressChanged;
 
-                if (IsRealDryRunMode)
+                // Step5：真实空跑（运动不出胶）
+                if (!realDispenseOnly && IsRealDryRunMode)
                 {
                     if (LineDispenseMode == LineDispenseMode.SinglePoint)
                     {
@@ -2744,29 +3022,32 @@ namespace Module.ViewModels
                             : L("CadPoint_Status_DryRunStart_Safe") + $" ({L("Step3_Radio_SinglePoint")})";
                         await _dispenseExecuteService.ExecuteSinglePointLineAsync(
                             enabledSegments, SinglePointProcessParams, CurrentNeedleIndex, _simCts.Token,
-                            dryRun: !DescendInDryRun);
+                            dryRun: !DescendInDryRun, pauseEvent: _simPauseEvent);
                     }
                     else
                     {
                         // 连续插补模式空跑
                         GlobalStatus = DescendInDryRun ? L("CadPoint_Status_DryRunStart_Descend") : L("CadPoint_Status_DryRunStart_Safe");
-                        await _dispenseExecuteService.DryRunAsync(enabledSegments, DescendInDryRun, CurrentNeedleIndex, _simCts.Token);
+                        await _dispenseExecuteService.DryRunAsync(
+                            enabledSegments, DescendInDryRun, CurrentNeedleIndex, _simCts.Token, _simPauseEvent);
                     }
                     GlobalStatus = L("CadPoint_Status_DryRunCompleted");
                 }
-                else if (IsRealDispenseMode)
+                else if (realDispenseOnly || IsRealDispenseMode)
                 {
                     if (LineDispenseMode == LineDispenseMode.SinglePoint)
                     {
                         GlobalStatus = L("LineBC_Status_SinglePointExecuting");
                         await _dispenseExecuteService.ExecuteSinglePointLineAsync(
-                            enabledSegments, SinglePointProcessParams, CurrentNeedleIndex, _simCts.Token);
+                            enabledSegments, SinglePointProcessParams, CurrentNeedleIndex, _simCts.Token,
+                            pauseEvent: _simPauseEvent);
                         GlobalStatus = L("LineBC_Status_SinglePointCompleted");
                     }
                     else
                     {
                         GlobalStatus = L("LineBC_Status_ContinuousInterpolationExecuting");
-                        await _dispenseExecuteService.ExecutePathAsync(enabledSegments, "B/C", CurrentNeedleIndex, _simCts.Token);
+                        await _dispenseExecuteService.ExecutePathAsync(
+                            enabledSegments, "B/C", CurrentNeedleIndex, _simCts.Token, _simPauseEvent);
                         GlobalStatus = L("LineBC_Status_ContinuousInterpolationCompleted");
                     }
                 }
@@ -2787,9 +3068,7 @@ namespace Module.ViewModels
             finally
             {
                 _dispenseExecuteService.ProgressChanged -= OnExecuteProgressChanged;
-                IsSimulating = false;
-                _simCts?.Dispose();
-                _simCts = null;
+                CleanupSimTaskState();
             }
         }
 
@@ -2857,8 +3136,8 @@ namespace Module.ViewModels
                 return;
             }
 
-            // 直接调用统一执行入口
-            ExecuteRun();
+            // Step6 路径执行：强制真实点胶，不受 Step5 仿真/空跑模式影响
+            ExecuteRun(realDispenseOnly: true);
         }
 
         #endregion
@@ -2973,8 +3252,9 @@ namespace Module.ViewModels
         /// </summary>
         private void SyncSelectedEntityFromSegment(DispenseSegment segment)
         {
-            if (segment?.SourceEntity != null)
-                SelectedEntity = segment.SourceEntity;
+            var entity = segment?.SourceEntity;
+            if (entity != null && entity != _selectedEntity)
+                SelectedEntity = entity;
         }
 
         /// <summary>
@@ -3048,27 +3328,41 @@ namespace Module.ViewModels
         {
             if (e.PropertyName == nameof(DispenseSegment.IsEnabled))
             {
-                RaisePropertyChanged(nameof(CanExecute));
-                RaisePropertyChanged(nameof(SegmentCountDisplay));
-                RaisePropertyChanged(nameof(TotalLengthDisplay));
-                DryRunCommand.RaiseCanExecuteChanged();
-                ExecuteRunCommand.RaiseCanExecuteChanged();
-                ExecutePathCommand.RaiseCanExecuteChanged();
-                DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
-                RefreshSegmentIds();
+                // 全选/反选批量更新时合并为一次刷新，避免 SegmentIds 反复 Clear 导致画布不停重绘
+                if (_bulkSegmentEnableUpdateDepth > 0) return;
+                RefreshSegmentSelectionState();
+                return;
             }
             if (e.PropertyName == nameof(DispenseSegment.SegmentId))
-            {
                 RefreshSegmentIds();
-            }
+        }
+
+        /// <summary>IsEnabled 变更后统一刷新命令、统计与 Step6 线段列表</summary>
+        private void RefreshSegmentSelectionState()
+        {
+            RaisePropertyChanged(nameof(CanExecute));
+            RaisePropertyChanged(nameof(SegmentCountDisplay));
+            RaisePropertyChanged(nameof(TotalLengthDisplay));
+            RefreshSegmentIds();
+            DryRunCommand.RaiseCanExecuteChanged();
+            ExecuteRunCommand.RaiseCanExecuteChanged();
+            ExecutePathCommand.RaiseCanExecuteChanged();
+            DeleteSelectedSegmentsCommand.RaiseCanExecuteChanged();
         }
 
         /// <summary>刷新 SegmentIds 集合（Step6 下拉框：仅启用段）</summary>
         private void RefreshSegmentIds()
         {
+            var enabledIds = Segments.Where(s => s.IsEnabled).Select(s => s.SegmentId).ToList();
+            if (SegmentIds.Count == enabledIds.Count && SegmentIds.SequenceEqual(enabledIds))
+            {
+                EnsureDefaultSelectedSegmentId();
+                return;
+            }
+
             SegmentIds.Clear();
-            foreach (var seg in Segments.Where(s => s.IsEnabled))
-                SegmentIds.Add(seg.SegmentId);
+            foreach (var id in enabledIds)
+                SegmentIds.Add(id);
             EnsureDefaultSelectedSegmentId();
         }
 
@@ -3088,8 +3382,19 @@ namespace Module.ViewModels
                 return;
             }
 
-            if (string.IsNullOrEmpty(_selectedSegmentId) || !enabledIds.Contains(_selectedSegmentId))
-                SelectedSegmentId = enabledIds[0];
+            string targetId = !string.IsNullOrEmpty(_selectedSegmentId) && enabledIds.Contains(_selectedSegmentId)
+                ? _selectedSegmentId
+                : enabledIds[0];
+
+            if (_selectedSegmentId != targetId)
+            {
+                _selectedSegmentId = targetId;
+                RaisePropertyChanged(nameof(SelectedSegmentId));
+            }
+
+            var seg = Segments.FirstOrDefault(s => s.SegmentId == targetId);
+            if (seg != null && seg != _selectedSegment)
+                SelectedSegment = seg;
         }
 
         /// <summary>捕获 Step5/Step6 面板当前操作选项</summary>
@@ -3178,8 +3483,8 @@ namespace Module.ViewModels
         /// </summary>
         public void ResetAll()
         {
-            // 停止正在运行的仿真
-            _simCts?.Cancel();
+            // 停止正在运行的仿真/执行
+            ExecuteStopSim();
 
             // 清空集合
             CanvasEntities.Clear();
@@ -3809,6 +4114,58 @@ namespace Module.ViewModels
         }
 
         public virtual void ApplyTo(DispenseSegment seg) { }
+
+        /// <summary>目标图元类型（All=全部已启用段）</summary>
+        private BatchTargetEntityType _targetEntityType = BatchTargetEntityType.All;
+        public BatchTargetEntityType TargetEntityType
+        {
+            get => _targetEntityType;
+            set => SetProperty(ref _targetEntityType, value);
+        }
+
+        /// <summary>判断当前段是否匹配类型筛选</summary>
+        protected bool MatchesSegment(DispenseSegment seg)
+        {
+            if (TargetEntityType == BatchTargetEntityType.All)
+                return true;
+            return seg.EntityType == BatchTargetEntityTypeHelper.ToCadEntityType(TargetEntityType);
+        }
+    }
+
+    /// <summary>批量设置目标图元类型</summary>
+    public enum BatchTargetEntityType
+    {
+        All,
+        Line,
+        Arc,
+        Circle,
+        LwPolyline,
+        Polyline,
+        Ellipse,
+        Spline
+    }
+
+    /// <summary>批量设置类型下拉项</summary>
+    public class BatchTargetTypeOption
+    {
+        public BatchTargetEntityType Value { get; init; }
+        public string DisplayName { get; init; } = string.Empty;
+    }
+
+    /// <summary>BatchTargetEntityType 与 CadEntityType 映射</summary>
+    internal static class BatchTargetEntityTypeHelper
+    {
+        public static CadEntityType ToCadEntityType(BatchTargetEntityType type) => type switch
+        {
+            BatchTargetEntityType.Line => CadEntityType.Line,
+            BatchTargetEntityType.Arc => CadEntityType.Arc,
+            BatchTargetEntityType.Circle => CadEntityType.Circle,
+            BatchTargetEntityType.LwPolyline => CadEntityType.LwPolyline,
+            BatchTargetEntityType.Polyline => CadEntityType.Polyline,
+            BatchTargetEntityType.Ellipse => CadEntityType.Ellipse,
+            BatchTargetEntityType.Spline => CadEntityType.Spline,
+            _ => CadEntityType.Unknown
+        };
     }
 
     /// <summary>具体的批量设置参数项——带类型化的应用逻辑</summary>
@@ -3824,6 +4181,7 @@ namespace Module.ViewModels
 
         public override void ApplyTo(DispenseSegment seg)
         {
+            if (!MatchesSegment(seg)) return;
             _applyAction(seg, Value);
         }
     }
@@ -3832,6 +4190,8 @@ namespace Module.ViewModels
     public class BatchSetParamsViewModel : BindableBase
     {
         public ObservableCollection<BatchParamItem> BatchParamItems { get; } = new();
+        /// <summary>各参数行可选择的图元类型</summary>
+        public IReadOnlyList<BatchTargetTypeOption> TargetTypeOptions { get; }
         public DelegateCommand ConfirmCommand { get; }
         public DelegateCommand CancelCommand { get; }
 
@@ -3846,9 +4206,25 @@ namespace Module.ViewModels
             return resource?.ToString() ?? $"[{key}]";
         }
 
+        private static IReadOnlyList<BatchTargetTypeOption> BuildTargetTypeOptions()
+        {
+            return new[]
+            {
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.All, DisplayName = L("Step3_BatchTarget_All") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.Line, DisplayName = L("Step3_BatchTarget_Line") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.Arc, DisplayName = L("Step3_BatchTarget_Arc") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.Circle, DisplayName = L("Step3_BatchTarget_Circle") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.LwPolyline, DisplayName = L("Step3_BatchTarget_LwPolyline") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.Polyline, DisplayName = L("Step3_BatchTarget_Polyline") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.Ellipse, DisplayName = L("Step3_BatchTarget_Ellipse") },
+                new BatchTargetTypeOption { Value = BatchTargetEntityType.Spline, DisplayName = L("Step3_BatchTarget_Spline") },
+            };
+        }
+
         public BatchSetParamsViewModel(DispenseSegment referenceSegment, Window dialogWindow)
         {
             _dialogWindow = dialogWindow;
+            TargetTypeOptions = BuildTargetTypeOptions();
 
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_MoveSpeed"), "mm/s", referenceSegment.MoveSpeed,
                 (seg, val) => seg.MoveSpeed = val));
@@ -3864,6 +4240,11 @@ namespace Module.ViewModels
                 (seg, val) => seg.PreDelay = val));
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_PostDelay"), "ms", referenceSegment.PostDelay,
                 (seg, val) => seg.PostDelay = val));
+            // 高度参数（示教高度 + 补偿，可按 Type 筛选）
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_TeachHeight"), "mm", referenceSegment.TeachHeight,
+                (seg, val) => { seg.TeachHeight = val; seg.ZHeight = val; }));
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_HeightCompensation"), "mm", referenceSegment.HeightCompensation,
+                (seg, val) => seg.HeightCompensation = val));
 
             ConfirmCommand = new DelegateCommand(() =>
             {

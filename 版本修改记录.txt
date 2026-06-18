@@ -1,6 +1,172 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.18 — DISPENSE 步骤轴解析改为全局查找
+--------------------------------------------
+
+1. 问题
+   - DispenseStepAction.ResolveAxisId 使用 task.FindAxisIdByName
+   - ProcessStepExecutor 传入的 task 是当前执行工站（如 AssemblyStation）
+   - Dx/Dy/Dz 属于点胶工站(DispenserStation)，在装配站轴列表中找不到
+
+2. 修复
+   - 改为 ResolveDispenseAxisId，从 IMotionService.GetAxisConfigurations() 全局查找
+   - 支持 Dz₂/Dz2、Dz₃/Dz3 轴名别名
+
+v2026.06.18 — DISPENSE 工具工艺参数与 Step3 同步修复
+------------------------------------------------
+
+1. 问题
+   - 导入线段后 DISPENSE 工艺参数未与 Step3EditParamsPanel 同步
+   - Step3 保存/修改段参数后，DISPENSE 面板绑定 Effective* 未刷新
+
+2. 修复
+   - 段参数变更/选中段变更后调用 RaiseAllEffectiveParamsChanged 刷新 UI
+   - 导入线段后自动选中最后一段并同步源段参数
+   - 选中 SegmentRef 时从共享存储刷新 Override 参数
+
+3. DISPENSE 参数调整
+   - 移除空移速度(JumpSpeed)显示，统一使用运动速度(MoveSpeed)，内部同步 JumpSpeed
+   - 出胶量(Glue Amount) 改为点胶时间(Dispensing Time)
+   - 气压(Pressure)、回吸时间(Suck Back Time) 暂时从界面隐藏
+
+v2026.06.18 — Step3 全选/反选导致画布不停刷新修复
+--------------------------------------------
+
+1. 问题：Select All / Invert Selection 逐段触发 IsEnabled 变更
+   - 每段调用 RefreshSegmentIds → SegmentIds.Clear/Add
+   - SelectedSegmentId/SelectedSegment 连锁更新 → HalconCanvas 反复 RenderEntities
+
+2. 修复
+   - 批量 IsEnabled 更新合并为一次 RefreshSegmentSelectionState
+   - RefreshSegmentIds 内容未变时跳过 Clear
+   - SelectedSegment/SelectedEntity 同步前比较引用，避免无效重绘
+   - 修正 BulkSegmentEnableUpdateScope 未赋值 _owner 导致的 NullReferenceException（改用 try/finally）
+
+v2026.06.18 — Step3 批量设置增加高度参数与类型筛选
+----------------------------------------------
+
+1. Batch Set All 新增示教高度、高度补偿（Height Params）
+2. 每行参数增加 Type 下拉：All / Line / Arc / Circle 等
+3. 仅对匹配 EntityType 的已启用段应用对应参数
+
+v2026.06.18 — Step6 路径执行不受 Step5 空跑模式影响
+------------------------------------------------
+
+1. 问题
+   - Step5 选择 Real Dry Run 后 IsRealDryRunMode 保持 true
+   - Step6 ExecutePath 调用 ExecuteRun 时进入空跑分支，无法执行真实点胶
+
+2. 修复
+   - ExecuteRun(realDispenseOnly) 参数：Step6 强制走 IsRealDispenseMode 点胶逻辑
+   - IsSimMode / IsRealDryRunMode 互斥，避免 Step5 模式状态冲突
+
+v2026.06.18 — CadPointEditor 仿真暂停/停止真实任务控制
+--------------------------------------------------
+
+1. CadPointEditorViewModel
+   - ManualResetEventSlim 实现暂停/继续，SimDelayAsync 支持 UI 仿真可中断延时
+   - ExecutePauseSim 切换暂停/继续；ExecuteStopSim 取消任务并 StopAxis 安全停轴
+   - 真实空跑/点胶传递 _simPauseEvent 到 DispenseExecuteService
+
+2. DispenseExecuteService
+   - DryRunAsync / ExecutePathAsync / ExecuteSinglePointLineAsync 支持 pauseEvent
+   - 段/点边界 WaitIfPaused 检查，暂停时阻塞等待恢复
+
+v2026.06.18 — Z-SCAN 基准Z与点胶高度计算同步修复
+------------------------------------------------
+
+1. 问题
+   - UI BaseZInput=4.346，但 CalculateDispenseHeight 内部 Current.BaseZ=0
+   - 切换表格加载标定时 _suppressBaseZAutoApply 阻止了 SetBaseZ 同步
+
+2. 修复（无需恢复「设置基准Z」按钮）
+   - 表格加载标定后显式调用 SetBaseZ
+   - 计算点胶高度前 SyncBaseZToService 确保服务状态一致
+   - CalculateDispenseHeight 改为显式传入 baseZ，与 CalculateZHeightDifference 一致
+
+v2026.06.18 — DispenseExecuteService 双针头出胶IO区分
+--------------------------------------------------
+
+1. 出胶IO端口
+   - 针头1/Dz₂ → GlueIoPort1（LogicalId=12）
+   - 针头2/Dz₃ → GlueIoPort2（LogicalId=13）
+2. WriteGlueIo / SafeGlueOff 按 needleIndex 选择对应端口
+
+v2026.06.18 — DispenseExecuteService 使用 Step3 点胶工艺参数
+----------------------------------------------------------
+
+1. 弧线/连续走胶（ExecuteSegmentsAsync）
+   - 移除硬编码 DefaultVelocity，Z/XY 空移速度改用段参数 MoveSpeed
+   - 慢速逼近速度 = MoveSpeed × CornerDecel
+
+2. 单点点胶（ExecuteSinglePointAsync）
+   - 新增 DotProcessParams 参数，对接 Step3EditParamsPanel 单点模式全局工艺
+   - MoveSpeed → 空移速度；DispenseTime → 出胶时间；PostDelay → 关胶后延时
+   - 安全高度改用 processParams.SafeHeight
+
+v2026.06.18 — CadAlignment 仿射取点与 Halcon 画布层级修复
+------------------------------------------------------
+
+1. CadAlignmentView Tab2（N点仿射标定）
+   - DataGrid 增加 PickAffineCadCoordCommand（从画布选取 CAD 坐标）
+   - 增加 DXF 导入与 HalconCanvas 预览区，支持就地取点
+   - 操作列对齐 Step4AlignPanel：取点 / 示教机械坐标 / 删除
+
+2. CadAlignmentViewModel
+   - 新增仿射 CAD 拾取模式，OnCanvasPointClicked 支持直接写入 CadX/CadY
+
+3. HalconCanvasControl 层级修复
+   - 订阅 IAxisOperationPanelState.PanelOpenChanged
+   - 轴控 Drawer 打开时折叠 WindowsFormsHost，避免遮挡 AxisControlPanelView
+   - 修复 CadAlignmentView Tab3 与 CadPointEditor Step4 画布置顶问题
+
+v2026.06.18 — Z-SCAN 基准Z输入自动同步
+--------------------------------------
+
+1. 需求
+   - 删除「设置基准Z」按钮
+   - 输入基准Z后自动更新标定服务 Current.BaseZ
+   - 保存配置时持久化 Current.BaseZ
+
+2. 实现
+   - ZScanDetailView 移除 Set Base Z 按钮
+   - BaseZInput 失焦后自动调用 SyncBaseZToService → SetBaseZ
+   - SyncPointDetailsToTable 保存时使用 _zscanCalibrationService.BaseZ
+
+v2026.06.18 — 位置编辑器保存后 ZScan 仍读旧位置修复
+--------------------------------------------------
+
+1. 问题
+   - 位置编辑器修改并保存后，DispensingTask.ExecuteZScan3DSequenceAsync
+     中 GetPositionValueFromMap 仍返回 Preload 阶段的旧缓存值
+
+2. 根因
+   - RecipePositionProvider 仅订阅 SaveParametersCompletedEvent 且只清空缓存不立即重载
+   - 未订阅 StationParameterSavedEvent（MultiStationPositionEditor 保存时发布）
+   - ZScan 运动前未强制 RefreshCacheAsync
+   - 位置编辑器 Save 使用 CurrentRecipeName 与 Load 使用的 pool.CurrentRecipeName 可能不一致
+
+3. 修复
+   - RecipePositionProvider 订阅 StationParameterSavedEvent，RefreshCacheAsync 立即从文件重载
+   - GetPositionsAsync 返回字典副本，避免外部持有旧引用
+   - ExecuteZScan3DSequenceAsync / ReturnToStandbyAsync 运动前 RefreshPositionsCacheAsync
+   - MultiStationPositionEditor Save 与 Load 统一使用 pool.CurrentRecipeName
+
+v2026.06.18 — Step3 段级 XY 补偿 & 重采样保留机械坐标
+------------------------------------------------------
+
+1. 需求
+   - 运动参数栏设置段内插补点 XY 统一补偿，应用后更新机械坐标
+   - 修改分割点数应用后机械坐标 MX/MY 不应消失
+
+2. 实现
+   - DispenseSegment 新增 XyCompensationX / XyCompensationY
+   - Step3 运动参数栏增加补偿输入与「应用XY补偿」按钮
+   - RefreshSegmentMachineCoordinates：仿射变换 + 段级 XY 补偿
+   - 重采样后无仿射时沿旧点弧长插值机械坐标
+   - Step4 应用变换同步叠加各段 XY 补偿
+
 v2026.06.18 — Step5/Step6 面板选项 JSON 持久化 & Step6 默认目标线段
 --------------------------------------------------------------------
 

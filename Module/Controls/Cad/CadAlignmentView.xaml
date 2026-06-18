@@ -491,6 +491,41 @@
                                 <Border Background="#F3E5F5" CornerRadius="5" Padding="10,6" BorderBrush="#CE93D8" BorderThickness="1" Margin="0,0,0,10">
                                     <TextBlock Text="{lang:Lang CAD_AffineMode_Hint}" TextWrapping="Wrap" FontSize="11" Foreground="#6A1B9A" LineHeight="15"/>
                                 </Border>
+
+                                <!-- DXF 导入（仿射标定 CAD 取点需先加载图纸） -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Command="{Binding ImportDxfCommand}" Style="{StaticResource SecondaryActionButton}" Padding="8,3">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="FileImportOutline" Width="14" Height="14" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{lang:Lang CAD_Import_DXF_Btn}" VerticalAlignment="Center" FontSize="10" Margin="4,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Text="{Binding CadFilePath}" VerticalAlignment="Center" FontSize="10" Foreground="#888"
+                                               Margin="12,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                                </StackPanel>
+
+                                <!-- CAD 图形预览（仿射标定取点） -->
+                                <Border Style="{StaticResource RefCard}" Margin="0,0,0,10"
+                                        Visibility="{Binding HasCadDrawingLoaded, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" FontSize="10.5" Foreground="#555" Margin="0,0,0,6">
+                                            <Run Text="{lang:Lang CadAlignment_CADPreview}"/>
+                                            <Run Foreground="#7B1FA2" FontWeight="SemiBold" Text="{lang:Lang Step4_Btn_PickFromCanvas}"/>
+                                        </TextBlock>
+                                        <controls:HalconCanvasControl Grid.Row="1"
+                                                                      x:Name="affineCalibrationCanvas"
+                                                                      Height="220"
+                                                                      Width="480"
+                                                                      HorizontalAlignment="Left"
+                                                                      Entities="{Binding CanvasDisplayEntities}"
+                                                                      Loaded="OnCanvasLoaded"/>
+                                    </Grid>
+                                </Border>
+
                                 <DataGrid ItemsSource="{Binding AffineCalibrationPoints}"
                                           AutoGenerateColumns="False" CanUserAddRows="False"
                                           materialDesign:DataGridAssist.CellPadding="4,2"
@@ -513,18 +548,29 @@
                                         <DataGridTextColumn Header="{lang:Lang CAD_Machine_X}" Binding="{Binding MachineX, StringFormat=N3}" Width="*"/>
                                         <DataGridTextColumn Header="{lang:Lang CAD_Machine_Y}" Binding="{Binding MachineY, StringFormat=N3}" Width="*"/>
                                         <DataGridTextColumn Header="{lang:Lang CAD_Affine_Residual}" Binding="{Binding Residual, StringFormat=N4}" Width="65" IsReadOnly="True"/>
-                                        <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_Actions}" Width="70">
+                                        <DataGridTemplateColumn Header="{lang:Lang WaypointEdit_Column_Actions}" Width="90">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <Button Command="{Binding DataContext.TeachAffineMachineCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                            CommandParameter="{Binding}"
-                                                            Style="{StaticResource SecondaryActionButton}"
-                                                            Padding="4,2" FontSize="9">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <materialDesign:PackIcon Kind="CrosshairsGps" Width="12" Height="12" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="{lang:Lang CadAlignment_Teach}" VerticalAlignment="Center" FontSize="9" Margin="3,0,0,0"/>
-                                                        </StackPanel>
-                                                    </Button>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Command="{Binding DataContext.PickAffineCadCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="{lang:Lang Step4_Btn_PickFromCanvas}"
+                                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                                            <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14"/>
+                                                        </Button>
+                                                        <Button Command="{Binding DataContext.TeachAffineMachineCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="{lang:Lang Step4_Btn_TeachMachine}"
+                                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                                            <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14"/>
+                                                        </Button>
+                                                        <Button Command="{Binding DataContext.DeleteAffineCalibrationPointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="{lang:Lang Step4_Btn_DeletePoint}"
+                                                                Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
+                                                            <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14" Foreground="#D32F2F"/>
+                                                        </Button>
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>

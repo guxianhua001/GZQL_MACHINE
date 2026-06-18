@@ -59,14 +59,14 @@ namespace StationTasks.Actions
             var segDict = sourceSegments.Where(s => !string.IsNullOrEmpty(s.SegmentId))
                 .ToDictionary(s => s.SegmentId, s => s);
 
-            int dxAxisId = ResolveAxisId("Dx", task);
-            int dyAxisId = ResolveAxisId("Dy", task);
+            int dxAxisId = ResolveDispenseAxisId("Dx");
+            int dyAxisId = ResolveDispenseAxisId("Dy");
             // 根据针头索引选择点胶Z轴：针头1→Dz₂, 针头2→Dz₃
             // Dz₁轴为相机/3D扫描轴，不作为点胶轴使用
             int needleIndex = detail.NeedleIndex;
             string dzAxisName = needleIndex == 0 ? "Dz₂" : "Dz₃";
-            int dzAxisId = ResolveAxisId(dzAxisName, task);
-            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId})");
+            int dzAxisId = ResolveDispenseAxisId(dzAxisName);
+            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId}), Dx={dxAxisId}, Dy={dyAxisId}");
 
             try
             {
@@ -459,17 +459,40 @@ namespace StationTasks.Actions
         }
 
         /// <summary>
-        /// 根据轴名称解析逻辑轴ID
+        /// 从全局 hwcfg 轴配置解析点胶工站轴逻辑ID。
+        /// DISPENSE 步骤可能在装配站等其他工站的工艺序列中执行，
+        /// 不能依赖传入的 task.FindAxisIdByName（仅搜索当前工站已发现的轴）。
         /// </summary>
-        private int ResolveAxisId(string axisName, StationTaskBase task)
+        private int ResolveDispenseAxisId(string axisName)
         {
-            int axisId = task.FindAxisIdByName(axisName);
-            if (axisId < 0)
+            if (string.IsNullOrEmpty(axisName)) return -1;
+
+            var configs = _motionService.GetAxisConfigurations();
+            foreach (var candidate in GetAxisNameCandidates(axisName))
             {
-                _logger.Warn($"无法解析轴'{axisName}'，使用默认值");
-                return 0;
+                var cfg = configs.FirstOrDefault(a =>
+                    string.Equals(a.Name, candidate, StringComparison.Ordinal));
+                if (cfg != null)
+                    return cfg.LogicalId;
             }
-            return axisId;
+
+            _logger.Warn($"DISPENSE 无法从全局轴配置解析轴 '{axisName}'");
+            return -1;
+        }
+
+        /// <summary>
+        /// 轴名称候选列表——兼容 hwcfg 中 Dz₂/Dz2、Dz₃/Dz3 等不同写法
+        /// </summary>
+        private static IEnumerable<string> GetAxisNameCandidates(string axisName)
+        {
+            yield return axisName;
+            switch (axisName)
+            {
+                case "Dz₂": yield return "Dz2"; break;
+                case "Dz2": yield return "Dz₂"; break;
+                case "Dz₃": yield return "Dz3"; break;
+                case "Dz3": yield return "Dz₃"; break;
+            }
         }
 
         private void WriteGlueIo(bool value)

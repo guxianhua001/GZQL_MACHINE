@@ -20,7 +20,8 @@ namespace Core.Abstraction
         void ResetCalibration();
         void SetBaseZ(double baseZ);
         void TeachNeedleMZ(double measuredMZ);
-        double CalculateDispenseHeight(double baseDispenseHeight, double currentZHeight, double needleCompensation);
+        /// <param name="baseZ">基准Z高度（与 UI BaseZInput 一致）</param>
+        double CalculateDispenseHeight(double baseZ, double baseDispenseHeight, double currentZHeight, double needleCompensation);
         double CalculateZHeightDifference(double baseZ, double currentZHeight);
         event Action CalibrationChanged;
     }

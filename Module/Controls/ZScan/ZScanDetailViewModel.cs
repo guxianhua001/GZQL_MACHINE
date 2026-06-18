@@ -267,7 +267,9 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(SelectedTable));
             _needleZOffset = s.NeedleZOffset;         RaisePropertyChanged(nameof(NeedleZOffset));
             _needleCompensationInput = s.NeedleCompensationInput; RaisePropertyChanged(nameof(NeedleCompensationInput));
-            _baseZInput = s.BaseZInput;                 RaisePropertyChanged(nameof(BaseZInput));
+            _baseZInput = s.BaseZInput;
+            RaisePropertyChanged(nameof(BaseZInput));
+            _zscanCalibrationService.SetBaseZ(_baseZInput);
             _measuredMZ = s.MeasuredMZ;                 RaisePropertyChanged(nameof(MeasuredMZ));
             _deltaZInput = s.DeltaZInput;               RaisePropertyChanged(nameof(DeltaZInput));
             _needleCompensationValue = s.NeedleCompensationValue; RaisePropertyChanged(nameof(NeedleCompensationValue));
@@ -297,7 +299,19 @@ namespace Module.ViewModels
         public string LastCalibrationTimeText { get => _lastCalibrationTimeText; set => SetProperty(ref _lastCalibrationTimeText, value); }
 
         private double _baseZInput;
-        public double BaseZInput { get => _baseZInput; set => SetProperty(ref _baseZInput, value); }
+        private bool _suppressBaseZAutoApply;
+
+        /// <summary> 基准Z输入；失焦后自动同步到标定服务 Current.BaseZ </summary>
+        public double BaseZInput
+        {
+            get => _baseZInput;
+            set
+            {
+                if (!SetProperty(ref _baseZInput, value))
+                    return;
+                SyncBaseZToService(value, advanceStep: !_suppressBaseZAutoApply, logChange: !_suppressBaseZAutoApply);
+            }
+        }
 
         private double _measuredMZ;
         public double MeasuredMZ { get => _measuredMZ; set => SetProperty(ref _measuredMZ, value); }
@@ -364,7 +378,6 @@ namespace Module.ViewModels
         public ICommand CalibrateCameraZCommand { get; }
         public ICommand ApplyNeedleCompensationCommand { get; }
         public ICommand ResetCalibrationCommand { get; }
-        public ICommand SetBaseZCommand { get; }
         public ICommand MoveNeedleToBaseZCommand { get; }
         public ICommand TeachNeedleMZCommand { get; }
         public ICommand CalculateDispenseHeightCommand { get; }
@@ -431,7 +444,6 @@ namespace Module.ViewModels
             ApplyNeedleCompensationCommand = new DelegateCommand(OnApplyNeedleCompensation, () => NeedleCompensationInput != 0).ObservesProperty(() => NeedleCompensationInput);
             ResetCalibrationCommand = new DelegateCommand(OnResetCalibration);
 
-            SetBaseZCommand = new DelegateCommand(OnSetBaseZ);
             MoveNeedleToBaseZCommand = new DelegateCommand(async () => await OnMoveNeedleToBaseZAsync(), () => BaseZInput > 0).ObservesProperty(() => BaseZInput);
             TeachNeedleMZCommand = new DelegateCommand(async () => await OnTeachNeedleMZAsync() );
             CalculateDispenseHeightCommand = new DelegateCommand(OnCalculateDispenseHeight);
@@ -1643,13 +1655,18 @@ namespace Module.ViewModels
             }
         }
 
-        private void OnSetBaseZ()
+        /// <summary>
+        /// 将基准Z同步到标定服务 Current.BaseZ
+        /// </summary>
+        private void SyncBaseZToService(double value, bool advanceStep = true, bool logChange = true)
         {
             try
             {
-                _zscanCalibrationService.SetBaseZ(BaseZInput);
-                CalibrationStep = 1;
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 设置基准Z高度: {BaseZInput:F3}");
+                _zscanCalibrationService.SetBaseZ(value);
+                if (advanceStep && value > 0 && CalibrationStep < 1)
+                    CalibrationStep = 1;
+                if (logChange)
+                    _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 基准Z高度: {value:F3}");
             }
             catch (Exception ex)
             {
@@ -1695,8 +1712,11 @@ namespace Module.ViewModels
         {
             try
             {
+                // 计算前确保 UI 输入已同步到标定服务（避免 Current.BaseZ 仍为 0）
+                SyncBaseZToService(BaseZInput, advanceStep: false, logChange: false);
                 ZHeightDifference = _zscanCalibrationService.CalculateZHeightDifference(BaseZInput, CurrentZHeightInput);
-                CalculatedDispenseHeight = _zscanCalibrationService.CalculateDispenseHeight(MeasuredMZ, CurrentZHeightInput, NeedleCompensationValue);
+                CalculatedDispenseHeight = _zscanCalibrationService.CalculateDispenseHeight(
+                    BaseZInput, MeasuredMZ, CurrentZHeightInput, NeedleCompensationValue);
                 CalibrationStep = 4;
                 _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] Step4: 基准Z={BaseZInput:F3}, 当前Z={CurrentZHeightInput:F3}, Z高度差={ZHeightDifference:F3}, 基准点胶高度(MZ)={MeasuredMZ:F3}, 补偿={NeedleCompensationValue:F3}, 点胶高度={CalculatedDispenseHeight:F3}");
             }
@@ -1806,7 +1826,11 @@ namespace Module.ViewModels
 
             if (SelectedTable.Calibration != null)
             {
+                _suppressBaseZAutoApply = true;
                 BaseZInput = SelectedTable.Calibration.BaseZ;
+                _suppressBaseZAutoApply = false;
+                // 加载表格时抑制了 setter 自动同步，需显式写入标定服务
+                _zscanCalibrationService.SetBaseZ(_baseZInput);
                 MeasuredMZ = SelectedTable.Calibration.MeasuredMZ;
                 NeedleZOffset = SelectedTable.Calibration.NeedleZOffset;
                 BaseDispenseHeight = SelectedTable.Calibration.BaseDispenseHeight;
@@ -1815,8 +1839,6 @@ namespace Module.ViewModels
                 CalculatedDispenseHeight = SelectedTable.Calibration.DispenseHeight;
                 DeltaZInput = SelectedTable.Calibration.DeltaZ;
 
-                // 同步到标定服务，确保 CalculateDispenseHeight 等方法使用当前针头的正确数据
-                _zscanCalibrationService.SetBaseZ(BaseZInput);
                 _zscanCalibrationService.TeachNeedleMZ(MeasuredMZ);
                 _zscanCalibrationService.ApplyNeedleCompensation(NeedleZOffset);
             }
@@ -2037,7 +2059,8 @@ namespace Module.ViewModels
 
             if (table.Calibration != null)
             {
-                table.Calibration.BaseZ = BaseZInput;
+                // 保存时以标定服务 Current.BaseZ 为准，确保与运行时一致
+                table.Calibration.BaseZ = _zscanCalibrationService.BaseZ;
                 table.Calibration.MeasuredMZ = MeasuredMZ;
                 table.Calibration.NeedleZOffset = NeedleZOffset;
                 table.Calibration.BaseDispenseHeight = BaseDispenseHeight;

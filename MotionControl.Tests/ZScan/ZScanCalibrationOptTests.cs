@@ -20,7 +20,7 @@ namespace MotionControl.Tests
             double baseDispenseHeight = 5.150;
             double currentZHeight = 5.180;
             double needleComp = 0.010;
-            double result = service.CalculateDispenseHeight(baseDispenseHeight, currentZHeight, needleComp);
+            double result = service.CalculateDispenseHeight(5.200, baseDispenseHeight, currentZHeight, needleComp);
             Assert.Equal(5.180, result, 3);
         }
 
@@ -32,8 +32,17 @@ namespace MotionControl.Tests
             double baseDispenseHeight = 5.150;
             double currentZHeight = 5.250;
             double needleComp = 0.010;
-            double result = service.CalculateDispenseHeight(baseDispenseHeight, currentZHeight, needleComp);
+            double result = service.CalculateDispenseHeight(5.200, baseDispenseHeight, currentZHeight, needleComp);
             Assert.Equal(5.110, result, 3);
+        }
+
+        [Fact]
+        public void CalculateDispenseHeight_UsesExplicitBaseZ_NotCurrentBaseZ()
+        {
+            var service = CreateService();
+            // Current.BaseZ 仍为 0，但显式传入 baseZ 应正确计算
+            double result = service.CalculateDispenseHeight(4.346, 5.150, 5.180, 0.010);
+            Assert.Equal(4.326, result, 3);
         }
 
         [Fact]

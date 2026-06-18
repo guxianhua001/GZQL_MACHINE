@@ -27,7 +27,8 @@ namespace StationTasks.Tasks
         {
             await ExecuteManualProcess("Z-Scan 3D", async () =>
             {
-                // 加载位置数据
+                // 位置编辑器保存后强制刷新缓存，避免 Preload 阶段缓存的旧值
+                await RefreshPositionsCacheAsync();
                 var positions = await LoadPositionsAsync();
 
                 // 解析位置值
@@ -132,7 +133,7 @@ namespace StationTasks.Tasks
         {
             await ExecuteManualProcess("Return to Standby", async () =>
             {
-                // 加载位置数据
+                await RefreshPositionsCacheAsync();
                 var positions = await LoadPositionsAsync();
 
                 // 解析位置值

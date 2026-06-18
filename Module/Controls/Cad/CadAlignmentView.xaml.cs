@@ -1,20 +1,8 @@
 #if HAS_HALCON
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Core.Models;
 using Module.Controls;
 using Module.ViewModels;
@@ -23,17 +11,17 @@ namespace Module.Views
 {
     /// <summary>
     /// CadAlignmentView.xaml 的交互逻辑 — 图形选取事件桥接与画布引用管理
-    /// 注意：HalconCanvasControl 位于 Tab3 内，WPF TabControl 延迟加载机制导致
-    /// View.Loaded 时 Tab3 尚未加入可视树，因此必须通过 Canvas 自身的 Loaded 事件订阅
+    /// 注意：HalconCanvasControl 位于 Tab2/Tab3 内，WPF TabControl 延迟加载机制导致
+    /// View.Loaded 时画布可能尚未加入可视树，因此必须通过 Canvas 自身的 Loaded 事件订阅
     /// </summary>
     public partial class CadAlignmentView : UserControl
     {
-        private HalconCanvasControl _canvas;
+        private readonly List<HalconCanvasControl> _canvases = new();
         private Action<double, double> _canvasClickHandler;
         private Action _fitAllHandler;
         private Action<double, double, double, double> _fitToSegmentHandler;
         private Action _rotationCenterVisualHandler;
-        private bool _canvasEventsSubscribed;
+        private bool _viewModelEventsSubscribed;
 
         public CadAlignmentView()
         {
@@ -43,61 +31,76 @@ namespace Module.Views
 
         /// <summary>
         /// HalconCanvasControl.Loaded 事件处理——在画布控件首次加入可视树时订阅事件
-        /// 此方法在 XAML 中通过 alignmentCanvas.Loaded 绑定，确保即使 Tab3 延迟加载也能正确订阅
+        /// Tab2（仿射标定）与 Tab3（旋转角度）各有一个画布，均通过此方法桥接
         /// </summary>
         private void OnCanvasLoaded(object sender, RoutedEventArgs e)
         {
-            if (_canvasEventsSubscribed) return;
+            var canvas = sender as HalconCanvasControl;
+            if (canvas == null || _canvases.Contains(canvas)) return;
 
-            _canvas = sender as HalconCanvasControl;
-            if (_canvas == null) return;
+            _canvases.Add(canvas);
 
             if (DataContext is CadAlignmentViewModel vm)
             {
-                _canvasClickHandler = vm.OnCanvasPointClicked;
-                _canvas.CanvasPointClicked += _canvasClickHandler;
-                _fitAllHandler = () =>
+                _canvasClickHandler ??= vm.OnCanvasPointClicked;
+                canvas.CanvasPointClicked += _canvasClickHandler;
+
+                if (!_viewModelEventsSubscribed)
                 {
-                    _canvas.FitToAll();
-                    NotifyImageOffsetToViewModel(vm);
-                };
-                vm.FitToAllRequested += _fitAllHandler;
-                _fitToSegmentHandler = (x1, y1, x2, y2) => FitCanvasToSegment(x1, y1, x2, y2);
-                vm.FitToSegmentRequested += _fitToSegmentHandler;
+                    _fitAllHandler = () =>
+                    {
+                        foreach (var c in _canvases)
+                            c?.FitToAll();
+                        NotifyImageOffsetToViewModel(vm);
+                    };
+                    vm.FitToAllRequested += _fitAllHandler;
 
-                // ✅ 新增：订阅批量更新事件，优化选取操作时的渲染性能
-                vm.BatchUpdateStartRequested += () => _canvas.BeginBatchUpdate();
-                vm.BatchUpdateEndRequested += () => _canvas.EndBatchUpdate();
+                    _fitToSegmentHandler = (x1, y1, x2, y2) => FitCanvasToSegment(x1, y1, x2, y2);
+                    vm.FitToSegmentRequested += _fitToSegmentHandler;
 
-                // 订阅回转中心可视化更新事件
-                _rotationCenterVisualHandler = () => UpdateRotationCenterCanvas();
-                vm.RotationCenterVisualUpdateRequested += _rotationCenterVisualHandler;
+                    vm.BatchUpdateStartRequested += () =>
+                    {
+                        foreach (var c in _canvases)
+                            c?.BeginBatchUpdate();
+                    };
+                    vm.BatchUpdateEndRequested += () =>
+                    {
+                        foreach (var c in _canvases)
+                            c?.EndBatchUpdate();
+                    };
 
-                _canvasEventsSubscribed = true;
+                    _rotationCenterVisualHandler = () => UpdateRotationCenterCanvas();
+                    vm.RotationCenterVisualUpdateRequested += _rotationCenterVisualHandler;
+
+                    _viewModelEventsSubscribed = true;
+                }
             }
         }
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            if (_canvas != null && _canvasClickHandler != null)
-                _canvas.CanvasPointClicked -= _canvasClickHandler;
-            if (DataContext is CadAlignmentViewModel vm)
+            if (_canvasClickHandler != null)
+            {
+                foreach (var canvas in _canvases)
+                    canvas.CanvasPointClicked -= _canvasClickHandler;
+            }
+
+            if (DataContext is CadAlignmentViewModel vm && _viewModelEventsSubscribed)
             {
                 if (_fitAllHandler != null)
                     vm.FitToAllRequested -= _fitAllHandler;
                 if (_fitToSegmentHandler != null)
                     vm.FitToSegmentRequested -= _fitToSegmentHandler;
-
-                // ✅ 取消订阅批量更新事件
-                vm.BatchUpdateStartRequested -= null; // 使用匿名委托，无法精确移除，但 View 销毁时无影响
-                vm.BatchUpdateEndRequested -= null;
+                if (_rotationCenterVisualHandler != null)
+                    vm.RotationCenterVisualUpdateRequested -= _rotationCenterVisualHandler;
             }
-            _canvas = null;
+
+            _canvases.Clear();
             _canvasClickHandler = null;
             _fitAllHandler = null;
             _fitToSegmentHandler = null;
             _rotationCenterVisualHandler = null;
-            _canvasEventsSubscribed = false;
+            _viewModelEventsSubscribed = false;
         }
 
         /// <summary>
@@ -128,17 +131,22 @@ namespace Module.Views
         /// </summary>
         private void FitCanvasToSegment(double cadX1, double cadY1, double cadX2, double cadY2)
         {
-            _canvas?.FitToCadRegion(cadX1, cadY1, cadX2, cadY2);
+            foreach (var canvas in _canvases)
+                canvas?.FitToCadRegion(cadX1, cadY1, cadX2, cadY2);
         }
 
         /// <summary>
-        /// 从HalconCanvasControl获取CAD→图像偏移量，通知ViewModel更新点位的图像坐标
+        /// 从任一已加载的 HalconCanvasControl 获取 CAD→图像偏移量，通知 ViewModel 更新点位图像坐标
         /// </summary>
         private void NotifyImageOffsetToViewModel(CadAlignmentViewModel vm)
         {
-            if (_canvas == null) return;
-            var (offsetX, offsetY) = _canvas.GetCadToImageOffset();
-            vm.SetCadToImageOffset(offsetX, offsetY);
+            foreach (var canvas in _canvases)
+            {
+                if (canvas == null) continue;
+                var (offsetX, offsetY) = canvas.GetCadToImageOffset();
+                vm.SetCadToImageOffset(offsetX, offsetY);
+                return;
+            }
         }
     }
 }

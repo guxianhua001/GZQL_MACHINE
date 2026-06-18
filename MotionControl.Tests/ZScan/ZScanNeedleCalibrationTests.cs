@@ -40,7 +40,7 @@ namespace MotionControl.Tests
             double baseDispenseHeight = 5.150;
             double currentZHeight = 5.150;
             double needleComp = 0.010;
-            double dispenseHeight = service.CalculateDispenseHeight(baseDispenseHeight, currentZHeight, needleComp);
+            double dispenseHeight = service.CalculateDispenseHeight(5.200, baseDispenseHeight, currentZHeight, needleComp);
             Assert.Equal(5.210, dispenseHeight, 3);
         }
 
@@ -53,7 +53,7 @@ namespace MotionControl.Tests
             double baseDispenseHeight = 5.150;
             double currentZHeight = 5.150;
             double needleComp = 0.020;
-            double dispenseHeight = service.CalculateDispenseHeight(baseDispenseHeight, currentZHeight, needleComp);
+            double dispenseHeight = service.CalculateDispenseHeight(5.200, baseDispenseHeight, currentZHeight, needleComp);
             Assert.Equal(5.220, dispenseHeight, 3);
         }
 

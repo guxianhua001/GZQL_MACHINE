@@ -71,9 +71,11 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="{lang:Lang Step5_Btn_Pause}" Command="{Binding PauseSimCommand}"
+            <Button Grid.Column="0" Command="{Binding PauseSimCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,4,0"
-                    IsEnabled="{Binding IsSimulating, FallbackValue=False}"/>
+                    IsEnabled="{Binding IsSimulating, FallbackValue=False}">
+                <TextBlock Text="{Binding PauseSimButtonText}"/>
+            </Button>
             <Button Grid.Column="1" Content="{lang:Lang Step5_Btn_Stop}" Command="{Binding StopSimCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}" Margin="4,0,0,0"
                     Foreground="#D32F2F"/>

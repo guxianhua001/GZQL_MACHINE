@@ -86,9 +86,10 @@ namespace Core.Services
             CalibrationChanged?.Invoke();
         }
 
-        public double CalculateDispenseHeight(double baseDispenseHeight, double currentZHeight, double needleCompensation)
+        /// <summary>计算点胶高度：基准点胶高度 + Z高度差 + 针头补偿</summary>
+        public double CalculateDispenseHeight(double baseZ, double baseDispenseHeight, double currentZHeight, double needleCompensation)
         {
-            double zHeightDiff = CalculateZHeightDifference(Current.BaseZ, currentZHeight);
+            double zHeightDiff = CalculateZHeightDifference(baseZ, currentZHeight);
             return baseDispenseHeight + zHeightDiff + needleCompensation;
         }
 

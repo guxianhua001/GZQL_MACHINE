@@ -3,35 +3,68 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
-             Width="450" Height="Auto">
+             Width="520" Height="Auto">
     <StackPanel Margin="20,16">
-        <TextBlock Text="{lang:Lang Step3_BatchSet_Title}" FontWeight="Bold" FontSize="14" Margin="0,0,0,12"/>
+        <TextBlock Text="{lang:Lang Step3_BatchSet_Title}" FontWeight="Bold" FontSize="14" Margin="0,0,0,4"/>
+        <TextBlock Text="{lang:Lang Step3_BatchSet_TypeHint}" FontSize="10" Foreground="#757575" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
-        <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
+        <!-- 列标题 -->
+        <Grid Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="28"/>
+                <ColumnDefinition Width="96"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="56"/>
+                <ColumnDefinition Width="100"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="1" Text="{lang:Lang Step3_BatchSet_Column_Param}" FontSize="10" Foreground="#757575"/>
+            <TextBlock Grid.Column="2" Text="{lang:Lang Step3_BatchSet_Column_Value}" FontSize="10" Foreground="#757575" Margin="4,0,0,0"/>
+            <TextBlock Grid.Column="3" Text="{lang:Lang Step3_BatchSet_Column_Unit}" FontSize="10" Foreground="#757575"/>
+            <TextBlock Grid.Column="4" Text="{lang:Lang Step3_Header_Type}" FontSize="10" Foreground="#757575"/>
+        </Grid>
+
+        <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding BatchParamItems}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="0,4" LastChildFill="True">
-                            <CheckBox DockPanel.Dock="Left"
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="96"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="56"/>
+                                <ColumnDefinition Width="100"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0"
                                       IsChecked="{Binding IsEnabled}"
-                                      VerticalAlignment="Center"
-                                      Margin="0,0,8,0"/>
-                            <TextBlock DockPanel.Dock="Left"
+                                      VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
                                        Text="{Binding DisplayName}"
                                        VerticalAlignment="Center"
-                                       MinWidth="100"/>
-                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                       TextWrapping="Wrap"
+                                       FontSize="11"/>
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding Value, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}"
                                      VerticalAlignment="Center"
-                                     Margin="4,0,0,0"
+                                     Margin="4,0,4,0"
                                      IsEnabled="{Binding IsEnabled}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      Padding="6,2" FontSize="11"/>
-                            <TextBlock DockPanel.Dock="Right"
+                            <TextBlock Grid.Column="3"
                                        Text="{Binding Unit}"
                                        VerticalAlignment="Center"
-                                       Margin="8,0,0,0"
-                                       Foreground="#757575"/>
-                        </DockPanel>
+                                       Foreground="#757575"
+                                       FontSize="11"/>
+                            <ComboBox Grid.Column="4"
+                                      ItemsSource="{Binding DataContext.TargetTypeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      SelectedValue="{Binding TargetEntityType, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="Value"
+                                      DisplayMemberPath="DisplayName"
+                                      IsEnabled="{Binding IsEnabled}"
+                                      VerticalAlignment="Center"
+                                      FontSize="11"
+                                      Padding="4,2"/>
+                        </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
