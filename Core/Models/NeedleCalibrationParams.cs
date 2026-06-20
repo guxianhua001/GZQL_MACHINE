@@ -1,6 +1,7 @@
 // NeedleCalibrationParams.cs
 using Core.Abstraction;
 using Core.Models;
+using Newtonsoft.Json;
 using Prism.Events;
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,15 @@ namespace Core.Models
     public class NeedleCalibrationCompletedEvent : PubSubEvent<NeedleCalibrationCompletedEventArgs> { }
     public class NeedleParametersSavedEvent : PubSubEvent<NeedleParametersSavedEventArgs> { }
 
+    /// <summary>搜索点使用的寻针传感器类型（对应运动参数 SensorDiX / SensorDiY）</summary>
+    public enum NeedleSearchSensorKind
+    {
+        /// <summary>X 方向传感器（SensorDiX）</summary>
+        SensorX = 0,
+        /// <summary>Y 方向传感器（SensorDiY）</summary>
+        SensorY = 1
+    }
+
     /// <summary>
     /// 针头校准参数 - 独立存储版本
     /// </summary>
@@ -53,6 +63,11 @@ namespace Core.Models
         private PointF _searchPoint2 = new PointF(0, 0);
         private PointF _searchPoint3 = new PointF(0, 0);
         private PointF _searchPoint4 = new PointF(0, 0);
+        /// <summary>搜索点1 使用的传感器：X 或 Y</summary>
+        private NeedleSearchSensorKind _searchPoint1SensorKind = NeedleSearchSensorKind.SensorX;
+        private NeedleSearchSensorKind _searchPoint2SensorKind = NeedleSearchSensorKind.SensorX;
+        private NeedleSearchSensorKind _searchPoint3SensorKind = NeedleSearchSensorKind.SensorY;
+        private NeedleSearchSensorKind _searchPoint4SensorKind = NeedleSearchSensorKind.SensorY;
         private PointF _referenceXYZ = new PointF(0, 0, 0);
         private PointF _compensationXYZ = new PointF(0, 0, 0);
         private PointF _currentXYZ = new PointF(0, 0, 0);
@@ -61,8 +76,14 @@ namespace Core.Models
         private double _searchSpeed = 5.0;
         private double _fineSearchSpeed = 1.0;
         private double _safeHeight = -20.0;
-        /// <summary>Z 下探高度：在对针高度基础上再下探，换针后针尖偏高时可加大以可靠触探</summary>
+        /// <summary>系统1 Z 向寻探高度：针头进入十字激光检测平面的 Z 坐标</summary>
+        private double _searchNeedleHeightSystem1;
+        /// <summary>系统2 Z 向寻探高度</summary>
+        private double _searchNeedleHeightSystem2;
+        /// <summary>Z 下探高度：在寻针高度基础上再下探，换针后针尖偏高时可加大以可靠触探</summary>
         private double _zProbeDescentHeight;
+        /// <summary>Z 最低高度：精细下探极限，寻针高度+下探高度超过此值时以此为准</summary>
+        private double _zMinHeight;
         private PointF _alignPositionSystem1 = new PointF(0, 0, 0);
         private PointF _alignPositionSystem2 = new PointF(0, 0, 0);
         /// <summary>X方向寻针传感器 DI 端口号</summary>
@@ -104,6 +125,14 @@ namespace Core.Models
             set => SetSearchPointAxis(ref _searchPoint1, value, false, nameof(SearchPoint1), nameof(SearchPoint1X), nameof(SearchPoint1Y));
         }
 
+        /// <summary>搜索点1 传感器选择（SensorDiX / SensorDiY）</summary>
+        [Browsable(false)]
+        public NeedleSearchSensorKind SearchPoint1SensorKind
+        {
+            get => _searchPoint1SensorKind;
+            set => SetProperty(ref _searchPoint1SensorKind, value);
+        }
+
         [Category("搜索点设置")]
         [DisplayName("搜索点2")]
         [Description("第二个搜索点的坐标")]
@@ -134,6 +163,13 @@ namespace Core.Models
         {
             get => _searchPoint2.Y;
             set => SetSearchPointAxis(ref _searchPoint2, value, false, nameof(SearchPoint2), nameof(SearchPoint2X), nameof(SearchPoint2Y));
+        }
+
+        [Browsable(false)]
+        public NeedleSearchSensorKind SearchPoint2SensorKind
+        {
+            get => _searchPoint2SensorKind;
+            set => SetProperty(ref _searchPoint2SensorKind, value);
         }
 
         [Category("搜索点设置")]
@@ -168,6 +204,13 @@ namespace Core.Models
             set => SetSearchPointAxis(ref _searchPoint3, value, false, nameof(SearchPoint3), nameof(SearchPoint3X), nameof(SearchPoint3Y));
         }
 
+        [Browsable(false)]
+        public NeedleSearchSensorKind SearchPoint3SensorKind
+        {
+            get => _searchPoint3SensorKind;
+            set => SetProperty(ref _searchPoint3SensorKind, value);
+        }
+
         [Category("搜索点设置")]
         [DisplayName("搜索点4")]
         [Description("第四个搜索点的坐标")]
@@ -199,6 +242,14 @@ namespace Core.Models
             get => _searchPoint4.Y;
             set => SetSearchPointAxis(ref _searchPoint4, value, false, nameof(SearchPoint4), nameof(SearchPoint4X), nameof(SearchPoint4Y));
         }
+
+        [Browsable(false)]
+        public NeedleSearchSensorKind SearchPoint4SensorKind
+        {
+            get => _searchPoint4SensorKind;
+            set => SetProperty(ref _searchPoint4SensorKind, value);
+        }
+
         #endregion
 
         #region 坐标参数
@@ -283,8 +334,53 @@ namespace Core.Models
         }
 
         [Category("运动参数")]
+        [DisplayName("系统1寻针高度 (mm)")]
+        [Description("系统1 XY 边界扫描前 Z 下降至十字激光检测平面的高度")]
+        [Range(-100.0, 100.0)]
+        public double SearchNeedleHeightSystem1
+        {
+            get => _searchNeedleHeightSystem1;
+            set
+            {
+                if (SetProperty(ref _searchNeedleHeightSystem1, Math.Clamp(value, -100.0, 100.0)))
+                    OnPropertyChanged(nameof(SearchNeedleHeight));
+            }
+        }
+
+        [Category("运动参数")]
+        [DisplayName("系统2寻针高度 (mm)")]
+        [Description("系统2 XY 边界扫描前 Z 下降至十字激光检测平面的高度")]
+        [Range(-100.0, 100.0)]
+        public double SearchNeedleHeightSystem2
+        {
+            get => _searchNeedleHeightSystem2;
+            set
+            {
+                if (SetProperty(ref _searchNeedleHeightSystem2, Math.Clamp(value, -100.0, 100.0)))
+                    OnPropertyChanged(nameof(SearchNeedleHeight));
+            }
+        }
+
+        /// <summary>
+        /// 当前系统寻针高度（界面绑定：按 SystemNumber 读写 System1/System2 存储字段）
+        /// </summary>
+        [JsonIgnore]
+        [Browsable(false)]
+        public double SearchNeedleHeight
+        {
+            get => SystemNumber == 1 ? SearchNeedleHeightSystem1 : SearchNeedleHeightSystem2;
+            set
+            {
+                if (SystemNumber == 1)
+                    SearchNeedleHeightSystem1 = value;
+                else
+                    SearchNeedleHeightSystem2 = value;
+            }
+        }
+
+        [Category("运动参数")]
         [DisplayName("Z下探高度 (mm)")]
-        [Description("在对针高度基础上再下探，防止换针后针尖偏高导致检测不到")]
+        [Description("在寻针高度基础上再下探，防止换针后针尖偏高导致检测不到")]
         [Range(-10.0, 10.0)]
         public double ZProbeDescentHeight
         {
@@ -292,9 +388,19 @@ namespace Core.Models
             set => SetProperty(ref _zProbeDescentHeight, Math.Clamp(value, -10.0, 10.0));
         }
 
+        [Category("运动参数")]
+        [DisplayName("Z最低高度 (mm)")]
+        [Description("Z 向精细下探极限；寻针高度+下探高度超过此值时以此高度为准")]
+        [Range(-100.0, 100.0)]
+        public double ZMinHeight
+        {
+            get => _zMinHeight;
+            set => SetProperty(ref _zMinHeight, Math.Clamp(value, -100.0, 100.0));
+        }
+
         [Category("对针位置")]
         [DisplayName("系统1对针位置 (Dx Dy Dz₂)")]
-        [Description("系统1对针器 XYZ 坐标，Z 为寻针高度")]
+        [Description("系统1对针器 XYZ 坐标（手动移动到对针位）")]
         public PointF AlignPositionSystem1
         {
             get => _alignPositionSystem1;
@@ -303,7 +409,7 @@ namespace Core.Models
 
         [Category("对针位置")]
         [DisplayName("系统2对针位置 (Dx Dy Dz₃)")]
-        [Description("系统2对针器 XYZ 坐标，Z 为寻针高度")]
+        [Description("系统2对针器 XYZ 坐标（手动移动到对针位）")]
         public PointF AlignPositionSystem2
         {
             get => _alignPositionSystem2;
@@ -328,11 +434,11 @@ namespace Core.Models
             set => SetProperty(ref _sensorDiY, value);
         }
 
-        /// <summary>累计 TCP 补偿偏移 X（增量法，相对固定基准累加）</summary>
+        /// <summary>当前已应用 TCP 补偿偏移 X（Apply 后等于 PendingIncrement）</summary>
         public double? TcpTotalOffsetX { get; set; }
-        /// <summary>累计 TCP 补偿偏移 Y</summary>
+        /// <summary>当前已应用 TCP 补偿偏移 Y</summary>
         public double? TcpTotalOffsetY { get; set; }
-        /// <summary>累计 TCP 补偿偏移 Z</summary>
+        /// <summary>当前已应用 TCP 补偿偏移 Z</summary>
         public double? TcpTotalOffsetZ { get; set; }
 
         // 兼容旧版 JSON 字段
@@ -354,6 +460,16 @@ namespace Core.Models
         /// <summary>Z轴补偿表达式</summary>
         public string CompensationZExpression { get; set; }
 
+        /// <summary>获取指定索引搜索点的传感器类型（0~3）</summary>
+        public NeedleSearchSensorKind GetSearchPointSensorKind(int pointIndex) => pointIndex switch
+        {
+            0 => SearchPoint1SensorKind,
+            1 => SearchPoint2SensorKind,
+            2 => SearchPoint3SensorKind,
+            3 => SearchPoint4SensorKind,
+            _ => NeedleSearchSensorKind.SensorX
+        };
+
         // 深拷贝方法
         public NeedleCalibrationParams Clone()
         {
@@ -369,12 +485,19 @@ namespace Core.Models
                 SearchPoint2 = this.SearchPoint2 != null ? new PointF(this.SearchPoint2.X, this.SearchPoint2.Y) : new PointF(),
                 SearchPoint3 = this.SearchPoint3 != null ? new PointF(this.SearchPoint3.X, this.SearchPoint3.Y) : new PointF(),
                 SearchPoint4 = this.SearchPoint4 != null ? new PointF(this.SearchPoint4.X, this.SearchPoint4.Y) : new PointF(),
+                SearchPoint1SensorKind = this.SearchPoint1SensorKind,
+                SearchPoint2SensorKind = this.SearchPoint2SensorKind,
+                SearchPoint3SensorKind = this.SearchPoint3SensorKind,
+                SearchPoint4SensorKind = this.SearchPoint4SensorKind,
                 SearchRange = this.SearchRange,
                 ZSearchCount = this.ZSearchCount,
                 SearchSpeed = this.SearchSpeed,
                 FineSearchSpeed = this.FineSearchSpeed,
                 SafeHeight = this.SafeHeight,
+                SearchNeedleHeightSystem1 = this.SearchNeedleHeightSystem1,
+                SearchNeedleHeightSystem2 = this.SearchNeedleHeightSystem2,
                 ZProbeDescentHeight = this.ZProbeDescentHeight,
+                ZMinHeight = this.ZMinHeight,
                 AlignPositionSystem1 = this.AlignPositionSystem1 != null
                     ? new PointF(this.AlignPositionSystem1.X, this.AlignPositionSystem1.Y, this.AlignPositionSystem1.Z)
                     : new PointF(),
@@ -456,6 +579,10 @@ namespace Core.Models
             OnPropertyChanged(nameof(SearchPoint4));
             OnPropertyChanged(nameof(SearchPoint4X));
             OnPropertyChanged(nameof(SearchPoint4Y));
+            OnPropertyChanged(nameof(SearchPoint1SensorKind));
+            OnPropertyChanged(nameof(SearchPoint2SensorKind));
+            OnPropertyChanged(nameof(SearchPoint3SensorKind));
+            OnPropertyChanged(nameof(SearchPoint4SensorKind));
             OnPropertyChanged(nameof(ReferenceXYZ));
             OnPropertyChanged(nameof(CurrentXYZ));
             OnPropertyChanged(nameof(CompensationXYZ));
@@ -464,7 +591,11 @@ namespace Core.Models
             OnPropertyChanged(nameof(SearchSpeed));
             OnPropertyChanged(nameof(FineSearchSpeed));
             OnPropertyChanged(nameof(SafeHeight));
+            OnPropertyChanged(nameof(SearchNeedleHeightSystem1));
+            OnPropertyChanged(nameof(SearchNeedleHeightSystem2));
+            OnPropertyChanged(nameof(SearchNeedleHeight));
             OnPropertyChanged(nameof(ZProbeDescentHeight));
+            OnPropertyChanged(nameof(ZMinHeight));
             OnPropertyChanged(nameof(AlignPositionSystem1));
             OnPropertyChanged(nameof(AlignPositionSystem2));
             OnPropertyChanged(nameof(SensorDiX));

@@ -180,6 +180,8 @@ namespace Module.ViewModels
                 if (_step?.DispenseDetail != null)
                 {
                     _step.DispenseDetail.ZCompensation3DLinkedVar = value;
+                    // 通知绑定引擎属性已变更，驱动 GlobalVariableLinkControl 清空 ComboBox
+                    RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensation3DLinked));
                     RefreshZCompensationDisplayValues();
                 }
@@ -205,6 +207,8 @@ namespace Module.ViewModels
                 if (_step?.DispenseDetail != null)
                 {
                     _step.DispenseDetail.ZCompensationCalibratorLinkedVar = value;
+                    // 通知绑定引擎属性已变更，驱动 GlobalVariableLinkControl 清空 ComboBox
+                    RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
                     RefreshZCompensationDisplayValues();
                 }

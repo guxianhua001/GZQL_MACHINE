@@ -1880,6 +1880,10 @@
     <sys:String x:Key="NeedleCamera_CurrentFile">当前参数文件</sys:String>
     <sys:String x:Key="Nav_Maintenance">设备维护</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">搜索点设置</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchPointSensor">传感器</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchPointSensorTip">选择该搜索点使用 X 传感器(SensorDiX) 或 Y 传感器(SensorDiY) 寻边</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorX">X传感器</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorY">Y传感器</sys:String>
     <sys:String x:Key="NeedleAligner_ReferenceCoordinates">固定基准 (ReferenceXYZ)</sys:String>
     <sys:String x:Key="NeedleAligner_ReferenceCoordinatesTip">增量法下此基准永不自动变更，所有动作回归同一示教面</sys:String>
     <sys:String x:Key="NeedleAligner_TcpTotalOffset">累计 TCP 偏移</sys:String>
@@ -1888,14 +1892,20 @@
     <sys:String x:Key="NeedleAligner_TcpCompensationNote">增量法：固定基准不变；每次校准计算相对基准的偏差，应用后累加到 TCP 总偏移。适用于频繁换针与磨损补偿。</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TcpTotalOffset">累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TcpTotalAccumulated">本次增量已累加到 TCP 总偏移，固定基准保持不变</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TcpTotalApplied">TCP 偏移已设为本次增量，固定基准保持不变</sys:String>
     <sys:String x:Key="NeedleAligner_MotionParameters">运动参数</sys:String>
     <sys:String x:Key="NeedleAligner_SearchRange">搜索范围 (mm)</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCount">Z搜索次数</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeed">搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">精细搜索速度 (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">安全高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchNeedleHeight">寻针高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchNeedleHeightTip">XY 边界扫描前 Z 下降至十字激光检测平面的高度，随当前针头系统切换</sys:String>
+    <sys:String x:Key="NeedleAligner_TeachSearchNeedleHeight">示教当前针尖 Z 为寻针高度</sys:String>
     <sys:String x:Key="NeedleAligner_ZProbeDescentHeight">Z 下探高度 (mm)</sys:String>
-    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">在对针高度基础上再下探，范围 -10~10mm；换针后针尖偏高时可设正值，使寻针 Z 更低以可靠检测</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">在寻针高度基础上再下探，范围 -10~10mm；换针后针尖偏高时可设正值，使寻针 Z 更低以可靠检测</sys:String>
+    <sys:String x:Key="NeedleAligner_ZMinHeight">Z 最低高度 (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZMinHeightTip">Z 向精细下探极限；寻针高度+下探高度超过此值时以此高度为准</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionForSystem">系统{0} 对针位置</sys:String>
     <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
@@ -1925,8 +1935,8 @@
     <sys:String x:Key="NeedleAligner_ClearLog">清空日志</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">补偿值</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationDelta">本次增量</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">应用后TCP总计: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">将以下 TCP 总计写入全局变量：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;（累计偏移 + 本次增量 + 表达式）&#10;固定基准不变，确定继续吗？</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">写入全局变量: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">将以下值写入全局变量：&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;（TCP 偏移 + 表达式偏移量）&#10;固定基准不变，确定继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">TCP 总计已写入全局变量并保存参数</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">此操作将重置累计 TCP 偏移与待应用增量到零。&#10;固定基准 ReferenceXYZ 不会改变。&#10;此操作不可逆，确定要继续吗？</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationReset">累计 TCP 偏移已重置为零</sys:String>
@@ -1957,6 +1967,9 @@
     <sys:String x:Key="NeedleAligner_SafeHeightTip">水平移动前 Z 轴抬升高度，防止碰撞，单位mm</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlign">系统{0}对针位置示教: X={1:F3}, Y={2:F3}, Z={3:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignError">对针位置示教失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachSearchHeight">系统{0}寻针高度示教: Z={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachSearchHeightError">寻针高度示教失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachSearchHeightNoAxis">寻针高度示教失败: 系统{0}未读取到针尖Z轴</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPoint">搜索点{0}示教完成: X={1:F3}, Y={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPointError">搜索点示教失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationLinked">已链接</sys:String>
@@ -1975,12 +1988,16 @@
     <sys:String x:Key="NeedleAligner_Status_SearchPointY">在点{0}进行Y方向搜索</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointScan">在点{0}进行边界搜索</sys:String>
     <sys:String x:Key="NeedleAligner_Status_MoveToFittedCenter">移动到拟合中心点</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_MoveToCoarseCenter">移动到粗拟合中心点</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_RefineYAtX0">X0处Y向精扫</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_RefineXAtY0">Y0处X向精扫</sys:String>
     <sys:String x:Key="NeedleAligner_Status_ZHeightSearch">第 {0}/{1} 次高度搜索</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationSuccess">针头校准成功完成</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationCancelled">针头校准已取消</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationError">校准异常: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationStopped">针头校准已手动停止</sys:String>
     <sys:String x:Key="NeedleAligner_Log_StopError">停止校准失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ReferenceXYZ">固定基准: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationResult">校准完成 - 当前: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Delta">本次增量: ΔX={0:F3}, ΔY={1:F3}, ΔZ={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ProcessResultError">处理校准结果失败: {0}</sys:String>
@@ -2000,6 +2017,71 @@
     <sys:String x:Key="NeedleAligner_Log_SaveHistoryError">保存补偿历史失败: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Cleared">日志已清空</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignNoAxis">对针位置示教失败: 系统{0}未读取到 Dx/Dy/针尖Z轴</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RaiseSafeHeight">阶段1: 抬升至安全高度 Z={0:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SearchPointStart">── 搜索点{0} 预设({1:F3},{2:F3}) ──</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SearchPointArrival">点{0} 到位: X={1:F3} Y={2:F3} Z寻针高</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_BoundaryScanStart">点{0} {1}向扫描: 中心={2:F3} ±{3:F3} DI={4}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_BoundaryScanPass">点{0} {1}向第{2}次: 起={3:F3} 方向{4} 跨度={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_EdgeCapture">点{0} {1}向第{2}次入光: 扫描轴={3:F3} 位置X={4:F3} Y={5:F3} DI={6}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_BoundaryMid">点{0} {1}向边界: Enter1={2:F3} Enter2={3:F3} Mid={4:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_PointMidX">点{0} X边缘=({1:F3},{2:F3})</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_PointMidY">点{0} Y边缘=({1:F3},{2:F3})</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HalconEdgeSamples">Halcon 边缘样本 X线:[{0}] Y线:[{1}]</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HalconCenterOk">Halcon 交点中心: X0={0:F3}, Y0={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HalconCenterFallback">Halcon 交点失败，回退均值: X0={0:F3}, Y0={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FitCenter">边界拟合中心: X0={0:F3}, Y0={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_YRefineStart">── X0={0:F3} 双激光Y精扫 粗Y={1:F3} 半宽±{2:F1}mm ──</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_YRefineAtX0">X0={0:F3} 双激光Y精扫: 粗={1:F3} 精={2:F3} ΔY={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_XRefineStart">── Y0={0:F3} 双激光X精扫 粗X={1:F3} 半宽±{2:F1}mm ──</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_XRefineAtY0">Y0={0:F3} 双激光X精扫: 粗={1:F3} 精={2:F3} ΔX={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserScanStart">点{0} 双激光{1}扫描: 固定={2:F3} 中心{1}={3:F3} 负起={4:F3} 正起={5:F3} 跨度={6:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveToCoarseCenter">粗拟合中心到位: X={0:F3} Y={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CenterSensorCheck">粗拟合中心传感器</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CenterDualLaserOk">中心点双激光已同时亮，跳过局部精搜</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CenterRefineStart">Halcon 粗中心后 ±{0:F1}mm 双激光精搜</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RefineCenterSensor">精搜中心传感器</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserPreclearReverse">点{0} 双激光预清反向再试</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserPreclearStart">点{0} 双激光预清: 任一路入光，分步移出</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserPreclearDone">点{0} 双激光预清{1}: 移离{2:F3}mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserEdgeOffStart">点{0} {1}向第{2}次: 双激光均灭，上升沿扫描</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserEdgeCapture">点{0} {1}向第{2}次双激光入光: 扫描轴={3:F3} X={4:F3} Y={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserInsideBeamScan">点{0} {1}向第{2}次: 起点已入光，束内双灭→双入光扫描</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserEdgeInside">点{0} {1}向第{2}次双激光入光(束内): 扫描轴={3:F3} X={4:F3} Y={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserBoundaryMid">点{0} 双激光{1}边界: Enter1={2:F3} Enter2={3:F3} Mid={4:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveToFitCenter">精搜中心到位: X={0:F3} Y={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchStart">阶段4: 边界拟合中心 X0={0:F3} Y0={1:F3}，开始 Z 高度搜索</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchContext">Z高度搜索: 寻针Z={0:F3} 对针位Z={1:F3} 安全Z={2:F3} 下探量={3:F3} 最低Z={4:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZDirInferred">Z向推断: 安全Z{0}寻针Z → 物理下探=坐标{1}</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_SafeBelowSearch">低于</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_SafeAboveSearch">高于</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchParams">Z搜索参数: 寻针Z={0:F3} 起始Z={1:F3}(上方{2:F0}mm) 下探极限Z={3:F3} 次数={4} 向下{5}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZFineTargetClamped">寻针Z+下探Z={0:F3} 超过最低高度 {1:F3}，下探极限取最低高度</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_CoordIncrease">坐标增大</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_CoordDecrease">坐标减小</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleReturnStart">第{0}次采样: 当前Z={1:F3} → 回到起始Z={2:F3}(寻针上方{3:F0}mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleMoveToStart">第{0}次Z采样: 当前Z={1:F3} → 上抬至起始Z={2:F3}(寻针Z={3:F3}上方{4:F0}mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleAtStart">第{0}次Z采样: 已在起始Z={1:F3}(寻针Z={2:F3}上方{3:F0}mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartSensor">Z下探起点传感器</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartSensorDiag">第{0}次起点激光状态: {1} (X={2} Y={3})</sys:String>
+    <sys:String x:Key="NeedleAligner_DualLaser_BothOn">双亮</sys:String>
+    <sys:String x:Key="NeedleAligner_DualLaser_BothOff">双灭</sys:String>
+    <sys:String x:Key="NeedleAligner_DualLaser_SingleOn">仅单路亮</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorOn">亮</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorOff">灭</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartBothOn">第{0}次起点双激光已同时亮，连续下探等待上升沿触发</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartSingleOn">第{0}次起点仅单路亮(非双亮)，连续下探等待双亮</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleDescendStart">第{0}次Z连续下探(SearchSpeed): 起Z={1:F3} 绝对极限Z={2:F3}(寻针+下探) ΔZ={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleTrigger">第{0}次双激光同时亮停轴: Z={1:F3} 相对寻针Z Δ={2:F3} 下探行程={3:F3}mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZPreclearStart">Z采样: 双激光已入光，分步继续上抬直至均灭</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZPreclearDone">Z预抬{0}: 移离{1:F1}mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZPreclearSensor">Z预抬后传感器</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleTimeout">Z采样超时</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserTrigger">第{0}次双激光同时亮: X={1:F3} Y={2:F3} Z={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchResult">Z搜索汇总: Z0={0:F3}(均值) 寻针Z={1:F3} ΔZ={2:F3} 双激光XY X={3:F3} Y={4:F3} (有效{5}/{6})</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FitVsDualLaser">边界拟合 vs 双激光: 拟合({0:F3},{1:F3}) 实测({2:F3},{3:F3}) ΔX={4:F3} ΔY={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FinalMeasured">最终实测: X={0:F3} Y={1:F3} Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorPreclearOk">成功</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorPreclearFail">失败仍入光</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">搜索中心点失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">搜索针尖高度失败</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">校准已取消</sys:String>
@@ -2019,6 +2101,14 @@
     <sys:String x:Key="NeedleAligner_PrevStep">上一步</sys:String>
     <sys:String x:Key="NeedleAligner_NextStep">下一步</sys:String>
     <sys:String x:Key="NeedleAligner_Step2_Guide">请先示教四个搜索点位置，然后示教对针位置。搜索点应围绕针尖均匀分布，对针位置应为针尖接触校准面时的精确坐标。</sys:String>
+    <sys:String x:Key="NeedleAligner_SetPermanentReference">设置永久基准</sys:String>
+    <sys:String x:Key="NeedleAligner_SetPermanentReferenceTip">将当前测量值设为永久基准 ReferenceXYZ，后续校准将以此为参考</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SetPermanentReference">永久基准已设置: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_AlarmTitle">寻针报警</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_AlarmMessage">自动寻针失败：{0}&#10;&#10;确认后将抬起 Z 轴到安全高度。</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RaiseZAfterFailure">寻针失败后已抬升至安全高度</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RaiseZError">抬升安全高度失败: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_UnknownError">未知错误</sys:String>
     <sys:String x:Key="NeedleVerify_Title">针头校准验证</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">验证补偿数据准确性</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">系统选择</sys:String>

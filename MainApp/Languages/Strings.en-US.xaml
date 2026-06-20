@@ -1880,6 +1880,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleCamera_CurrentFile">Current Parameter File</sys:String>
     <sys:String x:Key="Nav_Maintenance">Maintenance</sys:String>
     <sys:String x:Key="NeedleAligner_SearchPointSettings">Search Point Settings</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchPointSensor">Sensor</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchPointSensorTip">Select X sensor (SensorDiX) or Y sensor (SensorDiY) for boundary search at this point</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorX">X Sensor</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorY">Y Sensor</sys:String>
     <sys:String x:Key="NeedleAligner_ReferenceCoordinates">Fixed Reference (ReferenceXYZ)</sys:String>
     <sys:String x:Key="NeedleAligner_ReferenceCoordinatesTip">Incremental mode: this reference never auto-updates; all motions return to the same teach plane</sys:String>
     <sys:String x:Key="NeedleAligner_TcpTotalOffset">Accumulated TCP Offset</sys:String>
@@ -1888,14 +1892,20 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_TcpCompensationNote">Incremental mode: fixed reference unchanged; each calibration adds deviation to accumulated TCP offset. For frequent needle changes and wear compensation.</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TcpTotalOffset">Accumulated TCP: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TcpTotalAccumulated">Pending increment accumulated into TCP total; fixed reference unchanged</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TcpTotalApplied">TCP offset set to pending increment; fixed reference unchanged</sys:String>
     <sys:String x:Key="NeedleAligner_MotionParameters">Motion Parameters</sys:String>
     <sys:String x:Key="NeedleAligner_SearchRange">Search Range (mm)</sys:String>
     <sys:String x:Key="NeedleAligner_ZSearchCount">Z Search Count</sys:String>
     <sys:String x:Key="NeedleAligner_SearchSpeed">Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_FineSearchSpeed">Fine Search Speed (mm/s)</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeight">Safe Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchNeedleHeight">Search Needle Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_SearchNeedleHeightTip">Z height to enter cross-laser detection plane before XY boundary scan; switches with needle system</sys:String>
+    <sys:String x:Key="NeedleAligner_TeachSearchNeedleHeight">Teach current needle Z as search height</sys:String>
     <sys:String x:Key="NeedleAligner_ZProbeDescentHeight">Z Probe Descent (mm)</sys:String>
-    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">Extra descent from align Z, range -10~10mm; use positive value when needle tip is higher after change</sys:String>
+    <sys:String x:Key="NeedleAligner_ZProbeDescentHeightTip">Extra descent from search needle height, range -10~10mm; use positive value when needle tip is higher after change</sys:String>
+    <sys:String x:Key="NeedleAligner_ZMinHeight">Z Minimum Height (mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_ZMinHeightTip">Fine Z descent limit; if search height + probe descent exceeds this, this height is used</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionSettings">Align Position</sys:String>
     <sys:String x:Key="NeedleAligner_AlignPositionForSystem">System {0} align position</sys:String>
     <sys:String x:Key="NeedleAligner_Axis_X">X</sys:String>
@@ -1925,8 +1935,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_ClearLog">Clear Log</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationValue">Compensation</sys:String>
     <sys:String x:Key="NeedleAligner_CalibrationDelta">Pending Increment</sys:String>
-    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">TCP total after apply: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
-    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">Write the following TCP total to global variables:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;(accumulated + pending increment + expression)&#10;Fixed reference unchanged. Continue?</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CalculatedComp">Written to global vars: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_ApplyToGlobalMessage">Write the following value to global variables:&#10;X={0:F3}, Y={1:F3}, Z={2:F3}&#10;(TCP offset + expression offset)&#10;Fixed reference unchanged. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationAppliedToGlobal">TCP total written to global variables and parameters saved</sys:String>
     <sys:String x:Key="NeedleAligner_Dialog_ResetMessage">This will reset accumulated TCP offset and pending increment to zero.&#10;Fixed reference ReferenceXYZ will NOT change.&#10;This cannot be undone. Continue?</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CompensationReset">Accumulated TCP offset reset to zero</sys:String>
@@ -1957,6 +1967,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_SafeHeightTip">Z lift height before XY travel to avoid collision, in mm</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlign">System {0} align position taught: X={1:F3}, Y={2:F3}, Z={3:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignError">Teach align position failed: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachSearchHeight">System {0} search needle height taught: Z={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachSearchHeightError">Teach search needle height failed: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_TeachSearchHeightNoAxis">Teach search needle height failed: system {0} needle Z not read</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPoint">Search point {0} taught: X={1:F3}, Y={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachSearchPointError">Search point teach failed: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_CompensationLinked">Linked</sys:String>
@@ -1975,12 +1988,16 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointY">Searching Y at point {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Status_SearchPointScan">Boundary search at point {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Status_MoveToFittedCenter">Moving to fitted center point</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_MoveToCoarseCenter">Moving to coarse fit center</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_RefineYAtX0">Y refine scan at X0</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_RefineXAtY0">X refine scan at Y0</sys:String>
     <sys:String x:Key="NeedleAligner_Status_ZHeightSearch">Z height search {0}/{1}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationSuccess">Needle calibration completed successfully</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationCancelled">Needle calibration cancelled</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationError">Calibration error: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationStopped">Needle calibration stopped manually</sys:String>
     <sys:String x:Key="NeedleAligner_Log_StopError">Stop calibration failed: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ReferenceXYZ">Fixed Reference: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_CalibrationResult">Calibration done - Current: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Delta">Pending increment: ΔX={0:F3}, ΔY={1:F3}, ΔZ={2:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_ProcessResultError">Failed to process calibration result: {0}</sys:String>
@@ -2000,6 +2017,71 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SaveHistoryError">Failed to save compensation history: {0}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Cleared">Log cleared</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignNoAxis">Teach align position failed: system {0} Dx/Dy/needle Z not read</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RaiseSafeHeight">Phase 1: raise to safe height Z={0:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SearchPointStart">── Search point {0} preset ({1:F3},{2:F3}) ──</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SearchPointArrival">Point {0} at: X={1:F3} Y={2:F3} (search Z)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_BoundaryScanStart">Point {0} {1} scan: center={2:F3} ±{3:F3} DI={4}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_BoundaryScanPass">Point {0} {1} pass {2}: start={3:F3} dir{4} span={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_EdgeCapture">Point {0} {1} pass {2}: scan={3:F3} X={4:F3} Y={5:F3} DI={6}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_BoundaryMid">Point {0} {1} boundary: Enter1={2:F3} Enter2={3:F3} Mid={4:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_PointMidX">Point {0} X edge=({1:F3},{2:F3})</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_PointMidY">Point {0} Y edge=({1:F3},{2:F3})</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HalconEdgeSamples">Halcon edge samples X-line:[{0}] Y-line:[{1}]</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HalconCenterOk">Halcon intersection center: X0={0:F3}, Y0={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_HalconCenterFallback">Halcon intersection failed, fallback average: X0={0:F3}, Y0={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FitCenter">Boundary fit center: X0={0:F3}, Y0={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_YRefineStart">── X0={0:F3} dual-laser Y refine coarse Y={1:F3} half-span ±{2:F1}mm ──</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_YRefineAtX0">X0={0:F3} dual-laser Y refine: coarse={1:F3} fine={2:F3} ΔY={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_XRefineStart">── Y0={0:F3} dual-laser X refine coarse X={1:F3} half-span ±{2:F1}mm ──</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_XRefineAtY0">Y0={0:F3} dual-laser X refine: coarse={1:F3} fine={2:F3} ΔX={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserScanStart">Point {0} dual-laser {1} scan: fixed={2:F3} center {1}={3:F3} neg={4:F3} pos={5:F3} span={6:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveToCoarseCenter">At coarse fit center: X={0:F3} Y={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CenterSensorCheck">Coarse center sensors</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CenterDualLaserOk">Both lasers ON at center, skip local refine</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_CenterRefineStart">Dual-laser refine ±{0:F1}mm after Halcon coarse center</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RefineCenterSensor">Refined center sensors</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserPreclearReverse">Point {0} dual-laser pre-clear retry reverse</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserPreclearStart">Point {0} dual-laser pre-clear: any beam ON, stepping out</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserPreclearDone">Point {0} dual-laser pre-clear {1}: moved {2:F3}mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserEdgeOffStart">Point {0} {1} pass {2}: both OFF, rising-edge scan</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserEdgeCapture">Point {0} {1} pass {2} dual-laser ON: scan={3:F3} X={4:F3} Y={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserInsideBeamScan">Point {0} {1} pass {2}: start ON, inside-beam dual-OFF→dual-ON scan</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserEdgeInside">Point {0} {1} pass {2} dual-laser ON(inside): scan={3:F3} X={4:F3} Y={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserBoundaryMid">Point {0} dual-laser {1} boundary: Enter1={2:F3} Enter2={3:F3} Mid={4:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveToFitCenter">At refined center: X={0:F3} Y={1:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchStart">Phase 4: fit center X0={0:F3} Y0={1:F3}, Z height search</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchContext">Z height search: search Z={0:F3} align Z={1:F3} safe Z={2:F3} probe={3:F3} min Z={4:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZDirInferred">Z direction: safe Z {0} search Z → physical down = {1}</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_SafeBelowSearch">below</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_SafeAboveSearch">above</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchParams">Z search: search Z={0:F3} start Z={1:F3} (+{2:F0}mm above) limit Z={3:F3} count={4} down={5}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZFineTargetClamped">Search Z + probe Z={0:F3} exceeds min height {1:F3}; limit Z clamped to min height</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_CoordIncrease">coord increase</sys:String>
+    <sys:String x:Key="NeedleAligner_ZDir_CoordDecrease">coord decrease</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleReturnStart">Sample #{0}: current Z={1:F3} → return to start Z={2:F3} (+{3:F0}mm above search)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleMoveToStart">Z sample #{0}: current Z={1:F3} → lift to start Z={2:F3} (search Z={3:F3} +{4:F0}mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleAtStart">Z sample #{0}: at start Z={1:F3} (search Z={2:F3} +{3:F0}mm)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartSensor">Z descend start sensors</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartSensorDiag">Sample #{0} start laser: {1} (X={2} Y={3})</sys:String>
+    <sys:String x:Key="NeedleAligner_DualLaser_BothOn">both ON</sys:String>
+    <sys:String x:Key="NeedleAligner_DualLaser_BothOff">both OFF</sys:String>
+    <sys:String x:Key="NeedleAligner_DualLaser_SingleOn">single beam ON</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorOn">ON</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorOff">OFF</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartBothOn">Sample #{0}: both ON at start, continuous descend for rising edge</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleStartSingleOn">Sample #{0}: single beam at start, continuous descend for both ON</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleDescendStart">Z sample #{0}: continuous descend (SearchSpeed) from Z={1:F3} abs limit Z={2:F3} (search+probe) ΔZ={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleTrigger">Z sample #{0}: dual laser both ON stop at Z={1:F3} Δ from search Z={2:F3} travel={3:F3}mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZPreclearStart">Z sample: dual laser ON, step lift until both OFF</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZPreclearDone">Z pre-lift {0}: moved {1:F1}mm</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZPreclearSensor">Sensors after Z pre-lift</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSampleTimeout">Z sample timeout</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_DualLaserTrigger">Dual laser #{0}: X={1:F3} Y={2:F3} Z={3:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_ZSearchResult">Z summary: Z0={0:F3}(avg) search Z={1:F3} ΔZ={2:F3} dual-laser XY X={3:F3} Y={4:F3} ({5}/{6} ok)</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FitVsDualLaser">Fit vs dual-laser: fit({0:F3},{1:F3}) measured({2:F3},{3:F3}) ΔX={4:F3} ΔY={5:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_FinalMeasured">Final measured: X={0:F3} Y={1:F3} Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorPreclearOk">OK</sys:String>
+    <sys:String x:Key="NeedleAligner_SensorPreclearFail">failed still ON</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchCenterFailed">Search center point failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_SearchHeightFailed">Search needle height failed</sys:String>
     <sys:String x:Key="NeedleAligner_Error_CalibrationCancelled">Calibration cancelled</sys:String>
@@ -2019,6 +2101,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_PrevStep">Previous</sys:String>
     <sys:String x:Key="NeedleAligner_NextStep">Next</sys:String>
     <sys:String x:Key="NeedleAligner_Step2_Guide">First teach the four search point positions, then teach the align position. Search points should be evenly distributed around the needle tip; the align position should be the precise coordinates when the needle tip contacts the calibration surface.</sys:String>
+    <sys:String x:Key="NeedleAligner_SetPermanentReference">Set Permanent Ref</sys:String>
+    <sys:String x:Key="NeedleAligner_SetPermanentReferenceTip">Set current measurement as permanent ReferenceXYZ; future calibrations will use this as reference</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_SetPermanentReference">Permanent reference set: X={0:F3}, Y={1:F3}, Z={2:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_AlarmTitle">Needle Search Alarm</sys:String>
+    <sys:String x:Key="NeedleAligner_Dialog_AlarmMessage">Auto needle search failed: {0}&#10;&#10;Z axis will be raised to safe height after confirmation.</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RaiseZAfterFailure">Z raised to safe height after search failure</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_RaiseZError">Raise to safe height failed: {0}</sys:String>
+    <sys:String x:Key="NeedleAligner_Status_UnknownError">Unknown error</sys:String>
     <sys:String x:Key="NeedleVerify_Title">Needle Calibration Verification</sys:String>
     <sys:String x:Key="NeedleVerify_Subtitle">Verify compensation data accuracy</sys:String>
     <sys:String x:Key="NeedleVerify_SystemSelection">System Selection</sys:String>

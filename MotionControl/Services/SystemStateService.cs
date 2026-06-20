@@ -312,7 +312,7 @@ namespace MotionControl.Services
         {
             //if (_currentState == StationState.RUNNING || _currentState == StationState.PAUSE)
                 TransitionTo(StationState.STOP);
-        }
+         }
         public void RequestPause()
         {
             if (_currentState == StationState.RUNNING) TransitionTo(StationState.PAUSE);

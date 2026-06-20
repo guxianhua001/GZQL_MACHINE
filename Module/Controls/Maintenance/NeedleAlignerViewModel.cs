@@ -88,6 +88,18 @@ namespace Module.ViewModels
             set => SetCurrentAlignComponent(v => v.Z = (float)value, nameof(CurrentAlignZ));
         }
 
+        /// <summary>当前系统寻针高度（委托 Parameters.SearchNeedleHeight，随 SystemNumber 切换）</summary>
+        public double CurrentSearchNeedleHeight
+        {
+            get => Parameters?.SearchNeedleHeight ?? 0;
+            set
+            {
+                if (Parameters == null) return;
+                Parameters.SearchNeedleHeight = value;
+                RaisePropertyChanged(nameof(CurrentSearchNeedleHeight));
+            }
+        }
+
         /// <summary>X 寻针传感器 DI（随当前系统参数文件）</summary>
         public int SensorDiX
         {
@@ -112,6 +124,9 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>搜索点传感器下拉：SensorX / SensorY</summary>
+        public IReadOnlyList<NeedleSearchSensorOption> SearchSensorOptions { get; }
+
         private NeedleCalibrationParams _parameters = new();
         public NeedleCalibrationParams Parameters
         {
@@ -125,6 +140,9 @@ namespace Module.ViewModels
                 {
                     if (_parameters != null)
                         _parameters.PropertyChanged += OnParametersPropertyChanged;
+                    RaisePropertyChanged(nameof(CurrentSearchNeedleHeight));
+                    RaisePropertyChanged(nameof(SensorDiX));
+                    RaisePropertyChanged(nameof(SensorDiY));
                     RaiseCalibrationDeltaAndCalculatedChanged();
                 }
             }
@@ -265,7 +283,10 @@ namespace Module.ViewModels
             set
             {
                 if (SetProperty(ref _compensationXExpression, value))
+                {
                     RaisePropertyChanged(nameof(CalculatedCompX));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewX));
+                }
             }
         }
 
@@ -277,7 +298,10 @@ namespace Module.ViewModels
             set
             {
                 if (SetProperty(ref _compensationYExpression, value))
+                {
                     RaisePropertyChanged(nameof(CalculatedCompY));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewY));
+                }
             }
         }
 
@@ -289,11 +313,14 @@ namespace Module.ViewModels
             set
             {
                 if (SetProperty(ref _compensationZExpression, value))
+                {
                     RaisePropertyChanged(nameof(CalculatedCompZ));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewZ));
+                }
             }
         }
 
-        /// <summary>本次待应用增量 ΔX = 基准X - 当前X（仅校准后有效，应用后清零）</summary>
+        /// <summary>本次待应用增量 ΔX = 基准X - 当前X（校准后有效；Apply 后刷新为实时偏差，不清零）</summary>
         private double _pendingIncrementX;
         private double _pendingIncrementY;
         private double _pendingIncrementZ;
@@ -319,7 +346,7 @@ namespace Module.ViewModels
                 if (Math.Abs(_pendingIncrementX - value) < 0.0001) return;
                 _pendingIncrementX = value;
                 RaisePropertyChanged(nameof(PendingIncrementX));
-                RaisePropertyChanged(nameof(CalculatedCompX));
+                RaisePropertyChanged(nameof(TcpGlobalWritePreviewX));
             }
         }
 
@@ -331,7 +358,7 @@ namespace Module.ViewModels
                 if (Math.Abs(_pendingIncrementY - value) < 0.0001) return;
                 _pendingIncrementY = value;
                 RaisePropertyChanged(nameof(PendingIncrementY));
-                RaisePropertyChanged(nameof(CalculatedCompY));
+                RaisePropertyChanged(nameof(TcpGlobalWritePreviewY));
             }
         }
 
@@ -343,7 +370,7 @@ namespace Module.ViewModels
                 if (Math.Abs(_pendingIncrementZ - value) < 0.0001) return;
                 _pendingIncrementZ = value;
                 RaisePropertyChanged(nameof(PendingIncrementZ));
-                RaisePropertyChanged(nameof(CalculatedCompZ));
+                RaisePropertyChanged(nameof(TcpGlobalWritePreviewZ));
             }
         }
 
@@ -367,6 +394,7 @@ namespace Module.ViewModels
                     CompensationManager.TcpTotalOffsetX = value;
                     RaisePropertyChanged(nameof(TcpTotalOffsetX));
                     RaisePropertyChanged(nameof(CalculatedCompX));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewX));
                 }
             }
         }
@@ -382,6 +410,7 @@ namespace Module.ViewModels
                     CompensationManager.TcpTotalOffsetY = value;
                     RaisePropertyChanged(nameof(TcpTotalOffsetY));
                     RaisePropertyChanged(nameof(CalculatedCompY));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewY));
                 }
             }
         }
@@ -397,21 +426,34 @@ namespace Module.ViewModels
                     CompensationManager.TcpTotalOffsetZ = value;
                     RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                     RaisePropertyChanged(nameof(CalculatedCompZ));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewZ));
                 }
             }
         }
 
-        /// <summary>应用后 TCP 总计 = 累计偏移 + 本次增量 + 表达式</summary>
+        /// <summary>全局变量值 = TCP 偏移 + 表达式偏移量</summary>
         public double CalculatedCompX =>
-            TcpTotalOffsetX + PendingIncrementX + EvaluateExpression(CompensationXExpression);
+            TcpTotalOffsetX + EvaluateExpression(CompensationXExpression);
 
-        /// <summary>应用后 TCP 总计 Y</summary>
+        /// <summary>全局变量值 Y</summary>
         public double CalculatedCompY =>
-            TcpTotalOffsetY + PendingIncrementY + EvaluateExpression(CompensationYExpression);
+            TcpTotalOffsetY + EvaluateExpression(CompensationYExpression);
 
-        /// <summary>应用后 TCP 总计 Z</summary>
+        /// <summary>全局变量值 Z</summary>
         public double CalculatedCompZ =>
-            TcpTotalOffsetZ + PendingIncrementZ + EvaluateExpression(CompensationZExpression);
+            TcpTotalOffsetZ + EvaluateExpression(CompensationZExpression);
+
+        /// <summary>Apply 预览/写入值 = 本次增量 + 表达式（Apply 后 TcpTotalOffset 与 Pending 一致）</summary>
+        public double TcpGlobalWritePreviewX =>
+            PendingIncrementX + EvaluateExpression(CompensationXExpression);
+
+        /// <summary>Apply 预览 Y</summary>
+        public double TcpGlobalWritePreviewY =>
+            PendingIncrementY + EvaluateExpression(CompensationYExpression);
+
+        /// <summary>Apply 预览 Z</summary>
+        public double TcpGlobalWritePreviewZ =>
+            PendingIncrementZ + EvaluateExpression(CompensationZExpression);
 
         /// <summary>X轴补偿是否已链接全局变量</summary>
         public bool IsCompensationXLinked => !string.IsNullOrEmpty(CompensationXLinkedVar);
@@ -493,6 +535,8 @@ namespace Module.ViewModels
         /// <summary>停止搜索点移动</summary>
         public DelegateCommand StopSearchPointMoveCommand { get; }
         public DelegateCommand TeachAlignPositionCommand { get; }
+        /// <summary>示教当前系统寻针高度（仅读取针尖 Z）</summary>
+        public DelegateCommand TeachSearchNeedleHeightCommand { get; }
         public DelegateCommand System1Command { get; }
         public DelegateCommand System2Command { get; }
         public DelegateCommand UnlinkCompensationXCommand { get; }
@@ -502,6 +546,8 @@ namespace Module.ViewModels
         public DelegateCommand GoPrevCommand { get; }
         /// <summary>下一步命令</summary>
         public DelegateCommand GoNextCommand { get; }
+        /// <summary>设置永久基准：将当前测量值写入 ReferenceXYZ</summary>
+        public DelegateCommand SetPermanentReferenceCommand { get; }
 
         public NeedleAlignerViewModel(
             INeedleAlignerMotionService needleMotion,
@@ -519,6 +565,7 @@ namespace Module.ViewModels
             _parameterStorage = parameterStorage;
             _logger = logger;
             _localization = localization;
+            SearchSensorOptions = BuildSearchSensorOptions();
             _dialogService = dialogService;
             _eventAggregator = eventAggregator;
             _compensationManager = compensationManager;
@@ -583,6 +630,11 @@ namespace Module.ViewModels
                 () => !IsCalibrating)
                 .ObservesProperty(() => IsCalibrating);
 
+            TeachSearchNeedleHeightCommand = new DelegateCommand(
+                () => TeachSearchNeedleHeight(),
+                () => !IsCalibrating)
+                .ObservesProperty(() => IsCalibrating);
+
             System1Command = new DelegateCommand(() => SystemNumber = 1);
             System2Command = new DelegateCommand(() => SystemNumber = 2);
 
@@ -594,6 +646,11 @@ namespace Module.ViewModels
                 .ObservesProperty(() => CurrentStep);
             GoNextCommand = new DelegateCommand(GoNext, () => CurrentStep < MaxStep)
                 .ObservesProperty(() => CurrentStep);
+
+            SetPermanentReferenceCommand = new DelegateCommand(
+                SetPermanentReference,
+                () => !IsCalibrating)
+                .ObservesProperty(() => IsCalibrating);
 
             _eventAggregator.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>().Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
@@ -625,12 +682,15 @@ namespace Module.ViewModels
             var systemNumber = SystemNumber;
             var parametersSnapshot = Parameters?.Clone() ?? new NeedleCalibrationParams();
 
-            var progress = new Progress<(string Status, double Progress)>(p =>
+            var progress = new Progress<NeedleAlignerProgressReport>(p =>
             {
                 Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
-                    CalibrationStatus = p.Status;
+                    if (!string.IsNullOrEmpty(p.Status))
+                        CalibrationStatus = p.Status;
                     CalibrationProgress = p.Progress;
+                    if (!string.IsNullOrEmpty(p.DetailLog))
+                        AddLog(p.DetailLog);
                 });
             });
 
@@ -658,10 +718,14 @@ namespace Module.ViewModels
                 }
                 else
                 {
+                    var errorMsg = result.ErrorMessage ?? _localization.GetResourceOrDefault("NeedleAligner_Status_UnknownError", "未知错误");
                     CalibrationStatus = string.Format(
                         _localization.GetResourceOrDefault("NeedleAligner_Status_Error", "校准异常: {0}"),
-                        result.ErrorMessage ?? "未知错误");
+                        errorMsg);
                     AddLog(CalibrationStatus);
+
+                    // 传感器搜索失败弹窗报警，确认后抬 Z
+                    ShowCalibrationAlarmDialog(errorMsg);
                 }
             }
             catch (OperationCanceledException)
@@ -677,7 +741,10 @@ namespace Module.ViewModels
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_CalibrationError", "校准异常: {0}"),
                     ex.Message));
-                _logger.Error(ex, "针头校准异常");
+                // MotionService 已通过 _logger.Error 记录完整异常堆栈，此处仅更新 UI 日志避免重复
+
+                // 异常弹窗报警，确认后抬 Z
+                ShowCalibrationAlarmDialog(ex.Message);
             }
             finally
             {
@@ -708,7 +775,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 校准完成：计算相对固定基准的本次增量，累加预览 = TcpTotal + 增量 + 表达式
+        /// 校准完成：计算相对固定基准的本次增量；Apply 后 TcpTotalOffset 将设为 Pending
         /// </summary>
         private void OnCalibrationCompleted()
         {
@@ -722,6 +789,11 @@ namespace Module.ViewModels
                 CheckCompensationChange(PendingIncrementX, PendingIncrementY, PendingIncrementZ);
                 RaiseCalibrationDeltaAndCalculatedChanged();
 
+                // 标定数据写入 logs info
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_ReferenceXYZ",
+                        "固定基准: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                    Parameters.ReferenceXYZ.X, Parameters.ReferenceXYZ.Y, Parameters.ReferenceXYZ.Z));
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_CalibrationResult",
                         "校准完成 - 当前: X={0:F3}, Y={1:F3}, Z={2:F3}"),
@@ -736,7 +808,7 @@ namespace Module.ViewModels
                     TcpTotalOffsetX, TcpTotalOffsetY, TcpTotalOffsetZ));
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_CalculatedComp",
-                        "应用后TCP总计: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                        "全局变量值: X={0:F3}, Y={1:F3}, Z={2:F3}"),
                     CalculatedCompX, CalculatedCompY, CalculatedCompZ));
             }
             catch (Exception ex)
@@ -748,7 +820,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 应用补偿：TCP总计写入全局变量 → 累加到 TcpTotalOffset → 清空待应用增量与表达式（基准不变）
+        /// 应用补偿：TcpTotalOffset = PendingIncrement → 全局变量 = TcpTotalOffset + 表达式 → Pending 不清零
         /// </summary>
         private async Task ApplyCompensationAsync()
         {
@@ -759,26 +831,24 @@ namespace Module.ViewModels
                     { "title", _localization.GetResourceOrDefault("NeedleAligner_Dialog_ApplyTitle", "确认应用补偿") },
                     { "message", string.Format(
                         _localization.GetResourceOrDefault("NeedleAligner_Dialog_ApplyToGlobalMessage",
-                            "将以下 TCP 总计写入全局变量：\nX={0:F3}, Y={1:F3}, Z={2:F3}\n（累计偏移 + 本次增量 + 表达式）\n固定基准不变，确定继续吗？"),
-                        CalculatedCompX, CalculatedCompY, CalculatedCompZ) },
+                            "将以下值写入全局变量：\nX={0:F3}, Y={1:F3}, Z={2:F3}\n（TCP 偏移 + 表达式偏移量）\n固定基准不变，确定继续吗？"),
+                        TcpGlobalWritePreviewX, TcpGlobalWritePreviewY, TcpGlobalWritePreviewZ) },
                     { "icon", MaterialDesignThemes.Wpf.PackIconKind.HelpCircle }
                 }, async result =>
                 {
                     if (result.Result == ButtonResult.OK || result.Result == ButtonResult.Yes)
                     {
-                        var appliedX = CalculatedCompX;
-                        var appliedY = CalculatedCompY;
-                        var appliedZ = CalculatedCompZ;
+                        var (globalX, globalY, globalZ) = ApplyTcpOffsetFromPending();
 
-                        await WriteCompensationToGlobalVariablesAsync();
-                        CommitIncrementalAfterApply();
+                        // 2. 写入全局变量
+                        await WriteCompensationToGlobalVariablesAsync(globalX, globalY, globalZ);
                         await SaveParametersAsync(syncGlobalVariables: false);
 
                         AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_CompensationAppliedToGlobal", "TCP 总计已写入全局变量并保存参数"));
                         AddLog(string.Format(
                             _localization.GetResourceOrDefault("NeedleAligner_Log_CalculatedComp",
-                                "计算结果: X={0:F3}, Y={1:F3}, Z={2:F3}"),
-                            appliedX, appliedY, appliedZ));
+                                "全局变量写入值: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                            globalX, globalY, globalZ));
                     }
                 });
             }
@@ -792,9 +862,9 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 将 CalculatedComp 写入用户链接的 Double 全局变量（链接名仅保存在 JSON）
+        /// 将 TcpTotalOffset + 表达式偏移量写入用户链接的 Double 全局变量
         /// </summary>
-        private async Task WriteCompensationToGlobalVariablesAsync()
+        private async Task WriteCompensationToGlobalVariablesAsync(double valueX, double valueY, double valueZ)
         {
             var poolId = _recipePoolService?.CurrentPoolName ?? "Default";
             var variables = (await _recipePoolService.LoadGlobalVariablesAsync(poolId)).ToList();
@@ -802,11 +872,11 @@ namespace Module.ViewModels
             RemoveLegacyCompGlobalVariableEntries(variables);
 
             if (!string.IsNullOrEmpty(CompensationXLinkedVar))
-                UpdateOrAddGlobalVariable(variables, CompensationXLinkedVar, CalculatedCompX.ToString("F6"), "针头校准X补偿", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variables, CompensationXLinkedVar, valueX.ToString("F6"), "针头校准X补偿", GlobalVariableType.Double);
             if (!string.IsNullOrEmpty(CompensationYLinkedVar))
-                UpdateOrAddGlobalVariable(variables, CompensationYLinkedVar, CalculatedCompY.ToString("F6"), "针头校准Y补偿", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variables, CompensationYLinkedVar, valueY.ToString("F6"), "针头校准Y补偿", GlobalVariableType.Double);
             if (!string.IsNullOrEmpty(CompensationZLinkedVar))
-                UpdateOrAddGlobalVariable(variables, CompensationZLinkedVar, CalculatedCompZ.ToString("F6"), "针头校准Z补偿", GlobalVariableType.Double);
+                UpdateOrAddGlobalVariable(variables, CompensationZLinkedVar, valueZ.ToString("F6"), "针头校准Z补偿", GlobalVariableType.Double);
 
             for (int i = 0; i < variables.Count; i++)
                 variables[i].Index = i + 1;
@@ -817,21 +887,30 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 增量法：本次增量 + 表达式累加到 TcpTotalOffset，基准 ReferenceXYZ 保持不变
+        /// Apply：TcpTotalOffset 设为 PendingIncrement（替换，非累加）；全局变量 = TcpTotalOffset + 表达式
         /// </summary>
-        private void CommitIncrementalAfterApply()
+        private (double GlobalX, double GlobalY, double GlobalZ) ApplyTcpOffsetFromPending()
         {
-            var appliedIncrementX = PendingIncrementX + EvaluateExpression(CompensationXExpression);
-            var appliedIncrementY = PendingIncrementY + EvaluateExpression(CompensationYExpression);
-            var appliedIncrementZ = PendingIncrementZ + EvaluateExpression(CompensationZExpression);
+            var exprX = EvaluateExpression(CompensationXExpression);
+            var exprY = EvaluateExpression(CompensationYExpression);
+            var exprZ = EvaluateExpression(CompensationZExpression);
 
-            CompensationManager.SetTcpTotalOffset(CalculatedCompX, CalculatedCompY, CalculatedCompZ);
+            // TCP 偏移 = 本次增量（与 Pending 一致，非历史累加）
+            CompensationManager.ApplyPendingOffset(
+                PendingIncrementX, PendingIncrementY, PendingIncrementZ);
+
             Parameters.CompensationXYZ = new PointF(
                 (float)CompensationManager.TcpTotalOffsetX,
                 (float)CompensationManager.TcpTotalOffsetY,
                 (float)CompensationManager.TcpTotalOffsetZ);
 
-            ClearPendingIncrement();
+            // 全局变量 = TCP 偏移 + 表达式
+            var globalX = TcpTotalOffsetX + exprX;
+            var globalY = TcpTotalOffsetY + exprY;
+            var globalZ = TcpTotalOffsetZ + exprZ;
+
+            // Apply 后 Pending 刷新为实时偏差，不清零
+            RefreshPendingIncrementFromDelta();
             CompensationXExpression = null;
             CompensationYExpression = null;
             CompensationZExpression = null;
@@ -844,18 +923,32 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(TcpTotalOffsetZ));
             RaiseCalibrationDeltaAndCalculatedChanged();
 
-            SaveCompensationHistory(appliedIncrementX, appliedIncrementY, appliedIncrementZ, recordPendingOnly: false);
+            SaveCompensationHistory(globalX, globalY, globalZ, recordPendingOnly: false);
 
-            AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalAccumulated",
-                "本次增量已累加到 TCP 总偏移，固定基准保持不变"));
+            AddLog(_localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalApplied",
+                "TCP 偏移已设为本次增量，固定基准保持不变"));
+            AddLog(string.Format(
+                _localization.GetResourceOrDefault("NeedleAligner_Log_TcpTotalOffset",
+                    "累计TCP: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                TcpTotalOffsetX, TcpTotalOffsetY, TcpTotalOffsetZ));
+
+            return (globalX, globalY, globalZ);
         }
 
-        /// <summary>清空待应用增量（应用或重置后调用）</summary>
+        /// <summary>清空待应用增量（重置等场景使用）</summary>
         private void ClearPendingIncrement()
         {
             PendingIncrementX = 0;
             PendingIncrementY = 0;
             PendingIncrementZ = 0;
+        }
+
+        /// <summary>将 PendingIncrement 刷新为当前实时偏差 CalibrationDelta（Ref - Current）</summary>
+        private void RefreshPendingIncrementFromDelta()
+        {
+            PendingIncrementX = CalibrationDeltaX;
+            PendingIncrementY = CalibrationDeltaY;
+            PendingIncrementZ = CalibrationDeltaZ;
         }
 
         /// <summary>更新或添加全局变量（默认 Double 类型）</summary>
@@ -1028,7 +1121,8 @@ namespace Module.ViewModels
                     {
                         CompensationManager.ResetTcpTotalOffset();
                         Parameters.CompensationXYZ = new PointF(0, 0, 0);
-                        ClearPendingIncrement();
+                        // Reset 后 PendingIncrement 刷新为当前实时偏差，不清零
+                        RefreshPendingIncrementFromDelta();
                         CompensationXExpression = null;
                         CompensationYExpression = null;
                         CompensationZExpression = null;
@@ -1307,6 +1401,9 @@ namespace Module.ViewModels
                 }
 
                 SetCurrentAlignPosition(new PointF((float)x, (float)y, (float)z));
+                // 对针示教 Z 同步到当前系统寻针高度
+                if (Parameters != null)
+                    Parameters.SearchNeedleHeight = z;
                 StashCurrentSystemState(SystemNumber);
 
                 AddLog(string.Format(
@@ -1317,6 +1414,94 @@ namespace Module.ViewModels
             {
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_TeachAlignError", "对针位置示教失败: {0}"),
+                    ex.Message));
+            }
+        }
+
+        /// <summary>设置永久基准：将当前测量值 CurrentXYZ 写入 ReferenceXYZ，并持久化保存</summary>
+        private async void SetPermanentReference()
+        {
+            if (Parameters == null) return;
+            var cur = Parameters.CurrentXYZ;
+            Parameters.ReferenceXYZ = new PointF(cur.X, cur.Y, cur.Z);
+            StashCurrentSystemState(SystemNumber);
+            RaiseCalibrationDeltaAndCalculatedChanged();
+
+            // 持久化保存永久基准参数
+            await SaveParametersAsync(syncGlobalVariables: false);
+
+            AddLog(string.Format(
+                _localization.GetResourceOrDefault("NeedleAligner_Log_SetPermanentReference",
+                    "永久基准已设置: X={0:F3}, Y={1:F3}, Z={2:F3}"),
+                cur.X, cur.Y, cur.Z));
+        }
+
+        /// <summary>校准失败弹窗报警：显示错误信息，确认后抬 Z 到安全高度</summary>
+        private void ShowCalibrationAlarmDialog(string errorMessage)
+        {
+            _dialogService.ShowDialog("NotificationDialog", new DialogParameters
+            {
+                { "title", _localization.GetResourceOrDefault("NeedleAligner_Dialog_AlarmTitle", "寻针报警") },
+                { "message", string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Dialog_AlarmMessage",
+                        "自动寻针失败：{0}\n\n确认后将抬起 Z 轴到安全高度。"),
+                    errorMessage) },
+                { "icon", MaterialDesignThemes.Wpf.PackIconKind.AlertCircle }
+            }, result =>
+            {
+                if (result.Result == ButtonResult.OK || result.Result == ButtonResult.Yes)
+                {
+                    // 确认后抬 Z 到安全高度
+                    _ = RaiseZAfterFailureAsync();
+                }
+            });
+        }
+
+        /// <summary>寻针失败确认后抬 Z 到安全高度</summary>
+        private async Task RaiseZAfterFailureAsync()
+        {
+            try
+            {
+                if (Parameters == null) return;
+                var cts = new CancellationTokenSource();
+                await _needleMotion.MoveToSafeHeightAsync(Parameters, SystemNumber, cts.Token);
+                AddLog(_localization.GetResourceOrDefault(
+                    "NeedleAligner_Log_RaiseZAfterFailure", "寻针失败后已抬升至安全高度"));
+            }
+            catch (Exception ex)
+            {
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_RaiseZError", "抬升安全高度失败: {0}"),
+                    ex.Message));
+            }
+        }
+
+        /// <summary>示教当前系统寻针高度（仅读取针尖 Z 轴位置）</summary>
+        private void TeachSearchNeedleHeight()
+        {
+            try
+            {
+                var positions = _needleMotion.ReadCurrentPositions(SystemNumber);
+                if (!TryGetNeedleZ(positions, SystemNumber, out double z))
+                {
+                    AddLog(string.Format(
+                        _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchHeightNoAxis", "寻针高度示教失败: 系统{0}未读取到针尖Z轴"),
+                        SystemNumber));
+                    return;
+                }
+
+                if (Parameters != null)
+                    Parameters.SearchNeedleHeight = z;
+                StashCurrentSystemState(SystemNumber);
+
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchHeight", "系统{0}寻针高度示教: Z={1:F3}"),
+                    SystemNumber, z));
+            }
+            catch (Exception ex)
+            {
+                AddLog(string.Format(
+                    _localization.GetResourceOrDefault("NeedleAligner_Log_TeachSearchHeightError", "寻针高度示教失败: {0}"),
                     ex.Message));
             }
         }
@@ -1342,6 +1527,24 @@ namespace Module.ViewModels
             update(p);
             SetCurrentAlignPosition(p);
             RaisePropertyChanged(propertyName);
+        }
+
+        /// <summary>兼容旧版 JSON：未配置寻针高度时沿用对针位置 Z</summary>
+        private static void MigrateLegacySearchNeedleHeight(NeedleCalibrationParams parameters)
+        {
+            if (parameters == null) return;
+
+            if (Math.Abs(parameters.SearchNeedleHeightSystem1) < 1e-6
+                && Math.Abs(parameters.AlignPositionSystem1.Z) > 1e-6)
+            {
+                parameters.SearchNeedleHeightSystem1 = parameters.AlignPositionSystem1.Z;
+            }
+
+            if (Math.Abs(parameters.SearchNeedleHeightSystem2) < 1e-6
+                && Math.Abs(parameters.AlignPositionSystem2.Z) > 1e-6)
+            {
+                parameters.SearchNeedleHeightSystem2 = parameters.AlignPositionSystem2.Z;
+            }
         }
 
         /// <summary>切换系统：缓存旧系统完整状态，加载新系统缓存或磁盘配置</summary>
@@ -1406,6 +1609,7 @@ namespace Module.ViewModels
         {
             if (Parameters == null) return;
 
+            Parameters.SystemNumber = systemNumber;
             SyncCurrentStateToParameters();
             _systemStateCache[systemNumber] = new NeedleSystemState
             {
@@ -1524,15 +1728,18 @@ namespace Module.ViewModels
                 return null;
 
             loaded.SystemNumber = systemNumber;
+            MigrateLegacySearchNeedleHeight(loaded);
             return loaded;
         }
 
         private void ApplyParametersFromSystem(NeedleCalibrationParams loaded, int systemNumber)
         {
             loaded.SystemNumber = systemNumber;
+            MigrateLegacySearchNeedleHeight(loaded);
             Parameters = loaded;
             CompensationManager.LoadFromParameters(Parameters);
-            ClearPendingIncrement();
+            // 切换系统后 PendingIncrement 刷新为当前实时偏差
+            RefreshPendingIncrementFromDelta();
 
             CompensationXLinkedVar = ResolveCompXLinkedVar(Parameters.CompensationXLinkedVar);
             CompensationYLinkedVar = ResolveCompYLinkedVar(Parameters.CompensationYLinkedVar);
@@ -1554,6 +1761,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(CurrentAlignX));
             RaisePropertyChanged(nameof(CurrentAlignY));
             RaisePropertyChanged(nameof(CurrentAlignZ));
+            RaisePropertyChanged(nameof(CurrentSearchNeedleHeight));
             RaisePropertyChanged(nameof(SensorDiX));
             RaisePropertyChanged(nameof(SensorDiY));
             RaisePropertyChanged(nameof(CompensationX));
@@ -1628,7 +1836,7 @@ namespace Module.ViewModels
                 await SaveCurrentFileToRecipePoolAsync();
 
                 if (syncGlobalVariables)
-                    await WriteCompensationToGlobalVariablesAsync();
+                    await WriteCompensationToGlobalVariablesAsync(CalculatedCompX, CalculatedCompY, CalculatedCompZ);
 
                 QueueCleanupOldConfigFiles(calibrationDir, filePath, SystemNumber);
 
@@ -1831,6 +2039,13 @@ namespace Module.ViewModels
                 RaisePropertyChanged(nameof(CurrentAlignZ));
             }
 
+            if (e.PropertyName is nameof(NeedleCalibrationParams.SearchNeedleHeight)
+                || (e.PropertyName == nameof(NeedleCalibrationParams.SearchNeedleHeightSystem1) && SystemNumber == 1)
+                || (e.PropertyName == nameof(NeedleCalibrationParams.SearchNeedleHeightSystem2) && SystemNumber == 2))
+            {
+                RaisePropertyChanged(nameof(CurrentSearchNeedleHeight));
+            }
+
             if (e.PropertyName is nameof(NeedleCalibrationParams.SensorDiX))
                 RaisePropertyChanged(nameof(SensorDiX));
             if (e.PropertyName is nameof(NeedleCalibrationParams.SensorDiY))
@@ -1846,31 +2061,37 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(CompensationX));
                     RaisePropertyChanged(nameof(TcpTotalOffsetX));
                     RaisePropertyChanged(nameof(CalculatedCompX));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewX));
                     break;
                 case nameof(NeedleCompensationManager.TcpTotalOffsetY):
                     RaisePropertyChanged(nameof(CompensationY));
                     RaisePropertyChanged(nameof(TcpTotalOffsetY));
                     RaisePropertyChanged(nameof(CalculatedCompY));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewY));
                     break;
                 case nameof(NeedleCompensationManager.TcpTotalOffsetZ):
                     RaisePropertyChanged(nameof(CompensationZ));
                     RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                     RaisePropertyChanged(nameof(CalculatedCompZ));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewZ));
                     break;
                 case nameof(NeedleCompensationManager.CompensationX):
                     RaisePropertyChanged(nameof(CompensationX));
                     RaisePropertyChanged(nameof(TcpTotalOffsetX));
                     RaisePropertyChanged(nameof(CalculatedCompX));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewX));
                     break;
                 case nameof(NeedleCompensationManager.CompensationY):
                     RaisePropertyChanged(nameof(CompensationY));
                     RaisePropertyChanged(nameof(TcpTotalOffsetY));
                     RaisePropertyChanged(nameof(CalculatedCompY));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewY));
                     break;
                 case nameof(NeedleCompensationManager.CompensationZ):
                     RaisePropertyChanged(nameof(CompensationZ));
                     RaisePropertyChanged(nameof(TcpTotalOffsetZ));
                     RaisePropertyChanged(nameof(CalculatedCompZ));
+                    RaisePropertyChanged(nameof(TcpGlobalWritePreviewZ));
                     break;
             }
         }
@@ -1890,6 +2111,9 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(CalculatedCompX));
             RaisePropertyChanged(nameof(CalculatedCompY));
             RaisePropertyChanged(nameof(CalculatedCompZ));
+            RaisePropertyChanged(nameof(TcpGlobalWritePreviewX));
+            RaisePropertyChanged(nameof(TcpGlobalWritePreviewY));
+            RaisePropertyChanged(nameof(TcpGlobalWritePreviewZ));
         }
 
         /// <summary>安全计算数学表达式，如 "0.1+0.2+0.3"，失败返回0</summary>
@@ -1909,13 +2133,14 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 添加日志到队列（带时间戳）
+        /// 添加日志到队列（带时间戳），同时写入文件日志（ILoggerService）
         /// </summary>
         private void AddLog(string message)
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
             var logEntry = $"[{timestamp}] {message}";
             _logQueue.Enqueue(logEntry);
+            _logger.Info($"[NeedleAligner] {message}");
         }
 
         /// <summary>
@@ -2138,6 +2363,30 @@ namespace Module.ViewModels
                 }
             });
         }
+
+        /// <summary>构建搜索点传感器下拉选项（多语言）</summary>
+        private IReadOnlyList<NeedleSearchSensorOption> BuildSearchSensorOptions() => new[]
+        {
+            new NeedleSearchSensorOption(
+                NeedleSearchSensorKind.SensorX,
+                _localization.GetResourceOrDefault("NeedleAligner_SensorX", "X传感器")),
+            new NeedleSearchSensorOption(
+                NeedleSearchSensorKind.SensorY,
+                _localization.GetResourceOrDefault("NeedleAligner_SensorY", "Y传感器"))
+        };
+    }
+
+    /// <summary>搜索点传感器下拉项</summary>
+    public sealed class NeedleSearchSensorOption
+    {
+        public NeedleSearchSensorOption(NeedleSearchSensorKind value, string label)
+        {
+            Value = value;
+            Label = label;
+        }
+
+        public NeedleSearchSensorKind Value { get; }
+        public string Label { get; }
     }
 
     /// <summary>单套针头系统的参数与文件快照</summary>

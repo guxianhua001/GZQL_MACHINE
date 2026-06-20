@@ -1,6 +1,385 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.20 — DispenseDetail 取消链接全局变量修复
+-------------------------------------------
+
+1. 问题
+   - DispenseDetailView 中 Z向补偿(3D) 和 Z向补偿(校准器) 的 GlobalVariableLinkControl 取消链接按钮无效
+   - 点击 LinkOff 按钮后 ComboBox 仍显示已链接的变量名，未正确清空
+
+2. 根因
+   - DispenseDetailViewModel 的 ZCompensation3DLinkedVar / ZCompensationCalibratorLinkedVar 属性 setter 中
+     缺少 RaisePropertyChanged 调用，导致 WPF 绑定引擎不知道 ViewModel 属性已变为 null
+   - GlobalVariableLinkControl 的 LinkedVariableName DependencyProperty 未收到变更通知，
+     OnLinkedVariableNameChanged 回调未触发，ComboBox 不会被清空
+
+3. 修复
+   - 在两个 LinkedVar 属性的 setter 中添加 RaisePropertyChanged(nameof(ZCompensation*LinkedVar))
+   - 修改文件：Module/Controls/StepDetails/DispenseDetailViewModel.cs
+
+v2026.06.20 — NeedleAligner Apply TCP 偏移逻辑修正（替换非累加）
+-------------------------------------------
+
+1. 问题
+   - Apply TCP 后 Accumulated TCP Offset 错误地累加历史值 + Pending
+   - 正确结果：Accumulated TCP Offset 应等于 Pending Increment（-0.005, -0.034, 0.011）
+   - Apply 后 Pending 清零导致再次 Apply / 重启后结果不一致
+
+2. 修复
+   - Apply 时 TcpTotalOffset := PendingIncrement（替换，非累加）
+   - 全局变量 = TcpTotalOffset + 表达式偏移量
+   - Pending Increment Apply 后刷新为实时偏差（Ref - Current），不清零
+   - 多次 Apply / 重启软件结果保持幂等正确
+
+v2026.06.19 — NeedleAligner 双激光 DI 极性修复（根因）
+-------------------------------------------
+
+1. 问题
+   - IsSensorTriggered 误用 !ReadDi，与 Leisai 卡层极性双重取反
+   - 硬件 raw=0(有信号)时 ReadDi=true，取反后判为无信号；无信号时误判双亮，导致 Z 起点误触发/误跳过
+
+2. 修复
+   - IsSensorTriggered 改为直接 return ReadDi(port)
+   - 信号链：dmc_read_inbit raw=0→有信号，raw=1→无信号（与旧项目 NeedleCalibrating 一致）
+
+v2026.06.19 — NeedleAligner 移除 Z 上抬预清误跳过
+-------------------------------------------
+
+1. 问题
+   - EnsureDualLaserClear 要求 X/Y 均灭；Y 单路常亮时误判未双灭，上抬预清失败错误跳过采样
+   - 用户无「双亮」时仍被跳过；预清方向/高度与需求不符
+
+2. 修复
+   - 删除 EnsureDualLaserClearBeforeZDescendAsync
+   - 流程：上抬 5mm → 记录双亮/双灭/单路亮 → 连续下探至绝对极限(寻针+下探) → 双亮停轴
+   - 起点双灭直接捕获双亮；起点双亮等上升沿；单路亮等非双亮不跳过
+
+v2026.06.19 — NeedleAligner Z 高度起点误触发修复
+-------------------------------------------
+
+1. 问题
+   - 寻针上方 5mm 起点双激光已亮，电平触发在 Z≈69 立即停轴，未实际下探至触针高度(~73+)
+
+2. 修复
+   - 起点已亮：SearchSpeed 连续上抬预清直至双灭（最多额外 15mm）
+   - 下探改为上升沿：先双灭→双亮，且下探行程≥0.05mm 才停轴
+
+v2026.06.19 — NeedleAligner Z 高度搜索：寻针上方5mm起连续下探
+-------------------------------------------
+
+1. 规则（对齐旧项目 SearchSingleNeedleHeightAsync）
+   - 上抬至寻针高度上方 5mm 作为起始高度（单次 SearchSpeed 绝对运动）
+   - SearchSpeed 连续下探至「寻针+下探高度」（钳位最低高度），非寸动
+   - 下探过程中同步检测双激光同时亮即停轴记录 Z
+   - 多次采样每次回到起始高度
+
+v2026.06.19 — NeedleAligner Z 高度搜索改为纯下探（修正向上寸动）
+-------------------------------------------
+
+1. 问题
+   - 到达中心点后 Z 高度搜索先向上寸动预抬，物理方向与寻针高度搜索不符
+   - 误用安全区 InvertedDirection，与 MoveToSafeHeight 实际方向可能不一致
+
+2. 修复
+   - Z 向由「安全Z vs 寻针Z」推断下探方向（SafeHeight &lt; SearchZ → 下探=坐标增大）
+   - 取消上抬预清：寻针高度起 SearchSpeed 连续下探至极限Z
+   - 起点已入光时沿下探方向寸动预清（非上抬）
+   - 日志增加 Z 向推断、安全Z、接近Z
+
+v2026.06.19 — NeedleAligner Z 高度误触发与日志增强
+-------------------------------------------
+
+1. 问题
+   - 上抬 5mm 后双激光仍 ON，电平触发在起点立即停轴，记录 Z≈69 而非寻针 Z≈74
+   - 多次采样未回寻针高度，Z 逐次偏低；日志缺少对针位/寻针高度对比
+
+2. 修复
+   - 上抬后仍入光则 SearchSpeed 分步续抬直至双灭（最多额外 10mm）
+   - 下探改为上升沿：先确认双灭，连续下探中双亮才停轴
+   - 每次采样前回到寻针高度；汇总日志输出寻针Z、ΔZ、对针位Z
+
+v2026.06.19 — NeedleAligner Z 下探极限钳位最低高度
+-------------------------------------------
+
+1. 规则
+   - 下探极限 Z = 寻针高度 + 下探高度（按 Z 轴向换算坐标）
+   - 若结果超过 ZMinHeight（最低高度），下探极限取 ZMinHeight
+   - 发生钳位时输出日志 NeedleAligner_Log_ZFineTargetClamped
+
+v2026.06.19 — NeedleAligner Z 下探方向与连续 SearchSpeed 下降
+-------------------------------------------
+
+1. 问题
+   - 中心点 Z 高度搜索时 Z 轴方向反了，一直向上移动
+   - 下探采用分步/慢速，未按搜索速度连续下降并轮询双激光
+
+2. 修复
+   - 按安全区 InvertedDirection 修正上抬/下探极限 Z（GetZApproachHeight / GetZFineDescendTarget）
+   - 单次采样：SearchSpeed 上抬 → SearchSpeed MoveRelStart 连续下探，双激光同时入光即停轴
+   - 移除 Z 分步预抬逻辑；下探前校验 ΔZ 符号与寻针高度→极限高度一致
+
+v2026.06.19 — NeedleAligner Z 高度搜索对齐旧项目电平触发
+-------------------------------------------
+
+1. 问题
+   - Z 下探用上升沿检测，起点双激光已亮时不停轴、继续空探
+   - 未按旧项目每次采样前先上抬再慢速下探
+
+2. 修复
+   - 每次采样：SearchSpeed 上抬 max(下探高度,5mm) → 仍入光则分步续抬 → FineSearchSpeed 慢探
+   - 双激光同时入光电平触发即停轴记录 Z（旧项目 CheckZNeedleSensor）
+   - 按 ZSearchCount 多次采样取 Z 算术平均
+
+v2026.06.19 — NeedleAligner 预设点正反寻边与强制双激光精搜
+-------------------------------------------
+
+1. 问题
+   - 第 2 次寻边未移到预设点 +Range 侧，两次入光沿仅差 ~0.02mm，Halcon 中心偏差大
+   - 粗中心 DI 误判双激光已亮，跳过 ±2mm 精搜
+
+2. 修复
+   - 寻边改为：Pass1 从 center-Range 正向扫 2×Range；Pass2 移到 center+Range 负向扫 2×Range
+   - Halcon 粗中心到位后始终执行 ±2mm 双激光精搜，不再根据 DI 跳过
+
+v2026.06.19 — NeedleAligner 双激光误判与 Z 下探卡死修复
+-------------------------------------------
+
+1. 问题
+   - 粗拟合中心到位后单次 DI 采样易误判双激光已亮，错误跳过 ±2mm 精搜
+   - Z 高度搜索使用上升沿检测，起点双激光已入光时永远等不到沿，轴长时间无响应
+
+2. 修复
+   - 中心验证改为停稳后连续 3 次双激光同时入光才跳过精搜，并记录 DI 状态日志
+   - Z 采样参考旧项目：双激光仍入光则先预抬最多 5mm 直至均灭，再下探捕获上升沿
+
+v2026.06.19 — NeedleAligner 四点寻边按 UI Sensor 配置扫描
+-------------------------------------------
+
+1. 变更
+   - 修复硬编码 P1/P2=X、P3/P4=Y 问题，改为读取 SearchPoint1~4SensorKind
+   - X 传感器：沿 X 轴双向扫边，边缘点归入 X 线
+   - Y 传感器：沿 Y 轴双向扫边，边缘点归入 Y 线
+   - 扫描顺序仍按 P1→P4 点位顺序，不要求先 X 后 Y；Halcon 拟合需 X/Y 传感器各至少 2 点
+
+v2026.06.19 — NeedleAligner 恢复 Halcon 交点拟合与旧项目寻边逻辑
+-------------------------------------------
+
+1. 变更
+   - 四点寻边回归旧项目 NeedleCalibrating：P1/P2 X 传感器 X 向双向扫，P3/P4 Y 传感器 X 向双向扫
+   - 中心点改用 Halcon IntersectionLines 两直线交点拟合，失败时回退 X/Y 边缘均值
+   - 简化单路寻边：去掉单传感器预清/束内双沿，采用上升沿停轴（与旧项目一致）
+   - 移至拟合中心后双激光未同时亮时，仍在 ±2mm 内双激光精搜修正 XY
+
+2. 多语言
+   - 新增 NeedleAligner_Log_HalconEdgeSamples / HalconCenterOk / HalconCenterFallback
+   - 更新 NeedleAligner_Log_PointMidX / PointMidY 日志文案
+
+v2026.06.19 — NeedleAligner 边界扫描单路预清与扫描轴单轴定位（修复 P3 Y 不走）
+-------------------------------------------
+
+1. 问题
+   - 第 3 点 Y 向扫描日志停在「束内出光→入光双沿」后轴不运动
+   - 起点 DI 已入光时直接 MoveRelStart，控制器/插补占用时相对运动可能未下发
+   - Y 扫描仅 Y 轴需动时仍对 X 重复 MoveAbs，部分卡会拒动
+
+2. 修复
+   - 起点已入光：沿扫描反向分步预清（0.5mm/步）至灭光，再上升沿扫描；失败才回退束内双沿
+   - StartBoundaryRelativeScanAsync：下发相对运动后确认轴位移已启动，未动则停轴报错
+   - 束内双沿增加无位移停滞检测，避免空等 60s
+   - MoveScanAxesAsync：仅移动扫描轴（单轴需动时不重复下发已在位轴）
+   - 扫描起/终点定位后 WaitForAxesSettledAsync 再入光沿捕获
+
+v2026.06.19 — NeedleAligner 中心先到位 + ±2mm 局部精搜（防撞针）
+-------------------------------------------
+
+1. 问题
+   - 四点粗拟合后直接在大跨度（±5mm）做双激光 Y/X 精扫，预清失败时束内双沿持续走位导致撞针
+   - 日志：预清移离 14mm 仍入光，束内双灭→双入光扫描长时间运动
+
+2. 修复
+   - 四点粗拟合 X0/Y0 后先移至粗拟合中心，验证双激光是否同时亮
+   - 已同时亮：跳过局部精搜，直接进入 Z 高度搜索
+   - 未同时亮：仅在中心附近 ±2mm 内做 Y/X 双激光精扫（跨度 4mm，预清最多 4mm）
+   - 移除精搜后再抬安全高度移中心的冗余步骤，保持寻针高度连续运动
+   - 修正 X 精扫 fixedCoord/centerCoord 参数顺序（固定 Y0、扫描 X）
+   - 双激光扫描/边界日志泛化为 X/Y 轴通用格式
+
+v2026.06.19 — NeedleAligner X 方向双激光精扫（修正单路 X 传感器偏心偏差）
+-------------------------------------------
+
+1. 问题
+   - 四点粗拟合 X0≈278.906，实际 X0≈279.082，ΔX≈0.176mm
+   - X0 偏差导致 Z 搜索时双激光不能同时亮，Z 高度搜索失败
+   - 根因：P1/P2 在不同 Y 位置用单路 SensorDiX 测 X 边界，偏心采样导致 X0 偏差
+
+2. 修复
+   - Y 精扫后新增 X 精扫：在精扫 Y0 处用双激光同时触发判据沿 X 轴双向扫描取中点
+   - 泛化 ScanDualLaserYBoundaryMidAsync → ScanDualLaserBoundaryMidAsync，支持 X/Y 双轴
+   - 新增 RefineXCenterAtY0Async 方法
+   - 拟合中心、移至中心、Z 搜索起点均使用精扫后的 X0
+
+v2026.06.19 — NeedleAligner Y 精扫紧凑包络（以粗 Y0 为中心）
+-------------------------------------------
+
+1. 问题
+   - 四点粗拟合 Y0≈-75.863，双激光实测 Y≈-74.889，ΔY≈+0.974mm
+   - 旧包络取四点搜索 Y 最小/最大外扩 SearchRange（实测南起≈-83 北起≈-67 跨度 19mm）
+   - 跨度过大导致预清步数多、扫描时间长，精扫易超时回退粗值
+
+2. 修复
+   - 包络改为以粗 Y0 为中心、半宽 = SearchRange + 2mm 的紧凑范围
+   - 典型 SearchRange=3mm 时跨度 10mm（原 19mm 的 53%），预清步数减至 1~2 步
+   - 删除已无引用的 GetDualLaserYScanEnvelope 方法
+
+v2026.06.19 — NeedleAligner X0 双激光 Y 精扫（替代单路 Y 传感器）
+-------------------------------------------
+
+1. 问题（实测）
+   - X0 单路 Y 传感器精扫 Enter1=-74.794 Enter2=-76.556 Mid=-75.675
+   - 双激光手动实测 Y≈-74.889，Enter2 偏南约 1.6mm，中值仍差 ~0.8mm
+   - 根因：单路 DI=29 束内双沿与双激光同时触发判据不一致
+
+2. 修复
+   - X0 精扫改用 AreBothSensorsTriggered 上升沿，与 Z 搜索/手动对中心同判据
+   - 扫描前分步预清至双路均灭，失败时回退束内双灭→双入光沿
+
+v2026.06.19 — NeedleAligner 双激光 Y 精扫起扫点移出针头包络
+-------------------------------------------
+
+1. 问题
+   - 精扫以粗 Y±SearchRange 起扫，整段仍在针头遮挡内，预清 7mm 无法双灭
+   - 预清失败回退束内双沿，重现 Enter 不对称
+
+2. 修复
+   - 起扫点改为四点搜索 Y 最小/最大再外扩 SearchRange（如实测南起≈-83 北起≈-67）
+   - 扫描跨度覆盖南→北全程；预清单向后失败则反方向再试
+
+v2026.06.19 — NeedleAligner X0 处 Y 向精扫修正偏心采样
+-------------------------------------------
+
+1. 问题（实测验证）
+   - 四点粗拟合 Y0≈-75.863，双激光实测 Y≈-74.889，ΔY≈+0.974mm
+   - X0 已准确（279.082），Y 偏差来自 P3/P4 在 X=283.288 / 274.491 偏心测 Y 边界
+   - P3/P4 相对 X0 不对称（+4.206mm / -4.591mm），平均 Y 中值不代表 X0 处真中心
+
+2. 修复
+   - 四点扫描得到 X0 与 Y0 粗值后，移至 (X0,Y0粗) 在 X0 处补扫 Y 边界
+   - 精扫 Y0 用于 Z 搜索粗定位；补偿仍优先双激光触发 XY 均值
+
+v2026.06.19 — NeedleAligner 起点已入光直接束内双沿（跳过预清）
+-------------------------------------------
+
+1. 变更
+   - 搜索点常态已入光：不再尝试预清，直接束内出光→入光双沿扫描
+   - 仅起点灭光时使用上升沿扫描
+   - 每点每向节省约 5s 无效预清时间
+
+v2026.06.19 — NeedleAligner 预清卡死修复与束内双沿回退
+-------------------------------------------
+
+1. 问题
+   - 预清单次 MoveRel 结束后传感器仍亮，空等 SensorTimeout 60s，表现为轴停住不走
+
+2. 修复
+   - 分步预清（1mm/步，总距 scanSpan+range，超时 8s）
+   - 轴停仍入光时快速结束，自动回退「束内出光→入光」双沿扫描
+
+v2026.06.19 — NeedleAligner 边界扫描传感器预清与 Y 向实时性
+-------------------------------------------
+
+1. 根因
+   - 搜索点到位时传感器已入光，原逻辑依赖上升沿，会漏检或误捕获「再入光沿」
+   - P3/P4 Y 向 Enter1/Enter2 不对称 → 中值偏离双激光实测（非拟合公式问题）
+   - 轮询 20ms 在精细速度下造成额外越位
+
+2. 修复
+   - 每次入光扫描前预清：已入光则反扫描方向移出光束后再扫
+   - 边界轮询改为 5ms；入光沿先读位再急停扫描轴
+   - 日志记录扫描起点灭/亮、预清结果与移离距离
+
+v2026.06.19 — NeedleAligner 搜索详细日志与双激光实测中心
+-------------------------------------------
+
+1. 搜索过程详细日志（UI 校准日志区实时显示）
+   - 各搜索点到位、边界入光沿 XY、边界中值、拟合样本与拟合中心
+   - Z 搜索每次双激光同时亮记录 X/Y/Z
+   - 边界拟合 vs 双激光实测 ΔX/ΔY 对比
+
+2. 实测中心修正
+   - 补偿计算改用双激光触发 XY 均值（比边界拟合更准确，修正 Y 向偏差）
+   - 边界拟合中心仍用于 Z 搜索前的粗定位
+
+v2026.06.19 — NeedleAligner 搜索点2-4 跳过反复抬升安全高度
+-------------------------------------------
+
+1. 变更
+   - 四点边界扫描：仅点1 先抬安全高度再下降至寻针高度
+   - 点2-4 保持在寻针高度，SearchSpeed 直接 XY 平移，节省 Z 往返时间
+   - 手动「移至搜索点」仍走 MoveToSearchPointXYAsync（含安全高度）
+
+v2026.06.19 — NeedleAligner Z高度搜索两段式与边界扫描超时修复
+-------------------------------------------
+
+1. Z 高度搜索（SearchSingleZHeightSampleAsync）
+   - 搜索速度下降至「寻针高度-下探高度」
+   - 精细速度下探至「寻针高度+下探高度」，超过 Z最低高度 时取最低高度
+   - Z 正向从安全区 InvertedDirection 或安全高度/寻针高度对比推断，不写死方向
+   - 双激光同时触发记录位置，搜索速度回退接近高度，重复 ZSearchCount 次
+   - 移除 safeHeight/probeZ 方向校验
+
+2. 运动参数
+   - 新增 ZMinHeight（Z 最低高度），UI/多语言/JSON 持久化
+
+3. 边界扫描超时（ScanAxisBoundaryMidAsync）
+   - XY 定位改 MoveAbsMultiAxisAsync 双轴同步
+   - 停轴后 WaitForAxesSettledAsync（读 GetAxisPosition 连续稳定），避免无断点时 MoveAbs 超时
+
+v2026.06.19 — NeedleAligner 寻针高度绑定 SearchNeedleHeight 计算属性
+-------------------------------------------
+
+1. 变更
+   - Parameters 新增 SearchNeedleHeight（按 SystemNumber 读写 System1/System2 字段）
+   - UI 直接绑定 Parameters.SearchNeedleHeight，切换系统时随 SystemNumber 刷新
+   - 示教/保存仍持久化 SearchNeedleHeightSystem1/SearchNeedleHeightSystem2
+
+v2026.06.19 — NeedleAligner 搜索点传感器下拉与运动参数 DI 恢复
+-------------------------------------------
+
+1. 变更
+   - 运动参数区恢复 SensorDiX / SensorDiY DI 通道配置
+   - 搜索点 P1-P4 增加传感器下拉：选择 SensorX 或 SensorY
+   - 默认 P1/P2=SensorX，P3/P4=SensorY；各点仅扫描所选传感器对应轴向
+   - 拟合中心：X/Y 中值分别对配置为 SensorX/SensorY 的点取平均
+
+v2026.06.19 — NeedleAligner 搜索点传感器改为全局 SensorDiX/Y
+-------------------------------------------
+
+1. 变更
+   - 搜索点表格 DI 列改为配置 Parameters.SensorDiX / SensorDiY（四点共用）
+   - 移除 SearchPoint1~4 独立传感器端口字段
+   - 运动参数区重复传感器项移至搜索点表头列
+
+v2026.06.19 — NeedleAligner 搜索点扫描与失败安全抬升优化
+-------------------------------------------
+
+1. 变更
+   - 四点扫描以预设搜索点 XY 为中点，±SearchRange 正向/反向各扫一次
+   - 移至搜索点统一使用 SearchSpeed（取消首点轴速度）
+   - 搜索点 P1-P4 可单独配置 DI-X/DI-Y 传感器端口（-1=全局）
+   - 边界扫描定位改单轴绝对运动；传感器触发后停双轴并等待空闲，避免插补停轴后下一段插补超时
+   - 寻针失败（非用户取消）自动 Z 两段抬升至安全高度
+
+v2026.06.19 — NeedleAligner 增加寻针高度参数与 UI
+-------------------------------------------
+
+1. 变更
+   - NeedleCalibrationParams 新增 SearchNeedleHeightSystem1/2（Z 向寻探高度）
+   - 运动参数区增加「寻针高度」可编辑输入与示教按钮（随系统切换）
+   - MoveToSearchNeedleHeightAsync 改为使用寻针高度，不再复用对针位置 Z
+   - Z 下探高度基准同步改为寻针高度 + ZProbeDescentHeight
+   - 加载旧 JSON 时若寻针高度为 0 则自动沿用对针位置 Z
+
 v2026.06.19 — 整机初始化序列实现（信号协调+进度显示+多语言）
 -------------------------------------------
 

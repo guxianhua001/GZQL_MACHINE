@@ -6,9 +6,9 @@ using System;
 namespace Core.Services
 {
     /// <summary>
-    /// 针头 TCP 补偿管理器 — 增量法
+    /// 针头 TCP 补偿管理器
     /// ReferenceXYZ 为固定示教基准（永不自动变更）；
-    /// TcpTotalOffset 为 X/Y/Z 独立累加的累计 TCP 补偿偏移量。
+    /// TcpTotalOffset 为当前已应用的 TCP 偏移（Apply 时设为 PendingIncrement，与本次增量一致）。
     /// </summary>
     public class NeedleCompensationManager : BindableBase
     {
@@ -16,7 +16,7 @@ namespace Core.Services
         private double _tcpTotalOffsetY;
         private double _tcpTotalOffsetZ;
 
-        /// <summary>累计 TCP 补偿 X（相对固定基准的累加偏移）</summary>
+        /// <summary>当前已应用 TCP 补偿 X（Apply 后等于 PendingIncrement）</summary>
         public double TcpTotalOffsetX
         {
             get => _tcpTotalOffsetX;
@@ -64,8 +64,17 @@ namespace Core.Services
         }
 
         /// <summary>
-        /// 增量法：本次增量 + 表达式累加到 TcpTotalOffset
+        /// 将 PendingIncrement 设为 TcpTotalOffset（替换，非累加）
         /// </summary>
+        public void ApplyPendingOffset(double pendingX, double pendingY, double pendingZ)
+        {
+            SetTcpTotalOffset(pendingX, pendingY, pendingZ);
+        }
+
+        /// <summary>
+        /// 兼容旧 API：累加增量（已弃用，请使用 ApplyPendingOffset）
+        /// </summary>
+        [Obsolete("Apply 时使用 ApplyPendingOffset 替换偏移，不再累加")]
         public void AccumulateIncremental(double deltaX, double deltaY, double deltaZ,
                                           double exprX, double exprY, double exprZ)
         {

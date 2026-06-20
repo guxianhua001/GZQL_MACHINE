@@ -354,12 +354,15 @@ namespace Module.ViewModels
                 var parametersSnapshot = parameters.Clone();
                 var systemNumber = SelectedSystemNumber;
 
-                var progress = new Progress<(string Status, double Progress)>(p =>
+                var progress = new Progress<NeedleAlignerProgressReport>(p =>
                 {
                     Application.Current?.Dispatcher.BeginInvoke(() =>
                     {
-                        VerificationStatus = p.Status;
+                        if (!string.IsNullOrEmpty(p.Status))
+                            VerificationStatus = p.Status;
                         VerificationProgress = Math.Min(85, 10 + p.Progress * 0.75);
+                        if (!string.IsNullOrEmpty(p.DetailLog))
+                            AddLog(p.DetailLog);
                     });
                 });
 

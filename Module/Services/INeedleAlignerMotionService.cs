@@ -23,19 +23,22 @@ namespace Module.Services
         /// <summary>安全移动到搜索点 XY（保持当前 Z 或在安全高度）</summary>
         Task MoveToSearchPointXYAsync(NeedleCalibrationParams parameters, int systemNumber, double x, double y, CancellationToken token);
 
-        /// <summary>下降到寻针高度（对针位置 Z）</summary>
+        /// <summary>下降到寻针高度（Z 向寻探高度，针头进入十字激光检测平面）</summary>
         Task MoveToSearchNeedleHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token);
 
         /// <summary>执行完整四点寻针校准（参考 ExecuteNeedleCalibrationAsync）</summary>
         Task<NeedleCalibrationResult> ExecuteNeedleCalibrationAsync(
             NeedleCalibrationParams parameters,
             int systemNumber,
-            IProgress<(string Status, double Progress)> progress,
+            IProgress<NeedleAlignerProgressReport> progress,
             CancellationToken token);
 
         /// <summary>停止当前系统相关轴运动</summary>
         void StopMotion(int systemNumber);
     }
+
+    /// <summary>寻针进度上报：Status 更新状态栏，DetailLog 非空时写入 UI 校准日志</summary>
+    public record NeedleAlignerProgressReport(string Status, double Progress, string DetailLog = null);
 
     /// <summary>寻针校准结果</summary>
     public class NeedleCalibrationResult

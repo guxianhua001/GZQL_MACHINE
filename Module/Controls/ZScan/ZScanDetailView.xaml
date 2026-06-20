@@ -364,11 +364,11 @@
                                 LinkedVariableName="{Binding LinkedGlobalVarName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 LinkableGlobalVariables="{Binding DataContext.AvailableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 UnlinkCommand="{Binding DataContext.UnlinkRowGlobalVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                ComboBoxWidth="100" />
+                                ComboBoxWidth="160" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Status" Width="65">
+                <DataGridTemplateColumn Header="Status" Width="75">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextStyle}" />

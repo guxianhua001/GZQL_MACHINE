@@ -81,7 +81,7 @@
                                         LinkedVariableName="{Binding ZCompensation3DLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                         UnlinkCommand="{Binding UnlinkZCompensation3DCommand}"
-                                        ComboBoxWidth="120" />
+                                        ComboBoxWidth="180" />
                                 </Grid>
                                 <!-- Z补偿（来自校准器）+ 全局变量链接 -->
                                 <Grid Margin="0,0,0,6">
@@ -98,7 +98,7 @@
                                         LinkedVariableName="{Binding ZCompensationCalibratorLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                         UnlinkCommand="{Binding UnlinkZCompensationCalibratorCommand}"
-                                        ComboBoxWidth="120" />
+                                        ComboBoxWidth="180" />
                                 </Grid>
                                 <!-- 手动Z补偿（人工输入，DecimalUpDown） -->
                                 <Grid>
@@ -111,7 +111,7 @@
                                                VerticalAlignment="Center" Margin="0,0,4,0"/>
                                     <materialDesign:DecimalUpDown Grid.Column="1"
                                                              Value="{Binding ManualZCompensation, UpdateSourceTrigger=PropertyChanged}"
-                                                             ValueStep="0.52"
+                                                             ValueStep="0.01"
                                                              Minimum="-2.55"
                                                              Maximum="2.55"
                                                              FontSize="11" Margin="0,0,4,0" Width="100"/>
