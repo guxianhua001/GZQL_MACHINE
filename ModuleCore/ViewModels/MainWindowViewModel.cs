@@ -566,6 +566,14 @@ namespace ModuleCore.ViewModels
             set => SetProperty(ref _isSystemRunning, value);
         }
 
+        /// <summary>系统是否处于暂停状态（仅 PAUSE 时为 true，用于区分启动初期与暂停）</summary>
+        private bool _isSystemPaused = false;
+        public bool IsSystemPaused
+        {
+            get => _isSystemPaused;
+            set => SetProperty(ref _isSystemPaused, value);
+        }
+
         public DelegateCommand InitializeCommand { get; }
         public DelegateCommand StartCommand { get; }
         public DelegateCommand PauseCommand { get; }
@@ -671,6 +679,7 @@ namespace ModuleCore.ViewModels
                 dispatcher.Invoke(() =>
                 {
                     IsSystemRunning = payload.State == StationState.RUNNING;
+                    IsSystemPaused = payload.State == StationState.PAUSE;
                 });
             }
             catch (TaskCanceledException) { }

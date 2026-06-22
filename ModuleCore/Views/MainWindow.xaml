@@ -506,18 +506,19 @@
                         </ToggleButton>
                     </StackPanel>
 
-                    <!-- 下部按钮区（初始化、启动、暂停/恢复、停止）- 工业极简风格 -->
+                    <!-- 下部按钮区（初始化、启动、暂停/恢复、停止）- 工业精密仪表盘风格 -->
                     <StackPanel Grid.Row="1"
                                 Margin="0,8,0,12">
                         <StackPanel.Resources>
-                            <!-- 工业控制按钮统一样式：与上方SideBarButtonStyle保持一致的尺寸和动画 -->
+                            <!-- 工业控制按钮统一样式：无背景填充 + 大图标 + 悬停同色光晕 -->
                             <Style x:Key="ControlButtonStyle" TargetType="Button">
-                                <Setter Property="Width" Value="50"/>
-                                <Setter Property="Height" Value="50"/>
-                                <Setter Property="Margin" Value="5,4"/>
+                                <Setter Property="Width" Value="80"/>
+                                <Setter Property="Height" Value="80"/>
+                                <Setter Property="Margin" Value="0,3"/>
                                 <Setter Property="Padding" Value="0"/>
                                 <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="Opacity" Value="0.75"/>
+                                <!-- Background 用作悬停光晕的色调，默认透明 -->
+                                <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="BorderThickness" Value="0"/>
                                 <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
                                 <Setter Property="RenderTransform">
@@ -528,55 +529,58 @@
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="Button">
-                                            <Border x:Name="BtnBorder"
-                                                    Background="{TemplateBinding Background}"
-                                                    CornerRadius="10"
-                                                    Padding="{TemplateBinding Padding}">
-                                                <Border.Effect>
-                                                    <DropShadowEffect ShadowDepth="2"
-                                                                        BlurRadius="6"
-                                                                        Opacity="0.35"
-                                                                        Color="Black"/>
-                                                </Border.Effect>
-                                                <ContentPresenter HorizontalAlignment="Center"
-                                                                  VerticalAlignment="Center"/>
-                                            </Border>
+                                            <Grid>
+                                                <!-- 悬停色彩晕染层（方块同色光晕） -->
+                                                <Border x:Name="HoverGlow"
+                                                        Background="{TemplateBinding Background}"
+                                                        CornerRadius="10"
+                                                        Opacity="0"/>
+                                                <!-- 图标承载区（默认完全透明） -->
+                                                <Border x:Name="BtnBorder"
+                                                        Background="Transparent"
+                                                        CornerRadius="10"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+                                            </Grid>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="1.0"/>
                                                     <Trigger.EnterActions>
                                                         <BeginStoryboard>
                                                             <Storyboard>
-                                                                <DoubleAnimation To="1.0"
+                                                                <DoubleAnimation To="0.22"
+                                                                                 Storyboard.TargetName="HoverGlow"
                                                                                  Storyboard.TargetProperty="Opacity"
-                                                                                 Duration="0:0:0.15"/>
-                                                                <DoubleAnimation To="1.08"
+                                                                                 Duration="0:0:0.2"/>
+                                                                <DoubleAnimation To="1.12"
                                                                                  Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
                                                                                  Duration="0:0:0.15"/>
-                                                                <DoubleAnimation To="1.08"
+                                                                <DoubleAnimation To="1.12"
                                                                                  Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
                                                                                  Duration="0:0:0.15"/>
                                                             </Storyboard>
                                                         </BeginStoryboard>
                                                     </Trigger.EnterActions>
+                                                    <Trigger.ExitActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation To="0"
+                                                                                 Storyboard.TargetName="HoverGlow"
+                                                                                 Storyboard.TargetProperty="Opacity"
+                                                                                 Duration="0:0:0.25"/>
+                                                                <DoubleAnimation To="1.0"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                 Duration="0:0:0.2"/>
+                                                                <DoubleAnimation To="1.0"
+                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                 Duration="0:0:0.2"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.ExitActions>
                                                 </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="False">
-                                                    <Setter TargetName="BtnBorder" Property="Opacity" Value="0.75"/>
-                                                    <Trigger.EnterActions>
-                                                        <BeginStoryboard>
-                                                            <Storyboard>
-                                                                <DoubleAnimation To="0.75"
-                                                                                 Storyboard.TargetProperty="Opacity"
-                                                                                 Duration="0:0:0.2"/>
-                                                                <DoubleAnimation To="1.0"
-                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                                                 Duration="0:0:0.2"/>
-                                                                <DoubleAnimation To="1.0"
-                                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                                                                 Duration="0:0:0.2"/>
-                                                            </Storyboard>
-                                                        </BeginStoryboard>
-                                                    </Trigger.EnterActions>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Opacity" Value="0.35"/>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -585,36 +589,36 @@
                             </Style>
                         </StackPanel.Resources>
 
-                        <!-- 初始化按钮（深琥珀色 #5D4E37） -->
+                        <!-- 初始化按钮（乳白图标 + 二级层色光晕） -->
                         <Button Style="{StaticResource ControlButtonStyle}"
-                                 Width="60"
-                                 Height="60"
-                                 Background="#5D4E37"
-                                 Command="{Binding InitializeCommand}"
-                                 ToolTip="{DynamicResource MainWindow_Btn_Initialize}">
-                            <materialDesign:PackIcon Width="42"
-                                                     Height="42"
-                                                     Foreground="#D7CCC8"
+                                Width="80"
+                                Height="80"
+                                Background="#40FFFFFF"
+                                Command="{Binding InitializeCommand}"
+                                ToolTip="{DynamicResource MainWindow_Btn_Initialize}">
+                            <materialDesign:PackIcon Width="66"
+                                                     Height="66"
+                                                     Foreground="#EDEAE3"
                                                      Kind="Restart"/>
                         </Button>
 
-                        <!-- 启动按钮（墨绿色 #2E7D32） -->
+                        <!-- 启动按钮（乳白图标 + 二级层色光晕） -->
                         <Button Style="{StaticResource ControlButtonStyle}"
-                                 Width="60"
-                                 Height="60"
-                                 Background="#2E7D32"
-                                 Command="{Binding StartCommand}"
-                                 ToolTip="{DynamicResource MainWindow_Btn_Start}">
-                            <materialDesign:PackIcon Width="42"
-                                                     Height="42"
-                                                     Foreground="White"
+                                Width="80"
+                                Height="80"
+                                Background="#40FFFFFF"
+                                Command="{Binding StartCommand}"
+                                ToolTip="{DynamicResource MainWindow_Btn_Start}">
+                            <materialDesign:PackIcon Width="78"
+                                                     Height="78"
+                                                     Foreground="#EDEAE3"
                                                      Kind="Play"/>
                         </Button>
 
-                        <!-- 暂停/恢复 动态切换按钮（钢蓝灰 #37474F） -->
-                        <Button Background="#37474F"
-                                      Width="60"
-                                      Height="60">
+                        <!-- 暂停/恢复 动态切换按钮（乳白图标 + 二级层色光晕） -->
+                        <Button Background="#40FFFFFF"
+                                Width="80"
+                                Height="80">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource ControlButtonStyle}">
                                     <!-- 默认：暂停状态 -->
@@ -622,23 +626,23 @@
                                     <Setter Property="Command" Value="{Binding PauseCommand}"/>
                                     <Setter Property="Content">
                                         <Setter.Value>
-                                            <materialDesign:PackIcon Width="42"
-                                                                     Height="42"
-                                                                     Foreground="White"
+                                            <materialDesign:PackIcon Width="66"
+                                                                     Height="66"
+                                                                     Foreground="#EDEAE3"
                                                                      Kind="Pause"/>
                                         </Setter.Value>
                                     </Setter>
-                                    <!-- 未运行时：切换为恢复状态 -->
+                                    <!-- 暂停状态时：切换为恢复状态 -->
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSystemRunning}" Value="False">
+                                        <DataTrigger Binding="{Binding IsSystemPaused}" Value="True">
                                             <Setter Property="ToolTip" Value="{DynamicResource MainWindow_Btn_Resume}"/>
                                             <Setter Property="Command" Value="{Binding ResumeCommand}"/>
                                             <Setter Property="Content">
                                                 <Setter.Value>
-                                                    <materialDesign:PackIcon Width="42"
-                                                                             Height="42"
-                                                                             Foreground="White"
-                                                                             Kind="PlayPause"/>
+                                                    <materialDesign:PackIcon Width="66"
+                                                                             Height="66"
+                                                                             Foreground="#EDEAE3"
+                                                                             Kind="FastForward"/>
                                                 </Setter.Value>
                                             </Setter>
                                         </DataTrigger>
@@ -647,17 +651,31 @@
                             </Button.Style>
                         </Button>
 
-                        <!-- 停止按钮（与上方按钮一致的背景色 #33FFFFFF） -->
+                        <!-- 停止按钮（乳白图标 + 二级层色光晕） -->
                         <Button Style="{StaticResource ControlButtonStyle}"
-                                 Width="60"
-                                 Height="60"
-                                Background="#33FFFFFF"
+                                Width="80"
+                                Height="80"
+                                Background="#40FFFFFF"
                                 Command="{Binding StopCommand}"
                                 ToolTip="{DynamicResource MainWindow_Btn_Stop}">
-                            <materialDesign:PackIcon Width="42"
-                                                     Height="42"
-                                                     Foreground="White"
+                            <materialDesign:PackIcon Width="78"
+                                                     Height="78"
+                                                     Foreground="#EDEAE3"
                                                      Kind="Stop"/>
+                        </Button>
+
+                        <!-- 急停按钮（红色圆形图标 + 红色光晕，渐入渐出样式与其他控制按钮统一，置于最底部） -->
+                        <Button Style="{StaticResource ControlButtonStyle}"
+                                Width="80"
+                                Height="80"
+                                Background="#D32F2F"
+                                Command="{Binding EStopCommand}"
+                                ToolTip="{DynamicResource MainWindow_ToolTip_EStop}"
+                                ToolTipService.ShowDuration="2000">
+                            <materialDesign:PackIcon Width="66"
+                                                     Height="66"
+                                                     Foreground="#D32F2F"
+                                                     Kind="StopCircle"/>
                         </Button>
                     </StackPanel>
                 </Grid>

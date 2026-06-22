@@ -154,6 +154,17 @@
                             </StackPanel>
                         </TabItem.Header>
                     </TabItem>
+                    <!-- 双龙门标定 Tab（索引 4） -->
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="VectorCombine" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang Maintenance_Tab_DualGantryCalibration}"
+                                           VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </TabItem.Header>
+                    </TabItem>
                 </TabControl>
             </Border>
 
@@ -195,6 +206,16 @@
                                     <Setter.Value>
                                         <DataTemplate>
                                             <local:NPointCalibrationView />
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <!-- 双龙门标定（索引 4） -->
+                            <DataTrigger Binding="{Binding SelectedTabIndex}" Value="4">
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <local:DualGantryCalibrationView />
                                         </DataTemplate>
                                     </Setter.Value>
                                 </Setter>

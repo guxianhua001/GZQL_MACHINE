@@ -869,6 +869,30 @@ public double GripperFinalY { get => _gripperFinalY; set => SetProperty(ref _gri
 private double _gripperFinalZ;
 public double GripperFinalZ { get => _gripperFinalZ; set => SetProperty(ref _gripperFinalZ, value); }
 
+/// <summary>是否启用双龙门标定补偿（消除跨龙门安装误差）</summary>
+private bool _useDualGantryCalibration;
+public bool UseDualGantryCalibration
+{
+    get => _useDualGantryCalibration;
+    set
+    {
+        if (SetProperty(ref _useDualGantryCalibration, value))
+            RefreshDualGantryCalibrationInfo();
+    }
+}
+
+/// <summary>双龙门标定旋转角度（显示用，只读）</summary>
+private double _dualGantryRotationDeg;
+public double DualGantryRotationDeg { get => _dualGantryRotationDeg; private set => SetProperty(ref _dualGantryRotationDeg, value); }
+
+/// <summary>双龙门标定缩放因子（显示用，只读）</summary>
+private double _dualGantryScale = 1.0;
+public double DualGantryScale { get => _dualGantryScale; private set => SetProperty(ref _dualGantryScale, value); }
+
+/// <summary>双龙门标定是否可用（已标定且IsAligned）</summary>
+private bool _isDualGantryCalibrationAvailable;
+public bool IsDualGantryCalibrationAvailable { get => _isDualGantryCalibrationAvailable; private set => SetProperty(ref _isDualGantryCalibrationAvailable, value); }
+
 private string _currentFilePath = "";
 public string CurrentFilePath { get => _currentFilePath; set => SetProperty(ref _currentFilePath, value); }
 
@@ -1918,47 +1942,15 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             CadSelectedPointIndex = highlightIndex;
         }
 
-        /// <summary>重建选取标记叠加层：X标记(选中点位) + 蓝色基准线段 + 红色目标线段</summary>
+        /// <summary>重建选取标记叠加层：蓝色基准线段 + 红色目标线段</summary>
+        /// <remarks>
+        /// X标记由 HalconCanvasControl.RenderPointMarkers() 负责绘制（基于 SelectedSegmentPoints），
+        /// 使用图像像素坐标，大小随缩放自适应（4~8像素），避免此处 CAD 坐标系标记过大。
+        /// </remarks>
         private void RebuildAlignmentMarkers()
         {
             _alignmentMarkers.Clear();
             if (ImportedCadPoints == null || ImportedCadPoints.Count == 0) return;
-
-            // 根据图形包围盒动态计算标记大小（占包围盒对角线的2%）
-            double markSize = CalcDynamicMarkSize();
-            double tolerance = markSize * 3; // 容差为标记大小的3倍
-
-            // 辅助方法：在点(x,y)处创建X标记（两条交叉短线）
-            void AddCrossMark(double x, double y, string color)
-            {
-                _alignmentMarkers.Add(new CadLine(x - markSize, y - markSize, x + markSize, y + markSize) { Color = color, LayerName = "_MARK_" });
-                _alignmentMarkers.Add(new CadLine(x - markSize, y + markSize, x + markSize, y - markSize) { Color = color, LayerName = "_MARK_" });
-            }
-
-            // 基准起点 X (蓝色)
-            if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
-            {
-                var p = ImportedCadPoints[BaseStartIndex];
-                AddCrossMark(p.X, p.Y, "#1565C0");
-            }
-            // 基准终点 X (绿色)
-            if (BaseEndIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count)
-            {
-                var p = ImportedCadPoints[BaseEndIndex];
-                AddCrossMark(p.X, p.Y, "#2E7D32");
-            }
-            // 目标起点 X (紫色)
-            if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
-            {
-                var p = ImportedCadPoints[TargetStartIndex];
-                AddCrossMark(p.X, p.Y, "#7B1FA2");
-            }
-            // 目标终点 X (红色)
-            if (TargetEndIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count)
-            {
-                var p = ImportedCadPoints[TargetEndIndex];
-                AddCrossMark(p.X, p.Y, "#C62828");
-            }
 
             // 基准线段 (蓝色粗线)
             if (BaseStartIndex >= 0 && BaseEndIndex >= 0 &&
@@ -2023,9 +2015,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             var point = ImportedCadPoints[nearestIdx];
 
-            CadSelectedSegmentPoints = new List<CadPoint> { point };
-            CadSelectedPointIndex = 0;
-
+            // 直接触发 OnCadPointSelected，由其内部的 BatchUpdate 机制统一处理
+            // 避免在批量更新作用域外设置属性导致额外渲染
             OnCadPointSelected(point);
         }
 
@@ -2995,15 +2986,75 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
         }
 
-        /// <summary>步骤4：夹爪最终位置 = 夹爪基准位 + 相机偏移，Z = 夹爪基准高度</summary>
+        /// <summary>步骤4：夹爪最终位置 = 夹爪基准位 + 相机偏移（可选双龙门标定补偿），Z = 夹爪基准高度</summary>
         private void OnCalcGripperFinal()
         {
+            // 相机偏移量（龙门1坐标系下的移动量）
+            double deltaX1 = CameraOffsetX;
+            double deltaY1 = CameraOffsetY;
+
+            if (UseDualGantryCalibration)
+            {
+                // 使用双龙门标定结果对移动量进行旋转+缩放补偿
+                var transform = ResolveDualGantryTransform();
+                if (transform != null && transform.IsAligned)
+                {
+                    // 差分移动只需旋转+缩放，偏移量在差分中抵消
+                    var (deltaX2, deltaY2) = transform.TransformDelta(deltaX1, deltaY1);
+                    GripperFinalX = Math.Round(GripperRefX - deltaX2, 3);
+                    GripperFinalY = Math.Round(GripperRefY + deltaY2, 3);
+                    GripperFinalZ = Math.Round(GripperRefZ, 3);
+                    Step5Done = true;
+                    (WriteToGlobalVariablesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    StatusMessage = string.Format(L("CAD_Gripper_Final_DualGantry"),
+                        GripperFinalX.ToString("F3"), GripperFinalY.ToString("F3"),
+                        transform.RotationDeg.ToString("F4"), transform.Scale.ToString("F4"));
+                    return;
+                }
+                else
+                {
+                    StatusMessage = L("CAD_DualGantry_NotAvailable");
+                }
+            }
+
+            // 无标定补偿：直接传递偏移量（保持原有符号约定）
             GripperFinalX = Math.Round(GripperRefX - CameraOffsetX, 3);
             GripperFinalY = Math.Round(GripperRefY + CameraOffsetY, 3);
             GripperFinalZ = Math.Round(GripperRefZ, 3);
             Step5Done = true;
             (WriteToGlobalVariablesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             StatusMessage = $"夹爪最终位置: X={GripperFinalX:F3}, Y={GripperFinalY:F3}, Z={GripperFinalZ:F3}";
+        }
+
+        /// <summary>从DI容器解析双龙门标定变换参数（可能未注册或未标定）</summary>
+        private GantryTransform? ResolveDualGantryTransform()
+        {
+            try
+            {
+                var dualGantryService = _containerProvider.Resolve<IDualGantryCalibrationService>();
+                return dualGantryService?.GetGantryTransform();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>刷新双龙门标定可用状态与显示参数</summary>
+        private void RefreshDualGantryCalibrationInfo()
+        {
+            var transform = ResolveDualGantryTransform();
+            IsDualGantryCalibrationAvailable = transform != null && transform.IsAligned;
+            if (transform != null)
+            {
+                DualGantryRotationDeg = transform.RotationDeg;
+                DualGantryScale = transform.Scale;
+            }
+            else
+            {
+                DualGantryRotationDeg = 0;
+                DualGantryScale = 1.0;
+            }
         }
 
         #endregion

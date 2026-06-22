@@ -1406,33 +1406,52 @@
 
                                 <!-- 步骤4：计算夹爪最终位置 -->
                                 <Border Background="#E8F5E9" CornerRadius="5" Padding="12,8" Margin="0,0,0,6">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="28"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#2E7D32" VerticalAlignment="Center">
-                                            <TextBlock Text="4" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Gripper_Final_Position}" FontSize="11" FontWeight="SemiBold"
-                                                   Foreground="#2E7D32" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock FontSize="11" Foreground="#1B5E20" FontWeight="Bold">
-                                                <Run Text="X="/><Run Text="{Binding GripperFinalX, StringFormat=F3, Mode=OneWay}"/>
-                                                <Run Text="  Y="/><Run Text="{Binding GripperFinalY, StringFormat=F3, Mode=OneWay}"/>
-                                                <Run Text="  Z="/><Run Text="{Binding GripperFinalZ, StringFormat=F3, Mode=OneWay}"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                        <Button Grid.Column="3" Command="{Binding CalcGripperFinalCommand}"
-                                                Style="{StaticResource WarningActionButton}" Padding="8,3">
-                                            <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="CalculatorVariant" Width="12" Height="12" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{lang:Lang CAD_Calc_Gripper_Final}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="28"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="#2E7D32" VerticalAlignment="Center">
+                                                <TextBlock Text="4" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Text="{lang:Lang CAD_Gripper_Final_Position}" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="#2E7D32" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock FontSize="11" Foreground="#1B5E20" FontWeight="Bold">
+                                                    <Run Text="X="/><Run Text="{Binding GripperFinalX, StringFormat=F3, Mode=OneWay}"/>
+                                                    <Run Text="  Y="/><Run Text="{Binding GripperFinalY, StringFormat=F3, Mode=OneWay}"/>
+                                                    <Run Text="  Z="/><Run Text="{Binding GripperFinalZ, StringFormat=F3, Mode=OneWay}"/>
+                                                </TextBlock>
                                             </StackPanel>
-                                        </Button>
-                                    </Grid>
+                                            <Button Grid.Column="3" Command="{Binding CalcGripperFinalCommand}"
+                                                    Style="{StaticResource WarningActionButton}" Padding="8,3">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="CalculatorVariant" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{lang:Lang CAD_Calc_Gripper_Final}" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="10"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        <!-- 双龙门标定补偿选项 -->
+                                        <DockPanel Margin="28,4,0,0">
+                                            <CheckBox IsChecked="{Binding UseDualGantryCalibration}"
+                                                      IsEnabled="{Binding IsDualGantryCalibrationAvailable}"
+                                                      VerticalAlignment="Center" FontSize="9.5" Foreground="#2E7D32">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="VectorCombine" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{lang:Lang CAD_Use_DualGantry_Calibration}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </CheckBox>
+                                            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" FontSize="9" Foreground="#78909C"
+                                                       Visibility="{Binding IsDualGantryCalibrationAvailable, Converter={StaticResource BoolToVis}}"
+                                                       Margin="8,0,0,0">
+                                                <Run Text="θ="/><Run Text="{Binding DualGantryRotationDeg, StringFormat=F4, Mode=OneWay}"/>
+                                                <Run Text="  k="/><Run Text="{Binding DualGantryScale, StringFormat=F4, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </DockPanel>
+                                    </StackPanel>
                                 </Border>
 
                                 <!-- 步骤5：写入全局变量 -->

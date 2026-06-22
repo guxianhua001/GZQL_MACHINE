@@ -310,7 +310,7 @@ namespace Module.ViewModels
                 PositionName = "",
                 Offset = 0,
                 OffsetVariableName = "",
-                Speed = 50,
+                Speed = 10,
                 Description = ""
             };
             var row = new SubMoveRowViewModel(newMove, _positionProvider);

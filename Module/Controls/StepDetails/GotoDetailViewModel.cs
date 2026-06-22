@@ -379,7 +379,7 @@ namespace Module.ViewModels
                 Speed = 10,
                 HomeMode = 0,  // 默认使用卡内配置回零
                 HomeMinVel = 5,
-                HomeMaxVel = 20
+                HomeMaxVel = 10
             };
             var row = new SubMoveRowViewModel(newMove, _positionProvider);
             row.SetLinkableVariables(LinkableOffsetVariables);

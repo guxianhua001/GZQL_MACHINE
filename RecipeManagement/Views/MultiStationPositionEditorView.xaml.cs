@@ -42,10 +42,15 @@ namespace Recipe.Views
             }
             else
             {
-                // 其余列（轴列）统一设置最小宽度
+                // 其余列（轴列）统一设置最小宽度与3位小数显示
                 if (e.Column is DataGridTextColumn axisColumn)
                 {
                     axisColumn.MinWidth = 80;
+                    // 轴位置统一显示3位小数（如 12.345），仅影响显示不影响实际值
+                    if (axisColumn.Binding is Binding existingBinding)
+                        existingBinding.StringFormat = "F3";
+                    else
+                        axisColumn.Binding = new Binding(e.PropertyName) { StringFormat = "F3" };
                 }
             }
 

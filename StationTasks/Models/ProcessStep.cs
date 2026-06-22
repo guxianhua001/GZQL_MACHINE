@@ -649,7 +649,7 @@ namespace StationTasks.Models
         /// <summary> 回零低速（搜索原点时的速度） </summary>
         public double HomeMinVel { get => _homeMinVel; set => SetProperty(ref _homeMinVel, value); }
 
-        private double _homeMaxVel = 20;
+        private double _homeMaxVel = 10;
         /// <summary> 回零高速（寻找原点时的速度） </summary>
         public double HomeMaxVel { get => _homeMaxVel; set => SetProperty(ref _homeMaxVel, value); }
 

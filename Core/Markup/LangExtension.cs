@@ -262,7 +262,8 @@ namespace Core.Markup
             }
 
             // Key 不存在时返回 [Key] 格式，不抛异常
-            if (string.IsNullOrEmpty(rawValue))
+            // 注意：空字符串是合法的资源值（如 PageSuffix），不应视为"未找到"
+            if (rawValue == null)
             {
                 return $"[{_key}]";
             }

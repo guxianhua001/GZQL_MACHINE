@@ -566,7 +566,7 @@
                                 <!-- 步骤类型 -->
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="80"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{lang:Lang PSE_ColumnStep}" VerticalAlignment="Center" Foreground="#616161"/>
@@ -575,7 +575,7 @@
                                 <!-- 组件特征 -->
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{lang:Lang PSE_ColumnCompFeature}" VerticalAlignment="Center" Foreground="#616161"/>
@@ -584,7 +584,7 @@
                                 <!-- 站点特征 -->
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Site Feature" VerticalAlignment="Center" Foreground="#616161"/>
@@ -593,7 +593,7 @@
                                 <!-- 相机 -->
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{lang:Lang PSE_ColumnCamera}" VerticalAlignment="Center" Foreground="#616161"/>
@@ -602,7 +602,7 @@
                                 <!-- 用途 -->
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Purpose" VerticalAlignment="Center" Foreground="#616161"/>
@@ -611,7 +611,7 @@
                                 <!-- 启用状态 -->
                                 <Grid Margin="0,0,0,16">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="80"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>

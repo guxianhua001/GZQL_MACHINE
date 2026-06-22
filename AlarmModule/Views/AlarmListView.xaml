@@ -163,7 +163,7 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
                        FontSize="18"
-                       Foreground="#9E9E9E">
+                       Foreground="{DynamicResource MaterialDesignBodyLight}">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Style.Triggers>

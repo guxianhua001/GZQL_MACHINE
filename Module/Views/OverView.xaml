@@ -207,24 +207,7 @@
                         </Button.Template>
                     </Button>
                 </StackPanel>
-                <Button Content="{lang:Lang OverView_Btn_EStop}" Command="{Binding EStopCommand}" 
-	                        HorizontalAlignment="Right" VerticalAlignment="Center"
-	                        Width="80" Height="80" Foreground="White" FontSize="20" FontWeight="Black">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Grid>
-                                <Ellipse Fill="#1A1A1A"/>
-                                <Ellipse x:Name="inner" Fill="#D32F2F" Margin="4"/>
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="inner" Property="Fill" Value="#B71C1C"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
+                <!-- 急停按钮已迁移至 MainWindow 右侧工具栏，保持统一布局 -->
             </Grid>
         </Border>
     </Grid>

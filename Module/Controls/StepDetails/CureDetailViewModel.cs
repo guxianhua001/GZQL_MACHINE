@@ -249,7 +249,7 @@ namespace Module.ViewModels
                 Axis = "",
                 PositionName = "",
                 Offset = 0,
-                Speed = 50,
+                Speed = 10,
                 Description = ""
             };
             var row = new SubMoveRowViewModel(newMove, _positionProvider);

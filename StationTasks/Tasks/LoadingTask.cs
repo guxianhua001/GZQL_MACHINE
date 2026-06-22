@@ -148,7 +148,7 @@ namespace StationTasks.Tasks
 
         #region 自动流程
 
-        private const double DefaultVelocity = 50.0;
+        private const double DefaultVelocity = 30.0;
 
         /// <summary>
         /// 自动取料流程：开真空 → 取料位 → 确认真空 → 升高 → 旋转到装配位

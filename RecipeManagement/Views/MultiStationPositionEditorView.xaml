@@ -20,7 +20,15 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <!-- 工具栏分组分隔线样式 -->
+            <Style x:Key="VSeparator"
+                   TargetType="Rectangle">
+                <Setter Property="Width" Value="1" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="Fill" Value="{DynamicResource MaterialDesignDivider}" />
+                <Setter Property="Margin" Value="8,0" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -31,7 +39,7 @@
             <RowDefinition Height="Auto" />
             <!-- 工站选择栏 -->
             <RowDefinition Height="Auto" />
-            <!-- 操作工具栏 -->
+            <!-- 统一操作工具栏 -->
             <RowDefinition Height="*" />
             <!-- 表格 -->
             <RowDefinition Height="Auto" />
@@ -45,7 +53,7 @@
                    FontWeight="Bold"
                    Margin="0,0,0,10" />
 
-        <!-- 工站选择栏 -->
+        <!-- 工站选择栏（仅选择器，操作按钮已整合至统一工具栏） -->
         <StackPanel Grid.Row="1"
                     Orientation="Horizontal"
                     Margin="0,0,0,10">
@@ -58,40 +66,163 @@
                       SelectedItem="{Binding SelectedStation}"
                       Width="150"
                       Margin="5" />
-            <Button Content="{lang:Lang PositionEditor_AddPosition}"
-                    Command="{Binding AddPositionCommand}"
-                    Margin="5,0,0,0" />
-            <Button Content="{lang:Lang PositionEditor_DeletePosition}"
-                    Command="{Binding DeletePositionCommand}"
-                    Margin="5,0" />
         </StackPanel>
 
-        <!-- 操作工具栏 -->
+        <!-- 统一操作工具栏：速度控制 / 位置管理 / 运动控制 / 行排序 四组 -->
         <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     Margin="0,0,0,10">
+
+            <!-- 速度控制组 -->
             <TextBlock Text="{lang:Lang PositionEditor_Speed}"
-                       VerticalAlignment="Center" />
+                       VerticalAlignment="Center"
+                       Margin="0,0,5,0" />
             <ComboBox ItemsSource="{Binding SpeedOptions}"
                       SelectedItem="{Binding SelectedSpeed}"
                       Width="70"
-                      Margin="5,0,10,0" />
+                      Margin="0,0,5,0" />
             <TextBlock Text="{lang:Lang Unit_mm_s}"
                        VerticalAlignment="Center"
-                       Margin="5,0,10,0" />
-            <Button Content="{lang:Lang AssemblyStep_Button_Teach}"
+                       Margin="0,0,5,0" />
+
+            <!-- 分隔线 -->
+            <Rectangle Style="{StaticResource VSeparator}" />
+
+            <!-- 位置管理组：添加位置（主要操作）、删除位置（次要操作，红色前景提示破坏性） -->
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    Height="40"
+                    Padding="16,8"
+                    Command="{Binding AddPositionCommand}"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Plus"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PositionEditor_AddPosition}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Height="40"
+                    Padding="16,8"
+                    Command="{Binding DeletePositionCommand}"
+                    BorderBrush="#D32F2F"
+                    Foreground="#D32F2F"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Delete"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PositionEditor_DeletePosition}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <!-- 分隔线 -->
+            <Rectangle Style="{StaticResource VSeparator}" />
+
+            <!-- 运动控制组：示教（主要）、撤销（次要）、前往（主要）、停止（主要，红色背景安全关键） -->
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    Height="40"
+                    Padding="16,8"
                     Command="{Binding TeachCommand}"
-                    Margin="5,0" />
-            <Button Content="{lang:Lang PositionEditor_Undo}"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Target"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang AssemblyStep_Button_Teach}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Height="40"
+                    Padding="16,8"
                     Command="{Binding UndoCommand}"
-                    Margin="5,0" />
-            <Button Content="{lang:Lang PositionEditor_Goto}"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Undo"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PositionEditor_Undo}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    Height="40"
+                    Padding="16,8"
                     Command="{Binding ReplayCommand}"
-                    Margin="5,0" />
-            <Button Content="{lang:Lang Stop}"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="ArrowRight"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PositionEditor_Goto}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    Height="40"
+                    Padding="16,8"
                     Command="{Binding StopCommand}"
-                    Width="80"
-                    Margin="5,0" />
+                    Background="#D32F2F"
+                    BorderBrush="#D32F2F"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Stop"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang Stop}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <!-- 分隔线 -->
+            <Rectangle Style="{StaticResource VSeparator}" />
+
+            <!-- 行排序组：上移（次要）、下移（次要） -->
+            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Height="40"
+                    Padding="16,8"
+                    Command="{Binding MoveUpCommand}"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="ArrowUp"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PositionEditor_Up}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Height="40"
+                    Padding="16,8"
+                    Command="{Binding MoveDownCommand}"
+                    Margin="4,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="ArrowDown"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PositionEditor_Down}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
         </StackPanel>
 
         <!-- 位置表格（使用自动生成列） -->
@@ -108,51 +239,26 @@
                   CurrentCellChanged="PositionsDataGrid_CurrentCellChanged"
                   AutoGeneratingColumn="DataGrid_AutoGeneratingColumn" />
 
-        <!-- 底部按钮 -->
-        <Grid Grid.Row="4"
-              Margin="0,10,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <!-- 左侧：向上/向下按钮组 -->
-            <StackPanel Grid.Column="0"
-                        Orientation="Horizontal"
-                        Margin="8,0,0,0">
-                <Button Command="{Binding MoveUpCommand}"
-                        Width="100"
-                        Margin="5,0">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowUp"
-                                                 Width="20"
-                                                 Height="20"
-                                                 Margin="0,0,5,0" />
-                        <TextBlock Text="{lang:Lang PositionEditor_Up}" />
-                    </StackPanel>
-                </Button>
-                <Button Command="{Binding MoveDownCommand}"
-                        Width="100"
-                        Margin="5,0">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowDown"
-                                                 Width="20"
-                                                 Height="20"
-                                                 Margin="0,0,5,0" />
-                        <TextBlock Text="{lang:Lang PositionEditor_Down}" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-
-            <!-- 右侧：关闭按钮（保存由配方管理器页面统一 Save Pool 完成） -->
-            <StackPanel Grid.Column="2"
-                        Orientation="Horizontal">
-                <Button Content="{lang:Lang Close}"
-                        Command="{Binding CloseCommand}"
-                        Width="100"
-                        Margin="5" />
-            </StackPanel>
-        </Grid>
+        <!-- 底部按钮：关闭（保存由配方管理器页面统一 Save Pool 完成） -->
+        <StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <!--<Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Width="120"
+                    Height="40"
+                    Command="{Binding CloseCommand}"
+                    Margin="5,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Close"
+                                             Width="18"
+                                             Height="18"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang Close}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>-->
+        </StackPanel>
     </Grid>
 </UserControl>

@@ -8,14 +8,12 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
-using System.Windows.Threading;
 namespace MotionControl.Models
 {
     public class TaskDisplayModel : BindableBase, IDisposable
     {
         private readonly ITask _task;
         private readonly ILocalizationService _localization;
-        private readonly DispatcherTimer _timer;
         private DateTime _stepStartTime;
         private StepRecord _currentStepRecord;
         private const int MaxHistoryCount = 50;
@@ -59,6 +57,22 @@ namespace MotionControl.Models
             set => SetProperty(ref _currentStepElapsed, value);
         }
 
+        private string _currentStepName = "";
+        /// <summary>当前执行步骤名称（显式属性，替代脆弱的集合当前项绑定）</summary>
+        public string CurrentStepName
+        {
+            get => _currentStepName;
+            set => SetProperty(ref _currentStepName, value);
+        }
+
+        private bool _isExpanded;
+        /// <summary>是否展开步骤历史（手风琴式，默认收起以保持全局视图）</summary>
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set => SetProperty(ref _isExpanded, value);
+        }
+
         /// <summary>初始化进度百分比（0-100），仅在 Homing 状态下显示</summary>
         private double _initProgress;
         public double InitProgress
@@ -92,10 +106,8 @@ namespace MotionControl.Models
             _localization = localization;
             State = task.State;
             _taskName = GetLocalizedTaskName();
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _timer.Tick += OnTimerTick;
-            _timer.Start();
-            OnTimerTick(null, null);
+            // 定时器由 TaskMonitorViewModel 共享调度，避免 N 个工站 N 个定时器的开销
+            OnSharedTimerTick();
             _localization.LanguageChanged += OnLanguageChanged;
         }
 
@@ -125,6 +137,8 @@ namespace MotionControl.Models
                 }
 
                 State = payload.State;
+                // 同步当前步骤名称到显式属性，供紧凑卡片绑定
+                CurrentStepName = payload.CurrentStepName ?? string.Empty;
                 if (_currentStepRecord == null || _currentStepRecord.StepName != payload.CurrentStepName)
                 {
                     if (_currentStepRecord != null)
@@ -197,7 +211,11 @@ namespace MotionControl.Models
             });
         }
 
-        private void OnTimerTick(object sender, EventArgs e)
+        /// <summary>
+        /// 共享定时器回调：由 TaskMonitorViewModel 的单一 DispatcherTimer 统一调度，
+        /// 刷新时钟与当前步骤耗时，避免每工站独立定时器的 N 倍开销。
+        /// </summary>
+        public void OnSharedTimerTick()
         {
             CurrentTime = DateTime.Now.ToString("HH:mm:ss");
             if (_currentStepRecord != null && _currentStepRecord.IsCurrent)
@@ -212,7 +230,6 @@ namespace MotionControl.Models
         public void Dispose()
         {
             _localization.LanguageChanged -= OnLanguageChanged;
-            _timer?.Stop();
         }
     }
 }

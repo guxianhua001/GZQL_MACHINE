@@ -149,6 +149,10 @@ namespace Module
             // === N点标定 ===
             containerRegistry.RegisterSingleton<Core.Abstraction.INPointCalibrationService, Module.Services.NPointCalibrationService>();
             containerRegistry.RegisterForNavigation<NPointCalibrationView, NPointCalibrationViewModel>();
+
+            // === 双龙门标定 ===
+            containerRegistry.RegisterSingleton<Core.Abstraction.IDualGantryCalibrationService, Module.Services.DualGantryCalibrationService>();
+            containerRegistry.RegisterForNavigation<DualGantryCalibrationView, DualGantryCalibrationViewModel>();
         }
     }
 }

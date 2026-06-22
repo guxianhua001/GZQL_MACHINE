@@ -52,6 +52,27 @@ namespace MotionControl.Services
         }
 
         /// <summary>
+        /// 获取所有工站的全部轴定义（排除 HiddenInEditor 的从轴）
+        /// 用于双龙门标定等需要跨工站选择轴的场景
+        /// </summary>
+        public IReadOnlyList<AxisDefinition> GetAllAxes()
+        {
+            var axisConfigs = _motionService.GetAxisConfigurations();
+            return axisConfigs
+                .Where(a => !a.HiddenInEditor)
+                .OrderBy(a => a.LogicalId)
+                .Select(a => new AxisDefinition
+                {
+                    Name = a.Name,
+                    DisplayName = $"{a.Name} ({GuessUnit(a.Name)})",
+                    Unit = GuessUnit(a.Name),
+                    DefaultValue = 0,
+                    IsRequired = true
+                })
+                .ToList();
+        }
+
+        /// <summary>
         /// 根据轴名称推断单位（旋转轴用度，线性轴用毫米）
         /// </summary>
         private static string GuessUnit(string axisName)

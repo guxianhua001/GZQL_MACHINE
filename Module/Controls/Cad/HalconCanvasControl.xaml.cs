@@ -216,13 +216,14 @@ namespace Module.Controls
         }
 
         /// <summary>
-        /// 结束批量更新——恢复自动渲染，并执行一次完整渲染和视口适配
+        /// 结束批量更新——恢复自动渲染，并执行一次完整渲染
+        /// 注意：不自动调用 FitToAll，避免点位选取时视口跳动；
+        /// 视口适配由 FitToAllRequested 事件在 DXF 导入等场景显式触发
         /// </summary>
         public void EndBatchUpdate()
         {
             _suppressRender = false;
             RenderEntities();
-            FitToAll();
         }
 
         #endregion
@@ -648,9 +649,13 @@ namespace Module.Controls
                 foreach (var entity in newCollection)
                     entity.PropertyChanged += ctrl.OnEntityPropertyChanged;
             }
-            ctrl.RenderEntities();
-            // 实体集合替换后自动适配视口（解决 DXF 导入坐标范围超出画布的问题）
-            ctrl.FitToAll();
+            // 批量更新期间抑制渲染，由 EndBatchUpdate 统一触发一次重绘
+            if (!ctrl._suppressRender)
+            {
+                ctrl.RenderEntities();
+                // 实体集合替换后自动适配视口（仅 DXF 导入等非批量场景需要）
+                ctrl.FitToAll();
+            }
         }
 
         /// <summary>
@@ -1748,12 +1753,9 @@ namespace Module.Controls
                 var hWindow = _halconControl.mCtrl_HWindow?.HalconWindow;
                 if (hWindow == null) return;
 
-                // 清除旧实体并重绘背景
-                _halconControl.WindowH._hWndControl.ClearHObjectList();
-                _halconControl.WindowH._hWndControl.ClearROI();
-
-                // 先渲染 CAD 图元（复用 RenderEntities 的图元部分）
-                RenderCadEntitiesOnly(hWindow);
+                // 使用 RenderEntities 重绘 CAD 图元（存储到 hObjectList），
+                // 避免 ClearHObjectList + RenderCadEntitiesOnly 导致重绘时 CAD 图形消失
+                RenderEntities();
 
                 // 渲染折线预览
                 hWindow.SetColor("#00FF00");
@@ -1786,11 +1788,14 @@ namespace Module.Controls
                     hWindow.DispLine(lastPt.Y, lastPt.X, previewRow.Value, previewCol.Value);
                 }
 
-                // 绘制所有顶点标记
+                // 绘制所有顶点标记（根据缩放因子自适应大小，避免过大）
+                double zoomFactor = GetCurrentZoomFactor();
+                double vertexSize = Math.Clamp(3.0 / zoomFactor, 1.0, 5.0);
                 hWindow.SetDraw("fill");
+                hWindow.SetColor("#00FF00");
                 for (int i = 0; i < count; i++)
                 {
-                    hWindow.DispRectangle2(_polylineVertices[i].Y, _polylineVertices[i].X, 0, 3, 3);
+                    hWindow.DispRectangle2(_polylineVertices[i].Y, _polylineVertices[i].X, 0, vertexSize, vertexSize);
                 }
             }
             catch (Exception ex)

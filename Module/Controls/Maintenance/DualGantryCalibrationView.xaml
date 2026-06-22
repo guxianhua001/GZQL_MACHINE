@@ -1,0 +1,1329 @@
+<UserControl x:Class="Module.Views.DualGantryCalibrationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:converters="clr-namespace:Module.Converters"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             mc:Ignorable="d"
+             d:DesignHeight="800"
+             d:DesignWidth="1400"
+             Background="#EEF2F5">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Module;component/Controls/Maintenance/MaintenanceSharedStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+            <!-- 布尔值到画刷转换器（公共基准点采集状态指示） -->
+            <converters:BooleanToBrushConverter x:Key="BoolToBrush"
+                                                TrueBrush="#43A047"
+                                                FalseBrush="#BDBDBD"
+                                                NullBrush="#BDBDBD" />
+
+            <!-- 参数标签样式 -->
+            <Style x:Key="ParamLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="#616161" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="0,0,6,0" />
+            </Style>
+
+            <!-- 左侧卡片标题样式 -->
+            <Style x:Key="LeftCardHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignHeadline6TextBlock}">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+            </Style>
+
+            <!-- 左侧操作按钮内容样式 -->
+            <Style x:Key="LeftActionButtonContentStyle" TargetType="TextBlock">
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="TextAlignment" Value="Left" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- 只读文本框样式 -->
+            <Style x:Key="ReadOnlyTextBoxStyle" TargetType="TextBox">
+                <Setter Property="IsReadOnly" Value="True" />
+                <Setter Property="Background" Value="#F5F5F5" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="materialDesign:HintAssist.IsFloating" Value="False" />
+                <Setter Property="Margin" Value="0,0,4,0" />
+            </Style>
+
+            <!-- 卡片标题容器样式 -->
+            <Style x:Key="CardHeaderStyle" TargetType="StackPanel">
+                <Setter Property="Orientation" Value="Horizontal" />
+                <Setter Property="Margin" Value="0,0,0,12" />
+            </Style>
+
+            <!-- 步骤标签样式 -->
+            <Style x:Key="StepLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="#9E9E9E" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ============================================================ -->
+        <!-- 主内容区：左栏(机构配置+文件操作) | 分隔 | 右栏(标定+对齐)      -->
+        <!-- ============================================================ -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="280" MaxWidth="520" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="1.6*" MinWidth="600" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ======================================================== -->
+            <!-- 左栏：机构配置 + 文件操作                                   -->
+            <!-- ======================================================== -->
+            <ScrollViewer Grid.Column="0"
+                          Style="{StaticResource AlwaysVisibleScrollViewerStyle}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          CanContentScroll="False">
+                <StackPanel HorizontalAlignment="Stretch"
+                            Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+
+                    <!-- 机构配置卡片 -->
+                    <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+                                         Background="{DynamicResource MaterialDesignCardBackground}">
+                        <StackPanel>
+                            <!-- 卡片标题 -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="AxisArrow" Width="18" Height="18"
+                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                         Margin="0,0,8,0" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang DualGantryCalib_MechanismConfig}"
+                                           Style="{StaticResource LeftCardHeaderTextStyle}" />
+                            </Grid>
+
+                            <!-- 机构拓扑示意图 -->
+                            <Border Background="#F5F5F5" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="{lang:Lang DualGantryCalib_Topology}"
+                                               Style="{StaticResource StepLabelStyle}" Margin="0,0,0,6" />
+
+                                    <!-- 公共基准轴行 -->
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="ArrowExpandVertical" Width="16" Height="16"
+                                                                 Foreground="#6A1B9A" Margin="0,0,6,0"
+                                                                 VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" FontSize="11" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center">
+                                            <Run Text="{lang:Lang DualGantryCalib_CommonAxis}" />
+                                            <Run Text=" (" /><Run Text="{lang:Lang DualGantryCalib_CommonAxisY}" /><Run Text=")" />
+                                        </TextBlock>
+                                    </Grid>
+
+                                    <!-- 龙门1行 -->
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="Numeric1BoxOutline" Width="16" Height="16"
+                                                                 Foreground="#1565C0" Margin="0,0,6,0"
+                                                                 VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" FontSize="11" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center">
+                                            <Run Text="{lang:Lang DualGantryCalib_Gantry1}" /><Run Text=": Dx + Dy + Cam1" />
+                                        </TextBlock>
+                                    </Grid>
+
+                                    <!-- 龙门2行 -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="Numeric2BoxOutline" Width="16" Height="16"
+                                                                 Foreground="#00897B" Margin="0,0,6,0"
+                                                                 VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" FontSize="11" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center">
+                                            <Run Text="{lang:Lang DualGantryCalib_Gantry2}" /><Run Text=": X2 + " />
+                                            <Run Text="{lang:Lang DualGantryCalib_CommonAxisY}" /><Run Text=" + Cam2" />
+                                        </TextBlock>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 工站选择 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Station}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding StationIdentifiers}"
+                                          SelectedItem="{Binding SelectedStationIdentifier}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- 龙门1 X轴 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry1AxisX}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableAxes}"
+                                          SelectedItem="{Binding Gantry1AxisX}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- 龙门1 Y轴 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry1AxisY}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableAxes}"
+                                          SelectedItem="{Binding Gantry1AxisY}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- 龙门2 X轴 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry2AxisX}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableAxes}"
+                                          SelectedItem="{Binding Gantry2AxisX}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- 公共基准Y轴（跟随公共基准轴） -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_CommonAxisY}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableAxes}"
+                                          SelectedItem="{Binding CommonAxisY}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          materialDesign:HintAssist.Hint="{lang:Lang DualGantryCalib_FollowCommon}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- TCP配置标题 -->
+                            <TextBlock Text="{lang:Lang DualGantryCalib_TcpConfig}"
+                                       Style="{StaticResource StepLabelStyle}" Margin="0,4,0,6" />
+
+                            <!-- Cam1 TCP连接 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry1Tcp}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding TcpConnections}"
+                                          SelectedItem="{Binding Gantry1TcpConnection}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- Cam2 TCP连接 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry2Tcp}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding TcpConnections}"
+                                          SelectedItem="{Binding Gantry2TcpConnection}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          Padding="4,2" />
+                            </Grid>
+
+                            <!-- 触发命令标题 -->
+                            <TextBlock Text="{lang:Lang DualGantryCalib_TriggerCommand}"
+                                       Style="{StaticResource StepLabelStyle}" Margin="0,4,0,6" />
+
+                            <!-- Cam1 触发命令 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry1}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding Gantry1TriggerCommand, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="4,2" />
+                            </Grid>
+
+                            <!-- Cam2 触发命令 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry2}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding Gantry2TriggerCommand, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="4,2" />
+                            </Grid>
+
+                            <!-- 启用视觉数据 -->
+                            <CheckBox Content="{lang:Lang DualGantryCalib_EnableVisionData}"
+                                      IsChecked="{Binding EnableVisionData}"
+                                      Style="{StaticResource MaterialDesignCheckBox}"
+                                      Margin="0,0,0,8" />
+
+                            <!-- 标定点数 + 延时 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_PointCount}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding PointCount, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="3-99"
+                                         Padding="4,2" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="2" Text="{lang:Lang DualGantryCalib_DelayMs}"
+                                           Style="{StaticResource ParamLabelStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Column="3"
+                                         Text="{Binding AutoCalibDelayMs, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="4,2" />
+                            </Grid>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 文件操作卡片 -->
+                    <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
+                                         Background="{DynamicResource MaterialDesignCardBackground}">
+                        <StackPanel>
+                            <!-- 卡片标题 -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="ContentSaveOutline" Width="18" Height="18"
+                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                         Margin="0,0,8,0" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{lang:Lang DualGantryCalib_FileOperation}"
+                                           Style="{StaticResource LeftCardHeaderTextStyle}" />
+                            </Grid>
+
+                            <!-- 保存 + 另存为 -->
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Command="{Binding SaveConfigCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Padding="8,5" Margin="0,0,4,0"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ContentSave" Width="15" Height="15"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_Save}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Command="{Binding SaveAsConfigCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Padding="8,5" Margin="4,0,0,0"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ContentSaveAll" Width="15" Height="15"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_SaveAs}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- 导入 + 导出 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Command="{Binding ImportConfigCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Padding="8,5" Margin="0,0,4,0"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FolderOpen" Width="15" Height="15"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_Import}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Command="{Binding ExportConfigCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Padding="8,5" Margin="4,0,0,0"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Export" Width="15" Height="15"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_Export}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- 当前文件名 -->
+                            <Border Background="#E3F2FD" CornerRadius="6" Padding="10,6"
+                                    Visibility="{Binding CurrentFileName, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="14" Height="14"
+                                                                 Foreground="#1565C0" Margin="0,2,6,0"
+                                                                 VerticalAlignment="Top" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{lang:Lang DualGantryCalib_CurrentFile}"
+                                                   Foreground="#1565C0" FontSize="10" FontWeight="Medium"
+                                                   TextWrapping="Wrap" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding CurrentFileName}"
+                                               Foreground="#1976D2" FontSize="11" FontFamily="Consolas"
+                                               TextWrapping="Wrap" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ======================================================== -->
+            <!-- 分隔条                                                     -->
+            <!-- ======================================================== -->
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="#E0E0E0" />
+
+            <!-- ======================================================== -->
+            <!-- 右栏：龙门1标定 + 龙门2标定 + 跨龙门对齐                    -->
+            <!-- ======================================================== -->
+            <ScrollViewer Grid.Column="2" Style="{StaticResource AlwaysVisibleScrollViewerStyle}">
+                <StackPanel>
+
+                    <!-- ==================================================== -->
+                    <!-- 龙门1标定卡片 (主色 #1565C0)                           -->
+                    <!-- ==================================================== -->
+                    <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+                                         Background="{DynamicResource MaterialDesignCardBackground}">
+                        <StackPanel>
+                            <!-- 卡片标题 -->
+                            <StackPanel Style="{StaticResource CardHeaderStyle}">
+                                <materialDesign:PackIcon Kind="Numeric1BoxOutline" Width="18" Height="18"
+                                                         Foreground="#1565C0" Margin="0,0,8,0"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry1Calibration}"
+                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                           Foreground="#1565C0" />
+                            </StackPanel>
+
+                            <!-- 操作按钮区 -->
+                            <WrapPanel Margin="0,0,0,8">
+                                <Button Command="{Binding AddGantry1PointCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_AddPoint}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding StartGantry1AutoCalibCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4"
+                                        ToolTip="{lang:Lang DualGantryCalib_StartAutoCalib}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Play" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_StartAutoCalib}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding StopGantry1AutoCalibCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        BorderBrush="#FF9800" Foreground="#E65100"
+                                        materialDesign:ButtonAssist.CornerRadius="4"
+                                        ToolTip="{lang:Lang DualGantryCalib_StopAutoCalib}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_StopAutoCalib}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ComputeGantry1CalibrationCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,0,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Calculator" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_Compute}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+
+                            <!-- 龙门1标定数据表格 -->
+                            <DataGrid ItemsSource="{Binding Gantry1Points}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      SelectionMode="Single"
+                                      materialDesign:DataGridAssist.CellPadding="4"
+                                      HeadersVisibility="Column"
+                                      FontSize="12"
+                                      MaxHeight="300">
+                                <DataGrid.Resources>
+                                    <Style x:Key="G1CenterHeaderStyle" TargetType="DataGridColumnHeader">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    </Style>
+                                    <Style x:Key="G1CenterCellTextStyle" TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <!-- 序号 -->
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="36"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource G1CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G1CenterCellTextStyle}" />
+                                    <!-- 名称 -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_PointName}"
+                                                         Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="56"
+                                                         HeaderStyle="{StaticResource G1CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G1CenterCellTextStyle}" />
+                                    <!-- 机械X -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_MachineX}"
+                                                         Binding="{Binding MachineX, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G1CenterHeaderStyle}">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#E53935" />
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 机械Y -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_MachineY}"
+                                                         Binding="{Binding MachineY, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G1CenterHeaderStyle}">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#43A047" />
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 视觉X（根据EnableVisionData控制只读） -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionX}"
+                                                         Binding="{Binding VisionX, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G1CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G1CenterCellTextStyle}">
+                                        <DataGridTextColumn.CellStyle>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="IsEnabled"
+                                                        Value="{Binding DataContext.EnableVisionData, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Style>
+                                        </DataGridTextColumn.CellStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 视觉Y -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionY}"
+                                                         Binding="{Binding VisionY, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G1CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G1CenterCellTextStyle}">
+                                        <DataGridTextColumn.CellStyle>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="IsEnabled"
+                                                        Value="{Binding DataContext.EnableVisionData, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Style>
+                                        </DataGridTextColumn.CellStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 状态 -->
+                                    <DataGridTemplateColumn Header="{lang:Lang DualGantryCalib_Status}" Width="46"
+                                                             HeaderStyle="{StaticResource G1CenterHeaderStyle}">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Ellipse Width="10" Height="10"
+                                                         Fill="{Binding StatusColor}"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <!-- 操作列 -->
+                                    <DataGridTemplateColumn Header="{lang:Lang DualGantryCalib_Operation}" Width="*" MinWidth="140"
+                                                             HeaderStyle="{StaticResource G1CenterHeaderStyle}">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button ToolTip="{lang:Lang DualGantryCalib_Teach}"
+                                                            Command="{Binding DataContext.TeachGantry1PointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Padding="4,2" Margin="0,0,2,0">
+                                                        <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
+                                                    </Button>
+                                                    <Button ToolTip="{lang:Lang DualGantryCalib_Move}"
+                                                            Command="{Binding DataContext.MoveGantry1PointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Padding="4,2" Margin="2,0,2,0">
+                                                        <materialDesign:PackIcon Kind="ArrowRight" Width="14" Height="14" />
+                                                    </Button>
+                                                    <Button ToolTip="{lang:Lang DualGantryCalib_Delete}"
+                                                            Command="{Binding DataContext.DeleteGantry1PointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Padding="4,2" Margin="2,0,0,0">
+                                                        <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14"
+                                                                                 Foreground="#E53935" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- 龙门1标定结果 -->
+                            <Rectangle Height="1" Fill="#E0E0E0" Margin="0,8,0,8" />
+                            <TextBlock Text="{lang:Lang DualGantryCalib_CalibResult}" Style="{StaticResource StepLabelStyle}" />
+                            <!-- 仿射参数 A/B/Tx -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="A" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Gantry1CalibrationResult.A, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="B" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Gantry1CalibrationResult.B, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Tx" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding Gantry1CalibrationResult.Tx, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                            </Grid>
+                            <!-- 仿射参数 C/D/Ty -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="C" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Gantry1CalibrationResult.C, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="D" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Gantry1CalibrationResult.D, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Ty" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding Gantry1CalibrationResult.Ty, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                            </Grid>
+                            <!-- 统计信息 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_RmsError}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding Gantry1CalibrationResult.RmsError, StringFormat=F6, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_RotationAngle}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding Gantry1CalibrationResult.EquivalentRotationDeg, StringFormat=F4, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_ScaleFactor}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <TextBlock Text="X:" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="{Binding Gantry1CalibrationResult.EquivalentScaleX, StringFormat=F6, FallbackValue=-}"
+                                               FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Text="Y:" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="{Binding Gantry1CalibrationResult.EquivalentScaleY, StringFormat=F6, FallbackValue=-}"
+                                               FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- ==================================================== -->
+                    <!-- 龙门2标定卡片 (主色 #00897B)                           -->
+                    <!-- ==================================================== -->
+                    <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,10"
+                                         Background="{DynamicResource MaterialDesignCardBackground}">
+                        <StackPanel>
+                            <!-- 卡片标题 -->
+                            <StackPanel Style="{StaticResource CardHeaderStyle}">
+                                <materialDesign:PackIcon Kind="Numeric2BoxOutline" Width="18" Height="18"
+                                                         Foreground="#00897B" Margin="0,0,8,0"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{lang:Lang DualGantryCalib_Gantry2Calibration}"
+                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                           Foreground="#00897B" />
+                            </StackPanel>
+
+                            <!-- Y轴互锁提示 -->
+                            <Border Background="#FFF3E0" CornerRadius="4" Padding="8,4" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="AlertOutline" Width="14" Height="14"
+                                                             Foreground="#FF9800" Margin="0,0,6,0"
+                                                             VerticalAlignment="Center" />
+                                    <TextBlock Text="{lang:Lang DualGantryCalib_CommonYInterlock}"
+                                               FontSize="11" Foreground="#E65100" TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 操作按钮区 -->
+                            <WrapPanel Margin="0,0,0,8">
+                                <Button Command="{Binding AddGantry2PointCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_AddPoint}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding StartGantry2AutoCalibCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4"
+                                        ToolTip="{lang:Lang DualGantryCalib_StartAutoCalib}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Play" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_StartAutoCalib}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding StopGantry2AutoCalibCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        BorderBrush="#FF9800" Foreground="#E65100"
+                                        materialDesign:ButtonAssist.CornerRadius="4"
+                                        ToolTip="{lang:Lang DualGantryCalib_StopAutoCalib}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Stop" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_StopAutoCalib}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ComputeGantry2CalibrationCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,0,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Calculator" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_Compute}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+
+                            <!-- 龙门2标定数据表格 -->
+                            <DataGrid ItemsSource="{Binding Gantry2Points}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      SelectionMode="Single"
+                                      materialDesign:DataGridAssist.CellPadding="4"
+                                      HeadersVisibility="Column"
+                                      FontSize="12"
+                                      MaxHeight="300">
+                                <DataGrid.Resources>
+                                    <Style x:Key="G2CenterHeaderStyle" TargetType="DataGridColumnHeader">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    </Style>
+                                    <Style x:Key="G2CenterCellTextStyle" TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <!-- 序号 -->
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="36"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource G2CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G2CenterCellTextStyle}" />
+                                    <!-- 名称 -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_PointName}"
+                                                         Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="56"
+                                                         HeaderStyle="{StaticResource G2CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G2CenterCellTextStyle}" />
+                                    <!-- 机械X -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_MachineX}"
+                                                         Binding="{Binding MachineX, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G2CenterHeaderStyle}">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#E53935" />
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 机械Y -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_MachineY}"
+                                                         Binding="{Binding MachineY, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G2CenterHeaderStyle}">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#43A047" />
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 视觉X -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionX}"
+                                                         Binding="{Binding VisionX, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G2CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G2CenterCellTextStyle}">
+                                        <DataGridTextColumn.CellStyle>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="IsEnabled"
+                                                        Value="{Binding DataContext.EnableVisionData, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Style>
+                                        </DataGridTextColumn.CellStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 视觉Y -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionY}"
+                                                         Binding="{Binding VisionY, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="80"
+                                                         HeaderStyle="{StaticResource G2CenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource G2CenterCellTextStyle}">
+                                        <DataGridTextColumn.CellStyle>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="IsEnabled"
+                                                        Value="{Binding DataContext.EnableVisionData, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Style>
+                                        </DataGridTextColumn.CellStyle>
+                                    </DataGridTextColumn>
+                                    <!-- 状态 -->
+                                    <DataGridTemplateColumn Header="{lang:Lang DualGantryCalib_Status}" Width="46"
+                                                             HeaderStyle="{StaticResource G2CenterHeaderStyle}">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Ellipse Width="10" Height="10"
+                                                         Fill="{Binding StatusColor}"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <!-- 操作列 -->
+                                    <DataGridTemplateColumn Header="{lang:Lang DualGantryCalib_Operation}" Width="*" MinWidth="140"
+                                                             HeaderStyle="{StaticResource G2CenterHeaderStyle}">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button ToolTip="{lang:Lang DualGantryCalib_Teach}"
+                                                            Command="{Binding DataContext.TeachGantry2PointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Padding="4,2" Margin="0,0,2,0">
+                                                        <materialDesign:PackIcon Kind="CrosshairsGps" Width="14" Height="14" />
+                                                    </Button>
+                                                    <Button ToolTip="{lang:Lang DualGantryCalib_Move}"
+                                                            Command="{Binding DataContext.MoveGantry2PointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Padding="4,2" Margin="2,0,2,0">
+                                                        <materialDesign:PackIcon Kind="ArrowRight" Width="14" Height="14" />
+                                                    </Button>
+                                                    <Button ToolTip="{lang:Lang DualGantryCalib_Delete}"
+                                                            Command="{Binding DataContext.DeleteGantry2PointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Padding="4,2" Margin="2,0,0,0">
+                                                        <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14"
+                                                                                 Foreground="#E53935" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- 龙门2标定结果 -->
+                            <Rectangle Height="1" Fill="#E0E0E0" Margin="0,8,0,8" />
+                            <TextBlock Text="{lang:Lang DualGantryCalib_CalibResult}" Style="{StaticResource StepLabelStyle}" />
+                            <!-- 仿射参数 A/B/Tx -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="A" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Gantry2CalibrationResult.A, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="B" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Gantry2CalibrationResult.B, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Tx" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding Gantry2CalibrationResult.Tx, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                            </Grid>
+                            <!-- 仿射参数 C/D/Ty -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="C" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Gantry2CalibrationResult.C, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="D" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Gantry2CalibrationResult.D, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Ty" Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding Gantry2CalibrationResult.Ty, StringFormat=F6, FallbackValue=0}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                            </Grid>
+                            <!-- 统计信息 -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_RmsError}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding Gantry2CalibrationResult.RmsError, StringFormat=F6, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_RotationAngle}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding Gantry2CalibrationResult.EquivalentRotationDeg, StringFormat=F4, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_ScaleFactor}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <TextBlock Text="X:" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="{Binding Gantry2CalibrationResult.EquivalentScaleX, StringFormat=F6, FallbackValue=-}"
+                                               FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Text="Y:" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="{Binding Gantry2CalibrationResult.EquivalentScaleY, StringFormat=F6, FallbackValue=-}"
+                                               FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- ==================================================== -->
+                    <!-- 跨龙门对齐卡片 (主色 #6A1B9A)                           -->
+                    <!-- ==================================================== -->
+                    <materialDesign:Card UniformCornerRadius="8" Padding="16" Margin="0,0,0,0"
+                                         Background="{DynamicResource MaterialDesignCardBackground}">
+                        <StackPanel>
+                            <!-- 卡片标题 -->
+                            <StackPanel Style="{StaticResource CardHeaderStyle}">
+                                <materialDesign:PackIcon Kind="LinkVariant" Width="18" Height="18"
+                                                         Foreground="#6A1B9A" Margin="0,0,8,0"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{lang:Lang DualGantryCalib_CrossGantryAlignment}"
+                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                           Foreground="#6A1B9A" />
+                            </StackPanel>
+
+                            <!-- 公共基准点标题 -->
+                            <TextBlock Text="{lang:Lang DualGantryCalib_ReferencePoints}"
+                                       Style="{StaticResource StepLabelStyle}" />
+
+                            <!-- 公共基准点表格 -->
+                            <DataGrid ItemsSource="{Binding CommonReferencePoints}"
+                                      SelectedItem="{Binding SelectedCommonReferencePoint, Mode=TwoWay}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      SelectionMode="Single"
+                                      materialDesign:DataGridAssist.CellPadding="4"
+                                      HeadersVisibility="Column"
+                                      FontSize="12"
+                                      MaxHeight="200"
+                                      Margin="0,0,0,8">
+                                <DataGrid.Resources>
+                                    <Style x:Key="RefCenterHeaderStyle" TargetType="DataGridColumnHeader">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    </Style>
+                                    <Style x:Key="RefCenterCellTextStyle" TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <!-- 序号 -->
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="36"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- Cam1采集时的Y坐标 -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_CommonY1}"
+                                                         Binding="{Binding CommonY1, StringFormat=F3}"
+                                                         Width="90"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- Cam2采集时的Y坐标 -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_CommonY2}"
+                                                         Binding="{Binding CommonY2, StringFormat=F3}"
+                                                         Width="90"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- 龙门1视觉X -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionX}"
+                                                         Binding="{Binding Gantry1VisionX, StringFormat=F3}"
+                                                         Width="90"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- 龙门1视觉Y -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionY}"
+                                                         Binding="{Binding Gantry1VisionY, StringFormat=F3}"
+                                                         Width="90"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- 龙门2视觉X -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionX}"
+                                                         Binding="{Binding Gantry2VisionX, StringFormat=F3}"
+                                                         Width="90"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- 龙门2视觉Y -->
+                                    <DataGridTextColumn Header="{lang:Lang DualGantryCalib_VisionY}"
+                                                         Binding="{Binding Gantry2VisionY, StringFormat=F3}"
+                                                         Width="90"
+                                                         IsReadOnly="True"
+                                                         HeaderStyle="{StaticResource RefCenterHeaderStyle}"
+                                                         ElementStyle="{StaticResource RefCenterCellTextStyle}" />
+                                    <!-- 采集状态 -->
+                                    <DataGridTemplateColumn Header="{lang:Lang DualGantryCalib_Status}" Width="46"
+                                                             HeaderStyle="{StaticResource RefCenterHeaderStyle}">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Ellipse Width="10" Height="10"
+                                                         Fill="{Binding IsCaptured, Converter={StaticResource BoolToBrush}}"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- 添加 + 采集Cam1 + 采集Cam2 + 计算按钮 -->
+                            <WrapPanel Margin="0,0,0,8">
+                                <Button Command="{Binding AddReferencePointCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_AddPoint}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding CaptureGantry1ReferenceCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Camera" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_CaptureGantry1}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding CaptureGantry2ReferenceCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Camera" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_CaptureGantry2}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ComputeGantryTransformCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4" Margin="0,0,0,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Link" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_ComputeTransform}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+
+                            <!-- 变换参数显示 -->
+                            <Rectangle Height="1" Fill="#E0E0E0" Margin="0,4,0,8" />
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_OffsetX}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding GantryTransform.OffsetX, StringFormat=F4, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="2" Text="{lang:Lang DualGantryCalib_OffsetY}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="3" Text="{Binding GantryTransform.OffsetY, StringFormat=F4, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_RotationDeg}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding GantryTransform.RotationDeg, StringFormat=F4, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="2" Text="{lang:Lang DualGantryCalib_Scale}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="3" Text="{Binding GantryTransform.Scale, StringFormat=F6, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_Residual}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding GantryTransform.Residual, StringFormat=F6, FallbackValue=-}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#424242"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- 坐标变换验证区 -->
+                            <Rectangle Height="1" Fill="#E0E0E0" Margin="0,4,0,8" />
+                            <TextBlock Text="{lang:Lang DualGantryCalib_VerifyTransform}"
+                                       Style="{StaticResource StepLabelStyle}" />
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_InputX}"
+                                           Style="{StaticResource ParamLabelStyle}" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding VerifyInputX, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="4,2" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="2" Text="{lang:Lang DualGantryCalib_InputY}"
+                                           Style="{StaticResource ParamLabelStyle}" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="3"
+                                         Text="{Binding VerifyInputY, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Padding="4,2" Margin="0,0,8,0" />
+                                <Button Grid.Column="4" Command="{Binding VerifyTransformCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="6,4"
+                                        materialDesign:ButtonAssist.CornerRadius="4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CheckCircleOutline" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBlock Text="{lang:Lang DualGantryCalib_Verify}" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{lang:Lang DualGantryCalib_OutputX}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Column="1" Text="{Binding VerifyOutputX, Mode=OneWay, StringFormat=F4, FallbackValue=-}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                                <TextBlock Grid.Column="2" Text="{lang:Lang DualGantryCalib_OutputY}"
+                                           Style="{StaticResource ParamLabelStyle}" FontWeight="SemiBold" />
+                                <TextBox Grid.Column="3" Text="{Binding VerifyOutputY, Mode=OneWay, StringFormat=F4, FallbackValue=-}"
+                                         Style="{StaticResource ReadOnlyTextBoxStyle}" />
+                            </Grid>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ============================================================ -->
+        <!-- 状态栏                                                        -->
+        <!-- ============================================================ -->
+        <Border Grid.Row="1" Background="{Binding StatusColor}"
+                Padding="16,10" Margin="0,6,0,0">
+            <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="CheckCircleOutline" Width="18" Height="18"
+                                         Foreground="#333333" Margin="0,0,8,0"
+                                         VerticalAlignment="Center" />
+                <TextBlock Text="{Binding StatusText}"
+                           Foreground="#333333" FontWeight="SemiBold"
+                           FontSize="13" VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
