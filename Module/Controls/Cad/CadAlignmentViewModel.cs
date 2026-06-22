@@ -4,6 +4,7 @@ using Core.Models;
 using Core.Services;
 using Module.Services;
 using MotionControl.Interfaces;
+using MotionControl.Services;
 using Prism.Commands;
 using Prism.Events;
 using Prism.Ioc;
@@ -106,7 +107,7 @@ namespace Module.ViewModels
             _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
                 .Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
-            // ✅ 初始化统一导入服务
+            // 初始化统一导入服务
             try
             {
                 _dxfImportHelper = containerProvider.Resolve<IDxfImportHelper>();
@@ -161,6 +162,7 @@ namespace Module.ViewModels
             AddCadPointCommand = new DelegateCommand(AddCadPoint);
             DeleteCadPointCommand = new DelegateCommand<CorrespondencePoint>(DeleteCadPoint);
             TeachFitPointCommand = new DelegateCommand<object>(OnTeachFitPointWrapper);
+            MoveFitPointCommand = new DelegateCommand<FitPoint>(async fp => await OnMoveFitPointAsync(fp));
             TeachGripperPositionCommand = new DelegateCommand(OnTeachGripperPosition);
             ApplyCalcOffsetCommand = new DelegateCommand(OnApplyCalcOffset, () => TransResultX != 0 && TransResultY != 0);
             InheritTargetFromStep3Command = new DelegateCommand(
@@ -177,6 +179,7 @@ namespace Module.ViewModels
             DeleteAffineCalibrationPointCommand = new DelegateCommand<AffineCalibrationPoint>(OnDeleteAffineCalibrationPoint);
             PickAffineCadCoordCommand = new DelegateCommand<AffineCalibrationPoint>(OnPickAffineCadCoord);
             TeachAffineMachineCoordCommand = new DelegateCommand<object>(OnTeachAffineMachineCoord);
+            MoveAffineCalibrationPointCommand = new DelegateCommand<AffineCalibrationPoint>(async pt => await OnMoveAffineCalibrationPointAsync(pt));
             SaveConfigCommand = new DelegateCommand(async () => await SaveConfigToFileAsync());
             LoadConfigCommand = new DelegateCommand(async () => await LoadConfigFromFileAsync());
             UnlinkGripperXCommand = new DelegateCommand(() => { IsGripperXLinked = false; FinalGripperXLinkedVar = ""; });
@@ -913,7 +916,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         public ICommand ExportDxfCommand { get; private set; }
         public ICommand AddCadPointCommand { get; private set; }
         public ICommand DeleteCadPointCommand { get; private set; }
+        /// <summary>示教拟合点坐标命令</summary>
         public ICommand TeachFitPointCommand { get; private set; }
+        /// <summary>移动轴到拟合点坐标（Dx/Dy插补）命令</summary>
+        public ICommand MoveFitPointCommand { get; private set; }
         public ICommand TeachGripperPositionCommand { get; private set; }
         public ICommand ApplyCalcOffsetCommand { get; private set; }
         public ICommand PickBaselineFromCadCommand { get; private set; }
@@ -932,6 +938,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         public ICommand PickAffineCadCoordCommand { get; private set; }
         /// <summary>示教仿射标定点机械坐标命令</summary>
         public ICommand TeachAffineMachineCoordCommand { get; private set; }
+        /// <summary>移动轴到仿射标定点坐标（Dx/Dy插补）命令</summary>
+        public ICommand MoveAffineCalibrationPointCommand { get; private set; }
         public DelegateCommand SaveConfigCommand { get; }
         public DelegateCommand LoadConfigCommand { get; }
 
@@ -2787,6 +2795,121 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             {
                 StatusMessage = $"{L("CAD_Move_Axis_Failed")}: {ex.Message}";
             }
+        }
+
+        /// <summary>Z轴抬升安全高度默认值(mm)</summary>
+        private const double ZSafeHeightDefault = 30.0;
+
+        /// <summary>
+        /// 移动轴到拟合点坐标：弹出Z轴抬升确认后，Dx/Dy插补运动到 FitX/FitY
+        /// </summary>
+        private async Task OnMoveFitPointAsync(FitPoint fp)
+        {
+            if (fp == null) return;
+            await MoveToTargetWithZPromptAsync(fp.FitX, fp.FitY,
+                string.Format(L("CAD_Move_FitPoint_Done"), fp.AngleLabel, fp.FitX.ToString("F3"), fp.FitY.ToString("F3")));
+        }
+
+        /// <summary>
+        /// 移动轴到仿射标定点坐标：弹出Z轴抬升确认后，Dx/Dy插补运动到 MachineX/MachineY
+        /// </summary>
+        private async Task OnMoveAffineCalibrationPointAsync(AffineCalibrationPoint pt)
+        {
+            if (pt == null) return;
+            await MoveToTargetWithZPromptAsync(pt.MachineX, pt.MachineY,
+                string.Format(L("CAD_Move_CalibPoint_Done"), pt.Name, pt.MachineX.ToString("F3"), pt.MachineY.ToString("F3")));
+        }
+
+        /// <summary>
+        /// 通用移动流程：弹出Z轴抬升确认 → 可选抬升Z → Dx/Dy插补移动到目标位置
+        /// 对话框：是=抬升Z轴  否=直接移动XY  取消=不执行
+        /// </summary>
+        private async Task MoveToTargetWithZPromptAsync(double targetX, double targetY, string doneMessage)
+        {
+            // Z轴抬升确认对话框
+            var result = System.Windows.MessageBox.Show(
+                L("CAD_Move_RaiseZ_Message"),
+                L("CAD_Move_RaiseZ_Title"),
+                System.Windows.MessageBoxButton.YesNoCancel,
+                System.Windows.MessageBoxImage.Question);
+
+            // 取消=不执行任何操作
+            if (result == System.Windows.MessageBoxResult.Cancel)
+                return;
+
+            try
+            {
+                var motionService = _containerProvider.Resolve<IMotionService>();
+                var axisConfigs = motionService.GetAxisConfigurations();
+                var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+                var dyConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dy");
+                if (dxConfig == null || dyConfig == null)
+                {
+                    StatusMessage = L("CAD_Move_AxisNotFound_DxDy");
+                    return;
+                }
+
+                // 用户选择"是"：先抬升Z轴到安全高度
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    var zConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dz₃");
+                    if (zConfig != null)
+                    {
+                        await motionService.MoveAbsAsync(zConfig.LogicalId, ZSafeHeightDefault, 10.0);
+                        StatusMessage = string.Format(L("CAD_Move_RaiseZ_Done"), ZSafeHeightDefault);
+                    }
+                    else
+                    {
+                        StatusMessage = L("CAD_Move_ZAxisNotFound");
+                    }
+                }
+
+                // Dx/Dy 插补运动（使用直线插补保证两轴同步）
+                int coordId = ResolveDxDyCoordId(motionService);
+                await motionService.MoveLineAbsAsync(
+                    coordId,
+                    new[] { dxConfig.LogicalId, dyConfig.LogicalId },
+                    new[] { targetX, targetY },
+                    10.0);
+
+                StatusMessage = doneMessage;
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"{L("CAD_Move_Axis_Failed")}: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 解析 Dx/Dy 所在的插补坐标系 CoordId（与 NeedleAlignerMotionService 一致）
+        /// </summary>
+        private int ResolveDxDyCoordId(IMotionService motionService)
+        {
+            var axisConfigs = motionService.GetAxisConfigurations();
+            var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
+            if (dxConfig == null) return 0;
+
+            try
+            {
+                var axisParamService = _containerProvider.Resolve<IAxisParameterService>();
+                foreach (var sys in axisParamService.LoadInterpolationSystems())
+                {
+                    foreach (var axisEntry in sys.Axes)
+                    {
+                        var parts = axisEntry.Split('-');
+                        if (parts.Length == 2 && int.TryParse(parts[1], out int actAxisId)
+                            && actAxisId == dxConfig.AxisId)
+                        {
+                            return sys.CoordId;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // IAxisParameterService 未注册时回退 0
+            }
+            return 0;
         }
 
         #endregion

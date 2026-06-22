@@ -16,7 +16,7 @@ namespace StationTasks.Tasks
     public partial class LoadingTask
     {
         /// <summary> 上下料轴回零运动速度（mm/s） </summary>
-        private const double InitLoadingAxisVelocity = 50.0;
+        private const double InitLoadingAxisVelocity = 10.0;
         /// <summary> 工站间信号等待超时（ms），允许慢速回零 </summary>
         private const int SignalWaitTimeoutMs = 120000;
 
@@ -24,8 +24,7 @@ namespace StationTasks.Tasks
         /// 上下料工站整机初始化（重写 HomeAsync）。
         /// 时序：
         /// 1. 等待所有Z轴归零完成（点胶Z轴 + 组装Z轴）
-        /// 2. 回零 Y/Rz/Rx
-        /// 按需求，上下料轴仅回零，不强制回到待机位。
+        /// 2. 回零 Y/Rz/Rx → 回到待机位
         /// </summary>
         public override async Task HomeAsync()
         {
@@ -75,9 +74,22 @@ namespace StationTasks.Tasks
 
                     Logger.Info($"[{TaskName}] {axisName} 轴回零中...");
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
-                    PublishInitProgress(55 + axisIndex * 15, L("Init_HomeAxis", axisName));
+                    PublishInitProgress(55 + axisIndex * 8, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
                     axisIndex++;
+                }
+
+                // ===== 阶段3：上下料轴回到待机位 =====
+                PublishTaskStatusChanged(L("Init_Loading_AxesStandby"), State);
+                int standbyIndex = 0;
+                foreach (var (axisId, axisName) in axes.Zip(axisNames, (id, name) => (id, name)))
+                {
+                    CurrentToken.ThrowIfCancellationRequested();
+                    if (axisId < 0) continue;
+
+                    PublishInitProgress(80 + standbyIndex * 6, L("Init_StandbyPosition", axisName));
+                    await ExecuteMoveAsync(axisId, "StandbyPosition", InitLoadingAxisVelocity);
+                    standbyIndex++;
                 }
 
                 State = TaskState.Idle;

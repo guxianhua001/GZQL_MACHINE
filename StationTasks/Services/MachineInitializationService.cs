@@ -84,6 +84,9 @@ namespace StationTasks.Services
                 // 调用 TaskManager.HomeAllAsync()：并行触发所有工站 HomeAsync()
                 // 工站间时序由各 .Init.cs 内的信号交互保证
                 await _taskManager.HomeAllAsync();
+
+                // 初始化成功：发布复位结果事件，驱动状态机 RESETING → WAITRUN
+                _ea.GetEvent<SystemResetResultEvent>().Publish(true);
                 _logger.Info("[MachineInit] ===== 整机初始化完成 =====");
                 return true;
             }

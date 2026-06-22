@@ -171,6 +171,7 @@ namespace ModuleCore.ViewModels
             PauseCommand = new DelegateCommand(OnPauseFromMain);
             ResumeCommand = new DelegateCommand(OnResumeFromMain);
             StopCommand = new DelegateCommand(OnStopFromMain);
+            EStopCommand = new DelegateCommand(OnEStopFromMain);
 
             // 订阅系统状态变化事件，驱动IsSystemRunning属性更新
             _eventAggregator.GetEvent<StationStateChangedEvent>().Subscribe(OnStationStateChanged, ThreadOption.PublisherThread, false);
@@ -571,6 +572,9 @@ namespace ModuleCore.ViewModels
         public DelegateCommand ResumeCommand { get; }
         public DelegateCommand StopCommand { get; }
 
+        /// <summary>右侧工具栏急停按钮命令，发布事件由OverViewModel处理</summary>
+        public DelegateCommand EStopCommand { get; }
+
         #endregion
 
         private void InitializeCommands()
@@ -642,6 +646,15 @@ namespace ModuleCore.ViewModels
         {
             _logger.Info("【MainWindow】用户点击停止按钮");
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Stop");
+        }
+
+        /// <summary>
+        /// 急停按钮点击事件 - 发布紧急停止请求事件
+        /// </summary>
+        private void OnEStopFromMain()
+        {
+            _logger.Info("【MainWindow】用户点击急停按钮");
+            _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("EStop");
         }
 
         /// <summary>

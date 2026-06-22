@@ -273,13 +273,13 @@ public class ScriptAction
                     }
                 }
 
-                string stepResultKey = $"步骤{prevStep.Seq}_{prevStep.Step}结果";
+                string stepResultKey = $"Step{prevStep.Seq}_{prevStep.Step}Result";
                 if (seenNames.Add(stepResultKey))
                     outputs.Add(new StepOutputItem { Name = stepResultKey, Value = "true" });
 
                 if (prevStep.Step == StepType.DASHBOARD && prevStep.DashboardDetail != null)
                 {
-                    string confirmKey = $"步骤{prevStep.Seq}_DASHBOARD确认结果";
+                    string confirmKey = $"Step{prevStep.Seq}_DASHBOARDConfirmResult";
                     if (seenNames.Add(confirmKey))
                         outputs.Add(new StepOutputItem { Name = confirmKey, Value = "true" });
 
@@ -287,7 +287,7 @@ public class ScriptAction
                     {
                         if (!string.IsNullOrEmpty(field.DisplayName))
                         {
-                            string fieldKey = $"步骤{prevStep.Seq}_DASHBOARD_{field.DisplayName}";
+                            string fieldKey = $"Step{prevStep.Seq}_DASHBOARD_{field.DisplayName}";
                             if (seenNames.Add(fieldKey))
                                 outputs.Add(new StepOutputItem { Name = fieldKey, Value = "true" });
                         }

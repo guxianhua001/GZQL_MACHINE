@@ -305,6 +305,9 @@ namespace Module.ViewModels
                 case "Stop":
                     OnStop();
                     break;
+                case "EStop":
+                    OnEStop();
+                    break;
             }
         }
         #endregion

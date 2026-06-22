@@ -796,6 +796,7 @@
     <sys:String x:Key="Enable_Dynamic_Pin">启用动态拨片</sys:String>
     <sys:String x:Key="EndDelayLabel">终点延时:</sys:String>
     <sys:String x:Key="EndPointXY">结束点(X,Y):</sys:String>
+    <sys:String x:Key="ErrModel_ConfirmPrefix">确认</sys:String>
     <sys:String x:Key="Error">错误</sys:String>
     <sys:String x:Key="ESTOP">急停按下&gt;&gt;&gt;</sys:String>
     <sys:String x:Key="Execute">执行</sys:String>
@@ -1663,6 +1664,8 @@
     <sys:String x:Key="MainWindow_ToolTip_Exit">退出</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_Settings">设置</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_Login">登录</sys:String>
+    <sys:String x:Key="MainWindow_ToolTip_EStop">紧急停止</sys:String>
+    <sys:String x:Key="MainWindow_ErrAdminRequired">权限不足，只有管理员才能访问设置</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_AxisOperation">轴操作</sys:String>
     <sys:String x:Key="MainWindow_Btn_Initialize">初始化</sys:String>
     <sys:String x:Key="MainWindow_Btn_Start">启动</sys:String>
@@ -2431,6 +2434,16 @@
     <sys:String x:Key="CAD_EllipseFit_Done">椭圆拟合完成</sys:String>
     <sys:String x:Key="CAD_DXF_NoPoints">DXF文件未包含有效点位</sys:String>
     <sys:String x:Key="CAD_NoPoints_Found">未找到有效点位</sys:String>
+    <sys:String x:Key="CAD_Move_Column">移动</sys:String>
+    <sys:String x:Key="CAD_Move_FitPoint_Tooltip">移动到该拟合点坐标(Dx/Dy插补)</sys:String>
+    <sys:String x:Key="CAD_Move_CalibPoint_Tooltip">移动到该标定点坐标(Dx/Dy插补)</sys:String>
+    <sys:String x:Key="CAD_Move_RaiseZ_Title">Z轴抬升确认</sys:String>
+    <sys:String x:Key="CAD_Move_RaiseZ_Message">移动前是否抬升Z轴？(是=先抬升Z轴再移动，否=直接移动XY轴)</sys:String>
+    <sys:String x:Key="CAD_Move_FitPoint_Done">已移动到拟合点 {0}: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_Move_CalibPoint_Done">已移动到标定点 {0}: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_Move_AxisNotFound_DxDy">未找到 Dx/Dy 轴配置，请检查硬件配置文件</sys:String>
+    <sys:String x:Key="CAD_Move_ZAxisNotFound">未找到 Dz₃ 轴配置，跳过Z轴抬升</sys:String>
+    <sys:String x:Key="CAD_Move_RaiseZ_Done">Z轴已抬升至安全高度: {0:F3}</sys:String>
 
     <!-- CadPointEditorControl -->
     <sys:String x:Key="CadPoint_Btn_FitAll">适配全部</sys:String>
@@ -2935,6 +2948,8 @@
     <sys:String x:Key="ReleaseDetail_VacuumControl">真空控制</sys:String>
     <sys:String x:Key="ReleaseDetail_VacuumOff">真空关</sys:String>
     <sys:String x:Key="ReleaseDetail_VacuumOn">真空开</sys:String>
+    <sys:String x:Key="ReleaseDetail_VacuumStatus_On">ON</sys:String>
+    <sys:String x:Key="ReleaseDetail_VacuumStatus_Off">OFF</sys:String>
     <sys:String x:Key="ScanDetail_AddMapping">添加映射</sys:String>
     <sys:String x:Key="ScanDetail_Column_BaseZ">基准Z</sys:String>
     <sys:String x:Key="ScanDetail_Column_Compensated">补偿后</sys:String>

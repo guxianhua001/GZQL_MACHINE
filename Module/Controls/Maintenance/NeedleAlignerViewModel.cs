@@ -335,7 +335,7 @@ namespace Module.ViewModels
 
         /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaZ =>
-            (Parameters?.ReferenceXYZ.Z ?? 0) - (Parameters?.CurrentXYZ.Z ?? 0);
+            ((Parameters?.CurrentXYZ.Z ?? 0) - Parameters?.ReferenceXYZ.Z ?? 0);
 
         /// <summary>本次待应用增量 X</summary>
         public double PendingIncrementX

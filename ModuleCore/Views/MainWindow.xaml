@@ -449,6 +449,22 @@
                             </Style>
                         </StackPanel.Resources>
 
+                        <!-- 急停按钮（红色醒目，始终显示在右侧工具栏最顶部） -->
+                        <!--<Button Style="{StaticResource SideBarButtonStyle}"
+                                Width="60"
+                                Height="60"
+                                Command="{Binding EStopCommand}"
+                                ToolTip="{DynamicResource MainWindow_ToolTip_EStop}"
+                                ToolTipService.ShowDuration="2000">
+                            <Button.Background>
+                                <SolidColorBrush Color="#D32F2F"/>
+                            </Button.Background>
+                            <materialDesign:PackIcon Width="42"
+                                                     Height="42"
+                                                     Foreground="White"
+                                                     Kind="StopCircleOutline"/>
+                        </Button>-->
+
                         <!-- Setting 按钮 -->
                         <Button Style="{StaticResource SideBarButtonStyle}"
                                 Width="60"

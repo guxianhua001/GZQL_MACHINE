@@ -1,6 +1,31 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.22 — CadAlignmentView 回转中心/GlobalOffset表格增加移动列
+-------------------------------------------
+
+1. 需求
+   - CadAlignmentView → 回转中心表格增加一列“移动”（移动轴到目标位置，插补）
+   - Global Offset → N点标定表格增加一列“移动”（XY轴插补）
+   - 移动前提示是否抬升Z轴（是=抬升  否=直接移动）
+
+2. 实现
+   - CadAlignmentView.xaml：四点拟合回转中心 DataGrid 新增“移动”列，绑定 MoveFitPointCommand
+   - CadAlignmentView.xaml：N点仿射标定 DataGrid 新增“移动”列，绑定 MoveAffineCalibrationPointCommand
+   - CadAlignmentViewModel.cs：新增 MoveFitPointCommand、MoveAffineCalibrationPointCommand
+   - CadAlignmentViewModel.cs：新增 MoveToTargetWithZPromptAsync 通用移动流程
+     * YesNoCancel 对话框：是=抬升Z轴(Dz₃)到安全高度30mm后插补移动，否=直接插补移动XY，取消=不执行
+     * 使用 MoveLineAbsAsync 直线插补保证 Dx/Dy 两轴同步运动
+     * 插补坐标系 CoordId 通过 ResolveDxDyCoordId 从 hwcfg.xml 动态解析
+   - 新增 using MotionControl.Services (IAxisParameterService) 用于插补系解析
+
+3. 多语言
+   - Strings.zh-CN.xaml / Strings.en-US.xaml：新增 11 个语言键
+     * CAD_Move_Column, CAD_Move_FitPoint_Tooltip, CAD_Move_CalibPoint_Tooltip
+     * CAD_Move_RaiseZ_Title, CAD_Move_RaiseZ_Message
+     * CAD_Move_FitPoint_Done, CAD_Move_CalibPoint_Done
+     * CAD_Move_AxisNotFound_DxDy, CAD_Move_ZAxisNotFound, CAD_Move_RaiseZ_Done
+
 v2026.06.22 — 方法级独立控制 + Task 间信号交互工具
 -------------------------------------------
 

@@ -262,6 +262,24 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="{lang:Lang CAD_Move_Column}" Width="65">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Command="{Binding DataContext.MoveFitPointCommand,
+                                                                RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource SecondaryActionButton}"
+                                                            Padding="4,2" FontSize="9"
+                                                            ToolTip="{lang:Lang CAD_Move_FitPoint_Tooltip}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <materialDesign:PackIcon Kind="ArrowRightBoldCircleOutline" Width="12" Height="12"
+                                                                                     VerticalAlignment="Center" Foreground="#1976D2"/>
+                                                            <TextBlock Text="{lang:Lang CAD_Move_Column}" Margin="3,0,0,0" VerticalAlignment="Center" FontSize="9"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <DockPanel Margin="0,10,0,0">
@@ -571,6 +589,23 @@
                                                             <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14" Foreground="#D32F2F"/>
                                                         </Button>
                                                     </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="{lang:Lang CAD_Move_Column}" Width="65">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Command="{Binding DataContext.MoveAffineCalibrationPointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource SecondaryActionButton}"
+                                                            Padding="4,2" FontSize="9"
+                                                            ToolTip="{lang:Lang CAD_Move_CalibPoint_Tooltip}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <materialDesign:PackIcon Kind="ArrowRightBoldCircleOutline" Width="12" Height="12"
+                                                                                     VerticalAlignment="Center" Foreground="#1976D2"/>
+                                                            <TextBlock Text="{lang:Lang CAD_Move_Column}" Margin="3,0,0,0" VerticalAlignment="Center" FontSize="9"/>
+                                                        </StackPanel>
+                                                    </Button>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>

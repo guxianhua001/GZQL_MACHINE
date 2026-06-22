@@ -107,7 +107,7 @@ namespace Module.ViewModels
             "@GV:变量名 == false",
             "@GV:变量名 > 0",
             "@GV:变量名1 > @GV:变量名2",
-            "@Output:步骤1_GOTO结果 == true",
+            "@Output:Step1_GOTOResult == true",
             "@Output:PassFlag == 1",
             "@GV:变量名1 + @GV:变量名2 > 10"
         };
@@ -224,8 +224,8 @@ namespace Module.ViewModels
                 // 遇到当前 IF 步骤即停止（只收集前序步骤）
                 if (step == _step || step.Seq >= _step.Seq) break;
 
-                // 1. 为每个前序步骤自动添加布尔型"整体结果"输出
-                string stepResultName = $"@Output:步骤{step.Seq}_{step.Step}结果";
+                // 1. 为每个前序步骤自动添加布尔型“整体结果”输出
+                string stepResultName = $"@Output:Step{step.Seq}_{step.Step}Result";
                 if (seenNames.Add(stepResultName))
                     PreviousStepOutputNames.Add(stepResultName);
 

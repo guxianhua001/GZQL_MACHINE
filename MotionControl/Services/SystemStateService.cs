@@ -297,6 +297,8 @@ namespace MotionControl.Services
             {
                 _logger.Warn("复位按钮长按5秒 -> 触发整机初始化。");
                 _resetLongPressHandled = true;
+                // 先驱动状态机 WAITRESET → RESETING（复位条件不满足时仅记录警告，不阻塞初始化）
+                RequestReset();
                 // 发布整机初始化请求事件，MachineInitializationService 订阅后执行初始化序列
                 _ea.GetEvent<Core.Events.MachineInitializationRequestedEvent>().Publish();
             }
@@ -495,7 +497,8 @@ namespace MotionControl.Services
         }
         private void OnSystemResetResult(bool isSuccess)
         {
-            if (_currentState != StationState.RESETING) return;
+            // 支持从 RESETING 或 WAITRESET 转换（长按复位按钮时 CanReset 不满足则停在 WAITRESET）
+            if (_currentState != StationState.RESETING && _currentState != StationState.WAITRESET) return;
             if (isSuccess) TransitionTo(StationState.WAITRUN);
             else TransitionTo(StationState.ALARM);
         }

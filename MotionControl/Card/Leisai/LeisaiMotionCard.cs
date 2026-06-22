@@ -429,6 +429,11 @@ namespace MotionControl.Card
                 catch { return -1; }
             }
         }
+        /// <summary>
+        /// 1表示停止，0表示运动中
+        /// </summary>
+        /// <param name="axisId"></param>
+        /// <returns></returns>
         public override int CheckDone(int axisId)
         {
             lock (_lockObj)
@@ -436,8 +441,8 @@ namespace MotionControl.Card
                 try
                 {
                     int done = LTDMC.dmc_check_done(_cardId, (ushort)axisId);
-                    int encOk = LTDMC.dmc_check_success_encoder(_cardId, (ushort)axisId);
-                    return (done == 1 && encOk == 1) ? 1 : 0;
+                    //int encOk = LTDMC.dmc_check_success_encoder(_cardId, (ushort)axisId);
+                    return (done == 1) ? 1 : 0;
                 }
                 catch { return -1; }
             }

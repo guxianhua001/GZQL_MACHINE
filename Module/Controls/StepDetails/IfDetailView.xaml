@@ -52,7 +52,7 @@
                                 <TextBox x:Name="ExpressionTextBox"
                                          Grid.Column="0"
                                          Text="{Binding ConditionExpression, UpdateSourceTrigger=PropertyChanged}"
-                                         materialDesign:HintAssist.Hint="@GV:变量名 == true 或 @Output:输出 == 1"
+                                         materialDesign:HintAssist.Hint="@GV:varName == true 或 @Output:Step1_GOTOResult == 1"
                                          AcceptsReturn="False"
                                          TextWrapping="NoWrap"
                                          VerticalAlignment="Center"

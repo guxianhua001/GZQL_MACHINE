@@ -18,9 +18,9 @@ namespace StationTasks.Tasks
         /// <summary> Z轴回零+待机位运动速度（mm/s，工业安全速度） </summary>
         private const double InitZAxisVelocity = 20.0;
         /// <summary> XY轴回零后回到待机位运动速度（mm/s） </summary>
-        private const double InitXYAxisVelocity = 50.0;
+        private const double InitXYAxisVelocity = 30.0;
         /// <summary> 旋转轴回零后回到待机位运动速度（mm/s） </summary>
-        private const double InitRotaryAxisVelocity = 30.0;
+        private const double InitRotaryAxisVelocity = 1.5;
         /// <summary> 工站间信号等待超时（ms），允许慢速回零 </summary>
         private const int SignalWaitTimeoutMs = 120000;
 

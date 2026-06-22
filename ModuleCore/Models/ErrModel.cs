@@ -2,6 +2,7 @@
 using Prism.Mvvm;
 using System;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace ModuleCore.Models
 {
@@ -12,11 +13,14 @@ namespace ModuleCore.Models
             AutoConfirm();
         }
 
+        /// <summary>自动倒计时确认：从10秒开始倒数，到期后自动执行确认</summary>
         private async void AutoConfirm()
         {
             for (int i = 10; i >= 0; i--)
             {
-                ConfirmTime = "确认" + i;
+                // 使用多语言资源键，避免硬编码中文
+                var prefix = Application.Current?.TryFindResource("ErrModel_ConfirmPrefix") as string ?? "Confirm";
+                ConfirmTime = $"{prefix} {i}";
                 await Task.Delay(1000);
             }
 

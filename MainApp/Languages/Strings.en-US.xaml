@@ -802,6 +802,7 @@
     <sys:String x:Key="Enable_Dynamic_Pin">Enable Dynamic Pin</sys:String>
     <sys:String x:Key="EndDelayLabel">End Delay:</sys:String>
     <sys:String x:Key="EndPointXY">EndPt(X,Y):</sys:String>
+    <sys:String x:Key="ErrModel_ConfirmPrefix">Confirm</sys:String>
     <sys:String x:Key="Error">Error</sys:String>
     <sys:String x:Key="ESTOP">Emergency stop pressed&gt;&gt;&gt;</sys:String>
     <sys:String x:Key="Execute">Execute</sys:String>
@@ -1678,6 +1679,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_Exit">Exit</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_Settings">Settings</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_Login">Login</sys:String>
+    <sys:String x:Key="MainWindow_ToolTip_EStop">Emergency Stop</sys:String>
+    <sys:String x:Key="MainWindow_ErrAdminRequired">Insufficient privileges. Only administrators can access settings.</sys:String>
     <sys:String x:Key="MainWindow_ToolTip_AxisOperation">Axis Operation</sys:String>
     <sys:String x:Key="MainWindow_Btn_Initialize">Initialize</sys:String>
     <sys:String x:Key="MainWindow_Btn_Start">Start</sys:String>
@@ -2431,6 +2434,16 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CAD_EllipseFit_Done">Ellipse fit complete</sys:String>
     <sys:String x:Key="CAD_DXF_NoPoints">DXF file contains no valid points</sys:String>
     <sys:String x:Key="CAD_NoPoints_Found">No valid points found</sys:String>
+    <sys:String x:Key="CAD_Move_Column">Move</sys:String>
+    <sys:String x:Key="CAD_Move_FitPoint_Tooltip">Move to fit point (Dx/Dy interpolation)</sys:String>
+    <sys:String x:Key="CAD_Move_CalibPoint_Tooltip">Move to calibration point (Dx/Dy interpolation)</sys:String>
+    <sys:String x:Key="CAD_Move_RaiseZ_Title">Z-Axis Raise Confirmation</sys:String>
+    <sys:String x:Key="CAD_Move_RaiseZ_Message">Raise Z-axis before move? (Yes=Raise Z first, No=Move XY directly)</sys:String>
+    <sys:String x:Key="CAD_Move_FitPoint_Done">Moved to fit point {0}: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_Move_CalibPoint_Done">Moved to calibration point {0}: ({1}, {2})</sys:String>
+    <sys:String x:Key="CAD_Move_AxisNotFound_DxDy">Dx/Dy axis config not found, please check hardware config</sys:String>
+    <sys:String x:Key="CAD_Move_ZAxisNotFound">Dz₃ axis config not found, skipping Z raise</sys:String>
+    <sys:String x:Key="CAD_Move_RaiseZ_Done">Z-axis raised to safe height: {0:F3}</sys:String>
 
     <!-- CadPointEditorControl -->
     <sys:String x:Key="CadPoint_Btn_FitAll">Fit All</sys:String>
@@ -2935,6 +2948,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ReleaseDetail_VacuumControl">Vacuum Control</sys:String>
     <sys:String x:Key="ReleaseDetail_VacuumOff">Vacuum Off</sys:String>
     <sys:String x:Key="ReleaseDetail_VacuumOn">Vacuum On</sys:String>
+    <sys:String x:Key="ReleaseDetail_VacuumStatus_On">ON</sys:String>
+    <sys:String x:Key="ReleaseDetail_VacuumStatus_Off">OFF</sys:String>
     <sys:String x:Key="ScanDetail_AddMapping">Add Mapping</sys:String>
     <sys:String x:Key="ScanDetail_Column_BaseZ">Base Z</sys:String>
     <sys:String x:Key="ScanDetail_Column_Compensated">Compensated</sys:String>

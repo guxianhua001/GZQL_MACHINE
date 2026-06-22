@@ -145,7 +145,7 @@
                                                              VerticalAlignment="Center"
                                                              LostFocus="OnExprTextBox_LostFocus"
                                                              AcceptsReturn="False"
-                                                             materialDesign:HintAssist.Hint="@Output:xxx > 10 或 @GV:变量名 == 0"
+                                                             materialDesign:HintAssist.Hint="@Output:xxx > 10 or @GV:varName == 0"
                                                              BorderThickness="0"
                                                              Background="Transparent" />
                                                     <ComboBox Grid.Column="1"

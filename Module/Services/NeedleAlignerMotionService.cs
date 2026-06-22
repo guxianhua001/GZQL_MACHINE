@@ -1513,7 +1513,7 @@ namespace Module.Services
             float deltaX = measured.X - parameters.ReferenceXYZ.X;
             float deltaY = measured.Y - parameters.ReferenceXYZ.Y;
             float deltaZ = (float)measuredHeight - parameters.ReferenceXYZ.Z;
-            return new PointF(-deltaX, -deltaY, -deltaZ);
+            return new PointF(-deltaX, -deltaY, deltaZ);
         }
 
         /// <summary>安全停轴，忽略单次停轴异常以保证急停路径畅通</summary>

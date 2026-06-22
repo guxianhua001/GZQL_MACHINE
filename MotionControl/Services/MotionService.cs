@@ -494,20 +494,23 @@ namespace MotionControl.Services
 
         /// <inheritdoc />
         public Task HomeAxisAsync(int axisId, CancellationToken token = default)
-            => RunHomeAsync(axisId, applyHomeMode: false, mode: 0, minVel: 0, maxVel: 0, token);
+            => RunHomeAsync(axisId, token);
 
         /// <inheritdoc />
-        public Task HomeAsync(int axisId, int mode = 1, double minVel = 5, double maxVel = 20, CancellationToken token = default)
-            => RunHomeAsync(axisId, applyHomeMode: true, mode, minVel, maxVel, token);
+        public async Task HomeAsync(int axisId, int mode = 0, double minVel = 0.5, double maxVel = 10, CancellationToken token = default)
+        {
+            var (card, pid) = ResolveAxis(axisId);
+            // 先设置回零模式参数，再执行回零
+            card.SetHomeMode(pid, mode, minVel, maxVel);
+            await RunHomeAsync(axisId, token);
+        }
 
-        /// <summary>执行回零并等待完成；applyHomeMode=false 时仅 GoHome，沿用卡内已配置参数</summary>
-        private async Task RunHomeAsync(int axisId, bool applyHomeMode, int mode, double minVel, double maxVel, CancellationToken token)
+        /// <summary>发送回零命令并等待完成，沿用卡内已配置的回零参数</summary>
+        private async Task RunHomeAsync(int axisId, CancellationToken token)
         {
             var (card, pid) = ResolveAxis(axisId);
             await Task.Run(() =>
             {
-                if (applyHomeMode)
-                    card.SetHomeMode(pid, mode, minVel, maxVel);
                 card.GoHome(pid);
                 WaitHomeComplete(card, pid, axisId, token);
             }, token);

@@ -468,7 +468,7 @@ namespace StationTasks.Actions
                 if (step.Step == StepType.DASHBOARD && step.DashboardDetail != null)
                 {
                     // 步骤整体结果 = 确认结果（OK=true, NG=false）
-                    string stepResultKey = $"步骤{step.Seq}_{step.Step}结果";
+                    string stepResultKey = $"Step{step.Seq}_{step.Step}Result";
                     if (step.DashboardDetail.ConfirmResult.HasValue)
                     {
                         _stepOutputs[stepResultKey] = step.DashboardDetail.ConfirmResult.Value ? "true" : "false";
@@ -481,7 +481,7 @@ namespace StationTasks.Actions
                     // 写入确认结果（OK=true, NG=false），供下游 BRANCH 步骤引用
                     if (step.DashboardDetail.ConfirmResult.HasValue)
                     {
-                        string confirmKey = $"步骤{step.Seq}_DASHBOARD确认结果";
+                        string confirmKey = $"Step{step.Seq}_DASHBOARDConfirmResult";
                         _stepOutputs[confirmKey] = step.DashboardDetail.ConfirmResult.Value ? "true" : "false";
                     }
 
@@ -489,7 +489,7 @@ namespace StationTasks.Actions
                     {
                         if (!string.IsNullOrEmpty(field.DisplayName) && field.ConditionResult.HasValue)
                         {
-                            string fieldKey = $"步骤{step.Seq}_DASHBOARD_{field.DisplayName}";
+                            string fieldKey = $"Step{step.Seq}_DASHBOARD_{field.DisplayName}";
                             _stepOutputs[fieldKey] = field.ConditionResult.Value ? "true" : "false";
                         }
                     }
@@ -497,7 +497,7 @@ namespace StationTasks.Actions
                 else
                 {
                     // 非 DASHBOARD 步骤：步骤成功完成 = true
-                    string stepResultKey = $"步骤{step.Seq}_{step.Step}结果";
+                    string stepResultKey = $"Step{step.Seq}_{step.Step}Result";
                     _stepOutputs[stepResultKey] = "true";
                 }
             }
@@ -560,9 +560,8 @@ namespace StationTasks.Actions
 
             } while (retryCount < maxRetries || maxRetries <= 0);
 
-            // 写入 CHECK 步骤结果到累积字典
-            _stepOutputs[$"步骤{step.Seq}_CHECK结果"] = checkPassed ? "true" : "false";
-            _stepOutputs[$"步骤{step.Seq}_CheckResult"] = checkPassed ? "true" : "false";
+            // 写入 CHECK 步骤结果到累积字典（统一使用英文键）
+            _stepOutputs[$"Step{step.Seq}_CHECKResult"] = checkPassed ? "true" : "false";
 
             // 根据 PASS/FAIL 决定下一步
             if (checkPassed)

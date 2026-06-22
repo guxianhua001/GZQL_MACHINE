@@ -334,8 +334,8 @@ namespace Module.ViewModels
             {
                 if (step.Seq >= currentStep.Seq) break;
 
-                // 为每个前序步骤自动添加布尔型"整体结果"输出
-                string stepResultName = $"@Output:步骤{step.Seq}_{step.Step}结果";
+                // 为每个前序步骤自动添加布尔型“整体结果”输出
+                string stepResultName = $"@Output:Step{step.Seq}_{step.Step}Result";
                 AddStepOutput(stepResultName, GlobalVariableType.Bool);
 
                 // 收集已配置的 BranchConfig 输出参数（携带类型信息）

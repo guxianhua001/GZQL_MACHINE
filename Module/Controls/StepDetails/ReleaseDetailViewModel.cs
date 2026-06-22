@@ -91,6 +91,14 @@ namespace Module.ViewModels
             set => SetProperty(ref _vacuumStatusText, value);
         }
 
+        private System.Windows.Media.Brush _vacuumStatusBrush;
+        /// <summary> 真空状态文字颜色，ON=绿色，OFF=灰色 </summary>
+        public System.Windows.Media.Brush VacuumStatusBrush
+        {
+            get => _vacuumStatusBrush ?? (_vacuumStatusBrush = System.Windows.Media.Brushes.Gray);
+            set => SetProperty(ref _vacuumStatusBrush, value);
+        }
+
         public ObservableCollection<SubMove> ReleaseMoves
         {
             get
@@ -174,8 +182,18 @@ namespace Module.ViewModels
             MoveDownCommand = new DelegateCommand(OnMoveDown, () => SelectedSubMoveRow != null && SubMoveRows.IndexOf(SelectedSubMoveRow) < SubMoveRows.Count - 1).ObservesProperty(() => SelectedSubMoveRow);
             CloseCommand = new DelegateCommand(OnClose);
             SaveCommand = new DelegateCommand(OnSave);
-            VacuumOnCommand = new DelegateCommand(() => IsVacuumOn = true);
-            VacuumOffCommand = new DelegateCommand(() => IsVacuumOn = false);
+            VacuumOnCommand = new DelegateCommand(() =>
+            {
+                IsVacuumOn = true;
+                VacuumStatusText = L("ReleaseDetail_VacuumStatus_On");
+                VacuumStatusBrush = System.Windows.Media.Brushes.Green;
+            });
+            VacuumOffCommand = new DelegateCommand(() =>
+            {
+                IsVacuumOn = false;
+                VacuumStatusText = L("ReleaseDetail_VacuumStatus_Off");
+                VacuumStatusBrush = System.Windows.Media.Brushes.Gray;
+            });
             QuickReleaseCommand = new DelegateCommand(async () => await OnQuickReleaseAsync());
             OpenGripperControlCommand = new DelegateCommand(OnOpenGripperControl);
 
