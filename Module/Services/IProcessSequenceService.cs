@@ -20,9 +20,44 @@ namespace Module.Services
         void DeleteStep();
         void MoveStepUp();
         void MoveStepDown();
+
+        /// <summary> 将步骤移动到指定方法的指定位置（用于拖拽排序） </summary>
+        /// <param name="step">要移动的步骤</param>
+        /// <param name="targetMethod">目标方法</param>
+        /// <param name="targetIndex">目标索引（-1 表示追加到末尾）</param>
+        void MoveStepTo(ProcessStep step, ProcessMethod targetMethod, int targetIndex);
+
+        /// <summary> 将任务移动到指定位置（用于拖拽排序） </summary>
+        /// <param name="task">要移动的任务</param>
+        /// <param name="targetIndex">目标索引（-1 表示追加到末尾）</param>
+        void MoveTaskTo(TaskItem task, int targetIndex);
+
         void AddTask(bool isDefault = false);
         void DeleteTask();
         void AutoGenerate();
+
+        /// <summary> 当前选中的方法节点 </summary>
+        ProcessMethod SelectedMethod { get; set; }
+
+        /// <summary> 当前选中的树节点（TaskItem / ProcessMethod / ProcessStep 之一） </summary>
+        object SelectedNode { get; set; }
+
+        /// <summary> 在当前任务下新建方法 </summary>
+        void AddMethod();
+        /// <summary> 删除当前选中的方法 </summary>
+        void DeleteMethod();
+        /// <summary> 重命名当前选中的方法 </summary>
+        void RenameMethod(string newName);
+        /// <summary> 复制当前选中节点到剪贴板 </summary>
+        void CopyNode();
+        /// <summary> 粘贴剪贴板节点到当前选中节点下 </summary>
+        void PasteNode();
+        /// <summary> 切换当前选中节点的启用/禁用状态 </summary>
+        void ToggleNodeEnabled();
+        /// <summary> 设置当前选中节点的注释 </summary>
+        void EditNodeComment(string comment);
+        /// <summary> 设置当前任务的运行模式 </summary>
+        void SetTaskRunMode(TaskRunMode mode);
 
         ObservableCollection<ValidationItem> Validate();
         Task SaveSequenceToPathAsync(string filePath);   // 保存所有任务到指定路径
@@ -56,6 +91,21 @@ namespace Module.Services
         void StopTask();
         void PauseTask();
         void ResumeTask();
+
+        // 方法级控制（控制单个方法独立执行）
+        /// <summary> 是否有方法正在执行（与任务级执行互斥） </summary>
+        bool IsMethodExecuting { get; }
+        /// <summary> 当前正在执行的方法（null 表示无方法在执行） </summary>
+        ProcessMethod ExecutingMethod { get; }
+        /// <summary> 启动指定方法的独立执行（仅执行该方法的启用步骤） </summary>
+        /// <param name="method">要执行的方法</param>
+        void StartMethod(ProcessMethod method);
+        /// <summary> 暂停当前正在执行的方法 </summary>
+        void PauseMethod();
+        /// <summary> 恢复当前被暂停的方法 </summary>
+        void ResumeMethod();
+        /// <summary> 停止当前正在执行的方法 </summary>
+        void StopMethod();
 
         /// <summary> 是否启用单步模式（每步执行后等待用户确认再继续） </summary>
         bool IsSingleStepMode { get; set; }

@@ -1,9 +1,11 @@
 using Framework.Mvvm;
+using Core.Abstraction;
 using Core.Services;
 using ModuleCore.Common.Authority;
 using ModuleCore.Models;
 using Prism.Commands;
 using Prism.Ioc;
+using Prism.Mvvm;
 using Prism.Regions;
 using System;
 using System.Collections.Generic;
@@ -12,10 +14,15 @@ using System.IO;
 
 namespace ModuleCore.ViewModels
 {
+    /// <summary>
+    /// 设置页面 ViewModel：管理设备配置、轴参数、安全区域、主题等设置
+    /// </summary>
     public class SettingViewModel : RegionViewModelBase
     {
         private DelegateCommand _Load;
         private DelegateCommand _Save;
+        private DelegateCommand _toggleThemeCommand;
+        private readonly IThemeService _themeService;
         private DataTable dt;
         private List<string> ShowList = new();
         IRegionManager _regionManager;
@@ -24,12 +31,26 @@ namespace ModuleCore.ViewModels
             "Config",
             "ViewConfig.json");
 
-        public SettingViewModel(IContainerExtension container, IRegionManager regionManager) : base(regionManager)
+        /// <summary>
+        /// 构造函数：注入容器、区域管理器、主题服务
+        /// </summary>
+        public SettingViewModel(IContainerExtension container, IRegionManager regionManager, IThemeService themeService) : base(regionManager)
         {
             _regionManager = regionManager;
+            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
             Navigate = container.Resolve<NavigateModel>();
             Model = container.Resolve<LoginModel>();
+
+            // 订阅全局主题变化，同步 UI 状态
+            _themeService.ThemeChanged += OnThemeChanged;
         }
+
+        /// <summary>当前是否为暗色主题</summary>
+        public bool IsDarkTheme => _themeService.IsDarkTheme;
+
+        /// <summary>切换主题命令</summary>
+        public DelegateCommand ToggleThemeCommand =>
+            _toggleThemeCommand ??= new DelegateCommand(ExecuteToggleTheme);
 
         public DelegateCommand Load =>
             _Load ??= new DelegateCommand(ExecuteLoad);
@@ -38,6 +59,18 @@ namespace ModuleCore.ViewModels
         public NavigateModel Navigate { get; set; }
         public DelegateCommand Save =>
              _Save ??= new DelegateCommand(ExecuteSave);
+
+        /// <summary>执行主题切换</summary>
+        private void ExecuteToggleTheme()
+        {
+            _themeService.ToggleTheme();
+        }
+
+        /// <summary>主题变化回调：通知 UI 属性更新</summary>
+        private void OnThemeChanged(bool isDark)
+        {
+            RaisePropertyChanged(nameof(IsDarkTheme));
+        }
 
         private void ExecuteLoad()
         {

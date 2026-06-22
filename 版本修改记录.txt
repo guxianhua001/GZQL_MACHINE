@@ -1,6 +1,341 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.22 — 方法级独立控制 + Task 间信号交互工具
+-------------------------------------------
+
+1. 需求
+   - 给每一个方法的右侧详情菜单增加 运行/暂停/恢复/停止，控制单个方法
+   - 底部的启动/暂停/恢复/停止 控制所有的 task 任务（已有功能，保持不变）
+   - 设计两个工具（发送信号/接收信号），用于 task 之间的信号交互：
+     某个 task 收到另外一个 task 发送的信号时才能执行下一步
+   - 信号使用完成后自动重置（auto-reset 语义）
+   - 支持无限等待或设置超时时间
+   - 充分考虑工业动作的严谨性（急停/停止即时响应、超时触发可恢复异常）
+
+2. 方法级独立控制（新增）
+   - ProcessMethod.cs：新增 Status 属性（TaskStatusEnum），跟踪方法级执行状态
+   - IProcessSequenceService.cs：新增方法级控制接口
+     * IsMethodExecuting、ExecutingMethod 属性
+     * StartMethod(ProcessMethod)、PauseMethod()、ResumeMethod()、StopMethod()
+   - ProcessSequenceService.cs：实现方法级控制
+     * 与任务级执行共享 _isExecuting 互斥锁，避免工站运动轴冲突
+     * StartMethod：重置所有工站暂停信号、清除步骤报警标记、设置方法状态为 Running
+     * PauseMethod：调用所有工站 CancelMotionPause，确保跨工站运动轴立即响应暂停
+     * ResumeMethod：调用所有工站 ResetMotionPause，重建 _pauseCts
+     * StopMethod：取消执行令牌、调用所有工站 StopAsync 停止所有轴
+   - ProcessSequenceEditorViewModel.cs：新增方法级控制命令
+     * StartMethodCommand、PauseMethodCommand、ResumeMethodCommand、StopMethodCommand
+     * 命令参数为 ProcessMethod，允许从方法详情面板对指定方法发起控制
+     * CanExecute 根据方法状态和全局执行状态自动刷新
+   - ProcessSequenceEditorView.xaml：方法详情模板新增控制工具栏
+     * 运行/暂停/恢复/停止按钮（使用 PackIcon：Play/Pause/PlayPause/Stop）
+     * 方法执行状态指示器（Idle/Running/Paused/Stopped，颜色区分）
+
+3. Task 间信号交互工具（新增）
+   - TaskSignalService.cs（ITaskSignalService 接口实现）
+     * 使用 SemaphoreSlim(0,1) 实现自动复位信号语义
+     * ConcurrentDictionary 线程安全存储信号
+     * SendSignal：置位信号（幂等，重复发送不会累积）
+     * WaitForSignalAsync：异步等待信号，支持取消令牌和超时
+     * IsSignalSet、ResetSignal：信号状态查询和手动复位
+   - ProcessStep.cs：扩展 StepType 枚举
+     * 新增 SIGNAL_SEND（发送信号）和 SIGNAL_WAIT（等待信号）
+     * 新增 SignalDetail 类（SignalName、TimeoutMs、Description）
+     * ProcessStep 新增 SignalDetail 属性（JSON 序列化忽略默认值）
+   - SignalStepAction.cs：实现两个步骤动作
+     * SignalSendStepAction：非阻塞发送信号，立即返回
+     * SignalWaitStepAction：异步等待信号
+       - 收到信号后自动复位（消费），继续执行下一步
+       - 超时抛出 RecoverableException，触发报警并暂停等待操作员处理
+       - 取消令牌（急停/停止）触发时立即抛出 OperationCanceledException
+   - StationTasksModule.cs：注册新组件
+     * SignalSendStepAction、SignalWaitStepAction 注册为 IProcessStepAction 单例
+     * ITaskSignalService 注册为单例，供所有步骤动作共享
+   - SignalSendDetailView/ViewModel：信号发送配置对话框
+     * 配置 SignalName、Description
+     * 提示说明：发送信号唤醒等待方，不阻塞
+   - SignalWaitDetailView/ViewModel：信号等待配置对话框
+     * 配置 SignalName、TimeoutMs（-1 无限等待，>0 指定毫秒）、Description
+     * 提示说明：超时触发可恢复异常
+   - ProcessSequenceEditorViewModel.cs：接线 SIGNAL_SEND/SIGNAL_WAIT 详情导航
+     * NavigateToDetailView 新增两个 case 分支
+     * ShowSignalSendDetailDialog、ShowSignalWaitDetailDialog 方法
+   - PrimModel.cs：注册 SignalSendDetailViewModel、SignalWaitDetailViewModel
+
+4. 本地化支持（zh-CN + en-US）
+   - 方法级控制：PSE_MethodControl、PSE_RunMethod/PauseMethod/ResumeMethod/StopMethod
+   - 方法状态：PSE_MethodStatusIdle/Running/Paused/Stopped
+   - 信号交互：PSE_DialogTitleSignalSend/SignalWait、PSE_SignalName/Description/Timeout
+   - 信号提示：PSE_SignalSendHint、PSE_SignalWaitHint、PSE_SignalWaitTimeoutAlarm
+
+5. 安全性设计
+   - 方法级与任务级执行互斥（共享 _isExecuting 锁），避免工站运动轴冲突
+   - 暂停/停止操作遍历所有工站，确保跨工站运动轴立即响应
+   - 信号等待支持 CancellationToken，急停/停止时立即解除等待
+   - 信号超时抛出 RecoverableException（非 OperationCanceledException），
+     触发报警并暂停任务，等待操作员介入处理
+   - 信号发送幂等：重复发送同一信号不会累积（SemaphoreFullException 被捕获忽略）
+
+v2026.06.21 — 统一 BaseDialogWindow 标题栏 + 移除各工具独立标题栏
+-------------------------------------------
+
+1. 需求
+   - BaseDialogWindow 的 icon 使用各自工具的 icon
+   - 去掉每个工具单独的抬头，统一使用 BaseDialogWindow 显示
+   - 深色背景下黑色文本使用白色，浅色背景下白色文本使用黑色
+
+2. 修改
+   - IBaseDialogService.cs：新增 ShowDialog(content, title, iconKind) 重载
+   - BaseDialogService.cs：实现带 iconKind 的 ShowDialog 重载
+   - BaseDialogWindowViewModel.cs：新增 IconKind 属性
+   - BaseDialogWindow.xaml：标题图标绑定到 ViewModel.IconKind（FallbackValue=CogOutline）
+   - ProcessSequenceEditorViewModel.cs：ShowStepDetailDialog 新增 iconKind 参数，
+     各工具调用传入对应图标：
+     GOTO=DebugStepOver, VISION=Eye, SCAN=Camera, SEEK=CrosshairsGps,
+     WAIT=TimerOutline, SCRIPT=CodeTags, PICK=HandBackRight, RELEASE=HandBackLeft,
+     CURE=Fire, DISPENSE=Water, Dashboard=MonitorDashboard, Branch=SourceBranch,
+     RunTask=CallSplit
+
+3. 移除各工具标题栏（15个文件）
+   - 有渐变标题栏的7个文件（VisionDetailView、CheckDetailView、ConditionBranchView、
+     ScanDetailView、ScriptDetailView、SeekDetailView、DataDashboardView）：
+     移除标题栏 Border，调整 Grid.Row 编号
+   - 无渐变标题栏的8个文件（AlignDetailView、CureDetailView、DispenseDetailView、
+     GotoDetailView、PickDetailView、ReleaseDetailView、RunTaskDetailView、
+     WaitDetailView）：移除标题 DockPanel（Close按钮+标题文本）
+   - DataDashboardView：标题栏替换为普通工具栏（MaterialDesignToolBarBackground），
+     保留 CheckBox/Refresh/Add/Delete 操作按钮，移除标题图标和标题文本
+
+v2026.06.21 — VISION 工具深色主题文本不可见修复
+-------------------------------------------
+
+1. 问题
+   - VISION 工具（VisionDetailView）深色主题下部分文本看不清或显示黑色
+   - TextBox、ComboBox、Expander、DataGrid 等 MaterialDesign 控件
+     使用 MD 内置资源（MaterialDesignBody、MaterialDesignDivider 等），
+     但 DialogThemeHelper 未覆盖这些资源，深色主题下仍使用 MD 默认值
+
+2. 根因
+   - DialogThemeHelper.MdOverrideMappings 仅覆盖了 3 个 MD 资源
+     （Paper、CardBackground、Foreground），未覆盖 Body、BodyLight、
+     Divider、ToolBarBackground、LightBackground、LightForeground 等
+   - BaseDialogWindow.ApplyDialogTheme 仅更新窗口自身 Resources，
+     未更新子控件（StepDetails 视图）合并的 DialogTheme.xaml 副本，
+     导致子视图中自定义画刷未随主题切换
+   - 修改继承的共享 MD 画刷实例会影响整个应用程序
+
+3. 修复
+   - DialogThemeHelper.cs：
+     a) MdOverrideMappings 从 3 个扩展到 9 个，新增覆盖：
+        MaterialDesignBody、MaterialDesignBodyLight、MaterialDesignToolBarBackground、
+        MaterialDesignDivider、MaterialDesignLightBackground、MaterialDesignLightForeground
+     b) MD 资源覆盖改为始终创建新画刷实例，避免修改继承的共享实例
+   - BaseDialogWindow.xaml.cs：
+     ApplyDialogTheme 方法新增对子控件（StepDetails 视图）Resources 的主题更新，
+     确保子视图中合并的 DialogTheme.xaml 画刷也随主题切换
+-------------------------------------------
+
+1. 问题
+   - 深色主题颜色太深（#1E1E2E/#181825），看不清文本
+   - 亮色主题标题栏使用 DialogTextPrimaryBrush（深色 #333333），在深色渐变背景上看不清
+   - 需要与 CodeBuddy IDE 主题颜色对齐
+
+2. 修复
+   - DialogTheme.xaml：配色方案从 Catppuccin 改为 CodeBuddy（VS Code Dark+ 风格）
+     a) 深色背景：#1E1E2E → #252526（更亮，提升可读性）
+     b) 深色 Surface：#181825 → #2D2D30
+     c) 深色文字：#CDD6F4 → #D4D4D4（高对比度浅灰白）
+     d) 亮色背景：#EFF1F5 → #F3F3F3
+     e) 亮色文字：#4C4F69 → #333333
+     f) 两个主题标题栏统一使用深色渐变 #2D3748→#3A475A（白色文字清晰）
+   - BaseDialogWindow.xaml：标题栏 Foreground 从 DialogTextPrimaryBrush 改为 White
+   - 7 个 StepDetails 视图标题栏 Foreground 从 DialogTextPrimaryBrush 改为 White：
+     VisionDetailView、CheckDetailView、ConditionBranchView、ScanDetailView、
+     SeekDetailView、ScriptDetailView、DataDashboardView
+
+3. 设计原则
+   - 标题栏在两个主题下均使用深色渐变背景 + 白色文字，保证可读性
+   - 内容区域使用 DialogTextPrimaryBrush 跟随主题切换
+   - 深色主题背景非纯黑，采用 VS Code Dark+ 风格深灰色调
+-------------------------------------------
+
+1. 调整
+   - 上一版本对 StepDetails 各工具视图的背景色和前景色修改过多，影响原有视觉设计
+   - 用户要求恢复工具原有背景色，仅修改 BaseDialogWindow 标题栏的主题颜色
+
+2. 恢复内容
+   - VisionDetailView.xaml：恢复代码编辑器 #FAFAFA 背景、#212121 前景；
+     恢复提示区域 #1A237E08 背景、#78909C/#B0BEC5 前景；
+     恢复配置面板 Foreground="white"
+   - ScriptDetailView.xaml：恢复代码编辑器和提示区域原有颜色
+   - ScanDetailView.xaml：恢复提示区域原有颜色
+   - DataDashboardView.xaml：恢复示意图区域 #F5F5F5 背景、DataGrid 表头/行/选中颜色、
+     公式编辑器边框和全局变量列表颜色
+   - ThemeService.cs：撤销深色主题自定义背景色，恢复标准 MaterialDesign 深色主题
+
+3. 保留修改
+   - BaseDialogWindow.xaml 标题栏：使用 PrimaryHueMidBrush 背景 + White 前景
+     （DeepPurple 在两个主题下均为深色，白色文字始终清晰可见，不使用黑色）
+
+v2026.06.21 — 深色主题配色优化与 StepDetails 字体主题适配
+-------------------------------------------
+
+1. 问题
+   - 深色主题背景为纯黑，视觉不友好，用户要求参考 CodeBuddy 主题使用深蓝灰色调
+   - StepDetails 各工具视图存在大量硬编码颜色（white、#212121、#FAFAFA、#757575 等），
+     切换主题时文字不可见
+
+2. 修复
+   - ThemeService.cs：深色主题自定义背景色
+     a) Background = #1E1E2E（CodeBuddy 深蓝灰，非纯黑）
+     b) Foreground = #CDD6F4（浅蓝白，比纯白柔和）
+   - VisionDetailView.xaml：
+     a) 代码编辑器 TextBox：Foreground → MaterialDesignBody，Background → MaterialDesignLightBackground
+     b) 通讯配置面板所有 Foreground="white" → MaterialDesignBody（内容区域非标题栏）
+     c) 提示区域 #1A237E08 背景 → MaterialDesignLightBackground
+     d) #78909C/#B0BEC5 前景 → MaterialDesignBodyLight
+   - ScriptDetailView.xaml：
+     a) 代码编辑器 TextBox 同 VisionDetailView 修复
+     b) 提示区域 #1A237E08 → MaterialDesignLightBackground
+     c) #78909C/#B0BEC5 前景 → MaterialDesignBodyLight
+   - ScanDetailView.xaml：
+     a) 提示区域 #1A237E08 → MaterialDesignLightBackground
+     b) #78909C/#B0BEC5 前景 → MaterialDesignBodyLight
+   - DataDashboardView.xaml：
+     a) 示意图区域 #F5F5F5 背景 → MaterialDesignLightBackground
+     b) #BDBDBD/#757575/#9E9E9E 前景 → MaterialDesignBodyLight
+     c) DataGrid 表头 #E8EAF6/#283593 → MaterialDesignToolBarBackground/PrimaryHueMidBrush
+     d) DataGrid 行 #212121 前景 → MaterialDesignBody
+     e) DataGrid 选中 #E3F2FD → PrimaryHueLightBrush，悬停 #FFF3E0 → MaterialDesignDivider
+     f) 公式编辑器 #5C6BC0 边框 → PrimaryHueMidBrush
+     g) 全局变量列表 #5C6BC0 前景 → PrimaryHueMidBrush，White 前景 → MaterialDesignBody
+
+3. 设计原则
+   - 标题栏（#2D3748 渐变 + White 文字）：两个主题通用，强调标题区域
+   - 内容区域：使用 DynamicResource 跟随主题自动切换
+   - 语义色（绿色=OK，红色=NG）：保持固定，两个主题通用
+   - 深色主题不使用纯黑，采用 CodeBuddy 风格深蓝灰色调
+
+v2026.06.21 — MaterialDesignDialogWindow 主题切换后字体不可见修复
+-------------------------------------------
+
+1. 问题
+   - PickDetailView 打开夹爪面板（GripperControlView）后，切换到亮色主题时文本看不见
+   - 字体仍为白色（深色主题下的颜色），未跟随主题更新
+
+2. 根因
+   - GripperControlView 通过 Prism IDialogService.ShowDialog 打开，
+     使用 MaterialDesignDialogWindow 作为宿主窗口
+   - MaterialDesignDialogWindow.ApplyMaterialDesignTheme() 在构造时通过
+     TryFindResource 直接获取 Brush 并赋值给 Background/Foreground/BorderBrush
+   - 直接赋值的是静态 Brush 实例，主题切换时不会自动更新
+   - 深色主题下 Foreground=白色 Brush，切换到亮色主题后仍为白色，
+     白色文字落在亮色背景上不可见
+
+3. 修复
+   - Framework/MaterialDesignDialogWindow.cs：
+     将 Background/Foreground/BorderBrush 的赋值方式从直接赋值改为
+     SetResourceReference（DynamicResource），主题切换时自动刷新
+     - Background → SetResourceReference(BackgroundProperty, "MaterialDesignPaper")
+     - Foreground → SetResourceReference(ForegroundProperty, "MaterialDesignBody")
+     - BorderBrush → SetResourceReference(BorderBrushProperty, "MaterialDesignDivider")
+
+v2026.06.21 — BaseDialogWindow 与 LogViewer 主题适配修复
+-------------------------------------------
+
+1. 问题
+   - BaseDialogWindow 标题栏文字和图标硬编码 Foreground="White"，
+     亮色主题下 PrimaryHueMidBrush 较浅时白色文字不清晰
+   - 切换深色主题时，PrimaryHueMidForegroundBrush 变为黑色，
+     但标题栏背景 PrimaryHueMidBrush（DeepPurple）在两个主题下都是深紫色，
+     黑色文字在深色背景上不可见
+   - LogViewer 日志窗口切换到深色主题时看不见日志文本
+
+2. 根因
+   - BaseDialogWindow：
+     a) 标题栏背景使用 PrimaryHueMidBrush（DeepPurple），该颜色不随主题变化
+     b) PrimaryHueMidForegroundBrush 在深色主题下变为深色，与深紫色背景对比度不足
+     c) 标题栏背景和前景需要同时跟随主题变化才能保证可读性
+   - LogViewer：
+     a) DataGrid 未设置 Background，深色主题下默认背景变深
+     b) DataGrid 默认 Foreground 在深色主题下变白，但日志行背景为浅色语义色（白/黄/红），
+        白色文字落在浅色背景上不可见
+
+3. 修复
+   - BaseDialogWindow.xaml：
+     a) 标题栏背景改为 {DynamicResource MaterialDesignToolBarBackground}，
+        亮色主题=浅色背景，暗色主题=深色背景
+     b) 标题栏所有前景色改为 {DynamicResource MaterialDesignBody}，
+        亮色主题=深色文字，暗色主题=白色文字
+     c) 背景和前景同时跟随主题，确保两种主题下均有足够对比度
+   - LogViewer.xaml：
+     a) 新增 LogForeground 资源（#212121 深色），日志行和单元格固定使用深色前景
+     b) LogRowStyle 和 LogCellStyle 设置 Foreground 为 LogForeground
+     c) DataGrid 添加 Background={DynamicResource MaterialDesignPaper} 跟随主题
+     d) Message 列 TextBlock 和 ToolTip 显式设置 Foreground 为 LogForeground
+     e) WARN 背景色从纯 Yellow 改为 #FFF9C4（浅黄），ERROR 从 Tomato 改为 #FFCDD2（浅红），
+        提升深色文字对比度
+
+v2026.06.21 — 导航转场动画 NaN 崩溃修复（第二次，彻底修复）
+-------------------------------------------
+
+1. 问题
+   - 第一次修复（仅添加 DisableTransitions）不够：TransitionAssist.DisableTransitions 无法
+     禁用 MaterialDesign3.Defaults.xaml 中 ContentControl 默认样式的 ControlTemplate 内动画
+   - 打开 ProcessSequenceEditorView 后，在 TreeRegion 中导航到 WorkOrderConfigView、
+     CadAlignmentView 等页面仍报错：
+     "导航失败:System.Windows.Media.Animation.DoubleAnimation cannot use default origin value of NaN"
+
+2. 根因（深入分析）
+   - TreeView.xaml 在自身 Resources 中合并了 MaterialDesign3.Defaults.xaml，
+     为 TreeRegion ContentControl 施加了 MaterialDesign 默认 ContentControl 样式
+   - 该样式 ControlTemplate 包含转场动画（TransitioningContentControl 机制），
+     DisableTransitions 附加属性无法完全禁用 ControlTemplate 内的 Storyboard
+   - ProcessSequenceEditorView 结构复杂（虚拟化 DataGrid + 编辑模板 ComboBox + TreeView），
+     卸载时 DataGrid 编辑态的 MaterialDesign Underline 动画遇到 ActualWidth=NaN 导致崩溃
+   - 错误经 Prism NavigationResult.Error 传到 TreeViewModel 弹出 MessageBox
+
+3. 修复（三层防御）
+   a) ContentControl 模板覆盖（根本修复）：
+      - TreeView.xaml 的 TreeRegion：用纯 ContentPresenter ControlTemplate 替换 MaterialDesign 默认样式
+      - MainWindow.xaml 的 ContentRegionCore 和 OverlayRegionControl：同样覆盖
+      - 彻底移除导航宿主层的所有动画
+   b) ProcessSequenceEditorView 卸载清理（源头修复）：
+      - 添加 Unloaded 事件处理：CommitEdit/CancelEdit 取消 DataGrid 编辑状态
+      - 递归折叠所有 TreeViewItem，终止展开/折叠动画
+      - 防止编辑态 ComboBox 的 Underline 动画在卸载时遇到 NaN
+   c) TreeViewModel 导航容错重试（兜底保护）：
+      - 检测到 DoubleAnimation/NaN 异常时，清空 TreeRegion 内容后自动重试导航
+      - 避免动画异常彻底阻塞用户导航操作
+
+4. 修改文件
+   - Framework/Views/TreeView.xaml：TreeRegion ContentControl 模板覆盖
+   - ModuleCore/Views/MainWindow.xaml：ContentRegionCore、OverlayRegionControl 模板覆盖
+   - Module/Controls/StepEditor/ProcessSequenceEditorView.xaml：添加 Unloaded 事件
+   - Module/Controls/StepEditor/ProcessSequenceEditorView.xaml.cs：卸载清理逻辑
+   - Framework/ViewModels/TreeViewModel.cs：导航容错重试机制
+
+v2026.06.21 — 导航转场动画 NaN 崩溃修复
+-------------------------------------------
+
+1. 问题
+   - 打开 ProcessSequenceEditorView 后，再导航到 WorkOrderConfigView、CadAlignmentView 等页面时报错：
+     "导航失败:System.Windows.Media.Animation.DoubleAnimation cannot use default origin value of NaN"
+   - 不打开 ProcessSequenceEditorView 时导航正常
+
+2. 根因
+   - ContentRegionCore / TreeRegion 等 Prism 导航宿主 ContentControl 未禁用 MaterialDesign 转场动画
+   - MaterialDesign3.Defaults.xaml 为 ContentControl 施加默认 DoubleAnimation 转场
+   - ProcessSequenceEditorView 结构复杂（虚拟化 DataGrid + 三个重叠 ContentControl 经 TypeFilterConverter 返回 null），
+     卸载时存在 NaN 尺寸值，转场动画以此为起始值导致崩溃并使导航失败
+   - 各视图自身的 DisableTransitions 仅作用于视图内部，不影响导航宿主层的转场
+
+3. 修复
+   - MainWindow.xaml: ContentRegionCore 和 OverlayRegionControl 添加 materialDesign:TransitionAssist.DisableTransitions="True"
+   - TreeView.xaml: TreeRegion ContentControl 同样禁用转场（步骤详情视图含 Expander，存在同类风险）
+   - 工控设备要求即时响应，禁用导航转场动画为正确选择
+
 v2026.06.20 — DispenseDetail 取消链接全局变量修复
 -------------------------------------------
 

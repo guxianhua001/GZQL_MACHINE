@@ -6,26 +6,18 @@
              xmlns:localConverters="clr-namespace:Module.Converters"
              Width="800">
     <UserControl.Resources>
-        <localConverters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <localConverters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
     <Border Padding="16"
-            Background="{DynamicResource MaterialDesignCardBackground}"
+            Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4">
         <StackPanel>
-            <DockPanel Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right"
-                        Command="{Binding CloseCommand}"
-                        ToolTip="{lang:Lang Close}"
-                        Width="30" Height="30"
-                        Style="{StaticResource MaterialDesignIconButton}">
-                    <materialDesign:PackIcon Kind="Close" />
-                </Button>
-                <TextBlock FontWeight="Bold"
-                           FontSize="14"
-                           VerticalAlignment="Center"
-                           Text="{Binding StepDescription, StringFormat=CURE {0}}" />
-            </DockPanel>
 
             <GroupBox Header="{lang:Lang CureDetail_UvConfig}" Margin="0,0,0,16">
                 <DockPanel>
@@ -77,7 +69,7 @@
                              HorizontalAlignment="Left"
                              materialDesign:HintAssist.Hint="DO端口"/>
 
-                    <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Height="1" Background="{DynamicResource MaterialDesignDividerBrush}" Margin="0,8,0,8"/>
+                    <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Height="1" Background="{DynamicResource DialogBorderBrush}" Margin="0,8,0,8"/>
                 </Grid>
 
                 <Expander Header="{lang:Lang CureDetail_StageSettings}" IsExpanded="False" Margin="8,0">
@@ -102,7 +94,7 @@
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang CureDetail_Stage1}" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Foreground="{DynamicResource DialogAccentBrush}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                         <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Stage1DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
@@ -111,7 +103,7 @@
                         <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Stage1Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang CureDetail_Stage2}" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="3" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Foreground="{DynamicResource DialogAccentBrush}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
 
                         <TextBlock Grid.Row="4" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                         <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Stage2DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
@@ -120,7 +112,7 @@
                         <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding Stage2Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
 
                         <TextBlock Grid.Row="6" Grid.Column="0" Text="{lang:Lang CureDetail_Stage3}" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="6" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+                        <TextBlock Grid.Row="6" Grid.Column="1" Foreground="{DynamicResource DialogAccentBrush}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
 
                         <TextBlock Grid.Row="7" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                         <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding Stage3DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>
@@ -129,7 +121,7 @@
                         <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding Stage3Intensity}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="%"/>
 
                         <TextBlock Grid.Row="9" Grid.Column="0" Text="{lang:Lang CureDetail_Stage4}" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="9" Grid.Column="1" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
+                        <TextBlock Grid.Row="9" Grid.Column="1" Foreground="{DynamicResource DialogAccentBrush}" FontSize="11" VerticalAlignment="Center" Margin="4,2">━━━━━━━━━━━━━━━━━━━</TextBlock>
 
                         <TextBlock Grid.Row="10" Grid.Column="0" Text="{lang:Lang CureDetail_Duration}" VerticalAlignment="Center" Margin="20,0,0,0"/>
                         <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding Stage4DurationMs}" Margin="4,2" Width="120" HorizontalAlignment="Left" materialDesign:HintAssist.Hint="ms"/>

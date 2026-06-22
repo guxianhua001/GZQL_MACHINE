@@ -6,42 +6,25 @@
              xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              Width="960" MaxHeight="800">
 
-    <Border Background="{DynamicResource MaterialDesignCardBackground}" CornerRadius="6" ClipToBounds="True">
-        <Border.Resources>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        </Border.Resources>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource DialogCardBrush}" CornerRadius="6" ClipToBounds="True">
 
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- ═══ ROW 0: 标题栏 ═══ -->
-            <Border Grid.Row="0" Padding="12,6" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource MaterialDesignDivider}">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#2D3748" Offset="0" />
-                        <GradientStop Color="#3A475A" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Command="{Binding CloseCommand}" ToolTip="{lang:Lang Close}"
-                            Width="24" Height="24" Style="{StaticResource MaterialDesignIconButton}" Foreground="White">
-                        <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
-                    </Button>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="Camera" Width="18" Height="18" Foreground="#FFB74D" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBlock Text="{lang:Lang ScanDetail_Title}" Foreground="White" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Text=" - " Foreground="#90A4AE" FontSize="14" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding StepDescription}" Foreground="#B0BEC5" FontSize="13" VerticalAlignment="Center" />
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-
             <!-- ═══ ROW 1: 主内容区（双列布局）═══ -->
-            <Grid Grid.Row="1" Margin="8">
+            <Grid Grid.Row="0" Margin="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
@@ -106,7 +89,7 @@
                                             Padding="8,4" />
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock Text="{lang:Lang ScanDetail_PointCount}"
-                                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"
                                                    Margin="0,0,8,0" VerticalAlignment="Center" />
                                         <materialDesign:NumericUpDown Value="{Binding TabCount}"
                                                                       Minimum="1" Maximum="100"
@@ -116,7 +99,7 @@
 
                                 <!-- 解析脚本（用Grid约束宽度，使TextBox横向滚动条生效） -->
                                 <TextBlock Text="{lang:Lang ScanDetail_InputScript3D}" Margin="0,0,0,4"
-                                           Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                                           Foreground="{DynamicResource DialogTextSecondaryBrush}" />
                                 <Grid>
                                     <TextBox Text="{Binding ParseScript, UpdateSourceTrigger=PropertyChanged}"
                                              AcceptsReturn="True"
@@ -134,7 +117,7 @@
 
                                 <!-- 变量映射 -->
                                 <TextBlock Text="{lang:Lang ScanDetail_MapKeyToGlobalVar}"
-                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                           Foreground="{DynamicResource DialogTextSecondaryBrush}"
                                            Margin="0,0,0,8" />
                                 <DataGrid ItemsSource="{Binding VariableMappings}"
                                           SelectedItem="{Binding SelectedMapping}"
@@ -162,7 +145,7 @@
                                                 <DataTemplate>
                                                     <common:GlobalVariableLinkControl
                                                         DisplayValue="{Binding DisplayValue, Mode=OneWay}"
-                                                        DisplayForeground="#81C784"
+                                                        DisplayForeground="{DynamicResource DialogSuccessDarkBrush}"
                                                         IsLinked="{Binding IsLinked, Mode=OneWay}"
                                                         UnlinkCommand="{Binding DataContext.UnlinkMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         LinkedVariableName="{Binding GlobalVariableName, UpdateSourceTrigger=PropertyChanged}"
@@ -203,10 +186,10 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{lang:Lang ScanDetail_DataParsingPanel}" VerticalAlignment="Center" FontWeight="SemiBold" />
                                     <TextBlock Text="  " VerticalAlignment="Center" />
-                                    <TextBlock Text="{lang:Lang ScanDetail_LastParsed}" Foreground="#2196F3" FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
-                                    <TextBlock Text=": " Foreground="#2196F3" FontSize="11" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding LastReceivedTime}" Foreground="#2196F3" FontSize="11" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding LastReceivedData}" Foreground="AliceBlue" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0" MaxWidth="120" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{lang:Lang ScanDetail_LastParsed}" Foreground="{DynamicResource DialogInfoBrush}" FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Text=": " Foreground="{DynamicResource DialogInfoBrush}" FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding LastReceivedTime}" Foreground="{DynamicResource DialogInfoBrush}" FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding LastReceivedData}" Foreground="{DynamicResource DialogElevatedBrush}" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0" MaxWidth="120" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </GroupBox.Header>
                             <!-- DataGrid Width 约束 + 列 MinWidth 自适应列名，总宽超出时显示横向滚动条 -->
@@ -231,13 +214,13 @@
                                                         <Style TargetType="TextBlock">
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding Status}" Value="Pass">
-                                                                    <Setter Property="Foreground" Value="#2E7D32"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource DialogSuccessDarkBrush}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding Status}" Value="Fail">
-                                                                    <Setter Property="Foreground" Value="#D32F2F"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource DialogErrorDarkBrush}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
-                                                            <Setter Property="Foreground" Value="#9E9E9E"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource DialogTextMutedBrush}"/>
                                                         </Style>
                                                     </TextBlock.Style>
                                                 </TextBlock>
@@ -249,7 +232,7 @@
                                             <DataTemplate>
                                                 <common:GlobalVariableLinkControl
                                                     DisplayValue="{Binding Deviation, Mode=OneWay}"
-                                                    DisplayForeground="#81C784"
+                                                    DisplayForeground="{DynamicResource DialogSuccessDarkBrush}"
                                                     IsLinked="{Binding IsDeviationLinked, Mode=OneWay}"
                                                     LinkedVariableName="{Binding TargetGlobalVariable, UpdateSourceTrigger=PropertyChanged}"
                                                     LinkableGlobalVariables="{Binding DataContext.LinkableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -274,7 +257,7 @@
                                             Padding="8,4"
                                             ToolTip="{lang:Lang ScanDetail_FillSampleToolTip}" />
                                     <TextBlock Text="{lang:Lang ScanDetail_TestData}" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                               Foreground="{DynamicResource DialogTextSecondaryBrush}"
                                                Margin="0,0,8,0" />
                                 </DockPanel>
                                 <TextBox Text="{Binding SampleData, UpdateSourceTrigger=PropertyChanged}"
@@ -306,7 +289,7 @@
                                              Height="4" />
 
                                 <!-- 结果展示 -->
-                                <Border Background="{DynamicResource MaterialDesignToolBarBackground}"
+                                <Border Background="{DynamicResource DialogElevatedBrush}"
                                         CornerRadius="4"
                                         Padding="12"
                                         MinHeight="60"
@@ -316,17 +299,17 @@
                                                    TextWrapping="Wrap"
                                                    FontFamily="Consolas"
                                                    FontSize="12"
-                                                   Foreground="{DynamicResource MaterialDesign.Brush.ValidationError}" />
+                                                   Foreground="{DynamicResource DialogErrorDarkBrush}" />
                                     </ScrollViewer>
                                 </Border>
                             </StackPanel>
                         </Expander>
 
                         <!-- 5. 提示信息 -->
-                        <Border Background="#1A237E08" CornerRadius="4" Padding="8,6">
+                        <Border Background="{DynamicResource DialogCardBrush}" CornerRadius="4" Padding="8,6">
                             <StackPanel>
-                                <TextBlock Text="{lang:Lang VisionDetail_VarMappingNote}" FontSize="11" Foreground="#78909C" Margin="0,0,0,4"/>
-                                <TextBlock FontSize="10" Foreground="#B0BEC5" TextWrapping="Wrap" LineHeight="15">
+                                <TextBlock Text="{lang:Lang VisionDetail_VarMappingNote}" FontSize="11" Foreground="{DynamicResource DialogTextMutedBrush}" Margin="0,0,0,4"/>
+                                <TextBlock FontSize="10" Foreground="{DynamicResource DialogTextMutedBrush}" TextWrapping="Wrap" LineHeight="15">
                                     <Run Text="{lang:Lang ScanDetail_Hint_TcpFlow}" /><LineBreak/>
                                     <Run Text="{lang:Lang ScanDetail_Hint_SampleSkip}" /><LineBreak/>
                                     <Run Text="{lang:Lang ScanDetail_Hint_Remapping}" />
@@ -339,7 +322,7 @@
             </Grid>
 
             <!-- ═══ ROW 2: 底部操作栏 ═══ -->
-            <Border Grid.Row="2" Padding="16,10" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource MaterialDesignDivider}">
+            <Border Grid.Row="1" Padding="16,10" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource DialogBorderBrush}">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
                         <Button Command="{Binding ExecuteWithSampleDataCommand}" ToolTip="{lang:Lang ScanDetail_UseSampleToolTip}"

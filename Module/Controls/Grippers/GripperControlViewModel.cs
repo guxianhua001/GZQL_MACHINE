@@ -13,7 +13,11 @@ using Prism.Services.Dialogs;
 
 namespace Module.UserControls.Grippers
 {
-    public class GripperControlViewModel : BindableBase, IDialogAware, IDisposable
+    /// <summary>
+    /// 夹爪控制面板 ViewModel
+    /// 实现 IDialogCloseable 以支持 BaseDialogService 统一弹窗关闭机制
+    /// </summary>
+    public class GripperControlViewModel : BindableBase, IDialogCloseable, IDisposable
     {
         private readonly IGripperService _gripperService;
         private readonly ILoggerService _logger;
@@ -282,7 +286,7 @@ namespace Module.UserControls.Grippers
 
         private void OnClose()
         {
-            RequestClose?.Invoke(new DialogResult(ButtonResult.OK));
+            RequestClose?.Invoke(true);
         }
 
         #endregion
@@ -332,32 +336,29 @@ namespace Module.UserControls.Grippers
 
         #endregion
 
-        #region IDialogAware 实现
+        #region IDialogCloseable 实现
 
+        /// <summary>UI 定时器：定时刷新夹爪状态</summary>
         private System.Windows.Threading.DispatcherTimer _uiUpdateTimer;
 
-        public string Title => L("Gripper_Dialog_Title");
+        /// <summary>请求关闭对话框时触发（BaseDialogService 订阅）</summary>
+        public event Action<object> RequestClose;
 
-        public event Action<IDialogResult> RequestClose;
-
+        /// <summary>是否可以关闭对话框</summary>
         public bool CanCloseDialog() => true;
 
-        public void OnDialogClosed()
+        /// <summary>
+        /// 初始化夹爪控制面板（替代 IDialogAware.OnDialogOpened）
+        /// 启动 UI 定时器和夹爪状态监控
+        /// </summary>
+        /// <param name="clampPos">外部夹紧位置（可选）</param>
+        /// <param name="releasePos">外部释放位置（可选）</param>
+        public void Initialize(double? clampPos = null, double? releasePos = null)
         {
-            _uiUpdateTimer?.Stop();
-            _uiUpdateTimer = null;
-            _gripperService.StopMonitoring();
-        }
-
-        public void OnDialogOpened(IDialogParameters parameters)
-        {
-            if (parameters != null)
-            {
-                if (parameters.ContainsKey("clampPosition"))
-                    ExternalClampPosition = parameters.GetValue<double>("clampPosition");
-                if (parameters.ContainsKey("releasePosition"))
-                    ExternalReleasePosition = parameters.GetValue<double>("releasePosition");
-            }
+            if (clampPos.HasValue)
+                ExternalClampPosition = clampPos;
+            if (releasePos.HasValue)
+                ExternalReleasePosition = releasePos;
 
             _uiUpdateTimer = new System.Windows.Threading.DispatcherTimer
             {
@@ -373,7 +374,7 @@ namespace Module.UserControls.Grippers
                         CurrentPosition = state.CurrentPosition;
                         Status = state.Status;
                         IsConnected = true;
-                        
+
                         if (StatusMessage == L("Gripper_Status_Uninitialized"))
                             StatusMessage = L("Gripper_Status_Ready");
                     }
@@ -390,7 +391,9 @@ namespace Module.UserControls.Grippers
 
         public void Dispose()
         {
-            OnDialogClosed();
+            _uiUpdateTimer?.Stop();
+            _uiUpdateTimer = null;
+            _gripperService?.StopMonitoring();
         }
     }
 }

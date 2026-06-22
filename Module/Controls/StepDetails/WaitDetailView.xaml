@@ -4,24 +4,13 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              MaxHeight="300">
+    <UserControl.Resources>
+        <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+    </UserControl.Resources>
     <Border Padding="16"
-            Background="{DynamicResource MaterialDesignCardBackground}"
+            Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4">
         <StackPanel>
-            <!-- 标题 + 关闭按钮 -->
-            <DockPanel Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right"
-                        Content="✖"
-                        Width="30"
-                        Height="30"
-                        Command="{Binding CloseCommand}"
-                        ToolTip="{lang:Lang Close}"
-                        Style="{StaticResource MaterialDesignIconButton}" />
-                <TextBlock FontWeight="Bold"
-                           FontSize="14"
-                           VerticalAlignment="Center"
-                           Text="{Binding StepDescription, StringFormat=WAIT {0}}" />
-            </DockPanel>
 
             <!-- 延时等待 -->
             <GroupBox Header="{lang:Lang WaitDetail_DelayWait}" Margin="0,0,0,12">
@@ -32,7 +21,7 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="130"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 

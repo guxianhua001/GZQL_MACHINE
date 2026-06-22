@@ -88,9 +88,9 @@ namespace MotionControl.Services
             if (!allowed)
             {
                 string reason = SafetyInterlockEvaluator.FormatReason(_localization, reasonKey, reasonArgs);
-                double current = axisName != null
-                    ? Motion.GetAxisPosition(axisId)
-                    : 0;
+                // 使用缓存位置，避免 UI 线程硬件读卡
+                var state = Motion.GetAxisState(axisId);
+                double current = state?.ActualPosition ?? 0;
                 PublishViolation(axisId, axisName ?? axisId.ToString(), targetPosition, current, reason, ruleId ?? "Unknown");
                 return (false, reason);
             }
@@ -121,9 +121,13 @@ namespace MotionControl.Services
             if (axisName == null)
                 return false;
 
-            double position = Motion.GetAxisPosition(axisId);
+            // 使用缓存位置，避免硬件读卡阻塞 UI 线程
+            var state = Motion.GetAxisState(axisId);
+            if (state == null)
+                return false;
+
             lock (_configLock)
-                return SafetyInterlockEvaluator.IsInDangerZone(_config, axisName, position);
+                return SafetyInterlockEvaluator.IsInDangerZone(_config, axisName, state.ActualPosition);
         }
 
         /// <inheritdoc/>
@@ -138,7 +142,9 @@ namespace MotionControl.Services
 
             foreach (var axis in Motion.GetAxisConfigurations())
             {
-                double pos = Motion.GetAxisPosition(axis.LogicalId);
+                // 使用缓存位置，避免硬件读卡阻塞 UI 线程
+                var state = Motion.GetAxisState(axis.LogicalId);
+                double pos = state?.ActualPosition ?? 0;
                 status.CurrentPositions[axis.Name] = pos;
                 status.DangerZoneFlags[axis.Name] = SafetyInterlockEvaluator.IsInDangerZone(configSnapshot, axis.Name, pos);
             }
@@ -223,6 +229,9 @@ namespace MotionControl.Services
 
         /// <summary>
         /// 构建轴名→位置的解析器；缺失轴在 FailClosed 时返回 null 触发互锁
+        /// 关键：使用轮询线程推送的缓存位置（AxisState.ActualPosition），
+        /// 绝不在 UI 线程调用 GetAxisPosition（硬件读卡），避免与轮询线程争锁导致 Jog 卡顿。
+        /// 缓存不可用时返回 null，FailClosed 模式下将触发互锁拒绝（安全优先）。
         /// </summary>
         private Func<string, double?> BuildPositionResolver()
         {
@@ -243,7 +252,9 @@ namespace MotionControl.Services
                     return null;
                 }
 
-                return Motion.GetAxisPosition(match.LogicalId);
+                // 使用轮询缓存位置，避免 UI 线程同步读卡
+                var state = Motion.GetAxisState(match.LogicalId);
+                return state?.ActualPosition;
             };
         }
 

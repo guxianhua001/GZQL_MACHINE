@@ -674,21 +674,25 @@ namespace Recipe.ViewModels
         }
 
         /// <summary>
-        /// 多轴同时启动：各轴并行下发 MoveAbsAsync，非插补联动
+        /// 多轴同时启动：调用 MoveAbsMultiAxisAsync 统一下发 + 统一轮询。
+        /// 重要：禁止并行调用多个 MoveAbsAsync——运动卡 DLL 非线程安全，
+        /// 并行下发会导致命令 FIFO 交叉干扰，部分轴指令被覆盖而"不动位"。
+        /// MoveAbsMultiAxisAsync 在单线程内顺序下发所有轴指令，再统一轮询完成，
+        /// 并使用统一超时（取各轴最大运动时间），符合工业设备安全性与快速响应要求。
         /// </summary>
         private async Task GotoSimultaneousAsync(Dictionary<string, double> targetPositions, double velocity)
         {
-            var moveTasks = new List<Task>();
-
+            // 预解析所有轴目标 (axisId, position, velocity)，过滤无效轴号
+            var moves = new List<(int axisId, double position, double velocity)>();
             foreach (var kvp in targetPositions)
             {
                 var axisId = FindAxisLogicalId(_currentStationIdentifier, kvp.Key);
                 if (axisId >= 0)
-                    moveTasks.Add(_motionService.MoveAbsAsync(axisId, kvp.Value, velocity));
+                    moves.Add((axisId, kvp.Value, velocity));
             }
 
-            if (moveTasks.Count > 0)
-                await Task.WhenAll(moveTasks);
+            if (moves.Count > 0)
+                await _motionService.MoveAbsMultiAxisAsync(moves);
         }
 
         /// <summary>

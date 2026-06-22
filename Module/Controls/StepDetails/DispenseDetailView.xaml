@@ -6,65 +6,55 @@
              xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              Width="900">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <Style x:Key="ParamLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="#FF607D8B"/>
+            <Setter Property="Foreground" Value="{DynamicResource DialogAccentBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
     <Border Padding="16"
-            Background="{DynamicResource MaterialDesignCardBackground}"
+            Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
 
-                <!-- Header -->
-                <DockPanel Margin="0,0,0,12">
-                    <Button DockPanel.Dock="Right"
-                            Command="{Binding CloseCommand}"
-                            ToolTip="{lang:Lang Close}"
-                            Width="30" Height="30"
-                            Style="{StaticResource MaterialDesignIconButton}">
-                        <materialDesign:PackIcon Kind="Close" />
-                    </Button>
-                    <TextBlock FontWeight="Bold"
-                               FontSize="14"
-                               VerticalAlignment="Center"
-                               Text="{Binding StepDescription, StringFormat=DISPENSE {0}}" />
-                </DockPanel>
-
                 <!-- Dispense Mode Section -->
                 <materialDesign:Card Padding="10" Margin="0,0,0,8">
                     <DockPanel>
-                        <Border DockPanel.Dock="Left" Width="4" Background="#1565C0" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
+                        <Border DockPanel.Dock="Left" Width="4" Background="{DynamicResource DialogAccentBrush}" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
                         <StackPanel>
                             <TextBlock Text="{lang:Lang DispenseDetail_DispenseMode}" FontWeight="Bold" FontSize="13"
-                                       Foreground="#1565C0" Margin="0,0,0,6"/>
+                                       Foreground="{DynamicResource DialogAccentBrush}" Margin="0,0,0,6"/>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <RadioButton Content="{lang:Lang DispenseDetail_DotMode}"
                                              IsChecked="{Binding IsDotMode}"
                                              GroupName="DispenseModeGroup"
-                                             Margin="0,0,16,0" Foreground="#212121"/>
+                                             Margin="0,0,16,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                                 <RadioButton Content="{lang:Lang DispenseDetail_ArcMode}"
                                              IsChecked="{Binding IsArcMode}"
-                                             GroupName="DispenseModeGroup" Foreground="#212121"/>
+                                             GroupName="DispenseModeGroup" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             </StackPanel>
                             <!-- 针头选择：针头1→Dz₂轴, 针头2→Dz₃轴；Dz₁为相机/3D扫描轴不可选 -->
                             <TextBlock Text="{lang:Lang DispenseDetail_NeedleSelection}" FontWeight="Bold" FontSize="12"
-                                       Foreground="#1565C0" Margin="0,8,0,4"/>
+                                       Foreground="{DynamicResource DialogAccentBrush}" Margin="0,8,0,4"/>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <RadioButton Content="{lang:Lang DispenseDetail_Needle1}"
                                              IsChecked="{Binding IsNeedle1Selected}"
                                              GroupName="NeedleGroup"
-                                             Margin="0,0,16,0" Foreground="#212121"/>
+                                             Margin="0,0,16,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                                 <RadioButton Content="{lang:Lang DispenseDetail_Needle2}"
                                              IsChecked="{Binding IsNeedle2Selected}"
-                                             GroupName="NeedleGroup" Foreground="#212121"/>
+                                             GroupName="NeedleGroup" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             </StackPanel>
                             <CheckBox Content="{lang:Lang DispenseDetail_EnableZCalibration}"
                                       IsChecked="{Binding EnableZCalibration}"
-                                      Margin="0,4,0,0" Foreground="#212121"/>
+                                      Margin="0,4,0,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             <StackPanel Margin="24,4,0,0">
                                 <!-- Z向补偿（来自3D相机）+ 全局变量链接 -->
                                 <Grid Margin="0,0,0,6">
@@ -76,7 +66,7 @@
                                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <common:GlobalVariableLinkControl Grid.Column="1"
                                         DisplayValue="{Binding ZCompensation3DDisplayValue, Mode=OneWay}"
-                                        DisplayForeground="#1565C0"
+                                        DisplayForeground="{DynamicResource DialogAccentBrush}"
                                         IsLinked="{Binding IsZCompensation3DLinked, Mode=OneWay}"
                                         LinkedVariableName="{Binding ZCompensation3DLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
@@ -93,7 +83,7 @@
                                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                                     <common:GlobalVariableLinkControl Grid.Column="1"
                                         DisplayValue="{Binding ZCompensationCalibratorDisplayValue, Mode=OneWay}"
-                                        DisplayForeground="#1565C0"
+                                        DisplayForeground="{DynamicResource DialogAccentBrush}"
                                         IsLinked="{Binding IsZCompensationCalibratorLinked, Mode=OneWay}"
                                         LinkedVariableName="{Binding ZCompensationCalibratorLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
@@ -115,7 +105,7 @@
                                                              Minimum="-2.55"
                                                              Maximum="2.55"
                                                              FontSize="11" Margin="0,0,4,0" Width="100"/>
-                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="Gray"/>
+                                    <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource DialogTextMutedBrush}"/>
                                 </Grid>
                             </StackPanel>
                         </StackPanel>
@@ -226,7 +216,7 @@
 
                             <!-- Group 1: Motion Params (Blue) -->
                             <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#1565C0"
+                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="{DynamicResource DialogAccentBrush}"
                                            Text="{lang:Lang DispenseDetail_Group_MotionParams}"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -268,11 +258,9 @@
                                 </Grid>
                             </StackPanel>
 
-                            <Border Grid.Column="1" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
-
-                            <!-- Group 2: Dispense Control (Amber) -->
+                            <Border Grid.Column="1" Width="1" Background="{DynamicResource DialogBorderBrush}" Margin="0,4"/>
                             <StackPanel Grid.Column="2" Margin="12,0,12,0">
-                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#F57C00"
+                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="{DynamicResource DialogAccentOrangeBrush}"
                                            Text="{lang:Lang DispenseDetail_Group_DispenseControl}"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -309,11 +297,11 @@
                                 </Grid>
                             </StackPanel>
 
-                            <Border Grid.Column="3" Width="1" Background="#FFE0E4E8" Margin="0,4"/>
+                            <Border Grid.Column="3" Width="1" Background="{DynamicResource DialogBorderBrush}" Margin="0,4"/>
 
                             <!-- Group 3: Height Params (Cyan) -->
                             <StackPanel Grid.Column="4" Margin="12,0,0,0">
-                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="#00838F"
+                                <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" Foreground="{DynamicResource DialogInfoBrush}"
                                            Text="{lang:Lang DispenseDetail_Group_HeightParams}"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -344,17 +332,17 @@
                 <!-- Execution Control Section -->
                 <materialDesign:Card Padding="10" Margin="0,0,0,8">
                     <DockPanel>
-                        <Border DockPanel.Dock="Left" Width="4" Background="#F57C00" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
+                        <Border DockPanel.Dock="Left" Width="4" Background="{DynamicResource DialogAccentOrangeBrush}" CornerRadius="2,0,0,2" Margin="0,0,10,0"/>
                         <StackPanel>
                             <TextBlock Text="{lang:Lang DispenseDetail_ExecutionControl}" FontWeight="Bold" FontSize="13"
-                                       Foreground="#F57C00" Margin="0,0,0,6"/>
+                                       Foreground="{DynamicResource DialogAccentOrangeBrush}" Margin="0,0,0,6"/>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <CheckBox Content="{lang:Lang DispenseDetail_DryRunMode}"
                                           IsChecked="{Binding IsDryRunMode}"
-                                          Margin="0,0,20,0" Foreground="#212121"/>
+                                          Margin="0,0,20,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                                 <CheckBox Content="{lang:Lang DispenseDetail_RealDispenseMode}"
                                           IsChecked="{Binding IsRealDispenseMode}"
-                                          Foreground="#212121"/>
+                                          Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </DockPanel>

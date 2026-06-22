@@ -7,26 +7,17 @@
              xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
              Width="800">
     <UserControl.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        </ResourceDictionary>
     </UserControl.Resources>
     <Border Padding="16"
-            Background="{DynamicResource MaterialDesignCardBackground}"
+            Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4">
         <StackPanel>
-            <!-- 标题 + 关闭按钮 -->
-            <DockPanel Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right"
-                        Content="✖"
-                        Width="30"
-                        Height="30"
-                        Command="{Binding CloseCommand}"
-                        ToolTip="{lang:Lang Close}"
-                        Style="{StaticResource MaterialDesignIconButton}" />
-                <TextBlock FontWeight="Bold"
-                           FontSize="14"
-                           VerticalAlignment="Center"
-                           Text="{Binding StepDescription, StringFormat=GOTO {0}}" />
-            </DockPanel>
 
             <!-- 模式切换：回零 / 绝对定位 -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
@@ -108,7 +99,7 @@
                             <DataTemplate>
                                 <common:GlobalVariableLinkControl
                                     DisplayValue="{Binding OffsetDisplayValue, Mode=OneWay}"
-                                    DisplayForeground="#81C784"
+                                    DisplayForeground="{DynamicResource DialogSuccessDarkBrush}"
                                     IsLinked="{Binding IsOffsetLinked, Mode=OneWay}"
                                     UnlinkCommand="{Binding DataContext.UnlinkOffsetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     LinkedVariableName="{Binding OffsetVariableName, UpdateSourceTrigger=PropertyChanged}"

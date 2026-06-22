@@ -7,7 +7,11 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              MaxHeight="300">
     <UserControl.Resources>
-        <!-- 可选的Target选项 -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <!-- 可选的Target选项 -->
         <x:Array x:Key="targetOptions"
                  Type="{x:Type System:String}"
                  xmlns:System="clr-namespace:System;assembly=mscorlib">
@@ -15,27 +19,14 @@
             <System:String>contact</System:String>
             <System:String>clearance</System:String>
         </x:Array>
+        </ResourceDictionary>
     </UserControl.Resources>
     <Border Padding="16"
-            Background="{DynamicResource MaterialDesignCardBackground}"
+            Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4">
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- 标题 + 关闭按钮 -->
-                <DockPanel Margin="0,0,0,12">
-                    <Button DockPanel.Dock="Right"
-                            Content="✖"
-                            Width="30"
-                            Height="30"
-                            Command="{Binding CloseCommand}"
-                            ToolTip="{lang:Lang Close}"
-                            Style="{StaticResource MaterialDesignIconButton}" />
-                    <TextBlock FontWeight="Bold"
-                               FontSize="14"
-                               VerticalAlignment="Center"
-                               Text="{Binding StepDescription, StringFormat=ALIGN Sub-movement {0}}" />
-                </DockPanel>
 
                 <!-- 工站选择 -->
                 <StackPanel Orientation="Horizontal"

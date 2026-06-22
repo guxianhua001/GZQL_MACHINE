@@ -1,4 +1,5 @@
 using AlarmModule.Interfaces;
+using AlarmModule.Models;
 using Core.Abstraction;
 using Core.Utilities;
 using Module.Models;
@@ -20,7 +21,7 @@ using System.Threading.Tasks;
 
 namespace Module.Services
 {
-    public class ProcessSequenceService : BindableBase, IProcessSequenceService
+    public class ProcessSequenceService : BindableBase, IProcessSequenceService, IRunTaskExecutor
     {
         private readonly IRecipePoolService _recipePoolService;
         private readonly IParameterStorage _parameterStorage;
@@ -29,6 +30,7 @@ namespace Module.Services
         private readonly ILoggerService _logger;
         private readonly IStationRegistry _stationRegistry;
         private readonly Prism.Ioc.IContainerProvider _containerProvider;
+        private readonly ILocalizationService _localization;
         private CancellationTokenSource _executionCts;
         private bool _isExecuting;
         private StationTaskBase _activeStationTask;
@@ -36,6 +38,12 @@ namespace Module.Services
         private bool _isSingleStepMode;
         /// <summary> 单步模式下的“下一步”等待令牌，用户点击“下一步”时设置结果解除等待 </summary>
         private TaskCompletionSource<bool> _stepNextTcs;
+
+        // 方法级执行状态（与任务级执行共享 _isExecuting 互斥锁，确保工站运动轴安全）
+        private bool _isMethodExecuting;
+        private ProcessMethod _executingMethod;
+        /// <summary> 方法级执行的步骤列表引用（用于停止后重置高亮） </summary>
+        private ObservableCollection<ProcessStep> _methodExecutionSteps;
 
         // 工序序列文件默认保存目录
         private const string ProcessSequenceDirectory = "Config\\ProcessSequences";
@@ -52,12 +60,13 @@ namespace Module.Services
         public event EventHandler WorkOrderDataRefreshed;
 
         public ProcessSequenceService(IRecipePoolService recipePoolService,
-            IParameterStorage parameterStorage, 
+            IParameterStorage parameterStorage,
             IAppSettingService appSettingService,
             IEventAggregator eventAggregator,
             ILoggerService logger,
             IStationRegistry stationRegistry,
-            Prism.Ioc.IContainerProvider containerProvider)
+            Prism.Ioc.IContainerProvider containerProvider,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _parameterStorage = parameterStorage;
@@ -66,6 +75,7 @@ namespace Module.Services
             _logger = logger;
             _stationRegistry = stationRegistry;
             _containerProvider = containerProvider;
+            _localization = localization;
             Tasks = new ObservableCollection<TaskItem>();
             RecentFiles = new ObservableCollection<string>();
             CameraOptions = new ObservableCollection<string>();
@@ -91,6 +101,76 @@ namespace Module.Services
             set => SetProperty(ref _selectedStep, value);
         }
         public int CurrentStepIndex { get; set; }
+
+        private ProcessMethod _selectedMethod;
+        /// <summary> 当前选中的方法节点 </summary>
+        public ProcessMethod SelectedMethod
+        {
+            get => _selectedMethod;
+            set => SetProperty(ref _selectedMethod, value);
+        }
+
+        private object _selectedNode;
+        /// <summary> 当前选中的树节点（TaskItem / ProcessMethod / ProcessStep） </summary>
+        public object SelectedNode
+        {
+            get => _selectedNode;
+            set
+            {
+                if (SetProperty(ref _selectedNode, value))
+                {
+                    // 根据节点类型同步 SelectedTask/SelectedMethod/SelectedStep
+                    if (value is TaskItem task)
+                    {
+                        CurrentTask = task;
+                    }
+                    else if (value is ProcessMethod method)
+                    {
+                        SelectedMethod = method;
+                        // 从方法推导所属任务，确保 CurrentTask 同步
+                        var parentTask = FindTaskContainingMethod(method);
+                        if (parentTask != null) CurrentTask = parentTask;
+                    }
+                    else if (value is ProcessStep step)
+                    {
+                        SelectedStep = step;
+                        // 从步骤推导所属任务，确保 CurrentTask 同步
+                        var parentTask = FindTaskContainingStep(step);
+                        if (parentTask != null) CurrentTask = parentTask;
+                    }
+                }
+            }
+        }
+
+        /// <summary> 查找包含指定方法的父任务 </summary>
+        private TaskItem FindTaskContainingMethod(ProcessMethod method)
+        {
+            if (method == null) return null;
+            foreach (var task in Tasks)
+            {
+                if (task.Methods != null && task.Methods.Contains(method))
+                    return task;
+            }
+            return null;
+        }
+
+        /// <summary> 查找包含指定步骤的父任务 </summary>
+        private TaskItem FindTaskContainingStep(ProcessStep step)
+        {
+            if (step == null) return null;
+            foreach (var task in Tasks)
+            {
+                if (task.Methods == null) continue;
+                foreach (var m in task.Methods)
+                {
+                    if (m.Steps.Contains(step)) return task;
+                }
+            }
+            return null;
+        }
+
+        /// <summary> 剪贴板：缓存复制的节点 </summary>
+        private object _clipboard;
 
         private string _currentFilePath;
         /// <summary> 当前加载的序列文件路径 </summary>
@@ -171,44 +251,120 @@ namespace Module.Services
         public void AddStep(ProcessStep step)
         {
             if (CurrentTask == null) return;
-            step.Seq = CurrentTask.Steps.Count + 1;
-            CurrentTask.Steps.Add(step);
+            // 优先添加到选中的方法，否则添加到第一个方法（兼容旧逻辑）
+            var targetMethod = SelectedMethod ?? CurrentTask.Methods?.FirstOrDefault();
+            if (targetMethod == null)
+            {
+                // 没有方法则自动创建一个默认方法
+                targetMethod = new ProcessMethod(_localization.GetResourceOrDefault("PSE_DefaultMethodName", "默认方法"));
+                CurrentTask.Methods.Add(targetMethod);
+            }
+            step.Seq = targetMethod.Steps.Count + 1;
+            targetMethod.Steps.Add(step);
+            CurrentTask.SyncStepsFromMethods();
+            // 选中新添加的步骤，使右侧详情面板自动显示
+            SelectedMethod = targetMethod;
+            SelectedNode = step;
         }
 
         public void DeleteStep()
         {
             if (SelectedStep == null) return;
-            CurrentTask.Steps.Remove(SelectedStep);
+            var method = SelectedMethod ?? CurrentTask?.Methods?.FirstOrDefault();
+            if (method == null) return;
+            method.Steps.Remove(SelectedStep);
             RenumberSteps();
+            CurrentTask.SyncStepsFromMethods();
         }
 
         public void MoveStepUp()
         {
             if (SelectedStep == null) return;
-            int idx = CurrentTask.Steps.IndexOf(SelectedStep);
+            var method = SelectedMethod ?? CurrentTask?.Methods?.FirstOrDefault();
+            if (method == null) return;
+            int idx = method.Steps.IndexOf(SelectedStep);
             if (idx <= 0) return;
-            CurrentTask.Steps.Move(idx, idx - 1);
+            method.Steps.Move(idx, idx - 1);
             RenumberSteps();
-            SelectedStep = CurrentTask.Steps[idx - 1];
+            SelectedStep = method.Steps[idx - 1];
         }
 
         public void MoveStepDown()
         {
             if (SelectedStep == null) return;
-            int idx = CurrentTask.Steps.IndexOf(SelectedStep);
-            if (idx >= CurrentTask.Steps.Count - 1) return;
-            CurrentTask.Steps.Move(idx, idx + 1);
+            var method = SelectedMethod ?? CurrentTask?.Methods?.FirstOrDefault();
+            if (method == null) return;
+            int idx = method.Steps.IndexOf(SelectedStep);
+            if (idx >= method.Steps.Count - 1) return;
+            method.Steps.Move(idx, idx + 1);
             RenumberSteps();
-            SelectedStep = CurrentTask.Steps[idx + 1];
+            SelectedStep = method.Steps[idx + 1];
+        }
+
+        /// <summary>
+        /// 将步骤移动到指定方法的指定位置（拖拽排序使用）。
+        /// 当前仅支持同方法内移动，跨方法移动需评估步骤引用重写的复杂性。
+        /// </summary>
+        public void MoveStepTo(ProcessStep step, ProcessMethod targetMethod, int targetIndex)
+        {
+            if (step == null || targetMethod == null) return;
+            // 查找步骤当前所属的方法
+            ProcessMethod sourceMethod = null;
+            TaskItem containingTask = null;
+            foreach (var task in Tasks)
+            {
+                if (task.Methods == null) continue;
+                foreach (var m in task.Methods)
+                {
+                    if (m.Steps.Contains(step)) { sourceMethod = m; containingTask = task; break; }
+                }
+                if (sourceMethod != null) break;
+            }
+            if (sourceMethod == null) return;
+            // 仅允许同方法内移动
+            if (sourceMethod != targetMethod)
+            {
+                _logger.Warn("[ProcessSequence] 跨方法拖拽暂不支持，仅允许同方法内排序");
+                return;
+            }
+            int oldIndex = sourceMethod.Steps.IndexOf(step);
+            if (oldIndex < 0) return;
+            // 计算实际目标索引（移除源后索引可能偏移）
+            int actualTarget = targetIndex;
+            if (targetIndex < 0 || targetIndex >= sourceMethod.Steps.Count)
+                actualTarget = sourceMethod.Steps.Count - 1;
+            if (oldIndex == actualTarget) return;
+            sourceMethod.Steps.Move(oldIndex, actualTarget);
+            // 对包含该步骤的任务重编号（而非 CurrentTask），确保拖拽后序号自动更新
+            RenumberSteps(containingTask);
+            SelectedStep = step;
+        }
+
+        /// <summary> 将任务移动到指定位置（用于拖拽排序） </summary>
+        public void MoveTaskTo(TaskItem task, int targetIndex)
+        {
+            if (task == null) return;
+            int oldIndex = Tasks.IndexOf(task);
+            if (oldIndex < 0) return;
+            // 计算实际目标索引
+            int actualTarget = targetIndex;
+            if (targetIndex < 0 || targetIndex >= Tasks.Count)
+                actualTarget = Tasks.Count - 1;
+            if (oldIndex == actualTarget) return;
+            Tasks.Move(oldIndex, actualTarget);
+            _logger.Info($"[ProcessSequence] 任务 [{task.Name}] 已从位置 {oldIndex} 移动到 {actualTarget}");
         }
 
         public void AddTask(bool isDefault = false)
         {
-            var newTask = new TaskItem($"Task {Tasks.Count + 1}", new ObservableCollection<ProcessStep>())
+            var newTask = new TaskItem($"Task {Tasks.Count + 1}")
             {
                 IsDefault = isDefault,
                 Status = TaskItem.TaskStatusEnum.Idle
             };
+            // 确保至少有一个默认方法，命名与 AddMethod 保持一致（Method 1）
+            if (newTask.Methods.Count == 0)
+                newTask.Methods.Add(new ProcessMethod($"{_localization.GetResourceOrDefault("PSE_MethodLabel", "方法")} 1"));
             Tasks.Add(newTask);
             CurrentTask = newTask;
         }
@@ -236,11 +392,129 @@ namespace Module.Services
                                                     new SubMove { SubSeq = "1a", Axis = "Y", PositionName = "Home", HomeMode = 1, HomeMinVel = 5, HomeMaxVel = 20 }
                                                 } },
                 new ProcessStep { Seq = 2, Step = StepType.PICK, CompFeature = "—", SiteFeature = "RACK_001" },
-                new ProcessStep { Seq = 3, Step = StepType.CHECK, CompFeature = "—", SiteFeature = "sid_ccd" },
-                new ProcessStep { Seq = 4, Step = StepType.RELEASE, CompFeature = "—", SiteFeature = "TAB_001" },
-                new ProcessStep { Seq = 5, Step = StepType.GOTO, CompFeature = "—", SiteFeature = "HOME" }
+                new ProcessStep { Seq = 3, Step = StepType.RELEASE, CompFeature = "—", SiteFeature = "TAB_001" },
+                new ProcessStep { Seq = 4, Step = StepType.GOTO, CompFeature = "—", SiteFeature = "HOME" }
             };
             foreach (var s in steps) CurrentTask.Steps.Add(s);
+        }
+
+        // ========== 树形结构管理（Task → Method → Action） ==========
+
+        /// <summary> 在当前任务下新建方法 </summary>
+        public void AddMethod()
+        {
+            if (CurrentTask == null) return;
+            var method = new ProcessMethod($"{_localization.GetResourceOrDefault("PSE_MethodLabel", "方法")} {CurrentTask.Methods.Count + 1}");
+            CurrentTask.Methods.Add(method);
+            SelectedMethod = method;
+            SelectedNode = method;
+        }
+
+        /// <summary> 删除当前选中的方法（至少保留一个方法） </summary>
+        public void DeleteMethod()
+        {
+            if (SelectedMethod == null || CurrentTask == null) return;
+            if (CurrentTask.Methods.Count <= 1) return;
+            CurrentTask.Methods.Remove(SelectedMethod);
+            SelectedMethod = CurrentTask.Methods.FirstOrDefault();
+            RenumberSteps();
+        }
+
+        /// <summary> 重命名当前选中的方法 </summary>
+        public void RenameMethod(string newName)
+        {
+            if (SelectedMethod == null || string.IsNullOrEmpty(newName)) return;
+            SelectedMethod.Name = newName;
+        }
+
+        /// <summary> 复制当前选中节点到剪贴板（深拷贝） </summary>
+        public void CopyNode()
+        {
+            if (SelectedNode == null) return;
+            _clipboard = DeepCopyNode(SelectedNode);
+        }
+
+        /// <summary> 粘贴剪贴板节点到当前选中节点下 </summary>
+        public void PasteNode()
+        {
+            if (_clipboard == null || SelectedNode == null) return;
+            var copy = DeepCopyNode(_clipboard);
+            if (copy is ProcessMethod methodCopy && SelectedNode is TaskItem task)
+            {
+                methodCopy.Name = methodCopy.Name + "_Copy";
+                task.Methods.Add(methodCopy);
+                RenumberSteps();
+            }
+            else if (copy is ProcessStep stepCopy && SelectedNode is ProcessMethod method)
+            {
+                stepCopy.Seq = method.Steps.Count + 1;
+                // 重置运行时状态
+                stepCopy.IsCurrent = false;
+                stepCopy.IsSingleExecuting = false;
+                stepCopy.HasActiveAlarm = false;
+                stepCopy.ErrorMessage = null;
+                method.Steps.Add(stepCopy);
+                RenumberSteps();
+                CurrentTask.SyncStepsFromMethods();
+            }
+        }
+
+        /// <summary> 切换当前选中节点的启用/禁用状态 </summary>
+        public void ToggleNodeEnabled()
+        {
+            switch (SelectedNode)
+            {
+                case TaskItem task:
+                    task.IsEnabled = !task.IsEnabled;
+                    break;
+                case ProcessMethod method:
+                    method.IsEnabled = !method.IsEnabled;
+                    break;
+                case ProcessStep step:
+                    step.IsEnabled = !step.IsEnabled;
+                    break;
+            }
+        }
+
+        /// <summary> 设置当前选中节点的注释（Task/Method/Step 均支持） </summary>
+        public void EditNodeComment(string comment)
+        {
+            switch (SelectedNode)
+            {
+                case TaskItem task:
+                    task.Comment = comment;
+                    break;
+                case ProcessMethod method:
+                    method.Comment = comment;
+                    break;
+                case ProcessStep step:
+                    step.Comment = comment;
+                    break;
+            }
+        }
+
+        /// <summary> 设置当前任务的运行模式 </summary>
+        public void SetTaskRunMode(TaskRunMode mode)
+        {
+            if (CurrentTask == null) return;
+            CurrentTask.RunMode = mode;
+        }
+
+        /// <summary> 通过 JSON 序列化深拷贝节点（重置运行时状态） </summary>
+        private object DeepCopyNode(object node)
+        {
+            if (node == null) return null;
+            var json = JsonConvert.SerializeObject(node);
+            var copy = JsonConvert.DeserializeObject(json, node.GetType());
+            // 重置运行时状态
+            if (copy is ProcessStep step)
+            {
+                step.IsCurrent = false;
+                step.IsSingleExecuting = false;
+                step.HasActiveAlarm = false;
+                step.ErrorMessage = null;
+            }
+            return copy;
         }
 
         // ========== 任务控制 ==========
@@ -258,10 +532,19 @@ namespace Module.Services
             return firstStation;
         }
 
-        /// <summary> 启动当前任务：通过 IStationRegistry 获取目标工站，调用 RunCustomSequenceAsync 执行步骤序列 </summary>
+        /// <summary>
+        /// 启动当前任务：选中了特定方法时仅执行该方法的步骤，否则扁平化所有启用方法的步骤执行。
+        /// 通过 IStationRegistry 获取目标工站，调用 RunCustomSequenceAsync 执行步骤序列。
+        /// </summary>
         public void StartTask()
         {
             if (CurrentTask == null) return;
+            // 被动任务不可直接启动
+            if (CurrentTask.RunMode == TaskRunMode.Passive)
+            {
+                _logger.Warn($"[ProcessSequence] 任务 {CurrentTask.Name} 为被动模式，不可直接启动，请通过调用任务动作触发");
+                return;
+            }
             if (_isExecuting)
             {
                 _logger.Warn("[ProcessSequence] 已有任务正在执行，拒绝启动新任务");
@@ -269,10 +552,29 @@ namespace Module.Services
             }
             var stationTask = FindStationTask();
             if (stationTask == null) return;
-            var steps = CurrentTask.Steps;
+
+            // 根据选中节点确定执行范围：选中特定方法时仅执行该方法，否则执行所有启用方法
+            ObservableCollection<ProcessStep> steps;
+            string executionLabel;
+            if (SelectedMethod != null)
+            {
+                if (!SelectedMethod.IsEnabled)
+                {
+                    _logger.Warn($"[ProcessSequence] 选中的方法 [{SelectedMethod.Name}] 已禁用，无法执行");
+                    return;
+                }
+                steps = FlattenMethodSteps(SelectedMethod);
+                executionLabel = $"{CurrentTask.Name} > 方法[{SelectedMethod.Name}]";
+            }
+            else
+            {
+                steps = FlattenEnabledSteps(CurrentTask);
+                executionLabel = CurrentTask.Name;
+            }
+
             if (steps == null || steps.Count == 0)
             {
-                _logger.Warn("[ProcessSequence] 当前任务没有步骤，无法启动");
+                _logger.Warn("[ProcessSequence] 没有可执行步骤，无法启动");
                 return;
             }
             _executionCts = new CancellationTokenSource();
@@ -286,10 +588,45 @@ namespace Module.Services
             // 启动时清除上次运行遗留的报警标记
             foreach (var step in steps)
                 step.HasActiveAlarm = false;
-            _logger.Info($"[ProcessSequence] 启动任务: {CurrentTask.Name}，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
+            _logger.Info($"[ProcessSequence] 启动: {executionLabel}，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
 
             // 异步执行步骤序列
             _ = ExecuteSequenceAsync(stationTask, steps, _executionCts.Token);
+        }
+
+        /// <summary>
+        /// 将任务的启用方法的启用步骤扁平化为执行列表。
+        /// 禁用的方法/步骤被排除，RUNTASK 步骤保留（运行时由 IRunTaskExecutor 处理）。
+        /// </summary>
+        private ObservableCollection<ProcessStep> FlattenEnabledSteps(TaskItem task)
+        {
+            var list = new ObservableCollection<ProcessStep>();
+            if (task?.Methods == null) return list;
+            foreach (var method in task.Methods)
+            {
+                if (!method.IsEnabled) continue;
+                foreach (var step in method.Steps)
+                {
+                    if (!step.IsEnabled) continue;
+                    list.Add(step);
+                }
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// 将指定方法的启用步骤扁平化为执行列表（用于选中特定方法时仅执行该方法）。
+        /// </summary>
+        private ObservableCollection<ProcessStep> FlattenMethodSteps(ProcessMethod method)
+        {
+            var list = new ObservableCollection<ProcessStep>();
+            if (method == null) return list;
+            foreach (var step in method.Steps)
+            {
+                if (!step.IsEnabled) continue;
+                list.Add(step);
+            }
+            return list;
         }
 
         /// <summary> 异步执行步骤序列，完成后更新状态 </summary>
@@ -303,7 +640,10 @@ namespace Module.Services
                     var alarmService = (IAlarmService)_containerProvider.Resolve(typeof(IAlarmService));
                     // 获取公式求值器实例，用于条件分支表达式的计算
                     var formulaEvaluator = (IFormulaEvaluator)_containerProvider.Resolve(typeof(IFormulaEvaluator));
-                    var executor = new ProcessStepExecutor(stationTask, stationTask.TaskLogger, actions, alarmService, formulaEvaluator, _recipePoolService);
+                    var executor = new ProcessStepExecutor(stationTask, stationTask.TaskLogger, actions, alarmService, formulaEvaluator, _recipePoolService, this);
+                    // 设置调用栈起点：压入当前任务名，用于 RUNTASK 步骤的循环引用检测
+                    executor.CallStack = new Stack<string>();
+                    executor.CallStack.Push(CurrentTask.Name);
 
                     // 单步模式：设置门控回调，每步执行后等待用户点击“下一步”
                     if (_isSingleStepMode)
@@ -335,8 +675,8 @@ namespace Module.Services
                 if (CurrentTask != null)
                 {
                     CurrentTask.Status = TaskItem.TaskStatusEnum.Idle;
-                    // 任务结束后重置步骤高亮到第一步
-                    ResetStepHighlight();
+                    // 任务结束后重置步骤高亮到执行列表的第一步
+                    ResetStepHighlight(steps);
                 }
                 _logger.Info("[ProcessSequence] 任务执行结束");
             }
@@ -397,6 +737,173 @@ namespace Module.Services
             _logger.Info("[ProcessSequence] 任务已恢复");
         }
 
+        // ========== 方法级控制（独立执行单个方法） ==========
+
+        /// <summary> 是否有方法正在执行（与任务级执行共享 _isExecuting 互斥锁） </summary>
+        public bool IsMethodExecuting => _isMethodExecuting;
+
+        /// <summary> 当前正在执行的方法 </summary>
+        public ProcessMethod ExecutingMethod => _executingMethod;
+
+        /// <summary>
+        /// 启动指定方法的独立执行。
+        /// 仅执行该方法的启用步骤，与任务级执行互斥（共享 _isExecuting 锁，避免工站运动轴冲突）。
+        /// 安全策略：启动前重置所有工站暂停信号，清除步骤报警标记，设置方法状态为 Running。
+        /// </summary>
+        /// <param name="method">要执行的方法</param>
+        public void StartMethod(ProcessMethod method)
+        {
+            if (method == null)
+            {
+                _logger.Warn("[ProcessSequence] 启动方法失败：方法为空");
+                return;
+            }
+            // 互斥检查：任务级或方法级执行正在进行时拒绝启动
+            if (_isExecuting)
+            {
+                _logger.Warn($"[ProcessSequence] 已有任务/方法正在执行，拒绝启动方法 [{method.Name}]");
+                return;
+            }
+            if (!method.IsEnabled)
+            {
+                _logger.Warn($"[ProcessSequence] 方法 [{method.Name}] 已禁用，无法执行");
+                return;
+            }
+            var stationTask = FindStationTask();
+            if (stationTask == null) return;
+
+            var steps = FlattenMethodSteps(method);
+            if (steps == null || steps.Count == 0)
+            {
+                _logger.Warn($"[ProcessSequence] 方法 [{method.Name}] 没有可执行步骤，无法启动");
+                return;
+            }
+
+            _executionCts = new CancellationTokenSource();
+            _isExecuting = true;
+            _isMethodExecuting = true;
+            _executingMethod = method;
+            _methodExecutionSteps = steps;
+            _activeStationTask = stationTask;
+            method.Status = TaskItem.TaskStatusEnum.Running;
+            // 同步任务状态为 Running（便于 UI 统一显示）
+            if (CurrentTask != null)
+                CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
+            // 启动时重置所有工站的暂停信号
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.ResetMotionPause();
+            // 清除上次运行遗留的报警标记
+            foreach (var step in steps)
+                step.HasActiveAlarm = false;
+            _logger.Info($"[ProcessSequence] 启动方法: [{method.Name}]，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
+
+            // 异步执行方法步骤序列
+            _ = ExecuteMethodAsync(stationTask, method, steps, _executionCts.Token);
+        }
+
+        /// <summary> 异步执行方法步骤序列，完成后更新方法状态 </summary>
+        private async Task ExecuteMethodAsync(StationTaskBase stationTask, ProcessMethod method, ObservableCollection<ProcessStep> steps, CancellationToken token)
+        {
+            try
+            {
+                await stationTask.RunCustomSequenceAsync(async (ct) =>
+                {
+                    var actions = CreateStepActions();
+                    var alarmService = (IAlarmService)_containerProvider.Resolve(typeof(IAlarmService));
+                    var formulaEvaluator = (IFormulaEvaluator)_containerProvider.Resolve(typeof(IFormulaEvaluator));
+                    var executor = new ProcessStepExecutor(stationTask, stationTask.TaskLogger, actions, alarmService, formulaEvaluator, _recipePoolService, this);
+                    executor.CallStack = new Stack<string>();
+                    // 方法级执行调用栈起点：压入方法名，便于 RUNTASK 循环检测
+                    executor.CallStack.Push(method.Name);
+
+                    // 单步模式支持
+                    if (_isSingleStepMode)
+                    {
+                        executor.StepGate = async (gateToken) =>
+                        {
+                            _stepNextTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                            using (gateToken.Register(() => _stepNextTcs.TrySetCanceled()))
+                            {
+                                await _stepNextTcs.Task;
+                            }
+                        };
+                    }
+
+                    await executor.ExecuteAsync(steps, ct);
+                }, token);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.Error($"[ProcessSequence] 启动方法失败: {ex.Message}");
+            }
+            finally
+            {
+                _isExecuting = false;
+                _isMethodExecuting = false;
+                _executingMethod = null;
+                _activeStationTask = null;
+                _stepNextTcs = null;
+                _methodExecutionSteps = null;
+                _executionCts?.Dispose();
+                _executionCts = null;
+                method.Status = TaskItem.TaskStatusEnum.Idle;
+                if (CurrentTask != null)
+                    CurrentTask.Status = TaskItem.TaskStatusEnum.Idle;
+                // 方法结束后重置步骤高亮到执行列表的第一步
+                ResetStepHighlight(steps);
+                _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 执行结束");
+            }
+        }
+
+        /// <summary> 暂停当前正在执行的方法（安全关键：停止运动轴并取消暂停令牌） </summary>
+        public void PauseMethod()
+        {
+            if (!_isMethodExecuting || _executingMethod == null) return;
+            if (_executingMethod.Status != TaskItem.TaskStatusEnum.Running) return;
+            // 暂停主工站
+            _activeStationTask?.PauseAsync();
+            // 遍历所有工站调用 CancelMotionPause，确保跨工站运动轴立即响应暂停
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.CancelMotionPause();
+            _executingMethod.Status = TaskItem.TaskStatusEnum.Paused;
+            if (CurrentTask != null)
+                CurrentTask.Status = TaskItem.TaskStatusEnum.Paused;
+            _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已暂停");
+        }
+
+        /// <summary> 恢复当前被暂停的方法（重建暂停令牌，跨工站轴通过重试自动恢复） </summary>
+        public void ResumeMethod()
+        {
+            if (!_isMethodExecuting || _executingMethod == null) return;
+            if (_executingMethod.Status != TaskItem.TaskStatusEnum.Paused) return;
+            // 恢复主工站
+            _activeStationTask?.ResumeAsync();
+            // 遍历所有工站调用 ResetMotionPause，确保跨工站 _pauseCts 被重建
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.ResetMotionPause();
+            _executingMethod.Status = TaskItem.TaskStatusEnum.Running;
+            if (CurrentTask != null)
+                CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
+            _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已恢复");
+        }
+
+        /// <summary> 停止当前正在执行的方法（安全关键：取消执行令牌并停止所有工站运动轴） </summary>
+        public void StopMethod()
+        {
+            if (!_isMethodExecuting || _executingMethod == null) return;
+            _executionCts?.Cancel();
+            // 解除单步模式等待，避免执行线程永久阻塞
+            _stepNextTcs?.TrySetCanceled();
+            // 遍历所有工站调用 StopAsync（无State守卫）：停止所有轴 + 取消 _cts/_pauseCts
+            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                station.StopAsync();
+            _executingMethod.Status = TaskItem.TaskStatusEnum.Stopped;
+            if (CurrentTask != null)
+                CurrentTask.Status = TaskItem.TaskStatusEnum.Stopped;
+            ResetStepHighlight(_methodExecutionSteps);
+            _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已停止");
+        }
+
         /// <summary> 是否启用单步模式（每步执行后等待用户确认再继续） </summary>
         public bool IsSingleStepMode
         {
@@ -423,17 +930,19 @@ namespace Module.Services
             }
         }
 
-        /// <summary> 重置步骤高亮到第一步（不清除HasActiveAlarm，报警标记在下次启动时清除） </summary>
-        private void ResetStepHighlight()
+        /// <summary> 重置步骤高亮到执行列表的第一步（不清除 HasActiveAlarm，报警标记在下次启动时清除） </summary>
+        private void ResetStepHighlight(ObservableCollection<ProcessStep> executedSteps = null)
         {
             _logger.Info("[ProcessSequenceService] ResetStepHighlight 被调用");
-            if (CurrentTask?.Steps == null) return;
-            foreach (var step in CurrentTask.Steps)
+            // 优先使用实际执行的步骤列表，其次使用 CurrentTask 的扁平步骤
+            var stepsToReset = executedSteps ?? CurrentTask?.Steps;
+            if (stepsToReset == null) return;
+            foreach (var step in stepsToReset)
             {
                 step.IsCurrent = false;
             }
-            if (CurrentTask.Steps.Count > 0)
-                CurrentTask.Steps[0].IsCurrent = true;
+            if (stepsToReset.Count > 0)
+                stepsToReset[0].IsCurrent = true;
             _logger.Info("[ProcessSequenceService] ResetStepHighlight 完成");
         }
 
@@ -472,6 +981,66 @@ namespace Module.Services
             }
         }
 
+        // ========== IRunTaskExecutor 实现（被动任务调用） ==========
+
+        /// <summary>
+        /// 执行指定名称的被动任务（IRunTaskExecutor 实现）。
+        /// 在当前工站上下文中按方法顺序执行目标 Passive 任务的启用方法。
+        /// 通过 callStack 检测循环引用，检测到循环时触发报警并终止。
+        /// </summary>
+        public async Task ExecutePassiveTaskAsync(string targetTaskName, StationTaskBase callerTask, Stack<string> callStack, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(targetTaskName))
+            {
+                _logger.Warn("[ProcessSequence] RUNTASK: 目标任务名称为空");
+                return;
+            }
+            // 循环引用检测
+            if (callStack.Contains(targetTaskName))
+            {
+                var chain = string.Join(" → ", callStack.Reverse().Concat(new[] { targetTaskName }));
+                _logger.Error($"[ProcessSequence] 检测到循环调用: {chain}");
+                var alarmService = (IAlarmService)_containerProvider.Resolve(typeof(IAlarmService));
+                await alarmService.TriggerAlarmAsync("PSE_CIRCULAR_CALL", AlarmLevel.Serious, $"循环调用: {chain}");
+                throw new InvalidOperationException($"循环调用: {chain}");
+            }
+            // 查找目标任务
+            var targetTask = Tasks.FirstOrDefault(t => t.Name == targetTaskName && t.RunMode == TaskRunMode.Passive);
+            if (targetTask == null)
+            {
+                _logger.Warn($"[ProcessSequence] RUNTASK: 未找到被动任务 '{targetTaskName}'");
+                return;
+            }
+            if (!targetTask.IsEnabled)
+            {
+                _logger.Info($"[ProcessSequence] 跳过禁用任务: {targetTaskName}");
+                return;
+            }
+            var steps = FlattenEnabledSteps(targetTask);
+            if (steps.Count == 0)
+            {
+                _logger.Warn($"[ProcessSequence] RUNTASK: 目标任务 '{targetTaskName}' 没有可执行步骤");
+                return;
+            }
+            // 压入调用栈并递归执行
+            callStack.Push(targetTaskName);
+            try
+            {
+                var actions = CreateStepActions();
+                var alarmService = (IAlarmService)_containerProvider.Resolve(typeof(IAlarmService));
+                var formulaEvaluator = (IFormulaEvaluator)_containerProvider.Resolve(typeof(IFormulaEvaluator));
+                var executor = new ProcessStepExecutor(callerTask, callerTask.TaskLogger, actions, alarmService, formulaEvaluator, _recipePoolService, this);
+                executor.CallStack = callStack;
+                _logger.Info($"[ProcessSequence] RUNTASK: 开始执行被动任务 '{targetTaskName}'，共 {steps.Count} 步");
+                await executor.ExecuteAsync(steps, token);
+                _logger.Info($"[ProcessSequence] RUNTASK: 被动任务 '{targetTaskName}' 执行完成");
+            }
+            finally
+            {
+                callStack.Pop();
+            }
+        }
+
         // ========== 验证 ==========
         public ObservableCollection<ValidationItem> Validate()
         {
@@ -489,8 +1058,6 @@ namespace Module.Services
             results.Add(new ValidationItem("Exactly one PICK step", pickCount == 1));
             int releaseCount = CurrentTask.Steps.Count(s => s.Step == StepType.RELEASE);
             results.Add(new ValidationItem("Exactly one RELEASE step", releaseCount == 1));
-            int checkCount = CurrentTask.Steps.Count(s => s.Step == StepType.CHECK);
-            results.Add(new ValidationItem("At least one CHECK step", checkCount >= 1));
             return results;
         }
 
@@ -507,7 +1074,10 @@ namespace Module.Services
                 Name = t.Name,
                 IsDefault = t.IsDefault,
                 Status = t.Status,
-                Steps = t.Steps.ToList()
+                RunMode = t.RunMode,
+                IsEnabled = t.IsEnabled,
+                Methods = t.Methods?.ToList(),
+                Steps = null  // 新格式不序列化 Steps
             }).ToList();
             var data = new SequenceData { Tasks = allTasks };
             var dir = Path.GetDirectoryName(filePath);
@@ -641,18 +1211,34 @@ namespace Module.Services
                 Tasks.Clear();
                 foreach (var taskData in data.Tasks)
                 {
-                    var task = new TaskItem(taskData.Name, new ObservableCollection<ProcessStep>(taskData.Steps ?? new List<ProcessStep>()))
+                    var task = new TaskItem(taskData.Name)
                     {
                         IsDefault = taskData.IsDefault,
-                        Status = TaskItem.TaskStatusEnum.Idle
+                        Status = TaskItem.TaskStatusEnum.Idle,
+                        RunMode = taskData.RunMode,
+                        IsEnabled = taskData.IsEnabled
                     };
-                    // 加载后重置所有步骤的运行时状态
-                    foreach (var step in task.Steps)
+                    // 加载 Methods（新格式），或从旧格式 Steps 迁移
+                    if (taskData.Methods != null && taskData.Methods.Count > 0)
                     {
-                        step.IsCurrent = false;
-                        // JSON反序列化后强制刷新IsAlarmEnabled，确保UI DataTrigger正确绑定
-                        step.EnsureAlarmConfigInitialized();
+                        task.Methods.Clear();
+                        foreach (var m in taskData.Methods)
+                            task.Methods.Add(m);
                     }
+                    else if (taskData.Steps != null && taskData.Steps.Count > 0)
+                    {
+                        // 旧格式迁移：将 Steps 包装为单个默认方法
+                        task.Methods.Clear();
+                        task.Methods.Add(new ProcessMethod(_localization.GetResourceOrDefault("PSE_DefaultMethodName", "默认方法"), taskData.Steps));
+                    }
+                    // 重置运行时状态
+                    foreach (var method in task.Methods)
+                        foreach (var step in method.Steps)
+                        {
+                            step.IsCurrent = false;
+                            step.EnsureAlarmConfigInitialized();
+                        }
+                    task.SyncStepsFromMethods();
                     if (task.Steps.Count > 0)
                         task.Steps[0].IsCurrent = true;
                     Tasks.Add(task);
@@ -771,34 +1357,49 @@ namespace Module.Services
         public ObservableCollection<string> ComponentFeatureOptions { get; }
         public ObservableCollection<string> SiteFeatureOptions { get; }
 
+        /// <summary>
+        /// 对当前任务重编号（供 AddStep/DeleteStep/MoveStepUp 等使用）
+        /// </summary>
         private void RenumberSteps()
         {
-            // 构建旧序号→新序号映射
-            var seqMap = new Dictionary<int, int>();
-            for (int i = 0; i < CurrentTask.Steps.Count; i++)
-            {
-                int oldSeq = CurrentTask.Steps[i].Seq;
-                int newSeq = i + 1;
-                if (oldSeq != newSeq)
-                    seqMap[oldSeq] = newSeq;
-            }
-
-            // 更新步骤序号
-            for (int i = 0; i < CurrentTask.Steps.Count; i++)
-                CurrentTask.Steps[i].Seq = i + 1;
-
-            // 同步更新条件表达式和跳转目标中的旧序号引用
-            if (seqMap.Count > 0)
-                UpdateStepReferences(seqMap);
+            if (CurrentTask == null) return;
+            RenumberSteps(CurrentTask);
         }
 
         /// <summary>
-        /// 根据序号映射表更新所有步骤中的条件表达式和跳转目标引用
+        /// 对指定任务的所有方法重新编号（Seq 按方法内独立编号，每个方法从 1 开始），
+        /// 并更新条件表达式和跳转目标中的序号引用。
+        /// 拖拽排序时通过此方法确保对正确的任务执行重编号。
+        /// </summary>
+        private void RenumberSteps(TaskItem task)
+        {
+            if (task?.Methods == null) return;
+            // 构建旧序号→新序号映射（Seq 按方法内独立编号，每个方法从 1 开始）
+            var seqMap = new Dictionary<int, int>();
+            foreach (var method in task.Methods)
+            {
+                for (int i = 0; i < method.Steps.Count; i++)
+                {
+                    int oldSeq = method.Steps[i].Seq;
+                    int newSeq = i + 1;
+                    if (oldSeq != newSeq)
+                        seqMap[oldSeq] = newSeq;
+                    method.Steps[i].Seq = newSeq;
+                }
+            }
+            // 更新条件表达式和跳转目标中的旧序号引用
+            if (seqMap.Count > 0)
+                UpdateStepReferences(task, seqMap);
+            task.SyncStepsFromMethods();
+        }
+
+        /// <summary>
+        /// 根据序号映射表更新指定任务所有步骤中的条件表达式和跳转目标引用
         /// 匹配模式：@Output:步骤{N}_ → @Output:步骤{newN}_ 和 TargetStepSeq / DefaultTargetStepSeq
         /// </summary>
-        private void UpdateStepReferences(Dictionary<int, int> seqMap)
+        private void UpdateStepReferences(TaskItem task, Dictionary<int, int> seqMap)
         {
-            foreach (var step in CurrentTask.Steps)
+            foreach (var step in task.Steps)
             {
                 // 更新 BranchConfig 中的条件表达式和跳转目标
                 if (step.BranchConfig != null)
@@ -854,6 +1455,10 @@ namespace Module.Services
         public string Name { get; set; }
         public bool IsDefault { get; set; }
         public TaskItem.TaskStatusEnum Status { get; set; }
+        public TaskRunMode RunMode { get; set; }
+        public bool IsEnabled { get; set; } = true;
+        public List<ProcessMethod> Methods { get; set; }
+        // 向后兼容：旧格式只有 Steps，加载时迁移为 Methods
         public List<ProcessStep> Steps { get; set; }
     }
 }

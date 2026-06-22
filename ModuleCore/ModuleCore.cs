@@ -1,5 +1,6 @@
 using Core.Abstraction;
 using ModuleCore.Models;
+using ModuleCore.Services;
 using ModuleCore.Views;
 using Prism.Ioc;
 using Prism.Modularity;
@@ -21,6 +22,10 @@ namespace ModuleCore
         public void OnInitialized(IContainerProvider containerProvider)
         {
             if (!Directory.Exists("./Config/")) Directory.CreateDirectory("./Config/");
+
+            // 从配置加载主题并应用
+            var themeService = containerProvider.Resolve<IThemeService>();
+            themeService.LoadThemeFromSettings();
         }
 
         public void RegisterTypes(IContainerRegistry containerRegistry)
@@ -30,6 +35,13 @@ namespace ModuleCore
 
             //注册权限系统
             _ = containerRegistry.RegisterSingleton<LoginModel>();
+
+            // 注册全局主题服务
+            containerRegistry.RegisterSingleton<Core.Abstraction.IThemeService, ThemeService>();
+
+            // 注册基础对话框服务（替代 DialogHost 用于 StepDetails）
+            containerRegistry.RegisterSingleton<Core.Abstraction.IBaseDialogService, BaseDialogService>();
+
             //注册窗体
             containerRegistry.RegisterDialog<AlertDialog, ViewModels.AlertDialogViewModel>();
             containerRegistry.RegisterDialog<RegistView, ViewModels.RegistViewModel>();

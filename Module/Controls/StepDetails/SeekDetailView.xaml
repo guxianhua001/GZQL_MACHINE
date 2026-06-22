@@ -7,76 +7,26 @@
              Width="1010"
              MaxHeight="680">
 
-    <Border Background="{DynamicResource MaterialDesignCardBackground}"
-            CornerRadius="6">
-        <Border.Resources>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        </Border.Resources>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource DialogCardBrush}"
+            CornerRadius="6">
 
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- ═══ 顶部标题栏 ═══ -->
-            <Border Grid.Row="0"
-                        Padding="12,6"
-                        BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource MaterialDesignDivider}">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#2D3748" Offset="0" />
-                        <GradientStop Color="#3A475A" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right"
-                                Command="{Binding CloseCommand}"
-                                ToolTip="{lang:Lang Close}"
-                                Width="24" Height="24"
-                                Style="{StaticResource MaterialDesignIconButton}"
-                                Foreground="White">
-                        <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
-                    </Button>
-
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="CrosshairsGps"
-                                                                   Width="18" Height="18"
-                                                                   Foreground="#FFB74D"
-                                                                   VerticalAlignment="Center"
-                                                                   Margin="0,0,6,0" />
-                        <TextBlock Text="SEEK"
-                                           Foreground="White"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center" />
-                        <Border Background="#2D3748"
-                                    CornerRadius="3"
-                                    Padding="5,1"
-                                    Margin="8,0,0,0"
-                                    VerticalAlignment="Center">
-                            <TextBlock Foreground="#90CAF9"
-                                               FontSize="11">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="{lang:Lang SeekDetail_Offline}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                                <Setter Property="Text" Value="{lang:Lang SeekDetail_RealTimeCollecting}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Border>
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-
             <!-- ═══ 主体：通道表格 ═══ -->
-            <Grid Grid.Row="1" Margin="16,12,16,8">
+            <Grid Grid.Row="0" Margin="16,12,16,8">
                 <DataGrid ItemsSource="{Binding ChannelRows}"
                           SelectedItem="{Binding SelectedChannelRow}"
                           AutoGenerateColumns="False"
@@ -101,7 +51,7 @@
                                 <DataTemplate>
                                     <TextBlock Text="{Binding LinkedChannel}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                               Foreground="{DynamicResource DialogAccentBrush}"
                                                FontWeight="Medium" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -119,7 +69,7 @@
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ChannelName}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="#78909C" FontSize="12" />
+                                               Foreground="{DynamicResource DialogTextMutedBrush}" FontSize="12" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -158,13 +108,13 @@
                                                 VerticalAlignment="Center">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="#E0E0E0" />
+                                                    <Setter Property="Background" Value="{DynamicResource DialogBorderBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsForceInRange}" Value="True">
-                                                            <Setter Property="Background" Value="#66BB6A" />
+                                                            <Setter Property="Background" Value="{DynamicResource DialogSuccessDarkBrush}" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsForceInRange}" Value="False">
-                                                            <Setter Property="Background" Value="#EF5350" />
+                                                            <Setter Property="Background" Value="{DynamicResource DialogErrorDarkBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -177,13 +127,13 @@
                                                    VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="#9E9E9E" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource DialogTextSecondaryBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsForceInRange}" Value="True">
-                                                            <Setter Property="Foreground" Value="#2E7D32" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource DialogSuccessDarkBrush}" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsForceInRange}" Value="False">
-                                                            <Setter Property="Foreground" Value="#C62828" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource DialogErrorDarkBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -193,7 +143,7 @@
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ChannelUnit}"
                                                    FontSize="11"
-                                                   Foreground="#9E9E9E"
+                                                   Foreground="{DynamicResource DialogTextMutedBrush}"
                                                    VerticalAlignment="Center"
                                                    Margin="3,0,0,0" />
                                     </Grid>
@@ -207,7 +157,7 @@
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ForceMin, StringFormat={}{0:F1}}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="#78909C" />
+                                               Foreground="{DynamicResource DialogTextMutedBrush}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
@@ -224,7 +174,7 @@
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ForceMax, StringFormat={}{0:F1}}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="#78909C" />
+                                               Foreground="{DynamicResource DialogTextMutedBrush}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
@@ -241,7 +191,7 @@
                                 <DataTemplate>
                                     <common:GlobalVariableLinkControl
                                         DisplayValue="{Binding CurrentForce, Mode=OneWay}"
-                                        DisplayForeground="#42A5F5"
+                                        DisplayForeground="{DynamicResource DialogInfoBrush}"
                                         IsLinked="{Binding IsLinked, Mode=OneWay}"
                                         UnlinkCommand="{Binding DataContext.UnlinkVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         LinkedVariableName="{Binding LinkedVariableName, UpdateSourceTrigger=PropertyChanged}"
@@ -261,10 +211,10 @@
             </Grid>
 
             <!-- ═══ 底部操作栏 ═══ -->
-            <Border Grid.Row="2"
+            <Border Grid.Row="1"
                     Padding="16,10"
                     BorderThickness="0,1,0,0"
-                    BorderBrush="{DynamicResource MaterialDesignDivider}">
+                    BorderBrush="{DynamicResource DialogBorderBrush}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -324,7 +274,7 @@
                                      Width="60" Height="4"
                                      VerticalAlignment="Center"
                                      Margin="4,0,0,0"
-                                     Foreground="#42A5F5" />
+                                     Foreground="{DynamicResource DialogInfoBrush}" />
                     </StackPanel>
 
                     <!-- 中右：导入导出 -->

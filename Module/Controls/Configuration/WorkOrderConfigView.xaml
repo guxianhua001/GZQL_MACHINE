@@ -7,6 +7,8 @@
              xmlns:views="clr-namespace:Module.Views"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
+             materialDesign:TransitionAssist.DisableTransitions="True"
+             materialDesign:RippleAssist.IsDisabled="True"
              MinHeight="600">
 
     <Grid Margin="16">

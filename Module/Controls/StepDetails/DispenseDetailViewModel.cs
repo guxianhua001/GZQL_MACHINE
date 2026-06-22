@@ -24,7 +24,7 @@ namespace Module.ViewModels
     /// <summary>
     /// 点胶步骤详情编辑 ViewModel——管理 DispenseDetail 的模式、校准、默认参数及分段引用
     /// </summary>
-    public class DispenseDetailViewModel : BindableBase, INavigationAware
+    public class DispenseDetailViewModel : BindableBase, INavigationAware, IDialogCloseable
     {
         private readonly IContainerProvider _containerProvider;
         private readonly ILoggerService _logger;
@@ -35,6 +35,12 @@ namespace Module.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private bool _syncingFromSelection;
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         #region Step 属性
 
@@ -1536,12 +1542,7 @@ namespace Module.ViewModels
         private void OnClose()
         {
             _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         private void OnSave()

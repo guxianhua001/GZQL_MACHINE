@@ -8,27 +8,18 @@
              xmlns:localConverters="clr-namespace:Module.Converters"
              Width="800">
     <UserControl.Resources>
-        <localConverters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <localConverters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
     <Border Padding="16"
-            Background="{DynamicResource MaterialDesignCardBackground}"
+            Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4">
         <StackPanel>
-            <!-- 标题栏 + 关闭按钮 -->
-            <DockPanel Margin="0,0,0,12">
-                <Button DockPanel.Dock="Right"
-                        Content="✖"
-                        Width="30"
-                        Height="30"
-                        Command="{Binding CloseCommand}"
-                        ToolTip="{lang:Lang Close}"
-                        Style="{StaticResource MaterialDesignIconButton}" />
-                <TextBlock FontWeight="Bold"
-                           FontSize="14"
-                           VerticalAlignment="Center"
-                           Text="{Binding StepDescription, StringFormat=PICK {0}}" />
-            </DockPanel>
 
             <!-- 夹爪配置区域 -->
             <GroupBox Header="{lang:Lang PickDetail_GripperConfig}" Margin="0,0,0,16">
@@ -102,7 +93,7 @@
                     <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
                         <Button Command="{Binding OpenGripperControlCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
-                                Background="{DynamicResource PrimaryHueMidBrush}">
+                                Background="{DynamicResource DialogAccentBrush}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="TuneVertical" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                 <TextBlock Text="{lang:Lang PickDetail_OpenGripperPanel}" VerticalAlignment="Center" FontWeight="Bold"/>
@@ -212,11 +203,11 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <DockPanel VerticalAlignment="Center">
-                                                <materialDesign:PackIcon Kind="LinkVariant"
+                                <materialDesign:PackIcon Kind="LinkVariant"
                                                                          Width="14" Height="14"
                                                                          VerticalAlignment="Center"
                                                                          Margin="0,0,2,0"
-                                                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                                         Foreground="{DynamicResource DialogAccentBrush}"
                                                                          Visibility="{Binding IsOffsetLinked, Converter={StaticResource BoolToVisibilityConverter}}" />
                                                 <TextBlock Text="{Binding OffsetDisplayText}" VerticalAlignment="Center" />
                                             </DockPanel>

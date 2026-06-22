@@ -17,7 +17,7 @@ using Prism.Ioc;
 
 namespace Module.ViewModels
 {
-    public class CureDetailViewModel : BindableBase, INavigationAware
+    public class CureDetailViewModel : BindableBase, INavigationAware, IDialogCloseable
     {
         private readonly IRegionManager _regionManager;
         private readonly IContainerProvider _containerProvider;
@@ -27,6 +27,12 @@ namespace Module.ViewModels
         private readonly IPositionProvider _positionProvider;
         private readonly IStationRegistry _stationRegistry;
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         public ProcessStep Step
         {
@@ -279,12 +285,7 @@ namespace Module.ViewModels
 
         private void OnClose()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         private void OnSave()

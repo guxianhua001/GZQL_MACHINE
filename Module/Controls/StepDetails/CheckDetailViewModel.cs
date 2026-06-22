@@ -1,4 +1,6 @@
+using System;
 using Core.Models;
+using Core.Abstraction;
 using StationTasks.Models;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -7,11 +9,17 @@ using System.Linq;
 
 namespace Module.ViewModels
 {
-    public class CheckDetailViewModel : BindableBase
+    public class CheckDetailViewModel : BindableBase, IDialogCloseable
     {
         private ProcessStep _currentStep;
         private ObservableCollection<CheckItem> _checkItems;
         private bool _overallResult;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         // ---------- 新增：PASS/FAIL 相关属性 ----------
         private ObservableCollection<ProcessStep> _allSteps;
@@ -114,10 +122,9 @@ namespace Module.ViewModels
                 new ProcessStep { Seq = 1, Step = StepType.GOTO, CompFeature = "HOME", SiteFeature = "HOME" },
                 new ProcessStep { Seq = 2, Step = StepType.PICK, CompFeature = "ACTUATOR", SiteFeature = "PICK_POS" },
                 new ProcessStep { Seq = 3, Step = StepType.VISION, CompFeature = "slot", SiteFeature = "TAB_001" },
-                new ProcessStep { Seq = 4, Step = StepType.CHECK, CompFeature = "slot", SiteFeature = "TAB_002" },
-                new ProcessStep { Seq = 5, Step = StepType.VISION, CompFeature = "3d_scan", SiteFeature = "SCAN_AREA" },
-                new ProcessStep { Seq = 6, Step = StepType.GOTO, CompFeature = "ASSY_001", SiteFeature = "PIN_ADJ" },
-                new ProcessStep { Seq = 7, Step = StepType.GOTO, CompFeature = "ASSY_001", SiteFeature = "DISPENSE" },
+                new ProcessStep { Seq = 4, Step = StepType.VISION, CompFeature = "3d_scan", SiteFeature = "SCAN_AREA" },
+                new ProcessStep { Seq = 5, Step = StepType.GOTO, CompFeature = "ASSY_001", SiteFeature = "PIN_ADJ" },
+                new ProcessStep { Seq = 6, Step = StepType.GOTO, CompFeature = "ASSY_001", SiteFeature = "DISPENSE" },
             };
         }
 

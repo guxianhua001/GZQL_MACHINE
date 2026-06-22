@@ -220,10 +220,21 @@
                     Style="{StaticResource TreePanelToggleButtonStyle}" />
         </Grid>
 
-        <!-- 内容区域：保持主题颜色 -->
+        <!-- 内容区域：使用纯 ContentPresenter 模板，彻底移除 MaterialDesign 默认 ContentControl 样式
+             中的转场动画，避免导航切换时 DoubleAnimation 遇到 NaN 起始值导致崩溃 -->
         <ContentControl Grid.Column="2"
                         Margin="10"
                         Name="TreeRegion"
-                        prism:RegionManager.RegionName="TreeRegion" />
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"
+                        prism:RegionManager.RegionName="TreeRegion">
+            <ContentControl.Template>
+                <ControlTemplate TargetType="ContentControl">
+                    <ContentPresenter
+                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </ControlTemplate>
+            </ContentControl.Template>
+        </ContentControl>
     </Grid>
 </UserControl>

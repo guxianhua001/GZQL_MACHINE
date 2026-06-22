@@ -31,7 +31,7 @@ namespace Module.ViewModels
     /// GOTO 步骤详细配置 ViewModel，以模态弹窗形式展示
     /// 使用 SubMoveRowViewModel 为每行提供独立的轴/位置列表
     /// </summary>
-    public class GotoDetailViewModel : BindableBase
+    public class GotoDetailViewModel : BindableBase, IDialogCloseable
     {
         private readonly IPositionProvider _positionProvider;
         private readonly IRecipePoolService _recipePoolService;
@@ -39,6 +39,12 @@ namespace Module.ViewModels
         private readonly IEventAggregator _eventAggregator;
 
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary>
         /// 当前编辑的工艺步骤，设置时自动初始化子移动行列表
@@ -405,12 +411,7 @@ namespace Module.ViewModels
         /// </summary>
         private void OnClose()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         /// <summary>

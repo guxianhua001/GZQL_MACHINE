@@ -9,19 +9,31 @@
     xmlns:viewmodels="clr-namespace:ModuleCore.ViewModels"
     xmlns:configuration="clr-namespace:ModuleCore.Views"
     xmlns:motionViews="clr-namespace:MotionControl.Views;assembly=MotionControl"
-    xmlns:config="clr-namespace:Framework.Views;assembly=Framework" 
+    xmlns:config="clr-namespace:Framework.Views;assembly=Framework"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
     d:Background="White"
     d:DataContext="{d:DesignInstance Type=viewmodels:SettingViewModel}"
     d:Height="920"
     d:Width="800"
     prism:ViewModelLocator.AutoWireViewModel="True"
-    mc:Ignorable="d">
-    <StackPanel>
+    mc:Ignorable="d"
+    Background="{DynamicResource MaterialDesignBackground}">
+    <UserControl.Resources>
+        <!-- TabItem 样式：确保 Tab 标题文本颜色和背景跟随主题切换 -->
+        <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Background" Value="{DynamicResource MaterialDesignBackground}" />
+        </Style>
+    </UserControl.Resources>
+
+    <StackPanel Background="{DynamicResource MaterialDesignBackground}">
 
        
         <!-- 配置显示区域 -->
         <TabControl Margin="20"
+                    Background="{DynamicResource MaterialDesignBackground}"
+                    BorderBrush="{DynamicResource MaterialDesignDivider}"
                     prism:RegionManager.RegionName="ConfigurationContentRegion">
             <!-- 设备配置 -->
             <TabItem Header="{lang:Lang Setting_DeviceConfig}">
@@ -40,6 +52,134 @@
             <!-- 安全区域配置 -->
             <TabItem Header="{lang:Lang Setting_SafetyZoneConfig}">
                 <ContentControl prism:RegionManager.RegionName="SafetyZoneConfigRegion" />
+            </TabItem>
+
+            <!-- 主题配置 -->
+            <TabItem Header="{lang:Lang Setting_ThemeConfig}">
+                <Grid Margin="20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 标题与说明 -->
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,20">
+                        <materialDesign:PackIcon Kind="Palette"
+                                                 Width="28"
+                                                 Height="28"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                        <TextBlock Text="{lang:Lang Setting_Theme}"
+                                   FontSize="20"
+                                   FontWeight="Medium"
+                                   VerticalAlignment="Center"
+                                   Margin="10,0,0,0" />
+                    </StackPanel>
+
+                    <!-- 主题切换卡片 -->
+                    <Border Grid.Row="1"
+                            Background="{DynamicResource MaterialDesignCardBackground}"
+                            BorderBrush="{DynamicResource MaterialDesignDivider}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="20">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 当前主题图标：根据 IsDarkTheme 切换 -->
+                            <materialDesign:PackIcon Grid.Column="0"
+                                                    Width="36"
+                                                    Height="36"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Kind" Value="WeatherSunny" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDarkTheme}" Value="True">
+                                                <Setter Property="Kind" Value="WeatherNight" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+
+                            <!-- 当前主题文字：使用两个 TextBlock 切换可见性，避免 Style Setter 中 MarkupExtension 限制 -->
+                            <StackPanel Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Margin="20,0">
+                                <TextBlock Text="{lang:Lang Setting_Theme}"
+                                           FontSize="14"
+                                           Opacity="0.7" />
+                                <TextBlock FontSize="18"
+                                           FontWeight="Medium"
+                                           Margin="0,4,0,0"
+                                           Text="{lang:Lang Setting_ThemeLight}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDarkTheme}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock FontSize="18"
+                                           FontWeight="Medium"
+                                           Margin="0,4,0,0"
+                                           Text="{lang:Lang Setting_ThemeDark}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDarkTheme}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <!-- 切换按钮 -->
+                            <ToggleButton Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          IsChecked="{Binding IsDarkTheme, Mode=OneWay}"
+                                          Command="{Binding ToggleThemeCommand}"
+                                          Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                          ToolTip="{lang:Lang Setting_ToggleTheme}" />
+                        </Grid>
+                    </Border>
+
+                    <!-- 主题切换按钮 -->
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Margin="0,30,0,0">
+                        <Button Command="{Binding ToggleThemeCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Width="160"
+                                Margin="0,0,15,0"
+                                ToolTip="{lang:Lang Setting_ToggleTheme}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="SwapHorizontal"
+                                                         VerticalAlignment="Center"
+                                                         Margin="0,0,8,0" />
+                                <TextBlock Text="{lang:Lang Setting_ToggleTheme}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
             </TabItem>
 
             <!-- 其他配置选项卡 -->
@@ -61,7 +201,7 @@
                             <ListBox.ItemTemplate>
                                 <!-- 数据模板 -->
                                 <DataTemplate>
-                                    <Border BorderBrush="#FFDCDCDC"
+                                    <Border BorderBrush="{DynamicResource MaterialDesignDivider}"
                                             BorderThickness="1"
                                             CornerRadius="4"
                                             Margin="2">
@@ -70,7 +210,7 @@
                                             <!-- 导航项标题 -->
                                             <TextBlock Text="{Binding DisplayName}"
                                                        FontSize="12"
-                                                       Foreground="#FF333333"
+                                                       Foreground="{DynamicResource MaterialDesignBody}"
                                                        TextAlignment="Center"
                                                        VerticalAlignment="Top"
                                                        Margin="0,10" />
@@ -91,7 +231,7 @@
                     <Grid Margin="30,20">
                         <StackPanel HorizontalAlignment="Right"
                                     Orientation="Horizontal"
-                                    Background="#FFF0F0F0">
+                                    Background="{DynamicResource MaterialDesignToolBarBackground}">
                             <Button Content="{lang:Lang Setting_LoadConfig}"
                                     Command="{Binding Load}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
@@ -101,7 +241,6 @@
                             <Button Content="{lang:Lang Setting_SaveConfig}"
                                     Command="{Binding Save}"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
-                                    Foreground="White"
                                     Width="100" />
                         </StackPanel>
                     </Grid>

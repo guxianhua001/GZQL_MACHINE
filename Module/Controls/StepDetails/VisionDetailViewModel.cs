@@ -24,7 +24,7 @@ namespace Module.ViewModels
     /// 支持通讯配置、触发命令、数据解析脚本、变量映射等编辑
     /// 支持示例数据填充和单次执行测试
     /// </summary>
-    public class VisionDetailViewModel : BindableBase
+    public class VisionDetailViewModel : BindableBase, IDialogCloseable
     {
         private readonly IContainerProvider _containerProvider;
         private readonly IRecipePoolService _recipePoolService;
@@ -36,6 +36,12 @@ namespace Module.ViewModels
         private readonly IEventAggregator _eventAggregator;
 
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary>
         /// 当前编辑的工艺步骤，设置时自动初始化所有配置项
@@ -728,12 +734,7 @@ public class VisionParseScript
         /// </summary>
         private void OnClose()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         /// <summary>

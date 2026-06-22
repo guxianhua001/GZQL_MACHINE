@@ -1,0 +1,80 @@
+<UserControl x:Class="Module.Views.SignalSendDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             Width="420">
+    <materialDesign:Card UniformCornerRadius="8"
+                         Padding="16">
+        <materialDesign:Card.Resources>
+            <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+        </materialDesign:Card.Resources>
+        <StackPanel>
+
+            <!-- 信号名称 -->
+            <TextBlock Text="{lang:Lang PSE_SignalName}"
+                       FontSize="13"
+                       FontWeight="Medium"
+                       Margin="0,0,0,4" />
+            <TextBox Text="{Binding SignalName, UpdateSourceTrigger=PropertyChanged}"
+                     materialDesign:HintAssist.Hint="{lang:Lang PSE_SignalNameHint}"
+                     Margin="0,0,0,12" />
+
+            <!-- 信号说明 -->
+            <TextBlock Text="{lang:Lang PSE_SignalDescription}"
+                       FontSize="13"
+                       FontWeight="Medium"
+                       Margin="0,0,0,4" />
+            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                     materialDesign:HintAssist.Hint="{lang:Lang PSE_SignalDescriptionHint}"
+                     Margin="0,0,0,12" />
+
+            <!-- 提示说明 -->
+            <Border Background="#E3F2FD"
+                    CornerRadius="4"
+                    Padding="10,8"
+                    Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="InformationOutline"
+                                             Width="16" Height="16"
+                                             Foreground="#1565C0"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,6,0" />
+                    <TextBlock Text="{lang:Lang PSE_SignalSendHint}"
+                               TextWrapping="Wrap"
+                               FontSize="11"
+                               Foreground="#1565C0"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- 底部按钮：保存 + 关闭 -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Command="{Binding SaveCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ContentSave"
+                                                Width="18" Height="18"
+                                                VerticalAlignment="Center" />
+                        <TextBlock Text="{lang:Lang PSE_Save}"
+                                   Margin="4,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding CloseCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Close"
+                                                Width="18" Height="18"
+                                                VerticalAlignment="Center" />
+                        <TextBlock Text="{lang:Lang PSE_Close}"
+                                   Margin="4,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </materialDesign:Card>
+</UserControl>

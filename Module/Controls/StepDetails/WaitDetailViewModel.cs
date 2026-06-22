@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Prism.Commands;
 using Prism.Mvvm;
 using StationTasks.Models;
@@ -10,9 +11,15 @@ namespace Module.ViewModels
     /// <summary>
     /// WAIT/DELAY 步骤编辑器 ViewModel，支持延时时长配置、时间单位切换、实时换算显示
     /// </summary>
-    public class WaitDetailViewModel : BindableBase
+    public class WaitDetailViewModel : BindableBase, IDialogCloseable
     {
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary> 当前编辑的工艺步骤，设置时自动初始化延时配置 </summary>
         public ProcessStep Step
@@ -144,12 +151,7 @@ namespace Module.ViewModels
             _step.WaitDetail.TimeUnit = SelectedTimeUnit;
             _step.WaitDetail.Description = Description;
 
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(true);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(true);
         }
 
         /// <summary>
@@ -157,12 +159,7 @@ namespace Module.ViewModels
         /// </summary>
         private void OnClose()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
     }
 }

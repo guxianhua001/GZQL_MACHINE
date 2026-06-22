@@ -3121,6 +3121,13 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="RecipeSelection_Select">Select</sys:String>
     <sys:String x:Key="GlobalVariablesView_Title">Global Variables</sys:String>
     <sys:String x:Key="GlobalVariablesView_Tip">Double-click cell to edit value. Supports integer, float and string types</sys:String>
+    <sys:String x:Key="GlobalVariablesView_Group">Group</sys:String>
+    <sys:String x:Key="GlobalVariablesView_DefaultGroup">Default</sys:String>
+    <sys:String x:Key="GlobalVariablesView_AllGroups">All</sys:String>
+    <sys:String x:Key="GlobalVariablesView_AddGroup">Add Group</sys:String>
+    <sys:String x:Key="GlobalVariablesView_DeleteGroup">Delete Group</sys:String>
+    <sys:String x:Key="GlobalVariablesView_RenameGroup">Rename Group</sys:String>
+    <sys:String x:Key="GlobalVariablesView_GroupFilterHint">Select group filter</sys:String>
     <sys:String x:Key="PositionEditor_Title">Position Editor</sys:String>
     <sys:String x:Key="PositionEditor_SelectStation">Select Station:</sys:String>
     <sys:String x:Key="PositionEditor_AddPosition">Add Position</sys:String>
@@ -3415,6 +3422,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Setting_DeviceConfig">Device Config</sys:String>
     <sys:String x:Key="Setting_AxisParamConfig">Axis Param Config</sys:String>
     <sys:String x:Key="Setting_OtherConfig">Other Config</sys:String>
+    <sys:String x:Key="Setting_ThemeConfig">Theme Config</sys:String>
     <sys:String x:Key="Setting_SafetyZoneConfig">Safety Zone Config</sys:String>
     <sys:String x:Key="Authority">Authority</sys:String>
     <sys:String x:Key="AddUser">Add User</sys:String>
@@ -3428,7 +3436,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Setting_LoadConfig">Load Config</sys:String>
     <sys:String x:Key="PSE_ClearError">Clear Error</sys:String>
     <sys:String x:Key="PSE_SequenceFile">Sequence File</sys:String>
-    <sys:String x:Key="PSE_SequenceFileHint">Load / Save / Auto-generate process sequence</sys:String>
+    <sys:String x:Key="PSE_SequenceFileHint">Load / Save / Process sequence</sys:String>
     <sys:String x:Key="PSE_CurrentLabel">Current File</sys:String>
     <sys:String x:Key="PSE_LoadSequence">Load</sys:String>
     <sys:String x:Key="PSE_SaveSequence">Save</sys:String>
@@ -3482,8 +3490,130 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="PSE_DialDistance">Dial Distance</sys:String>
     <sys:String x:Key="PSE_PressHeight">Press Height</sys:String>
     <sys:String x:Key="PSE_CanAssemble">Can Assemble</sys:String>
+    <sys:String x:Key="PSE_H2Height">H2 Height</sys:String>
+    <sys:String x:Key="PSE_SlotMeasuredHeight">Slot Measured Height</sys:String>
     <sys:String x:Key="PSE_TestResult">Test Result</sys:String>
     <sys:String x:Key="PSE_Condition1">Condition 1</sys:String>
+    <sys:String x:Key="PSE_TreeViewTitle">Task Tree</sys:String>
+    <sys:String x:Key="PSE_NewMethod">New Method</sys:String>
+    <sys:String x:Key="PSE_NewMethodTip">Create a new method under the current task</sys:String>
+    <sys:String x:Key="PSE_DeleteMethod">Delete Method</sys:String>
+    <sys:String x:Key="PSE_RenameMethod">Rename Method</sys:String>
+    <sys:String x:Key="PSE_NewAction">New Action</sys:String>
+    <sys:String x:Key="PSE_NewActionTip">Create a new action under the current method</sys:String>
+    <sys:String x:Key="PSE_Copy">Copy</sys:String>
+    <sys:String x:Key="PSE_Paste">Paste</sys:String>
+    <sys:String x:Key="PSE_Delete">Delete</sys:String>
+    <sys:String x:Key="PSE_Rename">Rename</sys:String>
+    <sys:String x:Key="PSE_Disable">Disable</sys:String>
+    <sys:String x:Key="PSE_Enable">Enable</sys:String>
+    <sys:String x:Key="PSE_SetActive">Set Active</sys:String>
+    <sys:String x:Key="PSE_SetPassive">Set Passive</sys:String>
+    <sys:String x:Key="PSE_ExecuteSelected">Execute Selected</sys:String>
+    <sys:String x:Key="PSE_RunMode">Run Mode</sys:String>
+    <sys:String x:Key="PSE_ActiveMode">Active</sys:String>
+    <sys:String x:Key="PSE_PassiveMode">Passive</sys:String>
+    <sys:String x:Key="PSE_PassiveTaskNoStart">Passive task cannot be started directly, trigger it via Run Task action</sys:String>
+    <sys:String x:Key="PSE_RunTaskAction">Run Task</sys:String>
+    <sys:String x:Key="PSE_RunTaskActionTip">Insert an action that calls a passive task</sys:String>
+    <sys:String x:Key="PSE_SelectTargetTask">Select Target Task</sys:String>
+    <sys:String x:Key="PSE_TargetTask">Target Task</sys:String>
+
+    <!-- BaseDialogWindow dialog titles -->
+    <sys:String x:Key="PSE_DialogTitleGoto">Goto Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleVision">Vision Inspection</sys:String>
+    <sys:String x:Key="PSE_DialogTitleScan">Scan Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleSeek">Seek Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleWait">Wait Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleScript">Script Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitlePick">Pick Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleRelease">Release Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleCure">Cure Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleDispense">Dispense Settings</sys:String>
+    <sys:String x:Key="PSE_DialogTitleRunTask">Run Task</sys:String>
+    <sys:String x:Key="PSE_DialogTitleBranch">Condition Branch</sys:String>
+    <sys:String x:Key="PSE_DialogTitleDashboard">Data Dashboard</sys:String>
+
+    <!-- Theme switching -->
+    <sys:String x:Key="Setting_Theme">UI Theme</sys:String>
+    <sys:String x:Key="Setting_ThemeDark">Dark Theme</sys:String>
+    <sys:String x:Key="Setting_ThemeLight">Light Theme</sys:String>
+    <sys:String x:Key="Setting_ToggleTheme">Toggle Theme</sys:String>
+    <sys:String x:Key="PSE_CircularCallDetected">Circular call detected: {0}</sys:String>
+    <sys:String x:Key="PSE_SkippedDisabledStep">Skipped disabled step: [{0}] {1}</sys:String>
+    <sys:String x:Key="PSE_SkippedDisabledMethod">Skipped disabled method: {0}</sys:String>
+    <sys:String x:Key="PSE_SkippedDisabledTask">Skipped disabled task: {0}</sys:String>
+    <sys:String x:Key="PSE_TaskProperties">Task Properties</sys:String>
+    <sys:String x:Key="PSE_MethodProperties">Method Properties</sys:String>
+    <sys:String x:Key="PSE_ActionProperties">Action Properties</sys:String>
+    <sys:String x:Key="PSE_DefaultMethodName">Default Method</sys:String>
+    <sys:String x:Key="PSE_CopySuffix">_Copy</sys:String>
+    <sys:String x:Key="PSE_MethodLabel">Method</sys:String>
+    <sys:String x:Key="PSE_RunTaskDetailTitle">Run Task Configuration</sys:String>
+    <sys:String x:Key="PSE_RunTaskHint">Only passive run-mode tasks can be selected</sys:String>
+    <sys:String x:Key="PSE_Save">Save</sys:String>
+    <sys:String x:Key="PSE_Close">Close</sys:String>
+    <sys:String x:Key="PSE_TaskName">Task Name</sys:String>
+    <sys:String x:Key="PSE_MethodName">Method Name</sys:String>
+    <sys:String x:Key="PSE_Enabled">Enabled</sys:String>
+    <sys:String x:Key="PSE_Disabled">Disabled</sys:String>
+    <sys:String x:Key="PSE_NoSelection">No node selected</sys:String>
+    <sys:String x:Key="PSE_PasteNoTarget">Select a target node before pasting</sys:String>
+    <sys:String x:Key="PSE_CannotDeleteDefault">Default task cannot be deleted</sys:String>
+    <sys:String x:Key="PSE_MethodCount">Method Count</sys:String>
+    <sys:String x:Key="PSE_ActionCount">Action Count</sys:String>
+
+    <!-- Method-level control -->
+    <sys:String x:Key="PSE_MethodControl">Method Control</sys:String>
+    <sys:String x:Key="PSE_RunMethod">Run</sys:String>
+    <sys:String x:Key="PSE_RunMethodTip">Start independent execution of current method</sys:String>
+    <sys:String x:Key="PSE_PauseMethod">Pause</sys:String>
+    <sys:String x:Key="PSE_PauseMethodTip">Pause the currently executing method</sys:String>
+    <sys:String x:Key="PSE_ResumeMethod">Resume</sys:String>
+    <sys:String x:Key="PSE_ResumeMethodTip">Resume the currently paused method</sys:String>
+    <sys:String x:Key="PSE_StopMethod">Stop</sys:String>
+    <sys:String x:Key="PSE_StopMethodTip">Stop the currently executing method</sys:String>
+    <sys:String x:Key="PSE_MethodStatusIdle">Idle</sys:String>
+    <sys:String x:Key="PSE_MethodStatusRunning">Running</sys:String>
+    <sys:String x:Key="PSE_MethodStatusPaused">Paused</sys:String>
+    <sys:String x:Key="PSE_MethodStatusStopped">Stopped</sys:String>
+
+    <!-- Signal interaction steps -->
+    <sys:String x:Key="PSE_DialogTitleSignalSend">Signal Send Configuration</sys:String>
+    <sys:String x:Key="PSE_DialogTitleSignalWait">Signal Wait Configuration</sys:String>
+
+    <!-- IF conditional block step -->
+    <sys:String x:Key="PSE_DialogTitleIf">IF Block Configuration</sys:String>
+    <sys:String x:Key="PSE_IfAction">IF Block</sys:String>
+    <sys:String x:Key="PSE_IfActionTip">Insert IF/ELSE conditional block, executes Then or Else branch based on expression evaluation</sys:String>
+    <sys:String x:Key="PSE_IfAddSubStep">Add Sub Step</sys:String>
+    <sys:String x:Key="IfDetail_Title">IF Block Configuration</sys:String>
+    <sys:String x:Key="IfDetail_ConditionExpression">Condition Expression</sys:String>
+    <sys:String x:Key="IfDetail_Description">Description</sys:String>
+    <sys:String x:Key="IfDetail_DescriptionHint">Enter IF branch purpose description (optional)</sys:String>
+    <sys:String x:Key="IfDetail_DefaultDescription">Conditional Branch</sys:String>
+    <sys:String x:Key="IfDetail_InsertVariable">Insert Variable</sys:String>
+    <sys:String x:Key="IfDetail_ExpressionTemplates">Expression Templates (click to insert)</sys:String>
+    <sys:String x:Key="IfDetail_ValidationPassed">Expression syntax validation passed</sys:String>
+    <sys:String x:Key="IfDetail_UsageTitle">Usage Notes</sys:String>
+    <sys:String x:Key="IfDetail_UsageHint">Condition expression supports @GV:global variable and @Output:step output variable references, supports arithmetic, comparison and boolean operations. Non-zero evaluation result is true (execute Then branch), zero or evaluation failure is false (execute Else branch). IF block can nest other steps, including nested IF blocks.</sys:String>
+    <sys:String x:Key="IfDetail_Save">Save</sys:String>
+    <sys:String x:Key="IfDetail_Cancel">Cancel</sys:String>
+    <sys:String x:Key="PSE_SignalName">Signal Name</sys:String>
+    <sys:String x:Key="PSE_SignalNameHint">Enter signal name (case-sensitive)</sys:String>
+    <sys:String x:Key="PSE_SignalDescription">Description</sys:String>
+    <sys:String x:Key="PSE_SignalDescriptionHint">Enter signal purpose description</sys:String>
+    <sys:String x:Key="PSE_SignalTimeout">Timeout (ms)</sys:String>
+    <sys:String x:Key="PSE_SignalTimeoutHint">-1 for infinite wait, 0 for no wait, positive for specific milliseconds</sys:String>
+    <sys:String x:Key="PSE_SignalSendHint">Send a named signal to wake up tasks waiting for it. Execution continues immediately without blocking.</sys:String>
+    <sys:String x:Key="PSE_SignalWaitHint">Wait for a named signal. The signal is auto-reset after receipt and execution continues. Timeout triggers a recoverable exception, pausing the task for operator intervention.</sys:String>
+    <sys:String x:Key="PSE_SignalWaitTimeoutAlarm">Signal wait timeout: signal [{0}] not received within {1}ms</sys:String>
+    <sys:String x:Key="PSE_SignalSendSuccess">Signal [{0}] sent</sys:String>
+    <sys:String x:Key="PSE_SignalWaitReceived">Signal [{0}] received</sys:String>
+
+    <!-- Node comment -->
+    <sys:String x:Key="PSE_EditComment">Add/Edit Comment</sys:String>
+    <sys:String x:Key="PSE_ColumnComment">Comment</sys:String>
     <sys:String x:Key="AxisSetting_SaveParams">Save Params</sys:String>
     <sys:String x:Key="AxisSetting_SaveParamsToolTip">Save all parameters to file</sys:String>
     <sys:String x:Key="AxisSetting_LoadParams">Load Params</sys:String>

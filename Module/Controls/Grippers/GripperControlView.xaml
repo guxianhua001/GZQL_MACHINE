@@ -6,35 +6,42 @@
              Width="560" Height="540">
 
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
-        <Style x:Key="CompactBtn" TargetType="Button">
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="4"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+            <Style x:Key="CompactBtn" TargetType="Button">
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Padding" Value="10,4"/>
+                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="4"/>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border Padding="14" Background="{DynamicResource MaterialDesignCardBackground}" CornerRadius="8">
+    <Border Padding="14" Background="{DynamicResource DialogCardBrush}" CornerRadius="8">
         <StackPanel>
 
             <!-- 标题栏 -->
             <DockPanel Margin="0,0,0,8">
                 <Button DockPanel.Dock="Right" Command="{Binding CloseCommand}"
                         Style="{StaticResource MaterialDesignIconButton}" ToolTip="{lang:Lang Close}"
-                        Width="28" Height="28">
+                        Width="28" Height="28"
+                        Foreground="{DynamicResource DialogTextPrimaryBrush}">
                     <materialDesign:PackIcon Kind="Close" Width="18" Height="18"/>
                 </Button>
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="RobotIndustrial" Width="20" Height="20"
-                                             Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,6,0"/>
+                                             Foreground="{DynamicResource DialogAccentBrush}" Margin="0,0,6,0"/>
                     <TextBlock Text="{lang:Lang ElectricGripperManualOperation}" FontWeight="Bold" FontSize="15"
+                               Foreground="{DynamicResource DialogTextPrimaryBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
             </DockPanel>
 
             <!-- 状态栏 -->
-            <Border Background="{DynamicResource MaterialDesignPaper}" CornerRadius="4"
+            <Border Background="{DynamicResource DialogElevatedBrush}" CornerRadius="4"
                     Padding="10,6" Margin="0,0,0,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -48,29 +55,32 @@
                             Grid.Column="0" VerticalAlignment="Center" ToolTip="{Binding Status}"/>
 
                     <TextBlock Text="{Binding StatusMessage}" Grid.Column="1"
+                               Foreground="{DynamicResource DialogTextPrimaryBrush}"
                                VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Medium" FontSize="12"/>
 
                     <!-- 实时位置显示 -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="12,0,8,0">
                         <materialDesign:PackIcon Kind="MapMarkerDistance" Width="14" Height="14"
-                                                 VerticalAlignment="Center" Foreground="#1A73E8" Margin="0,0,4,0"/>
-                        <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#1A73E8">
+                                                 VerticalAlignment="Center" Foreground="{DynamicResource DialogAccentBrush}" Margin="0,0,4,0"/>
+                        <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource DialogAccentBrush}">
                             <Run Text="{Binding CurrentPosition, StringFormat=F1, Mode=OneWay}"/>
-                            <!--<Run Text=" mm"/>-->
                         </TextBlock>
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="CheckCircle" Width="14" Height="14" VerticalAlignment="Center"
-                                                 Foreground="#4CAF50" Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisConverter}}"/>
+                                                 Foreground="{DynamicResource DialogSuccessBrush}" Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisConverter}}"/>
                         <TextBlock Text="{lang:Lang Gripper_Online}" VerticalAlignment="Center" Margin="3,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"
                                    Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisConverter}}"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- 位置与寸动（合并区域） -->
-            <GroupBox Header="{lang:Lang GripperJogControl}" Margin="0,0,0,8">
+            <GroupBox Header="{lang:Lang GripperJogControl}" Margin="0,0,0,8"
+                      Foreground="{DynamicResource DialogTextPrimaryBrush}">
                 <Grid Margin="4">
 
                     <!-- 第一行：目标位置 + 移动按钮 -->
@@ -82,19 +92,20 @@
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
                         <TextBlock Text="{lang:Lang Target}" VerticalAlignment="Center" FontSize="11" Width="36"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"/>
                         <TextBox Text="{Binding TargetPosition, UpdateSourceTrigger=PropertyChanged}"
                                  Width="70" materialDesign:HintAssist.Hint="{lang:Lang Unit_mm}"
                                  VerticalContentAlignment="Center" FontSize="11"/>
                         <TextBlock Text="{lang:Lang AssemblyStep_SpeedLabel}" VerticalAlignment="Center" FontSize="11" Width="36" Margin="12,0,0,0"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"/>
                         <Slider Minimum="1" Maximum="100" Value="{Binding MoveSpeed}" Width="110"
                                 IsSnapToTickEnabled="True" TickFrequency="5" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding MoveSpeed, StringFormat={}{0:0}%}"
+                                   Foreground="{DynamicResource DialogTextPrimaryBrush}"
                                    VerticalAlignment="Center" Margin="6,0,0,0" MinWidth="30" FontSize="11"/>
                         <Button Grid.Row="1" Command="{Binding MoveToTargetCommand}" Margin="12,0,0,0"
                                 Style="{StaticResource CompactBtn}"
-                                Background="#1565C0" Foreground="White">
+                                Background="{DynamicResource DialogAccentBrush}" Foreground="White">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Target" Width="14" Height="14" Margin="0,0,4,0"/>
                                 <TextBlock Text="{lang:Lang Gripper_MoveTo}"/>
@@ -114,7 +125,7 @@
 
                         <Button Command="{Binding StopCommand}" Width="78" Height="32" Margin="3"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Background="#D32F2F" Foreground="White" Padding="6,2" FontSize="11">
+                                Background="{DynamicResource DialogErrorBrush}" Foreground="White" Padding="6,2" FontSize="11">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Stop" Width="16" Height="16" Margin="0,0,3,0"/>
                                 <TextBlock Text="{lang:Lang Stop}"/>
@@ -133,23 +144,26 @@
                     <!-- 第三行：寸动参数 -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
                         <TextBlock Text="{lang:Lang AxisOp_JogStep}" VerticalAlignment="Center" FontSize="11"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"/>
                         <TextBox Text="{Binding JogStep, StringFormat={}{0:F1}}" Width="46" Margin="3,0"
                                  VerticalContentAlignment="Center" FontSize="11"/>
-                        <TextBlock Text="{lang:Lang Unit_mm}" VerticalAlignment="Center" FontSize="11" Margin="0,10,0,0"/>
+                        <TextBlock Text="{lang:Lang Unit_mm}" VerticalAlignment="Center" FontSize="11" Margin="0,10,0,0"
+                                   Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
 
                         <TextBlock Text="{lang:Lang Gripper_JogSpeedLabel}" VerticalAlignment="Center" FontSize="11" Margin="10,0,0,0"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"/>
                         <Slider Minimum="1" Maximum="100" Value="{Binding JogSpeed}" Width="90"
                                 IsSnapToTickEnabled="True" TickFrequency="5" VerticalAlignment="Center" Margin="3,0"/>
                         <TextBlock Text="{Binding JogSpeed, StringFormat={}{0:0}%}"
+                                   Foreground="{DynamicResource DialogTextPrimaryBrush}"
                                    VerticalAlignment="Center" Margin="4,0,0,0" MinWidth="26" FontSize="11"/>
                     </StackPanel>
                 </Grid>
             </GroupBox>
 
             <!-- 力矩 + 系统操作（合并区域） -->
-            <GroupBox Header="{lang:Lang TorqueSetting}" Margin="0,0,0,8">
+            <GroupBox Header="{lang:Lang TorqueSetting}" Margin="0,0,0,8"
+                      Foreground="{DynamicResource DialogTextPrimaryBrush}">
                 <Grid Margin="4">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -159,7 +173,7 @@
                     <!-- 力矩设定 -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                         <TextBlock Text="{lang:Lang TorqueLabel}" VerticalAlignment="Center" FontSize="11"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}"/>
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}"/>
                         <TextBox Text="{Binding TorquePercentage, UpdateSourceTrigger=PropertyChanged}"
                                  Width="48" Margin="3,0" materialDesign:HintAssist.Hint="{lang:Lang Unit_Percent}"
                                  VerticalContentAlignment="Center" FontSize="11">
@@ -167,21 +181,22 @@
                                 <KeyBinding Key="Enter" Command="{Binding SetTorqueCommand}"/>
                             </TextBox.InputBindings>
                         </TextBox>
-                        <TextBlock Text="{lang:Lang Unit_Percent}" VerticalAlignment="Center" FontSize="11" Margin="0,8,0,0"/>
+                        <TextBlock Text="{lang:Lang Unit_Percent}" VerticalAlignment="Center" FontSize="11" Margin="0,8,0,0"
+                                   Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
 
                         <Button Command="{Binding SetTorqueCommand}" Margin="3,0"
                                 Style="{StaticResource CompactBtn}"
-                                Background="#1565C0" Foreground="White">
+                                Background="{DynamicResource DialogAccentBrush}" Foreground="White">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Check" Width="14" Height="14" Margin="0,0,3,0"/>
                                 <TextBlock Text="{lang:Lang Set}"/>
                             </StackPanel>
                         </Button>
 
-                        <Border Background="{DynamicResource MaterialDesignLightBackground}"
+                        <Border Background="{DynamicResource DialogElevatedBrush}"
                                 CornerRadius="4" Padding="8,3" Margin="10,0,0,0">
                             <TextBlock Text="{Binding TorqueDisplay}" FontWeight="Medium" FontSize="12"
-                                       Foreground="{DynamicResource PrimaryHueDarkBrush}"/>
+                                       Foreground="{DynamicResource DialogAccentOrangeBrush}"/>
                         </Border>
                     </StackPanel>
 
@@ -209,7 +224,8 @@
             </GroupBox>
 
             <!-- 快速操作：夹紧 / 释放 -->
-            <GroupBox Header="{lang:Lang Gripper_QuickActions}" Margin="0,0,0,8">
+            <GroupBox Header="{lang:Lang Gripper_QuickActions}" Margin="0,0,0,8"
+                      Foreground="{DynamicResource DialogTextPrimaryBrush}">
                 <Grid Margin="4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -218,7 +234,7 @@
 
                     <Button Grid.Column="0" Command="{Binding ClampCommand}" Margin="4"
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Background="#E65100" Foreground="White" Height="40"
+                            Background="{DynamicResource DialogAccentOrangeBrush}" Foreground="White" Height="40"
                             FontSize="13" FontWeight="SemiBold" ToolTip="{lang:Lang Gripper_Tip_ClampAction}">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="Pan" Width="18" Height="18" Margin="0,0,6,0"/>
@@ -228,7 +244,7 @@
 
                     <Button Grid.Column="1" Command="{Binding ReleaseCommand}" Margin="4"
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Background="#1976D2" Foreground="White" Height="40"
+                            Background="{DynamicResource DialogAccentBrush}" Foreground="White" Height="40"
                             FontSize="13" FontWeight="SemiBold" ToolTip="{lang:Lang Gripper_Tip_ReleaseAction}">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="OpenInNew" Width="18" Height="18" Margin="0,0,6,0"/>
@@ -239,7 +255,8 @@
             </GroupBox>
 
             <!-- 实时状态 -->
-            <GroupBox Header="{lang:Lang Gripper_RealtimeStatus}" Margin="0,0,0,0">
+            <GroupBox Header="{lang:Lang Gripper_RealtimeStatus}" Margin="0,0,0,0"
+                      Foreground="{DynamicResource DialogTextPrimaryBrush}">
                 <Grid Margin="4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -247,17 +264,20 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Column="0" Text="{lang:Lang CurrentPosition}"
+                               Foreground="{DynamicResource DialogTextPrimaryBrush}"
                                VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11"/>
 
-                    <Border Grid.Column="1" Background="{DynamicResource MaterialDesignLightBackground}"
+                    <Border Grid.Column="1" Background="{DynamicResource DialogElevatedBrush}"
                             CornerRadius="4" Padding="10,5" Margin="6,0,0,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding CurrentPosition, StringFormat={}{0:F2}}"
                                        FontSize="17" FontWeight="Bold"
-                                       Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                            <TextBlock Text="{lang:Lang Unit_mm}" FontSize="11" Foreground="Gray"
+                                       Foreground="{DynamicResource DialogAccentBrush}"/>
+                            <TextBlock Text="{lang:Lang Unit_mm}" FontSize="11"
+                                       Foreground="{DynamicResource DialogTextMutedBrush}"
                                        VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                            <TextBlock Text="{lang:Lang Gripper_UpdateRate}" FontSize="9" Foreground="#AAA"
+                            <TextBlock Text="{lang:Lang Gripper_UpdateRate}" FontSize="9"
+                                       Foreground="{DynamicResource DialogTextMutedBrush}"
                                        VerticalAlignment="Center" Margin="6,0,0,0"/>
                         </StackPanel>
                     </Border>

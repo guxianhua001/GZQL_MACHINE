@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Prism.Mvvm;
+﻿﻿﻿using Prism.Mvvm;
 using System;
 
 namespace Core.Models
@@ -13,11 +13,16 @@ namespace Core.Models
 
     public class GlobalVariable : BindableBase
     {
+        // 默认分组内部标识：空字符串。UI 显示时通过多语言翻译为"默认/Default"。
+        // 旧版本 JSON 文件无 Group 字段，反序列化后为 null，加载时统一规范化为空字符串。
+        public const string DefaultGroupKey = "";
+
         private int _index;
         private string _name;
         private GlobalVariableType _type;
         private string _value;
         private string _comment;
+        private string _group = DefaultGroupKey;
 
         public int Index
         {
@@ -29,6 +34,16 @@ namespace Core.Models
         {
             get => _name;
             set => SetProperty(ref _name, value);
+        }
+
+        /// <summary>
+        /// 变量所属分组名。空字符串表示默认分组（向后兼容旧数据）。
+        /// 自定义分组为非空字符串。序列化时直接存储字符串值。
+        /// </summary>
+        public string Group
+        {
+            get => _group;
+            set => SetProperty(ref _group, value ?? DefaultGroupKey);
         }
 
         public GlobalVariableType Type

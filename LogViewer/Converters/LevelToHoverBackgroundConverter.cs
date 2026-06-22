@@ -4,11 +4,16 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
 namespace LogViewer.Converters
 {
+    /// <summary>
+    /// 日志级别到悬停背景色的转换器
+    /// 从 Application.Resources 获取动态主题颜色
+    /// </summary>
     public class LevelToHoverBackgroundConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
@@ -20,15 +25,18 @@ namespace LogViewer.Converters
             if (isSelected)
                 return Brushes.Transparent;
 
+            // 从 Application.Resources 获取动态主题颜色
+            var resources = Application.Current.Resources;
+
             // 根据日志级别返回对应的悬停背景色
             switch (level.ToUpper())
             {
                 case "WARN":
-                    return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFADFF2F")); // GreenYellow
+                    return resources["LogWarnHoverBackground"] as SolidColorBrush ?? Brushes.GreenYellow;
                 case "ERROR":
-                    return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFCD5C5C")); // IndianRed
+                    return resources["LogErrorHoverBackground"] as SolidColorBrush ?? Brushes.IndianRed;
                 default:
-                    return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFD3D3D3")); // LightGray
+                    return resources["LogInfoHoverBackground"] as SolidColorBrush ?? Brushes.LightGray;
             }
         }
 

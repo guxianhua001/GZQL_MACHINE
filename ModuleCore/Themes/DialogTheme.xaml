@@ -1,0 +1,273 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Expander.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         BaseDialogWindow 自定义主题资源字典
+         
+         设计原则：
+         - 深色主题：调亮的暖灰蓝（非纯黑），确保文本清晰可读
+         - 亮色主题：标题栏纯白 + 内容区奶油灰，文本深炭灰（非纯黑）
+         - 层次感：根 < 卡片 < 浮起 三级递进
+         - 标题栏：深色=深紫灰渐变 / 亮色=纯白
+         ══════════════════════════════════════════════════════════════ -->
+
+    <!-- ===== 深色主题（调亮版，确保可读性）===== -->
+    <!-- 根背景 -->
+    <Color x:Key="DialogDark.BgColor" A="255" R="40" G="44" B="58" />
+    <!-- 卡片面板（比根背景亮一级） -->
+    <Color x:Key="DialogDark.SurfaceColor" A="255" R="48" G="52" B="74" />
+    <!-- 浮起表面（输入框等控件） -->
+    <Color x:Key="DialogDark.ElevatedColor" A="255" R="59" G="64" B="88" />
+    <!-- 边框/分割线 -->
+    <Color x:Key="DialogDark.BorderColor" A="255" R="74" G="80" B="104" />
+    <!-- 主文本（高对比度浅色） -->
+    <Color x:Key="DialogDark.PrimaryTextColor" A="255" R="238" G="240" B="246" />
+    <!-- 次要文本 -->
+    <Color x:Key="DialogDark.SecondaryTextColor" A="255" R="160" G="168" B="192" />
+    <!-- 弱化文本 -->
+    <Color x:Key="DialogDark.MutedTextColor" A="255" R="104" G="112" B="148" />
+
+    <!-- 标题栏：深紫灰渐变（深色主题专用） -->
+    <Color x:Key="DialogDark.TitleBarStart" A="255" R="34" G="38" B="58" />
+    <Color x:Key="DialogDark.TitleBarEnd" A="255" R="56" G="61" B="84" />
+    <!-- 标题栏强调标签 = Mauve 紫 -->
+    <Color x:Key="DialogDark.TitleAccentColor" A="255" R="203" G="166" B="247" />
+    <!-- 标题栏文本：深色模式下用浅色（背景是深色） -->
+    <Color x:Key="DialogDark.TitleBarTextColor" A="255" R="238" G="240" B="246" />
+
+    <!-- ===== 亮色主题 ===== -->
+    <!-- 根背景（奶油灰，非纯白） -->
+    <Color x:Key="DialogLight.BgColor" A="255" R="244" G="245" B="249" />
+    <!-- 卡片面板（纯白） -->
+    <Color x:Key="DialogLight.SurfaceColor" A="255" R="255" G="255" B="255" />
+    <!-- 浮起表面（浅灰） -->
+    <Color x:Key="DialogLight.ElevatedColor" A="255" R="235" G="237" B="243" />
+    <!-- 边框/分割线 -->
+    <Color x:Key="DialogLight.BorderColor" A="255" R="212" G="216" B="226" />
+    <!-- 主文本（深炭灰，非纯黑） -->
+    <Color x:Key="DialogLight.PrimaryTextColor" A="255" R="46" G="50" B="73" />
+    <!-- 次要文本 -->
+    <Color x:Key="DialogLight.SecondaryTextColor" A="255" R="100" G="104" B="122" />
+    <!-- 弱化文本 -->
+    <Color x:Key="DialogLight.MutedTextColor" A="255" R="152" G="156" B="176" />
+
+    <!-- 标题栏：纯白（亮色主题专用） -->
+    <Color x:Key="DialogLight.TitleBarStart" A="255" R="255" G="255" B="255" />
+    <Color x:Key="DialogLight.TitleBarEnd" A="255" R="250" G="251" B="253" />
+    <!-- 标题栏强调标签 = Mauve 深紫 -->
+    <Color x:Key="DialogLight.TitleAccentColor" A="255" R="136" G="57" B="239" />
+    <!-- 标题栏文本：亮色模式下必须用深色（背景是白色） -->
+    <Color x:Key="DialogLight.TitleBarTextColor" A="255" R="46" G="50" B="73" />
+
+    <!-- ═════ 运行时画刷（由 DialogThemeHelper 动态切换） ═════ -->
+
+    <!-- 对话框根背景 -->
+    <SolidColorBrush x:Key="DialogBackgroundBrush" Color="{StaticResource DialogLight.BgColor}" />
+    <!-- 卡片/面板背景 -->
+    <SolidColorBrush x:Key="DialogCardBrush" Color="{StaticResource DialogLight.SurfaceColor}" />
+    <!-- 浮起表面 -->
+    <SolidColorBrush x:Key="DialogElevatedBrush" Color="{StaticResource DialogLight.ElevatedColor}" />
+    <!-- 边框/分割线 -->
+    <SolidColorBrush x:Key="DialogBorderBrush" Color="{StaticResource DialogLight.BorderColor}" />
+
+    <!-- 文本颜色（绝对不用 White！） -->
+    <SolidColorBrush x:Key="DialogTextPrimaryBrush" Color="{StaticResource DialogLight.PrimaryTextColor}" />
+    <SolidColorBrush x:Key="DialogTextSecondaryBrush" Color="{StaticResource DialogLight.SecondaryTextColor}" />
+    <SolidColorBrush x:Key="DialogTextMutedBrush" Color="{StaticResource DialogLight.MutedTextColor}" />
+
+    <!-- 标题栏渐变色（Color 类型供 GradientStop 使用） -->
+    <Color x:Key="DialogTitleBarStartColor" A="255" R="255" G="255" B="255" />
+    <Color x:Key="DialogTitleBarEndColor" A="255" R="250" G="251" B="253" />
+
+    <!-- 标题栏文本画刷（亮色模式=深色文本，深色模式=浅色文本） -->
+    <SolidColorBrush x:Key="DialogTitleBarTextBrush" Color="{StaticResource DialogLight.TitleBarTextColor}" />
+
+    <!-- 标题栏强调标签画刷（工具名称 Badge 等） -->
+    <SolidColorBrush x:Key="DialogTitleAccentBrush" Color="{StaticResource DialogLight.TitleAccentColor}" />
+
+    <!-- ===== 功能性语义色 ===== -->
+    <!-- 强调色：深色=浅靛蓝（接近白），亮色=深靛蓝 -->
+    <Color x:Key="DialogDark.AccentColor" A="255" R="180" G="175" B="255" />
+    <Color x:Key="DialogLight.AccentColor" A="255" R="139" G="133" B="255" />
+    <SolidColorBrush x:Key="DialogAccentBrush" Color="{StaticResource DialogLight.AccentColor}" />
+    <SolidColorBrush x:Key="DialogAccentOrangeBrush" Color="#F08A5D" />
+    <SolidColorBrush x:Key="DialogSuccessBrush" Color="#52D681" />
+    <SolidColorBrush x:Key="DialogSuccessDarkBrush" Color="#34C77A" />
+    <SolidColorBrush x:Key="DialogErrorBrush" Color="#F06A70" />
+    <SolidColorBrush x:Key="DialogErrorDarkBrush" Color="#E04855" />
+    <SolidColorBrush x:Key="DialogInfoBrush" Color="#58A6FF" />
+
+    <!-- DataGrid 表头背景 -->
+    <SolidColorBrush x:Key="DialogDataGridHeaderBrush.Dark" Color="#3B4058" />
+    <SolidColorBrush x:Key="DialogDataGridHeaderBrush.Light" Color="#EBEDF3" />
+    <SolidColorBrush x:Key="DialogDataGridHeaderBrush" Color="{StaticResource DialogLight.ElevatedColor}" />
+
+    <!-- DataGrid 行选中 -->
+    <SolidColorBrush x:Key="DialogDataGridSelectedBrush.Dark" Color="#4A5068" />
+    <SolidColorBrush x:Key="DialogDataGridSelectedBrush.Light" Color="#DFDEEF" />
+    <SolidColorBrush x:Key="DialogDataGridSelectedBrush" Color="{StaticResource DialogLight.BorderColor}" />
+
+    <!-- DataGrid 行悬停 -->
+    <SolidColorBrush x:Key="DialogDataGridHoverBrush.Dark" Color="#363A50" />
+    <SolidColorBrush x:Key="DialogDataGridHoverBrush.Light" Color="#FFF3E8" />
+    <SolidColorBrush x:Key="DialogDataGridHoverBrush" Color="#FFF3E8" />
+
+    <!-- ===== 日志窗口专用颜色 ===== -->
+    <!-- 深色主题日志背景 -->
+    <Color x:Key="DialogDark.LogInfoBgColor" A="255" R="48" G="52" B="74" />
+    <Color x:Key="DialogDark.LogWarnBgColor" A="255" R="74" G="68" B="50" />
+    <Color x:Key="DialogDark.LogErrorBgColor" A="255" R="88" G="52" B="58" />
+    <Color x:Key="DialogDark.LogSelectedBgColor" A="255" R="120" G="80" B="40" />
+    <Color x:Key="DialogDark.LogLatestBgColor" A="255" R="140" G="100" B="50" />
+    <Color x:Key="DialogDark.LogHoverInfoColor" A="255" R="58" G="62" B="84" />
+    <Color x:Key="DialogDark.LogHoverWarnColor" A="255" R="84" G="78" B="60" />
+    <Color x:Key="DialogDark.LogHoverErrorColor" A="255" R="98" G="62" B="68" />
+    <Color x:Key="DialogDark.LogTextColor" A="255" R="238" G="240" B="246" />
+
+    <!-- 亮色主题日志背景（保持原有语义色） -->
+    <Color x:Key="DialogLight.LogInfoBgColor" A="255" R="255" G="255" B="255" />
+    <Color x:Key="DialogLight.LogWarnBgColor" A="255" R="255" G="249" B="196" />
+    <Color x:Key="DialogLight.LogErrorBgColor" A="255" R="255" G="205" B="210" />
+    <Color x:Key="DialogLight.LogSelectedBgColor" A="255" R="255" G="165" B="0" />
+    <Color x:Key="DialogLight.LogLatestBgColor" A="255" R="255" G="165" B="0" />
+    <Color x:Key="DialogLight.LogHoverInfoColor" A="255" R="211" G="211" B="211" />
+    <Color x:Key="DialogLight.LogHoverWarnColor" A="255" R="173" G="255" B="47" />
+    <Color x:Key="DialogLight.LogHoverErrorColor" A="255" R="205" G="92" B="92" />
+    <Color x:Key="DialogLight.LogTextColor" A="255" R="33" G="33" B="33" />
+
+    <!-- 日志窗口运行时画刷 -->
+    <SolidColorBrush x:Key="LogInfoBackground" Color="{StaticResource DialogLight.LogInfoBgColor}" />
+    <SolidColorBrush x:Key="LogWarnBackground" Color="{StaticResource DialogLight.LogWarnBgColor}" />
+    <SolidColorBrush x:Key="LogErrorBackground" Color="{StaticResource DialogLight.LogErrorBgColor}" />
+    <SolidColorBrush x:Key="LogSelectedBackground" Color="{StaticResource DialogLight.LogSelectedBgColor}" />
+    <SolidColorBrush x:Key="LatestLogBackground" Color="{StaticResource DialogLight.LogLatestBgColor}" />
+    <SolidColorBrush x:Key="LogInfoHoverBackground" Color="{StaticResource DialogLight.LogHoverInfoColor}" />
+    <SolidColorBrush x:Key="LogWarnHoverBackground" Color="{StaticResource DialogLight.LogHoverWarnColor}" />
+    <SolidColorBrush x:Key="LogErrorHoverBackground" Color="{StaticResource DialogLight.LogHoverErrorColor}" />
+    <SolidColorBrush x:Key="LogForeground" Color="{StaticResource DialogLight.LogTextColor}" />
+    <SolidColorBrush x:Key="LogToolBarBackground" Color="{StaticResource DialogLight.ElevatedColor}" />
+    <SolidColorBrush x:Key="LogToolTipBackground" Color="{StaticResource DialogLight.SurfaceColor}" />
+
+    <!-- Expander 样式：覆盖 MD 默认蓝色 Header，使用主题文本颜色 -->
+    <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+        <Style.Resources>
+            <Style TargetType="ToggleButton" BasedOn="{StaticResource MaterialDesignExpanderToggleButton}">
+                <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+            </Style>
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         全局默认文本样式：确保所有文本控件跟随主题切换
+         覆盖 MaterialDesign 在亮色模式下默认 White 前景的问题
+         ══════════════════════════════════════════════════════════════ -->
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="Label" BasedOn="{StaticResource {x:Type Label}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource DialogTextPrimaryBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource DialogAccentBrush}" />
+    </Style>
+    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="GroupBox" BasedOn="{StaticResource {x:Type GroupBox}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="materialDesign:PackIcon" BasedOn="{StaticResource {x:Type materialDesign:PackIcon}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+    <Style TargetType="materialDesign:NumericUpDown" BasedOn="{StaticResource {x:Type materialDesign:NumericUpDown}}">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+    </Style>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         DataGrid 全局主题样式：表头/行/单元格均跟随主题切换
+         解决暗主题下黑色文本、亮主题下白色文本问题
+         ══════════════════════════════════════════════════════════════ -->
+    <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+        <Setter Property="Background" Value="{DynamicResource DialogCardBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}" />
+        <Setter Property="RowBackground" Value="{DynamicResource DialogCardBrush}" />
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource DialogElevatedBrush}" />
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource DialogBorderBrush}" />
+        <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource DialogBorderBrush}" />
+        <Setter Property="RowHeaderWidth" Value="0" />
+        <Setter Property="ColumnHeaderStyle">
+            <Setter.Value>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource DialogDataGridHeaderBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource DialogAccentBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="Padding" Value="6,3" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}" />
+                    <Setter Property="BorderThickness" Value="0,0,1,1" />
+                    <Setter Property="SeparatorVisibility" Value="Collapsed" />
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="RowStyle">
+            <Setter.Value>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource DialogDataGridSelectedBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource DialogDataGridHoverBrush}" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="CellStyle">
+            <Setter.Value>
+                <Style TargetType="DataGridCell">
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="4,2" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                    <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource DialogAccentBrush}" />
+                            <Setter Property="BorderThickness" Value="0" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- DataGridTextColumn 默认 ElementStyle：确保文本列单元格文字颜色跟随主题 -->
+    <Style x:Key="DialogDataGridTextColumnElementStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="4,0" />
+    </Style>
+
+</ResourceDictionary>

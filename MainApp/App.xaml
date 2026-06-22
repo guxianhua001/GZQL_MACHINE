@@ -36,11 +36,11 @@
             <ResourceDictionary.MergedDictionaries>
                 <!-- 默认语言字典（确保设计时可见）-->
                 <ResourceDictionary Source="/MainApp;component/Languages/Strings.zh-CN.xaml" />
-                <!-- MaterialDesign 主题 -->
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <!-- MaterialDesign 主题：使用 BundledTheme 与 PaletteHelper 兼容 -->
+                <materialDesign:BundledTheme BaseTheme="Light"
+                                             PrimaryColor="DeepPurple"
+                                             SecondaryColor="Lime" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.DeepPurple.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Secondary/MaterialDesignColor.Lime.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
 

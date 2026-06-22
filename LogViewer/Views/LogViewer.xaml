@@ -12,30 +12,18 @@
              d:DesignHeight="450"
              d:DesignWidth="800">
     <UserControl.Resources>
-        <local:NewLineToLineBreakConverter x:Key="NewLineToLineBreakConverter" />
-        <local:LevelToHoverBackgroundConverter x:Key="LevelToHoverBackgroundConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
-        <SolidColorBrush x:Key="InfoBackground"
-                         Color="White" />
-        <SolidColorBrush x:Key="InfoBackgroundMouseOver"
-                         Color="LightGray" />
-        <SolidColorBrush x:Key="WarnBackground"
-                         Color="Yellow" />
-        <SolidColorBrush x:Key="WarnBackgroundMouseOver"
-                         Color="GreenYellow" />
-        <SolidColorBrush x:Key="ErrorBackground"
-                         Color="Tomato" />
-        <SolidColorBrush x:Key="ErrorBackgroundMouseOver"
-                         Color="IndianRed" />
-        <SolidColorBrush x:Key="SelectedBackground"
-                         Color="DarkOrange" />
-        <SolidColorBrush x:Key="LatestLogBackground"
-                         Color="#FFA500" />
+            <local:NewLineToLineBreakConverter x:Key="NewLineToLineBreakConverter" />
+            <local:LevelToHoverBackgroundConverter x:Key="LevelToHoverBackgroundConverter" />
 
-        <FontFamily x:Key="LogFontFamily">Consolas, Courier New, Microsoft YaHei UI, monospace</FontFamily>
-        <sys:Double x:Key="LogFontSize">12</sys:Double>
-        <sys:Double x:Key="LogRowMinHeight">22</sys:Double>
-        <Thickness x:Key="LogCellPadding">4,2</Thickness>
+            <FontFamily x:Key="LogFontFamily">Consolas, Courier New, Microsoft YaHei UI, monospace</FontFamily>
+            <sys:Double x:Key="LogFontSize">12</sys:Double>
+            <sys:Double x:Key="LogRowMinHeight">22</sys:Double>
+            <Thickness x:Key="LogCellPadding">4,2</Thickness>
 
         <Style x:Key="ToolbarButtonStyle"
                TargetType="Button">
@@ -56,21 +44,24 @@
                     Value="{StaticResource LogFontFamily}" />
             <Setter Property="FontSize"
                     Value="{StaticResource LogFontSize}" />
+            <!-- 动态前景色：跟随主题变化 -->
+            <Setter Property="Foreground"
+                    Value="{DynamicResource LogForeground}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Level}"
                              Value="INFO">
                     <Setter Property="Background"
-                            Value="{StaticResource InfoBackground}" />
+                            Value="{DynamicResource LogInfoBackground}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Level}"
                              Value="WARN">
                     <Setter Property="Background"
-                            Value="{StaticResource WarnBackground}" />
+                            Value="{DynamicResource LogWarnBackground}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Level}"
                              Value="ERROR">
                     <Setter Property="Background"
-                            Value="{StaticResource ErrorBackground}" />
+                            Value="{DynamicResource LogErrorBackground}" />
                 </DataTrigger>
 
                 <Trigger Property="IsMouseOver"
@@ -89,14 +80,14 @@
                 <Trigger Property="IsSelected"
                          Value="True">
                     <Setter Property="Background"
-                            Value="{StaticResource SelectedBackground}" />
+                            Value="{DynamicResource LogSelectedBackground}" />
                 </Trigger>
 
                 <!-- 最新日志行：橘黄色高亮（放最后，优先级最高，覆盖级别颜色） -->
                 <DataTrigger Binding="{Binding IsLatest}"
                              Value="True">
                     <Setter Property="Background"
-                            Value="{StaticResource LatestLogBackground}" />
+                            Value="{DynamicResource LatestLogBackground}" />
                     <Setter Property="FontWeight"
                             Value="Bold" />
                 </DataTrigger>
@@ -113,11 +104,14 @@
                     Value="{StaticResource LogFontSize}" />
             <Setter Property="VerticalAlignment"
                     Value="Center" />
+            <!-- 动态前景色，与 LogRowStyle 保持一致 -->
+            <Setter Property="Foreground"
+                    Value="{DynamicResource LogForeground}" />
             <Style.Triggers>
                 <Trigger Property="IsSelected"
                          Value="True">
                     <Setter Property="Foreground"
-                            Value="Black" />
+                            Value="{DynamicResource LogForeground}" />
                     <Setter Property="Background"
                             Value="Transparent" />
                 </Trigger>
@@ -152,9 +146,9 @@
             <Setter Property="MaxWidth"
                     Value="500" />
             <Setter Property="Background"
-                    Value="White" />
+                    Value="{DynamicResource LogToolTipBackground}" />
             <Setter Property="BorderBrush"
-                    Value="#FFCCCCCC" />
+                    Value="{DynamicResource DialogBorderBrush}" />
             <Setter Property="BorderThickness"
                     Value="1" />
             <Setter Property="Padding"
@@ -165,6 +159,7 @@
                     Value="{StaticResource LogFontSize}" />
         </Style>
 
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
@@ -174,7 +169,8 @@
         </Grid.RowDefinitions>
 
         <ToolBar Grid.Row="0"
-                 Margin="2">
+                 Margin="2"
+                 Background="{DynamicResource LogToolBarBackground}">
             <Button Content="{lang:Lang LogViewer_Clear}"
                     Click="ClearButton_Click"
                     ToolTip="{lang:Lang LogViewer_ClearTip}"
@@ -222,6 +218,8 @@
                   Grid.Row="1"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
+                  Background="{DynamicResource DialogCardBrush}"
+                  Foreground="{DynamicResource LogForeground}"
                   RowStyle="{StaticResource LogRowStyle}"
                   CellStyle="{StaticResource LogCellStyle}"
                   ColumnHeaderStyle="{StaticResource LogColumnHeaderStyle}"
@@ -248,6 +246,7 @@
                         <DataTemplate>
                             <TextBlock Text="{Binding Message}"
                                        TextWrapping="Wrap"
+                                       Foreground="{DynamicResource LogForeground}"
                                        Padding="{StaticResource LogCellPadding}"
                                        FontFamily="{StaticResource LogFontFamily}"
                                        FontSize="{StaticResource LogFontSize}"
@@ -256,6 +255,7 @@
                                     <ToolTip Style="{StaticResource LogToolTipStyle}"
                                              ToolTipService.ShowDuration="30000">
                                         <TextBlock Text="{Binding Message}"
+                                                   Foreground="{DynamicResource LogForeground}"
                                                    TextWrapping="Wrap"
                                                    MaxWidth="480"
                                                    FontFamily="{StaticResource LogFontFamily}"

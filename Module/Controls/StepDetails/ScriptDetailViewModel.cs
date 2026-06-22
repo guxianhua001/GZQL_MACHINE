@@ -22,7 +22,7 @@ namespace Module.ViewModels
     /// <summary>
     /// SCRIPT 步骤编辑器 ViewModel，支持脚本编辑、编译检查、变量引用插入、执行预览
     /// </summary>
-    public class ScriptDetailViewModel : BindableBase
+    public class ScriptDetailViewModel : BindableBase, IDialogCloseable
     {
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILoggerService _logger;
@@ -36,6 +36,12 @@ namespace Module.ViewModels
         private string _compiledScript;
         private static bool _natashaInitialized;
         private static readonly object _initLock = new object();
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary> 当前编辑的工艺步骤，设置时自动初始化脚本配置 </summary>
         public ProcessStep Step
@@ -479,12 +485,7 @@ public class ScriptAction
             _step.ScriptDetail.ScriptCode = ScriptCode;
             _step.ScriptDetail.Description = Description;
 
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(true);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(true);
         }
 
         /// <summary>
@@ -492,12 +493,7 @@ public class ScriptAction
         /// </summary>
         private void OnClose()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
     }
 

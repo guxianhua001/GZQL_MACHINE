@@ -34,7 +34,10 @@ namespace Module.ViewModels
         private readonly ILoggerService _logger;
         private readonly Prism.Events.IEventAggregator _ea;
         private readonly ILocalizationService _localization;
+        private readonly IBaseDialogService _baseDialogService;
         private PropertyChangedEventHandler _propertyChangedHandler;
+        /// <summary> 当前订阅 PropertyChanged 的方法（用于方法级控制命令的 CanExecute 刷新） </summary>
+        private ProcessMethod _subscribedMethod;
 
         public ProcessSequenceEditorViewModel(
             ILoggerService logger,
@@ -45,7 +48,8 @@ namespace Module.ViewModels
             IRecipePoolService recipePoolService,
             IContainerProvider containerProvider,
             Prism.Events.IEventAggregator eventAggregator,
-            ILocalizationService localization)
+            ILocalizationService localization,
+            IBaseDialogService baseDialogService)
         {
             _logger = logger;
             _sequenceService = sequenceService;
@@ -56,6 +60,7 @@ namespace Module.ViewModels
             _containerProvider = containerProvider;
             _ea = eventAggregator;
             _localization = localization;
+            _baseDialogService = baseDialogService;
 
             Tasks = _sequenceService.Tasks;
             CameraOptions = _sequenceService.CameraOptions;
@@ -100,6 +105,35 @@ namespace Module.ViewModels
             ResumeTaskCommand = new DelegateCommand(() => _sequenceService.ResumeTask(), () => CurrentTask != null && CurrentTask.Status == TaskItem.TaskStatusEnum.Paused)
                 .ObservesProperty(() => CurrentTask.Status);
 
+            // 方法级控制命令（控制单个方法独立执行）
+            // 命令参数为 ProcessMethod，允许从方法详情面板对指定方法发起控制
+            StartMethodCommand = new DelegateCommand<ProcessMethod>(method =>
+                {
+                    _sequenceService.StartMethod(method);
+                },
+                method => method != null && method.Status == TaskItem.TaskStatusEnum.Idle
+                          && !_sequenceService.IsExecuting);
+            PauseMethodCommand = new DelegateCommand<ProcessMethod>(method =>
+                {
+                    // 仅当暂停的是当前正在执行的方法时才生效
+                    if (_sequenceService.ExecutingMethod == method)
+                        _sequenceService.PauseMethod();
+                },
+                method => method != null && method.Status == TaskItem.TaskStatusEnum.Running);
+            ResumeMethodCommand = new DelegateCommand<ProcessMethod>(method =>
+                {
+                    if (_sequenceService.ExecutingMethod == method)
+                        _sequenceService.ResumeMethod();
+                },
+                method => method != null && method.Status == TaskItem.TaskStatusEnum.Paused);
+            StopMethodCommand = new DelegateCommand<ProcessMethod>(method =>
+                {
+                    if (_sequenceService.ExecutingMethod == method)
+                        _sequenceService.StopMethod();
+                },
+                method => method != null && (method.Status == TaskItem.TaskStatusEnum.Running
+                                             || method.Status == TaskItem.TaskStatusEnum.Paused));
+
             // 单步模式命令
             ToggleSingleStepCommand = new DelegateCommand(OnToggleSingleStep);
             StepNextCommand = new DelegateCommand(() => _sequenceService.StepNext(), () => _sequenceService.IsExecuting && _sequenceService.IsSingleStepMode);
@@ -115,6 +149,9 @@ namespace Module.ViewModels
                 else if (e.PropertyName == nameof(IProcessSequenceService.IsExecuting))
                 {
                     (StepNextCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    // 任务级执行状态变化时，方法级命令的可用性也需刷新
+                    // （StartMethod 依赖 !_sequenceService.IsExecuting）
+                    RefreshMethodCommands();
                 }
             };
 
@@ -125,6 +162,37 @@ namespace Module.ViewModels
             InsertDashboardStepCommand = new DelegateCommand(OnInsertDashboardStep);
             OpenBranchConfigCommand = new DelegateCommand<ProcessStep>(OnOpenBranchConfig);
             InsertBranchStepCommand = new DelegateCommand(OnInsertBranchStep);
+
+            // IF 条件块步骤命令
+            AddIfStepCommand = new DelegateCommand(OnAddIfStep, () => SelectedMethod != null)
+                .ObservesProperty(() => SelectedMethod);
+            AddIfSubStepCommand = new DelegateCommand<IfBranchGroup>(OnAddIfSubStep, branch => branch != null);
+            OpenIfDetailCommand = new DelegateCommand<ProcessStep>(OnOpenIfDetail);
+
+            // 树形节点操作命令（任务/方法/动作的增删改、复制粘贴、启用禁用、运行模式切换）
+            NewMethodCommand = new DelegateCommand(() => _sequenceService.AddMethod(), () => CurrentTask != null)
+                .ObservesProperty(() => CurrentTask);
+            DeleteMethodCommand = new DelegateCommand(() => _sequenceService.DeleteMethod(),
+                () => SelectedMethod != null && CurrentTask?.Methods?.Count > 1)
+                .ObservesProperty(() => SelectedMethod);
+            RenameMethodCommand = new DelegateCommand(OnRenameMethod, () => SelectedMethod != null)
+                .ObservesProperty(() => SelectedMethod);
+            CopyNodeCommand = new DelegateCommand(() => _sequenceService.CopyNode(), () => SelectedNode != null)
+                .ObservesProperty(() => SelectedNode);
+            PasteNodeCommand = new DelegateCommand(() => _sequenceService.PasteNode(), () => SelectedNode != null)
+                .ObservesProperty(() => SelectedNode);
+            ToggleNodeEnabledCommand = new DelegateCommand(() => _sequenceService.ToggleNodeEnabled(), () => SelectedNode != null)
+                .ObservesProperty(() => SelectedNode);
+            // 添加注释命令：弹出输入对话框，对当前选中节点（Task/Method/Step）设置注释
+            EditCommentCommand = new DelegateCommand(OnEditComment, () => SelectedNode != null)
+                .ObservesProperty(() => SelectedNode);
+            SetTaskRunModeCommand = new DelegateCommand<TaskRunMode?>(mode =>
+                {
+                    if (mode.HasValue) _sequenceService.SetTaskRunMode(mode.Value);
+                },
+                mode => CurrentTask != null);
+            AddRunTaskStepCommand = new DelegateCommand(OnAddRunTaskStep, () => SelectedMethod != null)
+                .ObservesProperty(() => SelectedMethod);
 
             // 订阅配方池切换
             if (_recipePoolService is INotifyPropertyChanged inpc)
@@ -145,6 +213,9 @@ namespace Module.ViewModels
                         (StopTaskCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                         (PauseTaskCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                         (ResumeTaskCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (NewMethodCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (DeleteMethodCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (SetTaskRunModeCommand as DelegateCommand<TaskRunMode?>)?.RaiseCanExecuteChanged();
                         ValidateAll();
                     }
                     else if (e.PropertyName == nameof(IProcessSequenceService.SelectedStep))
@@ -153,6 +224,25 @@ namespace Module.ViewModels
                         (MoveStepUpCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                         (MoveStepDownCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                         (DeleteStepCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    }
+                    else if (e.PropertyName == nameof(IProcessSequenceService.SelectedMethod))
+                    {
+                        // 方法节点选中变化：刷新方法相关命令可用性
+                        RaisePropertyChanged(nameof(SelectedMethod));
+                        (DeleteMethodCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (RenameMethodCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (AddRunTaskStepCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        // 切换订阅到新选中方法的 PropertyChanged，以便方法状态变化时刷新方法级控制命令
+                        SubscribeMethodPropertyChanged();
+                        RefreshMethodCommands();
+                    }
+                    else if (e.PropertyName == nameof(IProcessSequenceService.SelectedNode))
+                    {
+                        // 树节点选中变化：刷新节点相关命令可用性
+                        RaisePropertyChanged(nameof(SelectedNode));
+                        (CopyNodeCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (PasteNodeCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                        (ToggleNodeEnabledCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     }
                     else if (e.PropertyName == nameof(IProcessSequenceService.CurrentFilePath))
                     {
@@ -203,6 +293,20 @@ namespace Module.ViewModels
                 RaisePropertyChanged(nameof(HasAnyStepError));
                 RaisePropertyChanged(nameof(SelectedStepErrorMessage));
             }
+        }
+
+        /// <summary> 当前选中的树节点（TaskItem/ProcessMethod/ProcessStep），代理自 Service </summary>
+        public object SelectedNode
+        {
+            get => _sequenceService.SelectedNode;
+            set => _sequenceService.SelectedNode = value;
+        }
+
+        /// <summary> 当前选中的方法，代理自 Service </summary>
+        public ProcessMethod SelectedMethod
+        {
+            get => _sequenceService.SelectedMethod;
+            set => _sequenceService.SelectedMethod = value;
         }
 
         /// <summary> 当前是否有任何步骤存在错误（用于错误详情面板的可见性控制） </summary>
@@ -264,6 +368,18 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary> 将步骤移动到指定位置（拖拽排序使用），转发到 Service.MoveStepTo </summary>
+        public void MoveStepTo(ProcessStep step, ProcessMethod targetMethod, int targetIndex)
+        {
+            _sequenceService.MoveStepTo(step, targetMethod, targetIndex);
+        }
+
+        /// <summary> 将任务移动到指定位置（拖拽排序使用），转发到 Service.MoveTaskTo </summary>
+        public void MoveTaskTo(TaskItem task, int targetIndex)
+        {
+            _sequenceService.MoveTaskTo(task, targetIndex);
+        }
+
         private string _currentSequenceFileName;
         public string CurrentSequenceFileName { get => _currentSequenceFileName; set => SetProperty(ref _currentSequenceFileName, value); }
         private string _currentSequenceFilePath;
@@ -306,6 +422,15 @@ namespace Module.ViewModels
         public ICommand PauseTaskCommand { get; }
         public ICommand ResumeTaskCommand { get; }
 
+        /// <summary> 启动指定方法的独立执行（方法级控制） </summary>
+        public ICommand StartMethodCommand { get; }
+        /// <summary> 暂停指定方法（方法级控制） </summary>
+        public ICommand PauseMethodCommand { get; }
+        /// <summary> 恢复指定方法（方法级控制） </summary>
+        public ICommand ResumeMethodCommand { get; }
+        /// <summary> 停止指定方法（方法级控制） </summary>
+        public ICommand StopMethodCommand { get; }
+
         /// <summary> 切换单步模式开关 </summary>
         public ICommand ToggleSingleStepCommand { get; }
         /// <summary> 单步模式下执行下一步 </summary>
@@ -332,6 +457,41 @@ namespace Module.ViewModels
 
         /// <summary> 在当前选中步骤后插入一个带条件分支的步骤 </summary>
         public ICommand InsertBranchStepCommand { get; }
+
+        /// <summary> 添加 IF 条件块步骤（含 Then/Else 分支） </summary>
+        public ICommand AddIfStepCommand { get; }
+
+        /// <summary> 在 IF 分支组（Then/Else）下添加子步骤 </summary>
+        public ICommand AddIfSubStepCommand { get; }
+
+        /// <summary> 打开 IF 条件表达式配置对话框 </summary>
+        public ICommand OpenIfDetailCommand { get; }
+
+        /// <summary> 在当前任务下新建方法 </summary>
+        public ICommand NewMethodCommand { get; }
+
+        /// <summary> 删除当前选中的方法 </summary>
+        public ICommand DeleteMethodCommand { get; }
+
+        /// <summary> 重命名当前选中的方法 </summary>
+        public ICommand RenameMethodCommand { get; }
+
+        /// <summary> 复制当前选中节点到剪贴板 </summary>
+        public ICommand CopyNodeCommand { get; }
+
+        /// <summary> 粘贴剪贴板节点到当前选中节点下 </summary>
+        public ICommand PasteNodeCommand { get; }
+
+        /// <summary> 切换当前选中节点的启用/禁用状态 </summary>
+        public ICommand ToggleNodeEnabledCommand { get; }
+        /// <summary> 添加/编辑注释命令（对当前选中节点设置注释） </summary>
+        public ICommand EditCommentCommand { get; }
+
+        /// <summary> 设置当前任务的运行模式（Active/Passive） </summary>
+        public ICommand SetTaskRunModeCommand { get; }
+
+        /// <summary> 添加调用任务动作（RUNTASK 类型步骤） </summary>
+        public ICommand AddRunTaskStepCommand { get; }
 
         /// <summary>
         /// 根据步骤类型导航到对应的详细视图
@@ -382,10 +542,43 @@ namespace Module.ViewModels
             {
                 ShowDispenseDetailDialog(step);
             }
+            else if (step.Step == StepType.RUNTASK)
+            {
+                // 调用任务步骤：打开 RUNTASK 配置对话框
+                ShowRunTaskDetailDialog(step);
+            }
+            else if (step.Step == StepType.SIGNAL_SEND)
+            {
+                // 信号发送步骤：打开 SIGNAL_SEND 配置对话框
+                ShowSignalSendDetailDialog(step);
+            }
+            else if (step.Step == StepType.SIGNAL_WAIT)
+            {
+                // 信号等待步骤：打开 SIGNAL_WAIT 配置对话框
+                ShowSignalWaitDetailDialog(step);
+            }
+            else if (step.Step == StepType.IF)
+            {
+                // IF 条件块步骤：打开 IF 条件表达式配置对话框
+                ShowIfDetailDialog(step);
+            }
+        }
+
+        /// <summary>
+        /// 使用 BaseDialogWindow 弹出步骤详情对话框（替代 DialogHost）
+        /// </summary>
+        /// <param name="view">UserControl 内容</param>
+        /// <param name="titleKey">标题本地化键</param>
+        /// <param name="iconKind">标题栏图标 Kind（可选）</param>
+        private async Task ShowStepDetailDialog(System.Windows.Controls.UserControl view, string titleKey, string iconKind = null)
+        {
+            var title = _localization.GetResourceOrDefault(titleKey, titleKey);
+            await _baseDialogService.ShowDialog(view, title, iconKind);
         }
 
         /// <summary>
         /// 安全打开 DialogHost：若已有对话框打开则先关闭，避免 "DialogHost is already open" 异常
+        /// 仅用于仍需使用 DialogHost 的场景（如 Dashboard）
         /// </summary>
         private static async Task<object> ShowDialogSafely(object content, string dialogIdentifier = "MainDialogHost")
         {
@@ -415,7 +608,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 GOTO 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 GOTO 步骤详细配置
         /// </summary>
         private async void ShowGotoDetailDialog(ProcessStep step)
         {
@@ -423,12 +616,12 @@ namespace Module.ViewModels
             var view = new GotoDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleGoto", "DebugStepOver");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 VISION 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 VISION 步骤详细配置
         /// </summary>
         private async void ShowVisionDetailDialog(ProcessStep step)
         {
@@ -436,12 +629,12 @@ namespace Module.ViewModels
             var view = new VisionDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleVision", "Eye");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 SCAN 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 SCAN 步骤详细配置
         /// </summary>
         private async void ShowScanDetailDialog(ProcessStep step)
         {
@@ -449,12 +642,12 @@ namespace Module.ViewModels
             var view = new ScanDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleScan", "Camera");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 SEEK 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 SEEK 步骤详细配置
         /// </summary>
         private async void ShowSeekDetailDialog(ProcessStep step)
         {
@@ -462,12 +655,12 @@ namespace Module.ViewModels
             var view = new SeekDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleSeek", "CrosshairsGps");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 WAIT/DELAY 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 WAIT/DELAY 步骤详细配置
         /// </summary>
         private async void ShowWaitDetailDialog(ProcessStep step)
         {
@@ -475,12 +668,12 @@ namespace Module.ViewModels
             var view = new WaitDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleWait", "TimerOutline");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 SCRIPT 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 SCRIPT 步骤详细配置
         /// </summary>
         private async void ShowScriptDetailDialog(ProcessStep step)
         {
@@ -489,12 +682,12 @@ namespace Module.ViewModels
             view.DataContext = vm;
             vm.Step = step;
             vm.AllSteps = CurrentTask?.Steps;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleScript");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 PICK 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 PICK 步骤详细配置
         /// </summary>
         private async void ShowPickDetailDialog(ProcessStep step)
         {
@@ -502,7 +695,7 @@ namespace Module.ViewModels
             var view = new PickDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitlePick");
             await AutoSaveSequenceAsync();
         }
 
@@ -512,7 +705,7 @@ namespace Module.ViewModels
             var view = new ReleaseDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleRelease", "HandBackLeft");
             await AutoSaveSequenceAsync();
         }
 
@@ -522,12 +715,12 @@ namespace Module.ViewModels
             var view = new CureDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleCure", "Fire");
             await AutoSaveSequenceAsync();
         }
 
         /// <summary>
-        /// 以 MaterialDesign DialogHost 模态弹窗方式展示 DISPENSE 步骤详细配置
+        /// 以 BaseDialogWindow 弹窗方式展示 DISPENSE 步骤详细配置
         /// </summary>
         private async void ShowDispenseDetailDialog(ProcessStep step)
         {
@@ -535,7 +728,7 @@ namespace Module.ViewModels
             var view = new DispenseDetailView();
             view.DataContext = vm;
             vm.Step = step;
-            await ShowDialogSafely(view);
+            await ShowStepDetailDialog(view, "PSE_DialogTitleDispense", "Water");
             await AutoSaveSequenceAsync();
         }
 
@@ -554,8 +747,8 @@ namespace Module.ViewModels
                 {
                     Fields = new List<Core.Models.DashboardField>
                     {
-                        new Core.Models.DashboardField { Seq = 1, DisplayName = "H2高度", Formula = "@GV:H2", Format = "F3" },
-                        new Core.Models.DashboardField { Seq = 2, DisplayName = "Slot实测高度", Formula = "@GV:Slot实测", Format = "F3" },
+                        new Core.Models.DashboardField { Seq = 1, DisplayName = _localization.GetResourceOrDefault("PSE_H2Height", "H2高度"), Formula = "@GV:H2", Format = "F3" },
+                        new Core.Models.DashboardField { Seq = 2, DisplayName = _localization.GetResourceOrDefault("PSE_SlotMeasuredHeight", "Slot实测高度"), Formula = "@GV:Slot实测", Format = "F3" },
                         new Core.Models.DashboardField { Seq = 3, DisplayName = _localization.GetResourceOrDefault("PSE_DialDistance", "拨动距离"), Formula = "@GV:H2 - @GV:Slot实测", Format = "F3" },
                         new Core.Models.DashboardField { Seq = 4, DisplayName = _localization.GetResourceOrDefault("PSE_PressHeight", "下压高度"), Formula = "@GV:H2 - @GV:Slot实测 + 0.27 + @GV:补偿值", Format = "F3" },
                         new Core.Models.DashboardField { Seq = 5, DisplayName = _localization.GetResourceOrDefault("PSE_CanAssemble", "可否组装"), ConditionFormula = "@GV:H2 - @GV:Slot实测 > 0" },
@@ -582,14 +775,53 @@ namespace Module.ViewModels
                     IsExecutionMode = false
                 });
 
-                _logger.Info("[OnOpenDashboard] 调用 ShowDialogSafely...");
-                await ShowDialogSafely(view);
+                _logger.Info($"[OnOpenDashboard] 调用 ShowStepDetailDialog (BaseDialogWindow)...");
+                await ShowStepDetailDialog(view, "PSE_DialogTitleDashboard", "MonitorDashboard");
                 _logger.Info($"[OnOpenDashboard] 已打开步骤 [{step.Seq}] 的数据看板");
             }
             catch (Exception ex)
             {
                 _logger.Error($"[OnOpenDashboard] ❌ 打开数据看板失败: {ex.Message}\n{ex.StackTrace}");
             }
+        }
+
+        /// <summary>
+        /// 切换订阅到当前 SelectedMethod 的 PropertyChanged 事件。
+        /// 当方法的 Status 属性变化时（如 Running→Paused），刷新方法级控制命令的 CanExecute。
+        /// 注意：Service 在后台线程改变方法状态，需通过 Dispatcher 切回 UI 线程刷新命令。
+        /// </summary>
+        private void SubscribeMethodPropertyChanged()
+        {
+            // 取消订阅旧方法
+            if (_subscribedMethod != null)
+            {
+                _subscribedMethod.PropertyChanged -= OnMethodPropertyChanged;
+            }
+            // 订阅新方法
+            _subscribedMethod = SelectedMethod;
+            if (_subscribedMethod != null)
+            {
+                _subscribedMethod.PropertyChanged += OnMethodPropertyChanged;
+            }
+        }
+
+        /// <summary> 方法属性变化回调：Status 变化时刷新方法级控制命令 </summary>
+        private void OnMethodPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ProcessMethod.Status))
+            {
+                // Service 可能在后台线程改变方法状态，需切到 UI 线程刷新命令
+                System.Windows.Application.Current?.Dispatcher.InvokeAsync(RefreshMethodCommands);
+            }
+        }
+
+        /// <summary> 刷新所有方法级控制命令的 CanExecute（Run/Pause/Resume/Stop） </summary>
+        private void RefreshMethodCommands()
+        {
+            (StartMethodCommand as DelegateCommand<ProcessMethod>)?.RaiseCanExecuteChanged();
+            (PauseMethodCommand as DelegateCommand<ProcessMethod>)?.RaiseCanExecuteChanged();
+            (ResumeMethodCommand as DelegateCommand<ProcessMethod>)?.RaiseCanExecuteChanged();
+            (StopMethodCommand as DelegateCommand<ProcessMethod>)?.RaiseCanExecuteChanged();
         }
 
         /// <summary> 单独运行选中的步骤 </summary>
@@ -638,8 +870,8 @@ namespace Module.ViewModels
                 {
                     Fields = new List<Core.Models.DashboardField>
                     {
-                        new Core.Models.DashboardField { Seq = 1, DisplayName = "H2高度", Formula = "@GV:H2", Format = "F3" },
-                        new Core.Models.DashboardField { Seq = 2, DisplayName = "Slot实测高度", Formula = "@GV:Slot实测", Format = "F3" },
+                        new Core.Models.DashboardField { Seq = 1, DisplayName = _localization.GetResourceOrDefault("PSE_H2Height", "H2高度"), Formula = "@GV:H2", Format = "F3" },
+                        new Core.Models.DashboardField { Seq = 2, DisplayName = _localization.GetResourceOrDefault("PSE_SlotMeasuredHeight", "Slot实测高度"), Formula = "@GV:Slot实测", Format = "F3" },
                         new Core.Models.DashboardField { Seq = 3, DisplayName = _localization.GetResourceOrDefault("PSE_DialDistance", "拨动距离"), Formula = "@GV:H2 - @GV:Slot实测", Format = "F3", ConditionFormula = "@GV:H2 - @GV:Slot实测 > 0" },
                         new Core.Models.DashboardField { Seq = 4, DisplayName = _localization.GetResourceOrDefault("PSE_PressHeight", "下压高度"), Formula = "@GV:H2 - @GV:Slot实测 + 0.27 + @GV:补偿值", Format = "F3" },
                         new Core.Models.DashboardField { Seq = 5, DisplayName = _localization.GetResourceOrDefault("PSE_CanAssemble", "可否组装"), ConditionFormula = "@GV:H2 - @GV:Slot实测 > 0" },
@@ -687,12 +919,9 @@ namespace Module.ViewModels
                 view.DataContext = vm;
                 vm.Step = step;
 
-                bool? result = (bool?)await ShowDialogSafely(view);
-                if (result == true)
-                {
-                    _logger.Info($"[ProcessSequenceEditor] 已更新步骤 [{step.Seq}] 的条件分支配置");
-                    await AutoSaveSequenceAsync();
-                }
+                await ShowStepDetailDialog(view, "PSE_DialogTitleBranch", "SourceBranch");
+                _logger.Info($"[ProcessSequenceEditor] 已更新步骤 [{step.Seq}] 的条件分支配置");
+                await AutoSaveSequenceAsync();
             }
             catch (Exception ex)
             {
@@ -731,6 +960,111 @@ namespace Module.ViewModels
 
             CurrentTask.Steps.Add(newStep);
             _logger.Info($"[ProcessSequenceEditor] 已插入 BRANCH 条件分支步骤 [Seq={nextSeq}]");
+        }
+
+        /// <summary>
+        /// 添加 IF 条件块步骤：创建带 Then/Else 分支的 IF 步骤并添加到当前方法。
+        /// 自动初始化 IfDetail（条件表达式）和 IfBranches（Then/Else 两个分支组）。
+        /// </summary>
+        private void OnAddIfStep()
+        {
+            if (CurrentTask?.Steps == null) return;
+
+            int nextSeq = CurrentTask.Steps.Count > 0 ? CurrentTask.Steps.Max(s => s.Seq) + 1 : 1;
+            var newStep = new ProcessStep
+            {
+                Seq = nextSeq,
+                Step = StepType.IF,
+                CompFeature = "—",
+                SiteFeature = "—",
+                IfDetail = new IfDetail
+                {
+                    ConditionExpression = "",
+                    Description = _localization.GetResourceOrDefault("IfDetail_DefaultDescription", "条件分支")
+                },
+                IfBranches = new ObservableCollection<IfBranchGroup>
+                {
+                    new IfBranchGroup { Header = "Then", Steps = new ObservableCollection<ProcessStep>(), IsExpanded = true },
+                    new IfBranchGroup { Header = "Else", Steps = new ObservableCollection<ProcessStep>(), IsExpanded = true }
+                },
+                IsExpanded = true
+            };
+
+            CurrentTask.Steps.Add(newStep);
+            _logger.Info($"[ProcessSequenceEditor] 已插入 IF 条件块步骤 [Seq={nextSeq}]");
+
+            // 立即打开配置对话框
+            ShowIfDetailDialog(newStep);
+        }
+
+        /// <summary>
+        /// 在 IF 分支组（Then/Else）下添加子步骤。
+        /// 弹出 AddEditStepDialogView 选择步骤类型，添加到指定分支组的 Steps 集合。
+        /// </summary>
+        private void OnAddIfSubStep(IfBranchGroup branch)
+        {
+            if (branch == null) return;
+
+            var parameters = new DialogParameters
+            {
+                { "componentFeatures", ComponentFeatureOptions.ToList() },
+                { "siteFeatures", SiteFeatureOptions.ToList() },
+                { "cameraOptions", CameraOptions.ToList() }
+            };
+            _dialogService.ShowDialog("AddEditStepDialogView", parameters, r =>
+            {
+                if (r.Result == ButtonResult.OK && r.Parameters.TryGetValue<ProcessStep>("step", out var step))
+                {
+                    // 为子步骤分配序号（基于分支组内现有数量）
+                    step.Seq = branch.Steps.Count + 1;
+                    branch.Steps.Add(step);
+                    _logger.Info($"[ProcessSequenceEditor] 已在 IF {branch.Header} 分支下添加子步骤 [{step.Seq}] {step.Step}");
+                    _ = AutoSaveSequenceAsync();
+                }
+            });
+        }
+
+        /// <summary>
+        /// 打开 IF 条件表达式配置对话框，关闭后自动保存序列。
+        /// </summary>
+        private async void ShowIfDetailDialog(ProcessStep step)
+        {
+            // 确保 IF 步骤已初始化
+            if (step.IfDetail == null)
+            {
+                step.IfDetail = new IfDetail { ConditionExpression = "", Description = "" };
+            }
+            if (step.IfBranches == null || step.IfBranches.Count < 2)
+            {
+                step.IfBranches = new ObservableCollection<IfBranchGroup>
+                {
+                    new IfBranchGroup { Header = "Then", Steps = new ObservableCollection<ProcessStep>(), IsExpanded = true },
+                    new IfBranchGroup { Header = "Else", Steps = new ObservableCollection<ProcessStep>(), IsExpanded = true }
+                };
+            }
+
+            try
+            {
+                var vm = _containerProvider.Resolve<IfDetailViewModel>();
+                var view = new IfDetailView();
+                view.DataContext = vm;
+                vm.Step = step;
+
+                await ShowStepDetailDialog(view, "PSE_DialogTitleIf", "SourceBranch");
+                _logger.Info($"[ProcessSequenceEditor] 已更新 IF 步骤 [{step.Seq}] 的条件配置");
+                await AutoSaveSequenceAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[ProcessSequenceEditor] 打开 IF 配置对话框失败: {ex.Message}");
+            }
+        }
+
+        /// <summary> 打开 IF 条件表达式配置对话框（命令入口） </summary>
+        private void OnOpenIfDetail(ProcessStep step)
+        {
+            if (step == null) return;
+            ShowIfDetailDialog(step);
         }
 
         private void OnAddStep()
@@ -776,6 +1110,114 @@ namespace Module.ViewModels
                     _ = AutoSaveSequenceAsync();
                 }
             });
+        }
+
+        /// <summary>
+        /// 右键重命名方法：弹出 SimpleInputDialog，校验非空后通过 Service 更新名称
+        /// </summary>
+        private void OnRenameMethod()
+        {
+            if (SelectedMethod == null) return;
+            var parameters = new DialogParameters { { "value", SelectedMethod.Name } };
+            _dialogService.ShowDialog("SimpleInputDialog", parameters, result =>
+            {
+                if (result.Result == ButtonResult.OK)
+                {
+                    var newName = result.Parameters.GetValue<string>("value");
+                    if (string.IsNullOrWhiteSpace(newName)) return;
+                    _sequenceService.RenameMethod(newName.Trim());
+                    _ = AutoSaveSequenceAsync();
+                }
+            });
+        }
+
+        /// <summary>
+        /// 右键添加/编辑注释：弹出 SimpleInputDialog，对当前选中节点（Task/Method/Step）设置注释。
+        /// 注释允许为空（清空注释）。
+        /// </summary>
+        private void OnEditComment()
+        {
+            if (SelectedNode == null) return;
+            // 获取当前节点的注释作为对话框初始值
+            string currentComment = string.Empty;
+            switch (SelectedNode)
+            {
+                case TaskItem task:
+                    currentComment = task.Comment ?? string.Empty;
+                    break;
+                case ProcessMethod method:
+                    currentComment = method.Comment ?? string.Empty;
+                    break;
+                case ProcessStep step:
+                    currentComment = step.Comment ?? string.Empty;
+                    break;
+            }
+            var parameters = new DialogParameters { { "value", currentComment } };
+            _dialogService.ShowDialog("SimpleInputDialog", parameters, result =>
+            {
+                if (result.Result == ButtonResult.OK)
+                {
+                    var comment = result.Parameters.GetValue<string>("value");
+                    _sequenceService.EditNodeComment(comment ?? string.Empty);
+                    _ = AutoSaveSequenceAsync();
+                }
+            });
+        }
+
+        /// <summary>
+        /// 添加调用任务动作（RUNTASK 类型步骤）：创建 RUNTASK 步骤并立即打开配置对话框
+        /// </summary>
+        private void OnAddRunTaskStep()
+        {
+            var step = new ProcessStep
+            {
+                Step = StepType.RUNTASK,
+                CompFeature = "—",
+                SiteFeature = "—",
+                RunTaskDetail = new StationTasks.Models.RunTaskDetail()
+            };
+            _sequenceService.AddStep(step);
+            // 立即打开配置对话框
+            ShowRunTaskDetailDialog(step);
+        }
+
+        /// <summary>
+        /// 弹出调用任务（RUNTASK）配置对话框，关闭后自动保存序列
+        /// </summary>
+        private async void ShowRunTaskDetailDialog(ProcessStep step)
+        {
+            var vm = _containerProvider.Resolve<RunTaskDetailViewModel>();
+            var view = new RunTaskDetailView();
+            view.DataContext = vm;
+            vm.Step = step;
+            await ShowStepDetailDialog(view, "PSE_DialogTitleRunTask", "CallSplit");
+            await AutoSaveSequenceAsync();
+        }
+
+        /// <summary>
+        /// 弹出信号发送（SIGNAL_SEND）配置对话框，关闭后自动保存序列
+        /// </summary>
+        private async void ShowSignalSendDetailDialog(ProcessStep step)
+        {
+            var vm = _containerProvider.Resolve<SignalSendDetailViewModel>();
+            var view = new SignalSendDetailView();
+            view.DataContext = vm;
+            vm.Step = step;
+            await ShowStepDetailDialog(view, "PSE_DialogTitleSignalSend", "Send");
+            await AutoSaveSequenceAsync();
+        }
+
+        /// <summary>
+        /// 弹出信号等待（SIGNAL_WAIT）配置对话框，关闭后自动保存序列
+        /// </summary>
+        private async void ShowSignalWaitDetailDialog(ProcessStep step)
+        {
+            var vm = _containerProvider.Resolve<SignalWaitDetailViewModel>();
+            var view = new SignalWaitDetailView();
+            view.DataContext = vm;
+            vm.Step = step;
+            await ShowStepDetailDialog(view, "PSE_DialogTitleSignalWait", "DownloadLock");
+            await AutoSaveSequenceAsync();
         }
 
         private async void OnLoadFromJson()

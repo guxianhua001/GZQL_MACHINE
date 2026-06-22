@@ -291,18 +291,40 @@
                         <RowDefinition Height="29*" />
                         <RowDefinition Height="166*" />
                     </Grid.RowDefinitions>
+                    <!-- 使用纯 ContentPresenter 模板，彻底移除 MaterialDesign 默认 ContentControl
+                         样式中的转场动画，避免导航切换时 DoubleAnimation 遇到 NaN 起始值导致崩溃 -->
                     <ContentControl Name="ContentRegionCore"
                                     prism:RegionManager.RegionName="ContentRegionCore"
-                                    Grid.RowSpan="3" />
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
+                                    Grid.RowSpan="3">
+                        <ContentControl.Template>
+                            <ControlTemplate TargetType="ContentControl">
+                                <ContentPresenter
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </ControlTemplate>
+                        </ContentControl.Template>
+                    </ContentControl>
                     <!-- ===== 进度条覆盖层 ===== -->
                     <Grid Grid.RowSpan="3"
                           Panel.ZIndex="1000">
                         <ContentControl Name="OverlayRegionControl"
                                         prism:RegionManager.RegionName="OverlayRegion"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
                                         VerticalAlignment="Center"
                                         HorizontalAlignment="Center"
                                         Visibility="Collapsed"
-                                        IsTabStop="False" />
+                                        IsTabStop="False">
+                            <ContentControl.Template>
+                                <ControlTemplate TargetType="ContentControl">
+                                    <ContentPresenter
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </ControlTemplate>
+                            </ContentControl.Template>
+                        </ContentControl>
                     </Grid>
                     <ListBox VerticalAlignment="Top"
                              ItemsSource="{Binding Errors}">

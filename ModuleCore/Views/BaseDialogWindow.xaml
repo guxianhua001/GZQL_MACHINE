@@ -1,0 +1,99 @@
+<Window x:Class="ModuleCore.Views.BaseDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:vm="clr-namespace:ModuleCore.ViewModels"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent"
+        d:DataContext="{d:DesignInstance Type=vm:BaseDialogWindowViewModel}"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+
+    <Window.Resources>
+        <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+    </Window.Resources>
+
+    <!-- 1. 移除Margin="8"，卡片完全贴满窗口，四角不会露出底层背景 -->
+    <!-- 2. 彻底删除Border.Effect阴影代码，无外扩黑晕分割圆角 -->
+    <Border x:Name="RootBorder"
+            CornerRadius="12"
+            ClipToBounds="True"
+            Background="{DynamicResource DialogBackgroundBrush}"
+            BorderBrush="{DynamicResource DialogBorderBrush}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- 标题栏高度48，圆角和外层完全匹配12，拐角无缝 -->
+            <Border Grid.Row="0"
+                    Height="48"
+                    CornerRadius="12,12,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="{DynamicResource DialogTitleBarStartColor}" Offset="0" />
+                        <GradientStop Color="{DynamicResource DialogTitleBarEndColor}" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <materialDesign:PackIcon Grid.Column="0"
+                                             Kind="{Binding IconKind, FallbackValue=CogOutline, TargetNullValue=CogOutline}"
+                                             VerticalAlignment="Center"
+                                             Margin="12,0,8,0"
+                                             Width="18" Height="18"
+                                             Foreground="{DynamicResource DialogTitleBarTextBrush}" />
+
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding Title}"
+                               Foreground="{DynamicResource DialogTitleBarTextBrush}"
+                               VerticalAlignment="Center"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <Button Grid.Column="2"
+                            Command="{Binding ToggleThemeCommand}"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Foreground="{DynamicResource DialogTitleBarTextBrush}"
+                            Width="36" Height="36"
+                            Margin="0,0,2,0"
+                            ToolTip="{DynamicResource Setting_ToggleTheme}">
+                        <materialDesign:PackIcon Kind="{Binding ThemeIconKind}"
+                                                 Width="18" Height="18" />
+                    </Button>
+
+                    <Button Grid.Column="3"
+                            Command="{Binding CloseCommand}"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Foreground="{DynamicResource DialogTitleBarTextBrush}"
+                            Width="36" Height="36"
+                            Margin="0,0,6,0"
+                            ToolTip="{DynamicResource Close}">
+                        <materialDesign:PackIcon Kind="Close"
+                                                 Width="16" Height="16" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <ContentPresenter Grid.Row="1"
+                              Content="{Binding Content}"
+                              Margin="12"/>
+        </Grid>
+    </Border>
+</Window>

@@ -9,17 +9,23 @@
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              MinHeight="320"
-             MinWidth="720">
+             MinWidth="720"
+             MaxWidth="900">
     
     <UserControl.Resources>
-        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <converters:NonEmptyToVisibilityConverter x:Key="NonEmptyToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+        </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="12" Background="{DynamicResource MaterialDesignPaper}">
+    <Grid Margin="12" Background="{DynamicResource DialogCardBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="3*"/>
@@ -33,21 +39,21 @@
             </Grid.ColumnDefinitions>
 
             <!-- 左侧：示意图区域（自适应高度） -->
-            <Border Grid.Column="0" BorderBrush="#BDBDBD" BorderThickness="1" 
-                    CornerRadius="6" Margin="0,0,8,0" Background="#F5F5F5" ClipToBounds="True"
+            <Border Grid.Column="0" BorderBrush="{DynamicResource DialogBorderBrush}" BorderThickness="1"
+                    CornerRadius="6" Margin="0,0,8,0" Background="{DynamicResource DialogCardBrush}" ClipToBounds="True"
                     MouseLeftButtonDown="OnImageAreaDoubleClick" Cursor="Hand"
                     MaxHeight="200">
                 <Grid ClipToBounds="True">
-                    <Image Source="{Binding DiagramImage}" Stretch="Uniform" 
+                    <Image Source="{Binding DiagramImage}" Stretch="Uniform"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
-                    
+
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Visibility="{Binding DiagramImage, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}">
-                        <materialDesign:PackIcon Kind="ImagePlus" Width="36" Height="36" 
-                                                 HorizontalAlignment="Center" Foreground="#BDBDBD"/>
+                        <materialDesign:PackIcon Kind="ImagePlus" Width="36" Height="36"
+                                                 HorizontalAlignment="Center" Foreground="{DynamicResource DialogTextMutedBrush}"/>
                         <TextBlock Text="{lang:Lang DataDetail_DoubleClickLoadDiagram}" HorizontalAlignment="Center"
-                                   Foreground="#757575" FontSize="12" Margin="0,4,0,0"/>
+                                   Foreground="{DynamicResource DialogTextSecondaryBrush}" FontSize="12" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -60,71 +66,49 @@
                 </Grid.RowDefinitions>
 
                 <!-- ═══ 顶部标题栏 ═══ -->
+                <!-- ═══ 工具栏（保留操作按钮，标题由 BaseDialogWindow 显示） ═══ -->
                 <Border Grid.Row="0"
-                        Padding="12,6"
+                        Padding="8,4"
+                        Background="{DynamicResource DialogElevatedBrush}"
                         BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource MaterialDesignDivider}"
+                        BorderBrush="{DynamicResource DialogBorderBrush}"
                         Margin="0,0,0,6">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#2D3748" Offset="0" />
-                            <GradientStop Color="#3A475A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <DockPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-                            <CheckBox Content="{lang:Lang DataDetail_ManualConfirm}"
-                                      IsChecked="{Binding RequireManualConfirm}"
-                                      Foreground="White"
-                                      FontWeight="Normal"
-                                      FontSize="11"
-                                      VerticalAlignment="Center"
-                                      Margin="8,0"
-                                      ToolTip="{lang:Lang DataDetail_ManualConfirmTip}"/>
-                            <Button Command="{Binding RefreshValuesCommand}" 
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    Foreground="White"
-                                    Padding="6,2" Margin="1,0" ToolTip="{lang:Lang Refresh}"
-                                    Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{lang:Lang Refresh}" FontSize="10" Margin="2,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Command="{Binding AddFieldCommand}" 
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    Foreground="White"
-                                    Padding="6,2" Margin="1,0" ToolTip="{lang:Lang DataDetail_AddRow}"
-                                    Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Plus" Width="14" Height="14" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{lang:Lang Add}" FontSize="10" Margin="2,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Command="{Binding DeleteFieldCommand}" 
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    Foreground="White"
-                                    Padding="6,2" Margin="1,0" ToolTip="{lang:Lang DataDetail_DeleteRow}"
-                                    Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Minus" Width="14" Height="14" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{lang:Lang Delete}" FontSize="10" Margin="2,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="MonitorDashboard"
-                                                     Width="18" Height="18"
-                                                     Foreground="#FFB74D"
-                                                     VerticalAlignment="Center"
-                                                     Margin="0,0,6,0" />
-                            <TextBlock Text="{lang:Lang DataDetail_Title}"
-                                       Foreground="White"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </DockPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <CheckBox Content="{lang:Lang DataDetail_ManualConfirm}"
+                                  IsChecked="{Binding RequireManualConfirm}"
+                                  FontWeight="Normal"
+                                  FontSize="11"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0"
+                                  ToolTip="{lang:Lang DataDetail_ManualConfirmTip}"/>
+                        <Button Command="{Binding RefreshValuesCommand}" 
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Padding="6,2" Margin="1,0" ToolTip="{lang:Lang Refresh}"
+                                Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="{lang:Lang Refresh}" FontSize="10" Margin="2,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding AddFieldCommand}" 
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Padding="6,2" Margin="1,0" ToolTip="{lang:Lang DataDetail_AddRow}"
+                                Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Plus" Width="14" Height="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="{lang:Lang Add}" FontSize="10" Margin="2,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteFieldCommand}" 
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Padding="6,2" Margin="1,0" ToolTip="{lang:Lang DataDetail_DeleteRow}"
+                                Visibility="{Binding IsExecutionMode, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Minus" Width="14" Height="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="{lang:Lang Delete}" FontSize="10" Margin="2,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </Border>
 
                 <!-- 数据表格 -->
@@ -132,8 +116,8 @@
                           AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           ItemsSource="{Binding Fields}" 
                           HeadersVisibility="Column" RowHeaderWidth="0"
-                          BorderBrush="#E0E0E0"
-                          Background="{DynamicResource MaterialDesignPaper}"
+                          BorderBrush="{DynamicResource DialogBorderBrush}"
+                          Background="{DynamicResource DialogCardBrush}"
                           GridLinesVisibility="Horizontal"
                           SelectedItem="{Binding SelectedField}"
                           HorizontalAlignment="Stretch"
@@ -141,16 +125,16 @@
                           ColumnWidth="*">
                     <DataGrid.Resources>
                         <Style x:Key="ColumnHeaderStyle" TargetType="DataGridColumnHeader">
-                            <Setter Property="Background" Value="#E8EAF6"/>
-                            <Setter Property="Foreground" Value="#283593"/>
+                            <Setter Property="Background" Value="{DynamicResource DialogDataGridHeaderBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DialogAccentBrush}"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
                             <Setter Property="FontSize" Value="11"/>
                             <Setter Property="Padding" Value="6,3"/>
-                            <Setter Property="BorderBrush" Value="#C5CAE9"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource DialogBorderBrush}"/>
                             <Setter Property="BorderThickness" Value="0,0,1,1"/>
                         </Style>
                         <Style x:Key="CellTextStyle" TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#212121"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}"/>
                             <Setter Property="VerticalAlignment" Value="Center"/>
                             <Setter Property="Margin" Value="4,0"/>
                         </Style>
@@ -188,18 +172,18 @@
                                                 <materialDesign:PackIcon.Style>
                                                     <Style TargetType="materialDesign:PackIcon">
                                                         <Setter Property="Kind" Value="FunctionVariant"/>
-                                                        <Setter Property="Foreground" Value="#5C6BC0"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource DialogAccentBrush}"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding FieldType}" Value="Condition">
                                                                 <Setter Property="Kind" Value="CheckCircle"/>
-                                                                <Setter Property="Foreground" Value="#FF8F00"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource DialogAccentOrangeBrush}"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </materialDesign:PackIcon.Style>
                                             </materialDesign:PackIcon>
                                             <TextBlock Text="{Binding Formula, FallbackValue='点击编辑'}" 
-                                                       FontSize="11" Foreground="#5C6BC0" VerticalAlignment="Center"
+                                                       FontSize="11" Foreground="{DynamicResource DialogAccentBrush}" VerticalAlignment="Center"
                                                        TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                     </Button>
@@ -216,13 +200,13 @@
                                                VerticalAlignment="Center" Margin="4,0">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="#212121"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding ConditionResult}" Value="True">
-                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource DialogSuccessDarkBrush}"/>
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding ConditionResult}" Value="False">
-                                                        <Setter Property="Foreground" Value="#C62828"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource DialogErrorDarkBrush}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -236,14 +220,14 @@
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow">
                             <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="Foreground" Value="#212121"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}"/>
                             <Setter Property="Cursor" Value="Hand" />
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background" Value="#E3F2FD" />
+                                    <Setter Property="Background" Value="{DynamicResource DialogDataGridSelectedBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#FFF3E0" />
+                                    <Setter Property="Background" Value="{DynamicResource DialogDataGridHoverBrush}" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -257,7 +241,7 @@
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="Foreground" Value="#212121"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource DialogTextPrimaryBrush}"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -276,8 +260,8 @@
             <!-- 表达式编辑器（展开时显示在下方） -->
             <Border Grid.Row="0"
                     Visibility="{Binding IsFormulaEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}"
-                    Background="{DynamicResource MaterialDesignPaper}"
-                    BorderBrush="#5C6BC0" BorderThickness="1" CornerRadius="6"
+                    Background="{DynamicResource DialogCardBrush}"
+                    BorderBrush="{DynamicResource DialogAccentBrush}" BorderThickness="1" CornerRadius="6"
                     Padding="12" Margin="0,0,0,8">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -296,30 +280,30 @@
 
                     <!-- 标题 -->
                     <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
-                        <materialDesign:PackIcon Kind="FunctionVariant" Width="18" Height="18" 
-                                                 VerticalAlignment="Center" Foreground="#5C6BC0" Margin="0,0,6,0"/>
-                        <TextBlock Text="{lang:Lang DataDetail_FormulaEditorTitle}" FontWeight="Bold" FontSize="13" 
-                                   Foreground="#283593" VerticalAlignment="Center"/>
-                        <TextBlock Margin="12,0,0,0" Foreground="#757575" FontSize="11" VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="FunctionVariant" Width="18" Height="18"
+                                                 VerticalAlignment="Center" Foreground="{DynamicResource DialogAccentBrush}" Margin="0,0,6,0"/>
+                        <TextBlock Text="{lang:Lang DataDetail_FormulaEditorTitle}" FontWeight="Bold" FontSize="13"
+                                   Foreground="{DynamicResource DialogAccentBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Margin="12,0,0,0" Foreground="{DynamicResource DialogTextSecondaryBrush}" FontSize="11" VerticalAlignment="Center">
                             <Run Text="{lang:Lang DataDetail_FieldLabel}"/>
-                            <Run Text="{Binding EditingField.DisplayName, FallbackValue=''}" FontWeight="SemiBold" Foreground="#283593"/>
+                            <Run Text="{Binding EditingField.DisplayName, FallbackValue=''}" FontWeight="SemiBold" Foreground="{DynamicResource DialogAccentBrush}"/>
                         </TextBlock>
                     </StackPanel>
 
                     <!-- 字段类型切换 -->
                     <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBlock Text="{lang:Lang DataDetail_TypeLabel}" Foreground="#757575" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <RadioButton Content="{lang:Lang DataDetail_TypeNumeric}" 
+                        <TextBlock Text="{lang:Lang DataDetail_TypeLabel}" Foreground="{DynamicResource DialogTextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <RadioButton Content="{lang:Lang DataDetail_TypeNumeric}"
                                      IsChecked="{Binding EditingFieldType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Numeric, Mode=TwoWay}"
                                      Style="{StaticResource MaterialDesignRadioButton}"
                                      FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"
                                      ToolTip="@GV:H2 - @GV:Slot实测"/>
-                        <RadioButton Content="{lang:Lang DataDetail_TypeCondition}" 
+                        <RadioButton Content="{lang:Lang DataDetail_TypeCondition}"
                                      IsChecked="{Binding EditingFieldType, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Condition, Mode=TwoWay}"
                                      Style="{StaticResource MaterialDesignRadioButton}"
                                      FontSize="11" VerticalAlignment="Center"
                                      ToolTip="@GV:H2 > 10"/>
-                        <TextBlock Foreground="#9E9E9E" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Foreground="{DynamicResource DialogTextMutedBrush}" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0">
                             <Run Text="{Binding EditingFieldType, FallbackValue=''}"/>
                         </TextBlock>
                     </StackPanel>
@@ -332,15 +316,15 @@
                              Margin="0,0,0,8"/>
 
                     <!-- 全局变量标题 -->
-                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" 
-                               Text="{lang:Lang DataDetail_DoubleClickInsertVar}" Foreground="#757575" FontSize="11" Margin="0,0,0,4"/>
+                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2"
+                               Text="{lang:Lang DataDetail_DoubleClickInsertVar}" Foreground="{DynamicResource DialogTextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
 
                     <!-- 全局变量列表 -->
                     <ListBox Grid.Row="4" Grid.Column="1"
-                             ItemsSource="{Binding GlobalVariables}" 
+                             ItemsSource="{Binding GlobalVariables}"
                              SelectedItem="{Binding SelectedGlobalVariable}"
                              FontSize="11"
-                             BorderBrush="#E0E0E0" Margin="8,0,0,0"
+                             BorderBrush="{DynamicResource DialogBorderBrush}" Margin="8,0,0,0"
                              MouseDoubleClick="OnGlobalVariableDoubleClick">
                         <ListBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding InsertGlobalVariableCommand}"/>
@@ -348,11 +332,11 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Variable" Width="12" Height="12" 
-                                                             VerticalAlignment="Center" Margin="0,0,3,0" Foreground="#5C6BC0"/>
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="White"/>
-                                    <TextBlock Text=" = " Foreground="#9E9E9E"/>
-                                    <TextBlock Text="{Binding Value}" Foreground="#2E7D32"/>
+                                    <materialDesign:PackIcon Kind="Variable" Width="12" Height="12"
+                                                             VerticalAlignment="Center" Margin="0,0,3,0" Foreground="{DynamicResource DialogAccentBrush}"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
+                                    <TextBlock Text=" = " Foreground="{DynamicResource DialogTextMutedBrush}"/>
+                                    <TextBlock Text="{Binding Value}" Foreground="{DynamicResource DialogSuccessDarkBrush}"/>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -429,9 +413,9 @@
                     <Button Content="{lang:Lang DataDetail_ConfirmNG}" 
                             Command="{Binding ConfirmNGCommand}" 
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Background="#C62828"
-                            BorderBrush="#C62828"
-                            Foreground="White"
+                            Background="{DynamicResource DialogErrorDarkBrush}"
+                            BorderBrush="{DynamicResource DialogErrorDarkBrush}"
+                            Foreground="{DynamicResource DialogTextPrimaryBrush}"
                             Width="auto"
                             Padding="24,8" FontSize="13" FontWeight="Medium"
                             materialDesign:ButtonAssist.CornerRadius="2"

@@ -96,7 +96,8 @@ namespace Module
             containerRegistry.RegisterForNavigation<PickDetailView, PickDetailViewModel>();
             containerRegistry.RegisterForNavigation<ReleaseDetailView, ReleaseDetailViewModel>();
             containerRegistry.RegisterForNavigation<CureDetailView, CureDetailViewModel>();
-            containerRegistry.RegisterDialog<GripperControlView, GripperControlViewModel>("GripperControlView");
+            // GripperControlView 改用 BaseDialogService 弹出，无需 RegisterDialog
+            // GripperControlViewModel 通过 IContainerProvider.Resolve 动态解析（瞬态）
             containerRegistry.RegisterDialog<CoordinateCalibrationDialog, CoordinateCalibrationDialogViewModel>();
             containerRegistry.RegisterDialog<SimpleInputDialog, SimpleInputDialogViewModel>();
             containerRegistry.RegisterForNavigation<IPQCView, IPQCViewModel>();
@@ -105,9 +106,14 @@ namespace Module
             containerRegistry.Register<VisionDetailViewModel>();
             containerRegistry.Register<DataDashboardViewModel>();
             containerRegistry.Register<ConditionBranchViewModel>();
+            containerRegistry.Register<IfDetailViewModel>();
             containerRegistry.Register<SeekDetailViewModel>();
             containerRegistry.Register<WaitDetailViewModel>();
             containerRegistry.Register<ScriptDetailViewModel>();
+            containerRegistry.Register<RunTaskDetailViewModel>();
+            // 信号交互步骤详情 ViewModel 注册
+            containerRegistry.Register<SignalSendDetailViewModel>();
+            containerRegistry.Register<SignalWaitDetailViewModel>();
 
             // === Core 服务（跨项目复用，Singleton）===
             containerRegistry.RegisterSingleton<Core.Abstraction.IFormulaEvaluator, Core.Services.FormulaEvaluator>();

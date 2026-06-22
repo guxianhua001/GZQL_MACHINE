@@ -11,50 +11,21 @@
              mc:Ignorable="d"
              d:DesignHeight="500" d:DesignWidth="600">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
-        <converters:BoolToPassFailColorConverter x:Key="BoolToPassFailColor"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
+            <converters:BoolToPassFailColorConverter x:Key="BoolToPassFailColor"/>
+        </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border Background="{DynamicResource MaterialDesignCardBackground}"
+    <Border Background="{DynamicResource DialogCardBrush}"
             CornerRadius="4"
             Padding="16">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- ═══ 顶部标题栏 ═══ -->
-                <Border Padding="12,6"
-                        BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource MaterialDesignDivider}"
-                        Margin="0,0,0,12">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#2D3748" Offset="0" />
-                            <GradientStop Color="#3A475A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right"
-                                Command="{Binding CancelCommand}"
-                                ToolTip="{lang:Lang Close}"
-                                Width="24" Height="24"
-                                Style="{StaticResource MaterialDesignIconButton}"
-                                Foreground="White">
-                            <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
-                        </Button>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="CheckCircleOutline"
-                                                     Width="18" Height="18"
-                                                     Foreground="#64B5F6"
-                                                     VerticalAlignment="Center"
-                                                     Margin="0,0,6,0" />
-                            <TextBlock Text="{lang:Lang CheckDetail_Title}"
-                                       Foreground="White"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
 
                 <!-- 1. 判断表格 -->
                 <DataGrid ItemsSource="{Binding CheckItems}"
@@ -77,7 +48,7 @@
                 </DataGrid>
 
                 <!-- 整体判定结果 -->
-                <Border Background="{DynamicResource MaterialDesignPaper}"
+                <Border Background="{DynamicResource DialogElevatedBrush}"
                         CornerRadius="4"
                         Margin="0,16,0,0"
                         Padding="8">
@@ -106,7 +77,7 @@
                                   SelectedValue="{Binding PassJumpStepSeq}" Width="60"
                                   IsEnabled="{Binding SelectedPassAction, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=SkipTo}"/>
                         <TextBlock Text="{lang:Lang CheckDetail_NoteDispense}" FontStyle="Italic"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                   Foreground="{DynamicResource DialogTextMutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </WrapPanel>
                 </StackPanel>
 
@@ -123,7 +94,7 @@
                                       SelectedValue="{Binding FailJumpStepSeq}" Width="60"
                                       IsEnabled="{Binding SelectedFailAction, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=SkipTo}"/>
                             <TextBlock Text="{lang:Lang CheckDetail_NotePinAdj}" FontStyle="Italic"
-                                       Foreground="{DynamicResource MaterialDesignBodyLight}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                       Foreground="{DynamicResource DialogTextMutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                         </WrapPanel>
                         <WrapPanel VerticalAlignment="Center">
                             <RadioButton Content="{lang:Lang CheckDetail_StopGoHome}"

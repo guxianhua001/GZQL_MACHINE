@@ -23,7 +23,7 @@ namespace Module.ViewModels
     /// <summary>
     /// SEEK 步骤编辑器 ViewModel，支持通道行 CRUD、实时力值刷新、导入导出、全局变量绑定
     /// </summary>
-    public class SeekDetailViewModel : BindableBase, IDisposable
+    public class SeekDetailViewModel : BindableBase, IDisposable, IDialogCloseable
     {
         private readonly IMotionService _motionService;
         private readonly IRecipePoolService _recipePoolService;
@@ -34,6 +34,12 @@ namespace Module.ViewModels
         /// <summary> AD值转换器（Singleton），用于获取通道配置（名称、单位等） </summary>
         private readonly IADValueConverter _adConverter;
         private readonly IEventAggregator _eventAggregator;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary> 当前编辑的工艺步骤，设置时自动初始化通道行 </summary>
         public ProcessStep Step
@@ -446,12 +452,7 @@ namespace Module.ViewModels
         private void OnClose()
         {
             StopRefreshTimer();
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         /// <summary> 保存通道行到 Step.SeekDetail（不关闭弹窗） </summary>

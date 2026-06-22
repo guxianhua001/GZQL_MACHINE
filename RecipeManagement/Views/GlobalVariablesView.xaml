@@ -25,6 +25,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -43,7 +44,7 @@
                    FontStyle="Italic"
                    Margin="0,0,0,12" />
 
-        <!-- 工具栏 -->
+        <!-- 变量操作工具栏 -->
         <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     Margin="0,0,0,8">
@@ -88,9 +89,57 @@
                     Margin="0,0,8,0" />-->
         </StackPanel>
 
-        <!-- DataGrid 表格 -->
-        <DataGrid Grid.Row="3"
-                  ItemsSource="{Binding Variables}"
+        <!-- 分组管理工具栏：分组过滤下拉 + 添加/删除/重命名分组 -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    Margin="0,0,0,8"
+                    VerticalAlignment="Center">
+            <TextBlock Text="{lang:Lang GlobalVariablesView_Group}"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"
+                       Margin="0,0,8,0" />
+            <!-- 分组过滤下拉框：第一项 null=全部，空字符串=默认分组，其他=自定义分组 -->
+            <ComboBox ItemsSource="{Binding GroupFilterOptions}"
+                      SelectedItem="{Binding SelectedGroupFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      Width="180"
+                      Margin="0,0,8,0"
+                      materialDesign:HintAssist.Hint="{lang:Lang GlobalVariablesView_GroupFilterHint}">
+                <!-- 使用 ItemContainerStyle + DataTrigger 直接覆盖 Content，避免 ItemTemplate 重影 -->
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                        <Style.Triggers>
+                            <!-- AllGroupsKey (零宽空格 ZWSP) 显示"全部" -->
+                            <DataTrigger Binding="{Binding}" Value="&#x200B;">
+                                <Setter Property="Content" Value="{lang:Lang GlobalVariablesView_AllGroups}" />
+                            </DataTrigger>
+                            <!-- 空字符串显示"默认分组" -->
+                            <DataTrigger Binding="{Binding}" Value="">
+                                <Setter Property="Content" Value="{lang:Lang GlobalVariablesView_DefaultGroup}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+            </ComboBox>
+            <Button Content="{lang:Lang GlobalVariablesView_AddGroup}"
+                    Command="{Binding AddGroupCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Width="135"
+                    Margin="0,0,8,0" />
+            <Button Content="{lang:Lang GlobalVariablesView_RenameGroup}"
+                    Command="{Binding RenameGroupCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Width="135"
+                    Margin="0,0,8,0" />
+            <Button Content="{lang:Lang GlobalVariablesView_DeleteGroup}"
+                    Command="{Binding DeleteGroupCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Width="135"
+                    Margin="0,0,8,0" />
+        </StackPanel>
+
+        <!-- DataGrid 表格：绑定过滤后的视图 VariablesView -->
+        <DataGrid Grid.Row="4"
+                  ItemsSource="{Binding VariablesView}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
@@ -99,12 +148,42 @@
                   SelectedItem="{Binding SelectedVariable}"
                   materialDesign:DataGridAssist.CellPadding="4"
                   materialDesign:DataGridAssist.ColumnHeaderPadding="4">
-            <!-- 列定义保持不变 -->
             <DataGrid.Columns>
                 <DataGridTextColumn Header="{lang:Lang Index}"
                                     Binding="{Binding Index}"
                                     IsReadOnly="True"
                                     Width="50" />
+                <DataGridTemplateColumn Header="{lang:Lang GlobalVariablesView_Group}"
+                                        Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <!-- 显示分组名：空字符串显示"默认分组" -->
+                            <TextBlock VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="{Binding Group}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Group}" Value="{x:Null}">
+                                                <Setter Property="Text" Value="{lang:Lang GlobalVariablesView_DefaultGroup}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Group}" Value="">
+                                                <Setter Property="Text" Value="{lang:Lang GlobalVariablesView_DefaultGroup}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                            <!-- 编辑分组：下拉选择已有分组 -->
+                            <ComboBox ItemsSource="{Binding DataContext.Groups, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      SelectedItem="{Binding Group, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEditable="False" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="{lang:Lang Type}"
                                         Width="120">
                     <DataGridTemplateColumn.CellTemplate>
@@ -134,7 +213,7 @@
         </DataGrid>
 
         <!-- 提示信息 -->
-        <TextBlock Grid.Row="4"
+        <TextBlock Grid.Row="5"
                    Text="{lang:Lang GlobalVariablesView_Tip}"
                    FontStyle="Italic"
                    FontSize="12"

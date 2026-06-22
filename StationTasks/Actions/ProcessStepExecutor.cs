@@ -37,6 +37,13 @@ namespace StationTasks.Actions
         private readonly IAlarmService _alarmService;
         private readonly IFormulaEvaluator _formulaEvaluator;
         private readonly IRecipePoolService _recipePoolService;
+        private readonly IRunTaskExecutor _runTaskExecutor;
+
+        /// <summary>
+        /// 调用栈：用于 RUNTASK 步骤的循环引用检测。
+        /// 每层任务调用压入任务名，执行完成后弹出。由外部调用方设置。
+        /// </summary>
+        public Stack<string> CallStack { get; set; } = new Stack<string>();
 
         /// <summary> 步骤输出参数累积字典，供 SCRIPT 步骤读取前序步骤输出 </summary>
         private Dictionary<string, string> _stepOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -56,13 +63,15 @@ namespace StationTasks.Actions
             IEnumerable<IProcessStepAction> actions,
             IAlarmService alarmService,
             IFormulaEvaluator formulaEvaluator,
-            IRecipePoolService recipePoolService)
+            IRecipePoolService recipePoolService,
+            IRunTaskExecutor runTaskExecutor = null)
         {
             _task = task;
             _logger = logger;
             _alarmService = alarmService;
             _formulaEvaluator = formulaEvaluator;
             _recipePoolService = recipePoolService;
+            _runTaskExecutor = runTaskExecutor;
 
             _ea = task.Ea;
             _stationRegistry = task.StationRegistry;
@@ -156,6 +165,14 @@ namespace StationTasks.Actions
 
                     var step = steps[currentIndex];
 
+                    // 跳过禁用步骤（不执行、不标记、直接进入下一步）
+                    if (!step.IsEnabled)
+                    {
+                        _logger.Info($"[ProcessStepExecutor] 跳过禁用步骤: [{step.Seq}] {step.Step}");
+                        currentIndex++;
+                        continue;
+                    }
+
                     // 标记当前步骤
                     step.IsCurrent = true;
                     _logger.Info($"=== 执行步骤 [{step.Seq}] {step.Step} ({step.CompFeature} → {step.SiteFeature}) ===");
@@ -237,7 +254,10 @@ namespace StationTasks.Actions
             var action = _actionMap.TryGetValue(step.Step, out var a) ? a : null;
             if (action == null)
             {
-                _logger.Warn($"步骤 [{step.Seq}] 类型 {step.Step} 没有注册的 Action，无法单独执行");
+                if (step.Step == StepType.RUNTASK)
+                    _logger.Warn($"步骤 [{step.Seq}] RUNTASK 类型不支持单独执行，请在任务序列中运行");
+                else
+                    _logger.Warn($"步骤 [{step.Seq}] 类型 {step.Step} 没有注册的 Action，无法单独执行");
                 return;
             }
 
@@ -362,6 +382,33 @@ namespace StationTasks.Actions
                     }
                     return currentIndex + 1;
 
+                case StepType.RUNTASK:
+                {
+                    // RUNTASK 步骤：调用被动任务，通过 CallStack 进行循环引用检测
+                    _logger.Info($"[ProcessStepExecutor] 开始执行 RUNTASK 步骤 [{step.Seq}], 目标任务: {step.RunTaskDetail?.TargetTaskName}");
+                    if (_runTaskExecutor == null)
+                    {
+                        _logger.Warn($"[ProcessStepExecutor] RUNTASK 步骤 [{step.Seq}] 未注入 IRunTaskExecutor，跳过");
+                        return currentIndex + 1;
+                    }
+                    if (step.RunTaskDetail == null || string.IsNullOrEmpty(step.RunTaskDetail.TargetTaskName))
+                    {
+                        _logger.Warn($"[ProcessStepExecutor] RUNTASK 步骤 [{step.Seq}] 未配置目标任务，跳过");
+                        return currentIndex + 1;
+                    }
+                    // 通过 ExecuteStepSafeAsync 包装，享受暂停/急停/可恢复异常保护
+                    await _task.ExecuteStepSafeAsync(stepLabel, async () =>
+                    {
+                        await _runTaskExecutor.ExecutePassiveTaskAsync(
+                            step.RunTaskDetail.TargetTaskName,
+                            _task,
+                            CallStack,
+                            token);
+                    }, true, step.AlarmConfig);
+                    _logger.Info($"[ProcessStepExecutor] RUNTASK 步骤 [{step.Seq}] 完成");
+                    return currentIndex + 1;
+                }
+
                 case StepType.BRANCH:
                     _logger.Info($"[ProcessStepExecutor] 开始执行 BRANCH 步骤 [{step.Seq}]");
                     if (step.BranchConfig?.IsEnabled == true)
@@ -371,8 +418,11 @@ namespace StationTasks.Actions
                     _logger.Warn($"[Branch] 步骤 [{step.Seq}] BranchConfig 未启用，继续下一步");
                     return currentIndex + 1;
 
-                case StepType.CHECK:
-                    return await ExecuteCheckStepAsync(step, steps, currentIndex, stepLabel, token);
+                case StepType.IF:
+                    _logger.Info($"[ProcessStepExecutor] 开始执行 IF 步骤 [{step.Seq}]");
+                    await ExecuteIfStepAsync(step, token);
+                    _logger.Info($"[ProcessStepExecutor] IF 步骤 [{step.Seq}] 完成");
+                    return currentIndex + 1;
 
                 default:
                     _logger.Warn($"步骤类型 {step.Step} 尚未实现执行器，跳过步骤 [{step.Seq}]");
@@ -915,6 +965,217 @@ namespace StationTasks.Actions
                 source: $"{_task.TaskName}.BranchConfig",
                 type: AlarmType.ParameterOutOfLimit);
             return -1; // 终止序列，等待操作员处理
+        }
+
+        #endregion
+
+        #region IF 条件块执行逻辑
+
+        /// <summary>
+        /// 执行 IF 步骤：评估条件表达式，递归执行 Then 或 Else 分支的子步骤集合。
+        /// 支持多层嵌套（IF 子步骤中可再包含 IF 步骤）。
+        /// 表达式为空或求值失败时按 false 处理（执行 Else 分支）。
+        /// </summary>
+        private async Task ExecuteIfStepAsync(ProcessStep step, CancellationToken token)
+        {
+            // 确保 IF 步骤已初始化 IfDetail 和 IfBranches
+            EnsureIfStepInitialized(step);
+
+            var ifDetail = step.IfDetail;
+            if (ifDetail == null)
+            {
+                _logger.Warn($"[IF] 步骤 [{step.Seq}] IfDetail 为 null，跳过执行");
+                return;
+            }
+
+            // 收集上下文变量（全局变量 + 步骤输出参数）
+            var variables = await CollectIfContextVariablesAsync();
+
+            // 评估条件表达式
+            bool conditionResult = false;
+            if (!string.IsNullOrWhiteSpace(ifDetail.ConditionExpression))
+            {
+                try
+                {
+                    conditionResult = EvaluateCondition(ifDetail.ConditionExpression, variables);
+                    _logger.Info($"[IF] 步骤 [{step.Seq}] 条件 '{ifDetail.ConditionExpression}' = {conditionResult}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"[IF] 步骤 [{step.Seq}] 条件评估异常: {ex.Message}，按 false 处理");
+                    conditionResult = false;
+                }
+            }
+            else
+            {
+                _logger.Warn($"[IF] 步骤 [{step.Seq}] 条件表达式为空，按 false 处理");
+            }
+
+            // 选择执行的分支（IfBranches[0]=Then, IfBranches[1]=Else）
+            var branch = conditionResult
+                ? step.IfBranches.FirstOrDefault(b => string.Equals(b.Header, "Then", StringComparison.OrdinalIgnoreCase))
+                : step.IfBranches.FirstOrDefault(b => string.Equals(b.Header, "Else", StringComparison.OrdinalIgnoreCase));
+
+            if (branch == null)
+            {
+                _logger.Warn($"[IF] 步骤 [{step.Seq}] 未找到 {(conditionResult ? "Then" : "Else")} 分支，跳过执行");
+                return;
+            }
+
+            _logger.Info($"[IF] 步骤 [{step.Seq}] 执行 {branch.Header} 分支，子步骤数={branch.Steps?.Count ?? 0}");
+
+            // 递归执行分支内的子步骤集合
+            if (branch.Steps != null && branch.Steps.Count > 0)
+            {
+                await ExecuteStepListAsync(branch.Steps, token);
+            }
+        }
+
+        /// <summary>
+        /// 递归执行子步骤集合（用于 IF 分支内的子步骤执行）。
+        /// 支持嵌套 IF 步骤：当遇到 IF 类型时递归调用 ExecuteIfStepAsync。
+        /// 仅顺序执行，不支持 BRANCH 跳转出块外（符合 IF 块语义）。
+        /// </summary>
+        private async Task ExecuteStepListAsync(ObservableCollection<ProcessStep> steps, CancellationToken token)
+        {
+            if (steps == null || steps.Count == 0) return;
+
+            foreach (var step in steps)
+            {
+                token.ThrowIfCancellationRequested();
+
+                // 跳过禁用步骤
+                if (!step.IsEnabled)
+                {
+                    _logger.Info($"[IF-Sub] 跳过禁用步骤: [{step.Seq}] {step.Step}");
+                    continue;
+                }
+
+                step.IsCurrent = true;
+                _logger.Info($"[IF-Sub] === 执行子步骤 [{step.Seq}] {step.Step} ===");
+
+                try
+                {
+                    var sw = Stopwatch.StartNew();
+                    string stepLabel = FormatStepLabel(step);
+
+                    if (step.Step == StepType.IF)
+                    {
+                        // 递归执行嵌套 IF 步骤
+                        await ExecuteIfStepAsync(step, token);
+                    }
+                    else if (step.Step == StepType.BRANCH)
+                    {
+                        // IF 块内的 BRANCH 步骤：仅评估条件不跳转（块内顺序执行语义）
+                        _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 在 IF 块内仅评估条件，不执行块外跳转");
+                        if (step.BranchConfig?.IsEnabled == true)
+                        {
+                            var variables = await CollectIfContextVariablesAsync();
+                            if (!string.IsNullOrWhiteSpace(step.BranchConfig.Conditions.FirstOrDefault()?.ConditionExpression))
+                            {
+                                bool result = EvaluateCondition(step.BranchConfig.Conditions.First().ConditionExpression, variables);
+                                _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 条件评估结果: {result}（块内不跳转）");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 普通步骤：通过 ExecuteWithRunStepAsync 执行，享受暂停/急停/报警保护
+                        await ExecuteWithRunStepAsync(stepLabel, step, token);
+                    }
+
+                    sw.Stop();
+                    step.LastElapsedMs = sw.ElapsedMilliseconds;
+                }
+                catch (OperationCanceledException)
+                {
+                    step.IsCurrent = false;
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    step.IsCurrent = false;
+                    _logger.Error($"[IF-Sub] 子步骤 [{step.Seq}] {step.Step} 执行异常: {ex.Message}");
+                    if (step.AlarmConfig?.IsEnabled == true)
+                    {
+                        step.HasActiveAlarm = true;
+                    }
+                    throw; // 异常向上传播，终止整个 IF 块执行
+                }
+                finally
+                {
+                    step.IsCurrent = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 确保 IF 步骤的 IfDetail 和 IfBranches 已初始化。
+        /// 反序列化旧数据或新建步骤时可能为 null，此处保证结构完整。
+        /// </summary>
+        private void EnsureIfStepInitialized(ProcessStep step)
+        {
+            if (step.IfDetail == null)
+            {
+                step.IfDetail = new IfDetail
+                {
+                    ConditionExpression = "",
+                    Description = ""
+                };
+            }
+
+            if (step.IfBranches == null || step.IfBranches.Count < 2)
+            {
+                var existingThen = step.IfBranches?.FirstOrDefault(b =>
+                    string.Equals(b.Header, "Then", StringComparison.OrdinalIgnoreCase));
+                var existingElse = step.IfBranches?.FirstOrDefault(b =>
+                    string.Equals(b.Header, "Else", StringComparison.OrdinalIgnoreCase));
+
+                step.IfBranches = new ObservableCollection<IfBranchGroup>
+                {
+                    existingThen ?? new IfBranchGroup { Header = "Then", Steps = new ObservableCollection<ProcessStep>() },
+                    existingElse ?? new IfBranchGroup { Header = "Else", Steps = new ObservableCollection<ProcessStep>() }
+                };
+            }
+        }
+
+        /// <summary>
+        /// 收集 IF 条件评估所需的上下文变量（全局变量 + 步骤输出参数）。
+        /// 复用 ProcessStepExecutor 内的 _stepOutputs 累积字典。
+        /// </summary>
+        private async Task<Dictionary<string, string>> CollectIfContextVariablesAsync()
+        {
+            var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // 加载全局变量（@GV: 前缀）
+            try
+            {
+                var poolId = _recipePoolService?.CurrentPoolId;
+                if (!string.IsNullOrEmpty(poolId))
+                {
+                    var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId);
+                    foreach (var gv in globalVars)
+                    {
+                        if (!string.IsNullOrEmpty(gv.Name))
+                            variables[$"@GV:{gv.Name}"] = gv.Value ?? "0";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[IF] 加载全局变量失败: {ex.Message}");
+            }
+
+            // 将前序步骤累积的输出参数加入变量池（@Output: 前缀）
+            foreach (var kv in _stepOutputs)
+            {
+                string key = kv.Key.StartsWith("@Output:", StringComparison.OrdinalIgnoreCase)
+                    ? kv.Key
+                    : $"@Output:{kv.Key}";
+                variables[key] = kv.Value;
+            }
+
+            return variables;
         }
 
         #endregion

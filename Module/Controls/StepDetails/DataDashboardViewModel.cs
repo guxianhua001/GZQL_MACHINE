@@ -20,7 +20,7 @@ using System.Windows;
 namespace Module.ViewModels
 {
     /// <summary> 数据看板弹窗 ViewModel </summary>
-    public class DataDashboardViewModel : BindableBase
+    public class DataDashboardViewModel : BindableBase, IDialogCloseable
     {
         private readonly IEventAggregator _ea;
         private readonly ILoggerService _logger;
@@ -30,6 +30,12 @@ namespace Module.ViewModels
         private SubscriptionToken _showToken;
 
         private const string DialogIdentifier = "MainDialogHost";
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary> 当前关联的步骤（用于持久化 ImagePath 等属性） </summary>
         private ProcessStep _currentStep;
@@ -516,12 +522,7 @@ namespace Module.ViewModels
             SyncFieldsToStep();
             _ea.GetEvent<DashboardConfirmedEvent>().Publish(DashboardConfirmResult.Continue);
             _logger.Info(L("DataDetail_Log_UserConfirmed"));
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession(DialogIdentifier);
-                session?.Close(true);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(true);
         }
 
         /// <summary> 确认NG </summary>
@@ -530,12 +531,7 @@ namespace Module.ViewModels
             SyncFieldsToStep();
             _ea.GetEvent<DashboardConfirmedEvent>().Publish(DashboardConfirmResult.NG);
             _logger.Info(L("DataDetail_Log_UserConfirmedNG"));
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession(DialogIdentifier);
-                session?.Close(true);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(true);
         }
     }
 }

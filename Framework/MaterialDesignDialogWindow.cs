@@ -1,6 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Media;
-using MaterialDesignThemes.Wpf;
 
 namespace Framework.Controls
 {
@@ -12,7 +10,8 @@ namespace Framework.Controls
             UseLayoutRounding = true;
             //TextOptions.TextFormattingMode = TextFormattingMode.Display;
 
-            // Material Design 设置
+            // Material Design 设置：使用 DynamicResource 而非直接赋值，
+            // 确保主题切换时窗口背景和前景色自动更新
             ApplyMaterialDesignTheme();
 
             // 窗口行为设置
@@ -22,17 +21,16 @@ namespace Framework.Controls
             SetDefaultDimensions();
         }
 
+        /// <summary>
+        /// 应用 MaterialDesign 主题：使用 SetResourceReference 设置动态资源引用，
+        /// 而非直接赋值 Brush。这样主题切换时窗口颜色会自动跟随更新。
+        /// </summary>
         private void ApplyMaterialDesignTheme()
         {
-            // 尝试获取 Material Design 资源
-            var paperBrush = Application.Current.TryFindResource("MaterialDesignPaper") as Brush;
-            var bodyBrush = Application.Current.TryFindResource("MaterialDesignBody") as Brush;
-            var dividerBrush = Application.Current.TryFindResource("MaterialDesignDivider") as Brush;
-
-            // 设置颜色
-            Background = paperBrush ?? Brushes.WhiteSmoke;
-            Foreground = bodyBrush ?? Brushes.Black;
-            BorderBrush = dividerBrush ?? Brushes.LightGray;
+            // 使用 SetResourceReference 设置 DynamicResource，主题切换时自动刷新
+            SetResourceReference(BackgroundProperty, "MaterialDesignPaper");
+            SetResourceReference(ForegroundProperty, "MaterialDesignBody");
+            SetResourceReference(BorderBrushProperty, "MaterialDesignDivider");
             BorderThickness = new Thickness(1);
             FontSize = 14;
         }

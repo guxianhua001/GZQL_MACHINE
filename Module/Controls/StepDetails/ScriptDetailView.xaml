@@ -6,66 +6,26 @@
              Width="960"
              MaxHeight="720">
 
-    <Border Background="{DynamicResource MaterialDesignCardBackground}"
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource DialogCardBrush}"
             CornerRadius="6"
             ClipToBounds="True">
-        <Border.Resources>
-            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        </Border.Resources>
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- ═══ 顶部标题栏 ═══ -->
-            <Border Grid.Row="0"
-                    Padding="12,6"
-                    BorderThickness="0,0,0,1"
-                    BorderBrush="{DynamicResource MaterialDesignDivider}">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#2D3748" Offset="0" />
-                        <GradientStop Color="#3A475A" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right"
-                            Command="{Binding CloseCommand}"
-                            ToolTip="{lang:Lang Close}"
-                            Width="24" Height="24"
-                            Style="{StaticResource MaterialDesignIconButton}"
-                            Foreground="White">
-                        <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
-                    </Button>
-
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="CodeTags"
-                                                 Width="18" Height="18"
-                                                 Foreground="#81C784"
-                                                 VerticalAlignment="Center"
-                                                 Margin="0,0,6,0" />
-                        <TextBlock Text="SCRIPT"
-                                   Foreground="White"
-                                   FontSize="14"
-                                   FontWeight="SemiBold"
-                                   VerticalAlignment="Center" />
-                        <Border Background="#2D3748"
-                                CornerRadius="3"
-                                Padding="5,1"
-                                Margin="8,0,0,0"
-                                VerticalAlignment="Center">
-                            <TextBlock Foreground="#A5D6A7"
-                                       FontSize="11"
-                                       Text="{lang:Lang ScriptDetail_CSharpScript}" />
-                        </Border>
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-
             <!-- ═══ 主体：左侧代码编辑 + 右侧变量引用面板 ═══ -->
-            <Grid Grid.Row="1" Margin="0">
+            <Grid Grid.Row="0" Margin="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -97,10 +57,10 @@
                              HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas"
                              FontSize="13"
-                             Foreground="#212121"
-                             Background="#FAFAFA"
+                             Foreground="{DynamicResource DialogTextPrimaryBrush}"
+                             Background="{DynamicResource DialogElevatedBrush}"
                              BorderThickness="1"
-                             BorderBrush="{DynamicResource MaterialDesignDivider}"
+                             BorderBrush="{DynamicResource DialogBorderBrush}"
                              Padding="8"
                              materialDesign:HintAssist.Hint="{lang:Lang ScriptDetail_WriteScriptHint}" />
 
@@ -111,7 +71,7 @@
                             Padding="8,6"
                             MinHeight="28"
                             MaxHeight="120"
-                            Background="{DynamicResource MaterialDesignToolBarBackground}">
+                            Background="{DynamicResource DialogElevatedBrush}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <TextBlock Text="{Binding CompileResult}"
                                        FontSize="12"
@@ -119,13 +79,13 @@
                                        TextWrapping="Wrap">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#9E9E9E" />
+                                        <Setter Property="Foreground" Value="{DynamicResource DialogTextSecondaryBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsCompileSuccess}" Value="True">
-                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                <Setter Property="Foreground" Value="{DynamicResource DialogSuccessDarkBrush}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsCompileSuccess}" Value="False">
-                                                <Setter Property="Foreground" Value="#C62828" />
+                                                <Setter Property="Foreground" Value="{DynamicResource DialogErrorDarkBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -138,7 +98,7 @@
                 <!-- 分隔线 -->
                 <Border Grid.Column="1"
                         Width="1"
-                        Background="{DynamicResource MaterialDesignDivider}"
+                        Background="{DynamicResource DialogBorderBrush}"
                         Margin="8,12,8,12" />
 
                 <!-- 右侧：变量引用面板 -->
@@ -159,7 +119,7 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,2">
                                             <materialDesign:PackIcon Kind="Variable"
                                                                      Width="14" Height="14"
-                                                                     Foreground="#42A5F5"
+                                                                     Foreground="{DynamicResource DialogInfoBrush}"
                                                                      VerticalAlignment="Center"
                                                                      Margin="0,0,4,0" />
                                             <TextBlock Text="{Binding Name}"
@@ -169,7 +129,7 @@
                                                        Margin="0,0,6,0" />
                                             <TextBlock Text="{Binding Value}"
                                                        FontSize="11"
-                                                       Foreground="#9E9E9E"
+                                                       Foreground="{DynamicResource DialogTextSecondaryBrush}"
                                                        VerticalAlignment="Center"
                                                        MaxWidth="100"
                                                        TextTrimming="CharacterEllipsis" />
@@ -192,7 +152,7 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,2">
                                             <materialDesign:PackIcon Kind="Export"
                                                                      Width="14" Height="14"
-                                                                     Foreground="#FFB74D"
+                                                                     Foreground="{DynamicResource DialogAccentOrangeBrush}"
                                                                      VerticalAlignment="Center"
                                                                      Margin="0,0,4,0" />
                                             <TextBlock Text="{Binding Name}"
@@ -209,7 +169,7 @@
                         <Expander IsExpanded="True"
                                   Header="{lang:Lang ScriptDetail_ExecuteResult}"
                                   Margin="0,0,0,8">
-                            <Border Background="{DynamicResource MaterialDesignToolBarBackground}"
+                            <Border Background="{DynamicResource DialogElevatedBrush}"
                                     CornerRadius="4"
                                     Padding="8"
                                     MinHeight="40">
@@ -217,22 +177,22 @@
                                            FontSize="12"
                                            FontFamily="Consolas"
                                            TextWrapping="Wrap"
-                                           Foreground="#2E7D32" />
+                                           Foreground="{DynamicResource DialogSuccessDarkBrush}" />
                             </Border>
                         </Expander>
 
                         <!-- 提示 -->
-                        <Border Background="#1A237E08"
+                        <Border Background="{DynamicResource DialogCardBrush}"
                                 CornerRadius="4"
                                 Padding="8,6"
                                 Margin="0,4,0,0">
                             <StackPanel>
                                 <TextBlock Text="{lang:Lang ScriptDetail_DoubleClickInsert}"
                                            FontSize="11"
-                                           Foreground="#78909C"
+                                           Foreground="{DynamicResource DialogTextMutedBrush}"
                                            Margin="0,0,0,4" />
                                 <TextBlock FontSize="10"
-                                           Foreground="#B0BEC5"
+                                           Foreground="{DynamicResource DialogTextMutedBrush}"
                                            TextWrapping="Wrap"
                                            LineHeight="16">
                                     <Run Text="{lang:Lang ScriptDetail_Hint_ReadVar}" /> <Run Text=" ctx.GetDouble(&quot;name&quot;)" FontFamily="Consolas" /><LineBreak />
@@ -247,10 +207,10 @@
             </Grid>
 
             <!-- ═══ 底部操作栏 ═══ -->
-            <Border Grid.Row="2"
+            <Border Grid.Row="1"
                     Padding="16,10"
                     BorderThickness="0,1,0,0"
-                    BorderBrush="{DynamicResource MaterialDesignDivider}">
+                    BorderBrush="{DynamicResource DialogBorderBrush}">
                 <Grid>
                     <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
                         <Button Command="{Binding CompileCommand}"
@@ -281,7 +241,7 @@
                                      Width="60" Height="4"
                                      VerticalAlignment="Center"
                                      Margin="8,0,0,0"
-                                     Foreground="#42A5F5" />
+                                     Foreground="{DynamicResource DialogInfoBrush}" />
                     </StackPanel>
 
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">

@@ -5,22 +5,31 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
-             xmlns:local="clr-namespace:Module.ViewModels"
+             xmlns:local="clr-namespace:Module.Views"
              xmlns:system="clr-namespace:System;assembly=mscorlib"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-             xmlns:models="clr-namespace:Core.Models;assembly=Core"
+             xmlns:models="clr-namespace:Module.Models"
+             xmlns:stationTasks="clr-namespace:StationTasks.Models;assembly=StationTasks"
              xmlns:converters="clr-namespace:Module.Converters"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
+             materialDesign:TransitionAssist.DisableTransitions="True"
+             materialDesign:RippleAssist.IsDisabled="True"
+             Unloaded="ProcessSequenceEditorView_Unloaded"
              mc:Ignorable="d"
              d:DesignHeight="900"
              d:DesignWidth="800">
 
     <UserControl.Resources>
+        <!-- 现有转换器 -->
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:BooleanToCheckmarkConverter x:Key="BoolToCheckMarkConverter" />
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <converters:AlarmLevelConverter x:Key="AlarmLevelConverter" />
+        <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+
+        <!-- 现有样式 -->
         <Style x:Key="StepBadge" TargetType="Border">
             <Setter Property="Width" Value="24"/>
             <Setter Property="Height" Value="24"/>
@@ -39,16 +48,600 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="6,0,0,0"/>
         </Style>
+
+        <!-- 类型过滤转换器：用于三个重叠 ContentControl 的内容过滤 -->
+        <converters:TypeFilterConverter x:Key="TypeFilterConverter"/>
+        <converters:TypeToVisibilityConverter x:Key="TypeToVisibilityConverter"/>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 节点详情模板（三个独立 DataTemplate，避免模板切换时的动画崩溃） -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 任务节点详情模板 -->
+        <DataTemplate x:Key="TaskDetailTemplate">
+                    <DockPanel>
+                        <!-- 标题栏 -->
+                        <Border DockPanel.Dock="Top" Background="#E3F2FD" Padding="16,10">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Folder" Width="20" Height="20" Foreground="#1565C0" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{lang:Lang PSE_TaskProperties}" FontSize="16" FontWeight="SemiBold" Foreground="#1565C0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- 任务属性编辑区 -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
+                            <StackPanel>
+                                <!-- 任务名称 -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_TaskName}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="{lang:Lang PSE_TaskName}"/>
+                                </Grid>
+                                <!-- 运行模式 -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_RunMode}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <RadioButton Content="{lang:Lang PSE_ActiveMode}" IsChecked="{Binding RunMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:TaskRunMode.Active}}" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                                        <RadioButton Content="{lang:Lang PSE_PassiveMode}" IsChecked="{Binding RunMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:TaskRunMode.Passive}}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                                <!-- 启用状态 -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                </Grid>
+                                <!-- 方法数 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_MethodCount}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Methods.Count, Mode=OneWay}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                </Grid>
+                                <!-- 动作数 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_ActionCount}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Steps.Count, Mode=OneWay}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+        </DataTemplate>
+
+        <!-- 方法节点详情模板 -->
+        <DataTemplate x:Key="MethodDetailTemplate">
+                    <DockPanel>
+                        <!-- 标题栏 -->
+                        <Border DockPanel.Dock="Top" Background="#E0F7FA" Padding="16,10">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FunctionVariant" Width="20" Height="20" Foreground="#00838F" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{lang:Lang PSE_MethodProperties}" FontSize="16" FontWeight="SemiBold" Foreground="#00838F" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- 方法级控制工具栏：运行/暂停/恢复/停止，控制单个方法 -->
+                        <Border DockPanel.Dock="Top" Background="#F5F5F5" Padding="8,6" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{lang:Lang PSE_MethodControl}" FontWeight="SemiBold" Foreground="#616161" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <!-- 运行：启动当前方法的独立执行 -->
+                                <Button Command="{Binding DataContext.StartMethodCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="{lang:Lang PSE_RunMethodTip}"
+                                        Style="{StaticResource MaterialDesignFlatLightButton}"
+                                        Padding="8,4" Margin="0,0,4,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Play" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang PSE_RunMethod}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <!-- 暂停：暂停当前正在执行的方法 -->
+                                <Button Command="{Binding DataContext.PauseMethodCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="{lang:Lang PSE_PauseMethodTip}"
+                                        Style="{StaticResource MaterialDesignFlatLightButton}"
+                                        Padding="8,4" Margin="0,0,4,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Pause" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang PSE_PauseMethod}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <!-- 恢复：恢复当前被暂停的方法 -->
+                                <Button Command="{Binding DataContext.ResumeMethodCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="{lang:Lang PSE_ResumeMethodTip}"
+                                        Style="{StaticResource MaterialDesignFlatLightButton}"
+                                        Padding="8,4" Margin="0,0,4,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="PlayPause" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang PSE_ResumeMethod}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <!-- 停止：停止当前正在执行的方法 -->
+                                <Button Command="{Binding DataContext.StopMethodCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="{lang:Lang PSE_StopMethodTip}"
+                                        Style="{StaticResource MaterialDesignFlatLightButton}"
+                                        Padding="8,4" Margin="0,0,4,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Stop" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang PSE_StopMethod}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <!-- 方法执行状态指示 -->
+                                <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{lang:Lang PSE_MethodStatusIdle}"/>
+                                            <Setter Property="Foreground" Value="#9E9E9E"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="Running">
+                                                    <Setter Property="Text" Value="{lang:Lang PSE_MethodStatusRunning}"/>
+                                                    <Setter Property="Foreground" Value="#43A047"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Paused">
+                                                    <Setter Property="Text" Value="{lang:Lang PSE_MethodStatusPaused}"/>
+                                                    <Setter Property="Foreground" Value="#FB8C00"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                                                    <Setter Property="Text" Value="{lang:Lang PSE_MethodStatusStopped}"/>
+                                                    <Setter Property="Foreground" Value="#E53935"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <!-- 方法属性 + 动作 DataGrid -->
+                        <Grid DockPanel.Dock="Top">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <!-- 方法名称 -->
+                            <Grid Grid.Row="0" Margin="16,12,16,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang PSE_MethodName}" VerticalAlignment="Center" Foreground="#616161"/>
+                                <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="{lang:Lang PSE_MethodName}"/>
+                            </Grid>
+                            <!-- 启用状态 -->
+                            <Grid Grid.Row="1" Margin="16,0,16,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>
+                                <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource MaterialDesignSwitchToggleButton}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <!-- 动作编辑工具栏 -->
+                            <ToolBarTray Grid.Row="2" IsLocked="True">
+                                <ToolBar ClipToBounds="False" Style="{StaticResource MaterialDesignToolBar}" Background="Transparent" Band="0" BandIndex="0">
+                                    <Button Command="{Binding DataContext.AddStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{lang:Lang PSE_AddStepTip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Plus" Width="18" Height="18" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{lang:Lang PSE_AddStep}"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding DataContext.AddRunTaskStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{lang:Lang PSE_RunTaskActionTip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="CallSplit" Width="18" Height="18" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{lang:Lang PSE_RunTaskAction}"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding DataContext.AddIfStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{lang:Lang PSE_IfActionTip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="SourceBranch" Width="18" Height="18" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{lang:Lang PSE_IfAction}"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Separator/>
+                                    <Button Command="{Binding DataContext.DeleteStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{lang:Lang PSE_DeleteStepTip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Minus" Width="18" Height="18" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{lang:Lang PSE_DeleteStep}"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Separator/>
+                                    <Button Command="{Binding DataContext.MoveStepUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{lang:Lang PSE_MoveUpTip}">
+                                        <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
+                                    </Button>
+                                    <Button Command="{Binding DataContext.MoveStepDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{lang:Lang PSE_MoveDownTip}">
+                                        <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
+                                    </Button>
+                                </ToolBar>
+                            </ToolBarTray>
+                            <!-- 动作 DataGrid（复用现有列定义，ItemsSource 绑定到方法的 Steps） -->
+                            <DataGrid Grid.Row="3"
+                                      x:Name="StepsDataGrid"
+                                      ItemsSource="{Binding Steps}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      SelectedItem="{Binding DataContext.SelectedStep, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      materialDesign:DataGridAssist.CellPadding="4,2"
+                                      materialDesign:DataGridAssist.ColumnHeaderPadding="4"
+                                      RowHeaderWidth="0"
+                                      EnableRowVirtualization="True"
+                                      EnableColumnVirtualization="True"
+                                      VirtualizingStackPanel.IsVirtualizing="True"
+                                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                      GridLinesVisibility="Horizontal"
+                                      BorderBrush="#E0E0E0" BorderThickness="0,1,0,1"
+                                      FontSize="12"
+                                      MouseDoubleClick="DataGrid_MouseDoubleClick"
+                                      Margin="16,4,16,8">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="White" />
+                                        <Setter Property="ToolTip" Value="{x:Null}" />
+                                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        <Setter Property="ContextMenu">
+                                            <Setter.Value>
+                                                <ContextMenu>
+                                                    <MenuItem Header="{lang:Lang PSE_RunSingleStep}"
+                                                              Command="{Binding PlacementTarget.Tag.RunSingleStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              ToolTip="{lang:Lang PSE_RunSingleStepTip}">
+                                                        <MenuItem.Icon>
+                                                            <materialDesign:PackIcon Kind="PlayCircleOutline" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                </ContextMenu>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter Property="Background" Value="#228B20" />
+                                                <Setter Property="Foreground" Value="White" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsCurrent}" Value="True"/>
+                                                    <Condition Binding="{Binding DataContext.CurrentTask.Status, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="Idle"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Background" Value="#9E9E9E" />
+                                                <Setter Property="Foreground" Value="White" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </MultiDataTrigger>
+                                            <DataTrigger Binding="{Binding IsSingleExecuting}" Value="True">
+                                                <Setter Property="Background" Value="#C8E6C9" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasActiveAlarm}" Value="True">
+                                                <Setter Property="Background" Value="#FFEBEE" />
+                                                <Setter Property="ToolTip">
+                                                    <Setter.Value>
+                                                        <ToolTip>
+                                                            <StackPanel Margin="4">
+                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                    <materialDesign:PackIcon Kind="AlertCircleOutline" Width="16" Height="16" Foreground="#F44336" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                                    <TextBlock Text="{lang:Lang PSE_ErrorDetails}" FontWeight="Bold" FontSize="12" Foreground="#F44336" VerticalAlignment="Center"/>
+                                                                </StackPanel>
+                                                                <TextBlock FontSize="11">
+                                                                    <Run Text="Alarm Code: "/><Run Text="{Binding AlarmConfig.AlarmCode, Mode=OneWay}" Foreground="#F44336" />
+                                                                </TextBlock>
+                                                                <TextBlock FontSize="11">
+                                                                    <Run Text="Alarm Level: "/><Run Text="{Binding AlarmConfig.AlarmLevel, Mode=OneWay}" />
+                                                                </TextBlock>
+                                                            </StackPanel>
+                                                        </ToolTip>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnSeq}" Width="70">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="AlertCircle"
+                                                             Width="14" Height="14"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="#F44336"
+                                                             Margin="0,0,2,0"
+                                                             Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                    <TextBlock Text="▶"
+                                                               Visibility="{Binding IsCurrent, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                               Margin="0,0,4,0" Foreground="#1565C0" FontSize="10" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Seq}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnStep}" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Step}" VerticalAlignment="Center" Margin="4,0" FontWeight="Medium"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.StepTypeValues, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          SelectedItem="{Binding Step, UpdateSourceTrigger=PropertyChanged}"
+                                                          materialDesign:HintAssist.Hint="Step Type" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnCompFeature}" Width="150">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding CompFeature}" Foreground="#00838F"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.ComponentFeatureOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Text="{Binding CompFeature, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="Site Feature" Width="150">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding SiteFeature}" Foreground="#00838F"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.SiteFeatureOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Text="{Binding SiteFeature, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnCamera}" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Camera}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.CameraOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Text="{Binding Camera, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="Purpose" Width="150">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Purpose}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.PurposeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Text="{Binding Purpose, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEditable="True" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnAlarm}" Width="50">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border>
+                                                    <Border.ToolTip>
+                                                        <ToolTip Background="#FF373737" Foreground="White" Padding="10,8">
+                                                            <StackPanel Margin="2">
+                                                                <TextBlock FontWeight="Bold" FontSize="12" Foreground="White" Text="{lang:Lang PSE_AlarmConfigTitle}" />
+                                                                <TextBlock FontSize="11" Margin="0,4,0,0" Foreground="#FFCCCCCC">
+                                                                    <Run Text="{lang:Lang PSE_AlarmCodeLabel}" Foreground="#FFCCCCCC" />
+                                                                    <Run Text="{Binding AlarmDisplayText, Mode=OneWay}" Foreground="#FF8B8B" />
+                                                                </TextBlock>
+                                                                <TextBlock FontSize="11" Foreground="#FFCCCCCC">
+                                                                    <Run Text="{lang:Lang PSE_AlarmLevelLabel}" Foreground="#FFCCCCCC" />
+                                                                    <Run Text="{Binding AlarmLevelDisplayText, Mode=OneWay}" Foreground="White" />
+                                                                </TextBlock>
+                                                                <TextBlock FontSize="10" Foreground="#FF999999" Margin="0,4,0,0"
+                                                                           Text="{lang:Lang PSE_AlarmTriggerHint}" />
+                                                            </StackPanel>
+                                                        </ToolTip>
+                                                    </Border.ToolTip>
+                                                    <Grid HorizontalAlignment="Center">
+                                                        <materialDesign:PackIcon Kind="BellOutline"
+                                                                                 Width="16" Height="16"
+                                                                                 Visibility="{Binding AlarmConfig.IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                                 Foreground="#F44336" />
+                                                        <materialDesign:PackIcon Kind="BellOffOutline"
+                                                                                 Width="16" Height="16"
+                                                                                 Visibility="{Binding AlarmConfig.IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}"
+                                                                                 Foreground="#BBBBBB" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="2,0">
+                                                    <CheckBox IsChecked="{Binding AlarmConfig.IsEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                                              ToolTip="{lang:Lang PSE_EnableAlarm}" VerticalAlignment="Center" />
+                                                    <TextBox Text="{Binding AlarmConfig.AlarmCode, UpdateSourceTrigger=PropertyChanged}"
+                                                             Width="80" Margin="4,0" materialDesign:HintAssist.Hint="{lang:Lang PSE_CodeHint}" FontSize="11" />
+                                                    <ComboBox SelectedItem="{Binding AlarmConfig.AlarmLevel, UpdateSourceTrigger=PropertyChanged}"
+                                                              Width="80" FontSize="11" materialDesign:HintAssist.Hint="{lang:Lang PSE_LevelHint}">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock>
+                                                                    <TextBlock.Text>
+                                                                        <MultiBinding StringFormat="{}{0}-{1}">
+                                                                            <Binding Path="." />
+                                                                            <Binding Path="." Converter="{StaticResource AlarmLevelConverter}" />
+                                                                        </MultiBinding>
+                                                                    </TextBlock.Text>
+                                                                </TextBlock>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                        <sys:Int32>1</sys:Int32>
+                                                        <sys:Int32>2</sys:Int32>
+                                                        <sys:Int32>3</sys:Int32>
+                                                        <sys:Int32>4</sys:Int32>
+                                                    </ComboBox>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="{lang:Lang PSE_ElapsedTime}" Width="80" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding LastElapsedMs, StringFormat={}{0} ms}"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Right"
+                                                           FontSize="11"
+                                                           Foreground="#666666">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding LastElapsedMs}" Value="0">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <!-- 注释列：可编辑文本，绑定 Comment 属性 -->
+                                    <DataGridTextColumn Header="{lang:Lang PSE_ColumnComment}" Width="150"
+                                                        Binding="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
+                                                        EditingElementStyle="{StaticResource MaterialDesignDataGridTextColumnEditingStyle}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </DockPanel>
+        </DataTemplate>
+
+        <!-- 动作节点详情模板 -->
+        <DataTemplate x:Key="StepDetailTemplate">
+                    <DockPanel>
+                        <!-- 标题栏 -->
+                        <Border DockPanel.Dock="Top" Background="#ECEFF1" Padding="16,10">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CircleMedium" Width="20" Height="20" Foreground="#546E7A" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="{lang:Lang PSE_ActionProperties}" FontSize="16" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- 动作属性展示区 -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
+                            <StackPanel>
+                                <!-- 序号 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_ColumnSeq}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Seq, Mode=OneWay}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                </Grid>
+                                <!-- 步骤类型 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_ColumnStep}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Step, Mode=OneWay}" VerticalAlignment="Center" FontWeight="Medium"/>
+                                </Grid>
+                                <!-- 组件特征 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_ColumnCompFeature}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CompFeature, Mode=OneWay}" VerticalAlignment="Center" Foreground="#00838F"/>
+                                </Grid>
+                                <!-- 站点特征 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Site Feature" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SiteFeature, Mode=OneWay}" VerticalAlignment="Center" Foreground="#00838F"/>
+                                </Grid>
+                                <!-- 相机 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_ColumnCamera}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Camera, Mode=OneWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                                <!-- 用途 -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Purpose" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Purpose, Mode=OneWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                                <!-- 启用状态 -->
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>
+                                    <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                </Grid>
+                                <!-- 打开详细配置按钮 -->
+                                <Button Click="OpenStepDetailButton_Click"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Padding="12,6"
+                                        materialDesign:ButtonAssist.CornerRadius="6"
+                                        Background="#1565C0"
+                                        HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang Edit}" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>   <!-- 错误横幅 -->
+            <RowDefinition Height="Auto"/>   <!-- 序列文件工具栏 -->
+            <RowDefinition Height="*"/>      <!-- 左右双栏：树+详情 -->
+            <RowDefinition Height="Auto"/>   <!-- 执行控制 -->
+            <RowDefinition Height="Auto"/>   <!-- 验证面板 -->
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -86,10 +679,12 @@
         <!-- STEP 1: 序列文件 — 加载/保存/自动生成 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <materialDesign:Card Grid.Row="1" Margin="8,8,8,0" Padding="0" UniformCornerRadius="8">
-            <Expander IsExpanded="True" BorderThickness="0" Background="Transparent">
-                <Expander.Header>
+            <!-- 用 StackPanel 替代 Expander，避免 MaterialDesign Expander 内部 DoubleAnimation NaN 动画崩溃 -->
+            <StackPanel>
+                <!-- Header -->
+                <Border Padding="12,10" Background="Transparent">
                     <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
-                        <Border Style="{StaticResource StepBadge}" Background="#1565C0" Margin="-23,0,0,0">
+                        <Border Style="{StaticResource StepBadge}" Background="#1565C0">
                             <TextBlock Text="1" Foreground="White" FontWeight="Bold"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12"/>
                         </Border>
@@ -105,408 +700,496 @@
                                    TextTrimming="CharacterEllipsis"
                                    MaxWidth="360"/>
                     </StackPanel>
-                </Expander.Header>
-                <Expander.Content>
-                    <Border Padding="12,6,12,10" Background="#FAFAFA">
-                        <ToolBarTray>
-                            <ToolBar ClipToBounds="False"
-                                     Style="{StaticResource MaterialDesignToolBar}"
-                                     Background="Transparent"
-                                     Band="0" BandIndex="0">
-                                <Button Command="{Binding LoadFromJsonCommand}"
-                                        ToolTip="{lang:Lang PSE_LoadSequenceTip}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Import" Width="18" Height="18" Margin="0,0,4,0"/>
-                                        <TextBlock Text="{lang:Lang PSE_LoadSequence}"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Command="{Binding SaveToJsonCommand}"
-                                        ToolTip="{lang:Lang PSE_SaveSequenceTip}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="ContentSave" Width="18" Height="18" Margin="0,0,4,0"/>
-                                        <TextBlock Text="{lang:Lang PSE_SaveSequence}"/>
-                                    </StackPanel>
-                                </Button>
-                                <Separator/>
-                                <!--<Button Command="{Binding AutoGenerateCommand}"
-                                        ToolTip="{lang:Lang PSE_AutoGenerateTip}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="AutoFix" Width="18" Height="18" Margin="0,0,4,0"/>
-                                        <TextBlock Text="{lang:Lang PSE_AutoGenerate}"/>
-                                    </StackPanel>
-                                </Button>-->
-                            </ToolBar>
-                        </ToolBarTray>
-                    </Border>
-                </Expander.Content>
-            </Expander>
+                </Border>
+                <!-- Content (始终显示) -->
+                <Border Padding="12,6,12,10" Background="#FAFAFA">
+                    <ToolBarTray>
+                        <ToolBar ClipToBounds="False"
+                                 Style="{StaticResource MaterialDesignToolBar}"
+                                 Background="Transparent"
+                                 Band="0" BandIndex="0">
+                            <Button Command="{Binding LoadFromJsonCommand}"
+                                    ToolTip="{lang:Lang PSE_LoadSequenceTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Import" Width="18" Height="18" Margin="0,0,4,0"/>
+                                    <TextBlock Text="{lang:Lang PSE_LoadSequence}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding SaveToJsonCommand}"
+                                    ToolTip="{lang:Lang PSE_SaveSequenceTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="ContentSave" Width="18" Height="18" Margin="0,0,4,0"/>
+                                    <TextBlock Text="{lang:Lang PSE_SaveSequence}"/>
+                                </StackPanel>
+                            </Button>
+                            <Separator/>
+                        </ToolBar>
+                    </ToolBarTray>
+                </Border>
+            </StackPanel>
         </materialDesign:Card>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- STEP 2: 任务与步骤编辑 -->
+        <!-- STEP 2: 左右双栏 — 左侧任务树 + 右侧详情面板 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="2" Margin="8,4,8,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Grid Grid.Row="2" Margin="8,8,8,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="35" MinWidth="260"/>
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="65*" MinWidth="320"/>
+            </Grid.ColumnDefinitions>
 
-            <!-- Step 2 标题栏 -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
-                <Border Style="{StaticResource StepBadge}" Background="#00838F">
-                    <TextBlock Text="2" Foreground="White" FontWeight="Bold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12"/>
-                </Border>
-                <TextBlock Style="{StaticResource StepTitle}" Text="{lang:Lang PSE_TaskAndStepEditor}" Foreground="#00838F"/>
-                <TextBlock Style="{StaticResource StepHint}" Text="{lang:Lang PSE_StepEditHint}"/>
-            </StackPanel>
+            <!-- 左侧：树形任务列表 -->
+            <materialDesign:Card Grid.Column="0" UniformCornerRadius="8" Padding="0">
+                <DockPanel>
+                    <!-- 树标题栏 -->
+                    <Border DockPanel.Dock="Top" Background="#F5F5F5" Padding="10,8">
+                        <DockPanel>
+                            <materialDesign:PackIcon Kind="FileTree" Width="20" Height="20" VerticalAlignment="Center" Foreground="#546E7A" Margin="0,0,8,0"/>
+                            <TextBlock Text="{lang:Lang PSE_TreeViewTitle}" FontSize="14" FontWeight="SemiBold" Foreground="#37474F" VerticalAlignment="Center"/>
+                            <!-- 新建任务按钮 -->
+                            <Button DockPanel.Dock="Right" Command="{Binding NewTaskCommand}" ToolTip="{lang:Lang PSE_NewTaskTip}" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2">
+                                <materialDesign:PackIcon Kind="Plus" Width="18" Height="18"/>
+                            </Button>
+                        </DockPanel>
+                    </Border>
+                    <!-- TreeView：任务→方法→动作三级树 -->
+                    <TreeView x:Name="TaskTreeView"
+                              ItemsSource="{Binding Tasks}"
+                              SelectedItemChanged="TaskTreeView_SelectedItemChanged"
+                              Background="White" BorderThickness="0"
+                              AllowDrop="True"
+                              PreviewMouseLeftButtonDown="TreeView_PreviewMouseLeftButtonDown"
+                              PreviewMouseMove="TreeView_PreviewMouseMove"
+                              DragOver="TreeView_DragOver"
+                              Drop="TreeView_Drop">
+                        <TreeView.Resources>
+                            <!-- 任务节点模板（含右键菜单） -->
+                            <HierarchicalDataTemplate DataType="{x:Type models:TaskItem}" ItemsSource="{Binding Methods}">
+                                <StackPanel Orientation="Horizontal"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{lang:Lang PSE_NewMethod}"
+                                                      Command="{Binding PlacementTarget.Tag.NewMethodCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Copy}"
+                                                      Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Paste}"
+                                                      Command="{Binding PlacementTarget.Tag.PasteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentPaste" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Rename}"
+                                                      Command="{Binding PlacementTarget.Tag.RenameTaskCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="Rename" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_EditComment}"
+                                                      Command="{Binding PlacementTarget.Tag.EditCommentCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="CommentEditOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Delete}"
+                                                      Command="{Binding PlacementTarget.Tag.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      IsEnabled="{Binding IsDefault, Converter={StaticResource InverseBooleanConverter}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Disable}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleNodeEnabledCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PauseCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Enable}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleNodeEnabledCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PlayCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_SetActive}"
+                                                      Command="{Binding PlacementTarget.Tag.SetTaskRunModeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{x:Static models:TaskRunMode.Active}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="Play" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_SetPassive}"
+                                                      Command="{Binding PlacementTarget.Tag.SetTaskRunModeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{x:Static models:TaskRunMode.Passive}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="CallSplit" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                    <materialDesign:PackIcon Kind="Folder" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Foreground" Value="#1565C0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RunMode}" Value="{x:Static models:TaskRunMode.Passive}">
+                                                        <Setter Property="Kind" Value="CallSplit"/>
+                                                        <Setter Property="Foreground" Value="#7B1FA2"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                        <Setter Property="Foreground" Value="#9E9E9E"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#37474F"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                        <Setter Property="Foreground" Value="#9E9E9E"/>
+                                                        <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <!-- 注释显示（非空时显示） -->
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" Foreground="#9E9E9E" FontSize="11"
+                                               Text="{Binding Comment}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Comment}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Comment}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <!-- 运行时间显示（>0 时显示） -->
+                                    <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#FB8C00" FontSize="11">
+                                        <Run Text="["/><Run Text="{Binding LastElapsedMs}"/><Run Text=" ms]"/>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LastElapsedMs}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
 
-            <!-- 任务管理 + 步骤编辑 工具栏 -->
-            <materialDesign:Card Grid.Row="1" Padding="0" UniformCornerRadius="6">
-                <ToolBarTray>
-                    <!-- 任务管理工具栏 -->
-                    <ToolBar ClipToBounds="False"
-                             Style="{StaticResource MaterialDesignToolBar}"
-                             Background="Transparent"
-                             Band="0" BandIndex="0">
-                        <TextBlock Text="{lang:Lang PSE_TaskLabel}" VerticalAlignment="Center" FontWeight="Medium" FontSize="12" Margin="0,0,4,0"/>
-                        <ComboBox Width="130" ItemsSource="{Binding Tasks}" DisplayMemberPath="Name"
-                                  SelectedItem="{Binding CurrentTask}" FontSize="12">
-                            <ComboBox.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="{lang:Lang PSE_RenameTask}" Command="{Binding RenameTaskCommand}">
-                                        <MenuItem.Icon>
-                                            <materialDesign:PackIcon Kind="Rename" Width="16" Height="16"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </ComboBox.ContextMenu>
-                        </ComboBox>
-                        <Separator/>
-                        <Button Command="{Binding NewTaskCommand}" ToolTip="{lang:Lang PSE_NewTaskTip}">
-                            <materialDesign:PackIcon Kind="PlusBox" Width="18" Height="18"/>
-                        </Button>
-                        <Button Command="{Binding DeleteTaskCommand}" ToolTip="{lang:Lang PSE_DeleteTaskTip}">
-                            <materialDesign:PackIcon Kind="DeleteOutline" Width="18" Height="18"/>
-                        </Button>
-                    </ToolBar>
+                            <!-- 方法节点模板（含右键菜单） -->
+                            <HierarchicalDataTemplate DataType="{x:Type models:ProcessMethod}" ItemsSource="{Binding Steps}">
+                                <StackPanel Orientation="Horizontal"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{lang:Lang PSE_NewAction}"
+                                                      Command="{Binding PlacementTarget.Tag.AddStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_RunTaskAction}"
+                                                      Command="{Binding PlacementTarget.Tag.AddRunTaskStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="CallSplit" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_IfAction}"
+                                                      Command="{Binding PlacementTarget.Tag.AddIfStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="SourceBranch" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Copy}"
+                                                      Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Paste}"
+                                                      Command="{Binding PlacementTarget.Tag.PasteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentPaste" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Rename}"
+                                                      Command="{Binding PlacementTarget.Tag.RenameMethodCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="Rename" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_EditComment}"
+                                                      Command="{Binding PlacementTarget.Tag.EditCommentCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="CommentEditOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Delete}"
+                                                      Command="{Binding PlacementTarget.Tag.DeleteMethodCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Disable}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleNodeEnabledCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PauseCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Enable}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleNodeEnabledCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PlayCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                    <materialDesign:PackIcon Kind="FunctionVariant" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#00838F"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#37474F"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                        <Setter Property="Foreground" Value="#9E9E9E"/>
+                                                        <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <!-- 注释显示（非空时显示） -->
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" Foreground="#9E9E9E" FontSize="11"
+                                               Text="{Binding Comment}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Comment}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Comment}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <!-- 运行时间显示（>0 时显示） -->
+                                    <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#FB8C00" FontSize="11">
+                                        <Run Text="["/><Run Text="{Binding LastElapsedMs}"/><Run Text=" ms]"/>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LastElapsedMs}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
 
-                    <!-- 步骤编辑工具栏 -->
-                    <ToolBar ClipToBounds="False"
-                             Style="{StaticResource MaterialDesignToolBar}"
-                             Background="Transparent"
-                             Band="1" BandIndex="0">
-                        <Button Command="{Binding AddStepCommand}" ToolTip="{lang:Lang PSE_AddStepTip}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Plus" Width="18" Height="18" Margin="0,0,4,0"/>
-                                <TextBlock Text="{lang:Lang PSE_AddStep}"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding DeleteStepCommand}" ToolTip="{lang:Lang PSE_DeleteStepTip}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Minus" Width="18" Height="18" Margin="0,0,4,0"/>
-                                <TextBlock Text="{lang:Lang PSE_DeleteStep}"/>
-                            </StackPanel>
-                        </Button>
-                        <Separator/>
-                        <Button Command="{Binding MoveStepUpCommand}" ToolTip="上移步骤">
-                            <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
-                        </Button>
-                        <Button Command="{Binding MoveStepDownCommand}" ToolTip="{lang:Lang PSE_MoveDownTip}">
-                            <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
-                        </Button>
-                        <Separator/>
-                        <!--<Button Command="{Binding InsertDashboardStepCommand}" ToolTip="插入数据看板步骤">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="MonitorDashboard" Width="18" Height="18" Margin="0,0,4,0"/>
-                                <TextBlock Text="看板"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding InsertBranchStepCommand}" ToolTip="插入条件分支步骤">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="SourceBranch" Width="18" Height="18" Margin="0,0,4,0"/>
-                                <TextBlock Text="分支"/>
-                            </StackPanel>
-                        </Button>-->
-                    </ToolBar>
-                </ToolBarTray>
-            </materialDesign:Card>
-        </Grid>
-
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 步骤 DataGrid -->
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-        <DataGrid Grid.Row="3"
-                  x:Name="StepsDataGrid"
-                  ItemsSource="{Binding CurrentTask.Steps}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  SelectedItem="{Binding SelectedStep}"
-                  materialDesign:DataGridAssist.CellPadding="4,2"
-                  materialDesign:DataGridAssist.ColumnHeaderPadding="4"
-                  RowHeaderWidth="0"
-                  EnableRowVirtualization="True"
-                  EnableColumnVirtualization="True"
-                  VirtualizingStackPanel.IsVirtualizing="True"
-                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-                  GridLinesVisibility="Horizontal"
-                  BorderBrush="#E0E0E0" BorderThickness="0,1,0,1"
-                  FontSize="12"
-                  MouseDoubleClick="DataGrid_MouseDoubleClick"
-                  Margin="8,4,8,0">
-            <DataGrid.RowStyle>
-                <Style TargetType="DataGridRow">
-                    <Setter Property="Background" Value="White" />
-                    <Setter Property="ToolTip" Value="{x:Null}" />
-                    <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
-                    <Setter Property="ContextMenu">
-                        <Setter.Value>
-                            <ContextMenu>
-                                <MenuItem Header="{lang:Lang PSE_RunSingleStep}"
-                                          Command="{Binding PlacementTarget.Tag.RunSingleStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                          ToolTip="{lang:Lang PSE_RunSingleStepTip}">
-                                    <MenuItem.Icon>
-                                        <materialDesign:PackIcon Kind="PlayCircleOutline" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                            </ContextMenu>
-                        </Setter.Value>
-                    </Setter>
-                    <Style.Triggers>
-                        <!-- 当前步骤默认高亮：森林绿（运行中/暂停/停止状态） -->
-                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                            <Setter Property="Background" Value="#228B20" />
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
-                        </DataTrigger>
-                        <!-- 未启动时（Idle状态）当前步骤高亮改为灰色，与运行后的绿色区分 -->
-                        <MultiDataTrigger>
-                            <MultiDataTrigger.Conditions>
-                                <Condition Binding="{Binding IsCurrent}" Value="True"/>
-                                <Condition Binding="{Binding DataContext.CurrentTask.Status, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="Idle"/>
-                            </MultiDataTrigger.Conditions>
-                            <Setter Property="Background" Value="#9E9E9E" />
-                            <Setter Property="Foreground" Value="White" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
-                        </MultiDataTrigger>
-                        <DataTrigger Binding="{Binding IsSingleExecuting}" Value="True">
-                            <Setter Property="Background" Value="#C8E6C9" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding HasActiveAlarm}" Value="True">
-                            <Setter Property="Background" Value="#FFEBEE" />
-                            <Setter Property="ToolTip">
-                                <Setter.Value>
-                                    <ToolTip>
-                                        <StackPanel Margin="4">
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                <materialDesign:PackIcon Kind="AlertCircleOutline" Width="16" Height="16" Foreground="#F44336" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <TextBlock Text="{lang:Lang PSE_ErrorDetails}" FontWeight="Bold" FontSize="12" Foreground="#F44336" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                            <TextBlock FontSize="11">
-                                                <Run Text="Alarm Code: "/><Run Text="{Binding AlarmConfig.AlarmCode, Mode=OneWay}" Foreground="#F44336" />
-                                            </TextBlock>
-                                            <TextBlock FontSize="11">
-                                                <Run Text="Alarm Level: "/><Run Text="{Binding AlarmConfig.AlarmLevel, Mode=OneWay}" />
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Setter.Value>
-                            </Setter>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </DataGrid.RowStyle>
-            <DataGrid.Columns>
-                <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnSeq}" Width="70">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="AlertCircle"
-                                                         Width="14" Height="14"
-                                                         VerticalAlignment="Center"
-                                                         Foreground="#F44336"
-                                                         Margin="0,0,2,0"
-                                                         Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                <TextBlock Text="▶"
-                                           Visibility="{Binding IsCurrent, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                           Margin="0,0,4,0" Foreground="#1565C0" FontSize="10" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Seq}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnStep}" Width="110">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Step}" VerticalAlignment="Center" Margin="4,0" FontWeight="Medium"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox ItemsSource="{Binding DataContext.StepTypeValues, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      SelectedItem="{Binding Step, UpdateSourceTrigger=PropertyChanged}"
-                                      materialDesign:HintAssist.Hint="Step Type" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnCompFeature}" Width="150">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding CompFeature}" Foreground="#00838F"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox ItemsSource="{Binding DataContext.ComponentFeatureOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      Text="{Binding CompFeature, UpdateSourceTrigger=PropertyChanged}"
-                                      IsEditable="True" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="Site Feature" Width="150">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding SiteFeature}" Foreground="#00838F"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox ItemsSource="{Binding DataContext.SiteFeatureOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      Text="{Binding SiteFeature, UpdateSourceTrigger=PropertyChanged}"
-                                      IsEditable="True" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnCamera}" Width="120">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Camera}"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox ItemsSource="{Binding DataContext.CameraOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      Text="{Binding Camera, UpdateSourceTrigger=PropertyChanged}"
-                                      IsEditable="True" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="Purpose" Width="150">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Purpose}"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <ComboBox ItemsSource="{Binding DataContext.PurposeOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      Text="{Binding Purpose, UpdateSourceTrigger=PropertyChanged}"
-                                      IsEditable="True" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="{lang:Lang PSE_ColumnAlarm}" Width="50">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Border>
-                                <Border.ToolTip>
-                                    <ToolTip Background="#FF373737" Foreground="White" Padding="10,8">
-                                        <StackPanel Margin="2">
-                                            <TextBlock FontWeight="Bold" FontSize="12" Foreground="White" Text="{lang:Lang PSE_AlarmConfigTitle}" />
-                                            <TextBlock FontSize="11" Margin="0,4,0,0" Foreground="#FFCCCCCC">
-                                                <Run Text="{lang:Lang PSE_AlarmCodeLabel}" Foreground="#FFCCCCCC" />
-                                                <Run Text="{Binding AlarmDisplayText, Mode=OneWay}" Foreground="#FF8B8B" />
-                                            </TextBlock>
-                                            <TextBlock FontSize="11" Foreground="#FFCCCCCC">
-                                                <Run Text="{lang:Lang PSE_AlarmLevelLabel}" Foreground="#FFCCCCCC" />
-                                                <Run Text="{Binding AlarmLevelDisplayText, Mode=OneWay}" Foreground="White" />
-                                            </TextBlock>
-                                            <TextBlock FontSize="10" Foreground="#FF999999" Margin="0,4,0,0"
-                                                       Text="{lang:Lang PSE_AlarmTriggerHint}" />
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Grid HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="BellOutline"
-                                                             Width="16" Height="16"
-                                                             Visibility="{Binding AlarmConfig.IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                             Foreground="#F44336" />
-                                    <materialDesign:PackIcon Kind="BellOffOutline"
-                                                             Width="16" Height="16"
-                                                             Visibility="{Binding AlarmConfig.IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}"
-                                                             Foreground="#BBBBBB" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                    <DataGridTemplateColumn.CellEditingTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="2,0">
-                                <CheckBox IsChecked="{Binding AlarmConfig.IsEnabled, UpdateSourceTrigger=PropertyChanged}"
-                                          ToolTip="{lang:Lang PSE_EnableAlarm}" VerticalAlignment="Center" />
-                                <TextBox Text="{Binding AlarmConfig.AlarmCode, UpdateSourceTrigger=PropertyChanged}"
-                                         Width="80" Margin="4,0" materialDesign:HintAssist.Hint="{lang:Lang PSE_CodeHint}" FontSize="11" />
-                                <ComboBox SelectedItem="{Binding AlarmConfig.AlarmLevel, UpdateSourceTrigger=PropertyChanged}"
-                                          Width="80" FontSize="11" materialDesign:HintAssist.Hint="{lang:Lang PSE_LevelHint}">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock>
-                                                <TextBlock.Text>
-                                                    <MultiBinding StringFormat="{}{0}-{1}">
-                                                        <Binding Path="." />
-                                                        <Binding Path="." Converter="{StaticResource AlarmLevelConverter}" />
-                                                    </MultiBinding>
-                                                </TextBlock.Text>
-                                            </TextBlock>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                    <sys:Int32>1</sys:Int32>
-                                    <sys:Int32>2</sys:Int32>
-                                    <sys:Int32>3</sys:Int32>
-                                    <sys:Int32>4</sys:Int32>
-                                </ComboBox>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellEditingTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTemplateColumn Header="{lang:Lang PSE_ElapsedTime}" Width="80" IsReadOnly="True">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding LastElapsedMs, StringFormat={}{0} ms}"
-                                       VerticalAlignment="Center"
-                                       HorizontalAlignment="Right"
-                                       FontSize="11"
-                                       Foreground="#666666">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding LastElapsedMs}" Value="0">
+                            <!-- 动作节点模板（含右键菜单） -->
+                            <!-- 使用 HierarchicalDataTemplate 支持 IF 步骤嵌套显示：IF 类型步骤的 IfBranches 非 null 时显示子节点 -->
+                            <HierarchicalDataTemplate DataType="{x:Type stationTasks:ProcessStep}" ItemsSource="{Binding IfBranches}">
+                                <StackPanel Orientation="Horizontal"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{lang:Lang PSE_Copy}"
+                                                      Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Paste}"
+                                                      Command="{Binding PlacementTarget.Tag.PasteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentPaste" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Delete}"
+                                                      Command="{Binding PlacementTarget.Tag.DeleteStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_EditComment}"
+                                                      Command="{Binding PlacementTarget.Tag.EditCommentCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="CommentEditOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Disable}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleNodeEnabledCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PauseCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="{lang:Lang PSE_Enable}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleNodeEnabledCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PlayCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_ExecuteSelected}"
+                                                      Command="{Binding PlacementTarget.Tag.RunSingleStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="PlayCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                    <materialDesign:PackIcon Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,6,0">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="CircleMedium"/>
+                                                <Setter Property="Foreground" Value="#546E7A"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Step}" Value="IF">
+                                                        <Setter Property="Kind" Value="SourceBranch"/>
+                                                        <Setter Property="Foreground" Value="#7B1FA2"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                        <Setter Property="Foreground" Value="#228B20"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding HasActiveAlarm}" Value="True">
+                                                        <Setter Property="Foreground" Value="#F44336"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                        <Setter Property="Foreground" Value="#BDBDBD"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                    <TextBlock VerticalAlignment="Center">
+                                        <Run Text="["/><Run Text="{Binding Seq}"/><Run Text="] "/>
+                                        <Run Text="{Binding Step}"/>
+                                    </TextBlock>
+                                    <!-- IF 步骤显示条件表达式摘要 -->
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" Foreground="#7B1FA2" FontSize="11"
+                                               Text="{Binding IfDetail.ConditionExpression}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="200">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Step}" Value="IF">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <!-- 注释显示（非空时显示） -->
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" Foreground="#9E9E9E" FontSize="11"
+                                               Text="{Binding Comment}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Comment}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Comment}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <!-- 运行时间显示（>0 时显示） -->
+                                    <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#FB8C00" FontSize="11">
+                                        <Run Text="["/><Run Text="{Binding LastElapsedMs}"/><Run Text=" ms]"/>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LastElapsedMs}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+
+                            <!-- IF 分支组模板（Then/Else 虚拟节点，承载子步骤） -->
+                            <HierarchicalDataTemplate DataType="{x:Type stationTasks:IfBranchGroup}" ItemsSource="{Binding Steps}">
+                                <StackPanel Orientation="Horizontal"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{lang:Lang PSE_IfAddSubStep}"
+                                                      Command="{Binding PlacementTarget.Tag.AddIfSubStepCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                    <materialDesign:PackIcon Kind="CallSplit" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,6,0">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Foreground" Value="#00838F"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Header}" Value="Then">
+                                                        <Setter Property="Kind" Value="ArrowTopRight"/>
+                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Header}" Value="Else">
+                                                        <Setter Property="Kind" Value="ArrowBottomLeft"/>
+                                                        <Setter Property="Foreground" Value="#C62828"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#37474F"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Header}" Value="Then">
+                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Header}" Value="Else">
+                                                        <Setter Property="Foreground" Value="#C62828"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                        <Run Text="{Binding Header, Mode=OneWay}"/>
+                                        <Run Text=" (" Foreground="#9E9E9E"/><Run Text="{Binding Steps.Count, Mode=OneWay}" Foreground="#9E9E9E"/><Run Text=")" Foreground="#9E9E9E"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                    </TreeView>
+                </DockPanel>
+            </materialDesign:Card>
+
+            <!-- 分隔线 -->
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="#E0E0E0"/>
+
+            <!-- 右侧：详情面板（三个重叠 ContentControl，按类型过滤，避免模板切换动画崩溃） -->
+            <Grid Grid.Column="2">
+                <!-- 任务详情 -->
+                <ContentControl Content="{Binding SelectedNode, Converter={StaticResource TypeFilterConverter}, ConverterParameter={x:Type models:TaskItem}}"
+                                ContentTemplate="{StaticResource TaskDetailTemplate}"
+                                Visibility="{Binding SelectedNode, Converter={StaticResource TypeToVisibilityConverter}, ConverterParameter={x:Type models:TaskItem}}"
+                                materialDesign:TransitionAssist.DisableTransitions="True"/>
+                <!-- 方法详情 -->
+                <ContentControl Content="{Binding SelectedNode, Converter={StaticResource TypeFilterConverter}, ConverterParameter={x:Type models:ProcessMethod}}"
+                                ContentTemplate="{StaticResource MethodDetailTemplate}"
+                                Visibility="{Binding SelectedNode, Converter={StaticResource TypeToVisibilityConverter}, ConverterParameter={x:Type models:ProcessMethod}}"
+                                materialDesign:TransitionAssist.DisableTransitions="True"/>
+                <!-- 动作详情 -->
+                <ContentControl Content="{Binding SelectedNode, Converter={StaticResource TypeFilterConverter}, ConverterParameter={x:Type stationTasks:ProcessStep}}"
+                                ContentTemplate="{StaticResource StepDetailTemplate}"
+                                Visibility="{Binding SelectedNode, Converter={StaticResource TypeToVisibilityConverter}, ConverterParameter={x:Type stationTasks:ProcessStep}}"
+                                materialDesign:TransitionAssist.DisableTransitions="True"/>
+            </Grid>
+        </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- STEP 3: 执行控制 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <materialDesign:Card Grid.Row="4" Margin="8,4,8,0" Padding="0" UniformCornerRadius="8">
+        <materialDesign:Card Grid.Row="3" Margin="8,4,8,0" Padding="0" UniformCornerRadius="8">
             <Border Padding="10,8" Background="#FFF3E0" CornerRadius="8">
                 <DockPanel>
                     <!-- Step 3 标识 -->
@@ -640,33 +1323,41 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <!-- 验证面板 -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <materialDesign:Card Grid.Row="5" Margin="8,4,8,8" Padding="0" UniformCornerRadius="8">
-            <Expander BorderThickness="0" Background="Transparent">
-                <Expander.Header>
-                    <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+        <!--<materialDesign:Card Grid.Row="4" Margin="8,4,8,8" Padding="0" UniformCornerRadius="8">
+            --><!-- 用 ToggleButton + Visibility 替代 Expander，避免 DoubleAnimation NaN 动画崩溃 --><!--
+            <StackPanel>
+                <ToggleButton x:Name="ValidationPanelToggle"
+                              IsChecked="False"
+                              HorizontalContentAlignment="Stretch"
+                              Padding="0"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Cursor="Hand">
+                    <StackPanel Orientation="Horizontal" Margin="16,10">
                         <materialDesign:PackIcon Kind="ShieldCheck" Width="18" Height="18" Margin="0,0,8,0"
                                                   VerticalAlignment="Center" Foreground="#616161"/>
                         <TextBlock Style="{StaticResource StepTitle}" Text="{lang:Lang PSE_SequenceValidation}" Foreground="#7B1FA2"/>
                         <TextBlock Style="{StaticResource StepHint}" Text="{lang:Lang PSE_ValidationHint}"/>
+                        <materialDesign:PackIcon Kind="ChevronDown" Width="16" Height="16"
+                                                  VerticalAlignment="Center" Foreground="#9E9E9E" Margin="8,0,0,0"/>
                     </StackPanel>
-                </Expander.Header>
-                <Expander.Content>
-                    <Border Padding="12,6" Background="#FAFAFA">
-                        <ItemsControl ItemsSource="{Binding ValidationResults}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,3">
-                                        <TextBlock Text="{Binding IsValid, Converter={StaticResource BoolToCheckMarkConverter}}"
-                                                   FontFamily="{DynamicResource MaterialDesignIconFont}" FontSize="16"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Message}" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="12"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Border>
-                </Expander.Content>
-            </Expander>
-        </materialDesign:Card>
+                </ToggleButton>
+                <Border Padding="12,6" Background="#FAFAFA"
+                        Visibility="{Binding IsChecked, ElementName=ValidationPanelToggle, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ItemsControl ItemsSource="{Binding ValidationResults}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,3">
+                                    <TextBlock Text="{Binding IsValid, Converter={StaticResource BoolToCheckMarkConverter}}"
+                                               FontFamily="{DynamicResource MaterialDesignIconFont}" FontSize="16"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Message}" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="12"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+        </materialDesign:Card>-->
     </Grid>
 </UserControl>

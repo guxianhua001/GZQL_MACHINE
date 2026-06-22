@@ -37,9 +37,9 @@ namespace StationTasks
             // 注册整机初始化服务（协调三工站初始化时序）
             containerRegistry.RegisterSingleton<IMachineInitializationService, MachineInitializationService>();
 
-            // 注册步骤动作实现
+            // 注册步骤动作实现（含信号交互步骤：SignalSendStepAction / SignalWaitStepAction；含 IF 条件块步骤：IfStepAction）
             container.RegisterMany(
-                new[] { typeof(GotoStepAction), typeof(VisionStepAction), typeof(Scan3DStepAction), typeof(SeekStepAction), typeof(WaitStepAction), typeof(ScriptStepAction), typeof(DashboardStepAction), typeof(BranchStepAction), typeof(PickStepAction), typeof(CureStepAction), typeof(DispenseStepAction), typeof(ReleaseStepAction) },
+                new[] { typeof(GotoStepAction), typeof(VisionStepAction), typeof(Scan3DStepAction), typeof(SeekStepAction), typeof(WaitStepAction), typeof(ScriptStepAction), typeof(DashboardStepAction), typeof(BranchStepAction), typeof(PickStepAction), typeof(CureStepAction), typeof(DispenseStepAction), typeof(ReleaseStepAction), typeof(SignalSendStepAction), typeof(SignalWaitStepAction), typeof(IfStepAction) },
                 Reuse.Singleton,
                 serviceTypeCondition: serviceType => serviceType == typeof(IProcessStepAction)
             );
@@ -50,6 +50,8 @@ namespace StationTasks
             containerRegistry.RegisterSingleton<Camera3DDataParser>();
 
             containerRegistry.RegisterSingleton<IStationInteractionService, StationInteractionService>();
+            // 注册任务间信号交互服务（用于 Task 间信号发送/等待，支持自动复位）
+            containerRegistry.RegisterSingleton<ITaskSignalService, TaskSignalService>();
             containerRegistry.RegisterSingleton<IPositionProvider, RecipePositionProvider>();
             containerRegistry.RegisterSingleton<IRecipeServiceFactory, RecipeServiceFactory>();
             containerRegistry.RegisterSingleton<VisionCaptureService>();

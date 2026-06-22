@@ -1,0 +1,167 @@
+<UserControl x:Class="Module.Views.IfDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+             xmlns:frameworkConv="clr-namespace:Framework.Converters;assembly=Framework"
+             MaxWidth="740" MaxHeight="580">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <frameworkConv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource DialogCardBrush}"
+            CornerRadius="6">
+        <Grid>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16">
+
+                    <!-- 标题区：步骤描述 -->
+                    <DockPanel Margin="0,0,0,16">
+                        <materialDesign:PackIcon Kind="SourceBranch" Width="24" Height="24"
+                                                  Foreground="#7B1FA2" VerticalAlignment="Center"
+                                                  Margin="0,0,10,0"/>
+                        <TextBlock Text="{lang:Lang IfDetail_Title}" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="#7B1FA2" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StepDescription, Mode=OneWay}" FontSize="12"
+                                   Foreground="#9E9E9E" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right"/>
+                    </DockPanel>
+
+                    <!-- 条件表达式编辑区 -->
+                    <GroupBox Margin="0,0,0,12">
+                        <GroupBox.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FunctionVariant" Width="16" Height="16"
+                                                          VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{lang:Lang IfDetail_ConditionExpression}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </GroupBox.Header>
+                        <StackPanel Margin="8">
+                            <!-- 表达式输入框 -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ExpressionTextBox"
+                                         Grid.Column="0"
+                                         Text="{Binding ConditionExpression, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="@GV:变量名 == true 或 @Output:输出 == 1"
+                                         AcceptsReturn="False"
+                                         TextWrapping="NoWrap"
+                                         VerticalAlignment="Center"
+                                         MinWidth="400"/>
+                                <!-- 变量插入下拉（合并显示 @Output: 前序步骤输出 和 @GV: 全局变量） -->
+                                <ComboBox Grid.Column="1"
+                                          x:Name="VariableInsertCombo"
+                                          ItemsSource="{Binding AllVariableNames}"
+                                          SelectedIndex="-1"
+                                          SelectionChanged="OnVariableSelected"
+                                          ToolTip="{lang:Lang IfDetail_InsertVariable}"
+                                          Width="40" Height="32"
+                                          Margin="4,0,0,0"
+                                          VerticalAlignment="Center">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" FontSize="10"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- 校验状态提示 -->
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                        Visibility="{Binding IsValidationValid, Converter={StaticResource InverseBoolToVis}}">
+                                <materialDesign:PackIcon Kind="AlertCircleOutline" Width="16" Height="16"
+                                                          Foreground="#F44336" VerticalAlignment="Center"
+                                                          Margin="0,0,4,0"/>
+                                <TextBlock Text="{Binding ValidationMessage}" Foreground="#F44336"
+                                           FontSize="11" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                        Visibility="{Binding IsValidationValid, Converter={StaticResource BoolToVis}}">
+                                <materialDesign:PackIcon Kind="CheckCircleOutline" Width="16" Height="16"
+                                                          Foreground="#43A047" VerticalAlignment="Center"
+                                                          Margin="0,0,4,0"/>
+                                <TextBlock Text="{lang:Lang IfDetail_ValidationPassed}" Foreground="#43A047"
+                                           FontSize="11" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- 表达式模板快速插入 -->
+                            <TextBlock Text="{lang:Lang IfDetail_ExpressionTemplates}" FontSize="11"
+                                       Foreground="#616161" Margin="0,12,0,4"/>
+                            <ItemsControl ItemsSource="{Binding ExpressionTemplates}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding}"
+                                                Command="{Binding DataContext.InsertTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                FontSize="11" Padding="8,2" Margin="0,0,4,4"
+                                                Foreground="#1565C0"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- 说明区 -->
+                    <GroupBox Margin="0,0,0,12">
+                        <GroupBox.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CommentTextOutline" Width="16" Height="16"
+                                                          VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{lang:Lang IfDetail_Description}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </GroupBox.Header>
+                        <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="{lang:Lang IfDetail_DescriptionHint}"
+                                 Margin="8"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MinHeight="60"
+                                 MaxHeight="120"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </GroupBox>
+
+                    <!-- 使用说明 -->
+                    <Border Background="#F3E5F5" CornerRadius="4" Padding="10,8" Margin="0,0,0,16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <materialDesign:PackIcon Kind="InformationOutline" Width="16" Height="16"
+                                                          Foreground="#7B1FA2" VerticalAlignment="Center"
+                                                          Margin="0,0,6,0"/>
+                                <TextBlock Text="{lang:Lang IfDetail_UsageTitle}" FontWeight="SemiBold"
+                                           Foreground="#7B1FA2" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{lang:Lang IfDetail_UsageHint}" FontSize="11"
+                                       Foreground="#616161" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 操作按钮 -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="{lang:Lang IfDetail_Cancel}"
+                                Command="{Binding CloseCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Margin="0,0,8,0"/>
+                        <Button Content="{lang:Lang IfDetail_Save}"
+                                Command="{Binding SaveCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

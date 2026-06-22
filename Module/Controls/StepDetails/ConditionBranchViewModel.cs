@@ -1,5 +1,6 @@
 using Core.Models;
 using Core.Utilities;
+using Core.Abstraction;
 using Module.Services;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -14,7 +15,7 @@ using System.Windows.Input;
 
 namespace Module.ViewModels
 {
-    public class ConditionBranchViewModel : BindableBase
+    public class ConditionBranchViewModel : BindableBase, IDialogCloseable
     {
         private readonly IProcessSequenceService _sequenceService;
         private readonly IRecipePoolService _recipePoolService;
@@ -23,6 +24,12 @@ namespace Module.ViewModels
 
         /// <summary> DialogHost标识符，用于关闭对话框 </summary>
         private const string DialogIdentifier = "MainDialogHost";
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary> 构造函数：注入步骤序列服务和配方池服务（用于加载全局变量列表） </summary>
         public ConditionBranchViewModel(
@@ -357,13 +364,6 @@ namespace Module.ViewModels
                         }
                     }
                 }
-
-                // 收集 CHECK 步骤的检查结果（布尔型）
-                if (step.Step == StepType.CHECK && step.CheckDetail != null)
-                {
-                    string checkResultName = $"@Output:步骤{step.Seq}_CheckResult";
-                    AddStepOutput(checkResultName, GlobalVariableType.Bool);
-                }
             }
         }
 
@@ -516,23 +516,13 @@ namespace Module.ViewModels
                 DefaultTargetStepSeq = DefaultTargetStepSeq
             };
 
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession(DialogIdentifier);
-                session?.Close(true);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(true);
         }
 
         /// <summary> 取消：直接关闭DialogHost，不保存修改 </summary>
         private void OnCancel()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession(DialogIdentifier);
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
     }
 }

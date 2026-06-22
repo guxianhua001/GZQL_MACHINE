@@ -17,6 +17,11 @@
 
     <UserControl.Resources>
         <ResourceDictionary>
+            <!-- 合并主题资源字典 -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ModuleCore;component/Themes/DialogTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
             <!-- 滚动条样式 -->
             <Style TargetType="ScrollViewer"
                    x:Key="LogScrollViewerStyle">
@@ -25,18 +30,14 @@
                 <Setter Property="VerticalScrollBarVisibility"
                         Value="Auto" />
                 <Setter Property="Background"
-                        Value="White" />
+                        Value="{DynamicResource DialogCardBrush}" />
             </Style>
-
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
-            </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <!-- 使用DockPanel作为根容器 -->
     <DockPanel LastChildFill="True"
-               Background="White">
+               Background="{DynamicResource DialogCardBrush}">
         <!-- 功能区（上方固定高度） -->
         <!--<GroupBox DockPanel.Dock="Top"
                   Header="Functions"
@@ -46,7 +47,7 @@
         </GroupBox>-->
 
         <!-- 日志显示区（充满剩余空间） -->
-        <Border Background="White"
+        <Border Background="{DynamicResource DialogCardBrush}"
                 Margin="0">
             <!--<nlog:NlogViewer x:Name="logCtrl"
                              TimeWidth="Auto"

@@ -202,13 +202,49 @@ namespace Framework.ViewModels
                 return;
 
             // 使用ViewType进行导航
-            _regionManager.RequestNavigate("TreeRegion", selectedNode.ViewType, result =>
+            NavigateToView(selectedNode.ViewType);
+        }
+
+        /// <summary>
+        /// 导航到指定视图，含动画异常容错重试机制。
+        /// MaterialDesign 转场动画在复杂视图卸载时可能抛出 NaN 异常，
+        /// 捕获后清空区域内容并重试一次，避免导航被彻底阻塞。
+        /// </summary>
+        private void NavigateToView(string viewName)
+        {
+            _regionManager.RequestNavigate("TreeRegion", viewName, result =>
             {
                 if ((bool)!result.Result)
                 {
-                    // 记录或弹出错误信息
-                    System.Diagnostics.Debug.WriteLine($"导航失败: {result.Error?.Message}");
-                    MessageBox.Show($"导航失败: {result.Error?.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    var errMsg = result.Error?.Message ?? string.Empty;
+                    System.Diagnostics.Debug.WriteLine($"导航失败: {errMsg}");
+
+                    // 动画 NaN 异常属于非致命的布局问题，清空区域后重试一次
+                    if (errMsg.Contains("DoubleAnimation") || errMsg.Contains("NaN"))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[导航重试] 检测到动画异常，清空区域后重试...");
+                        try
+                        {
+                            var region = _regionManager.Regions["TreeRegion"];
+                            foreach (var v in region.Views.ToList())
+                                region.Remove(v);
+                        }
+                        catch { /* 清空区域失败不影响后续重试 */ }
+
+                        _regionManager.RequestNavigate("TreeRegion", viewName, retryResult =>
+                        {
+                            if ((bool)!retryResult.Result)
+                            {
+                                MessageBox.Show($"导航失败: {retryResult.Error?.Message}", "错误",
+                                    MessageBoxButton.OK, MessageBoxImage.Error);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        MessageBox.Show($"导航失败: {errMsg}", "错误",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             });
         }

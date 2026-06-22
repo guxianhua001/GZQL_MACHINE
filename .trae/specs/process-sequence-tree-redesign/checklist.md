@@ -1,0 +1,33 @@
+- [x] ProcessMethod 模型已创建，包含 Name、Steps、IsEnabled、IsExpanded、IsSelected 属性
+- [x] TaskItem 已扩展 RunMode（Active/Passive）、IsEnabled、Methods 属性，保留 Steps 兼容聚合
+- [x] ProcessStep 已新增 IsEnabled 属性（默认 true），JSON 序列化兼容
+- [x] StepType 枚举已新增 RUNTASK 值
+- [x] ProcessSequenceEditorView 重构为左侧 TreeView + 右侧详情面板双栏布局
+- [x] TreeView 三级层级正确显示：任务→方法→动作，每级显示对应 PackIcon
+- [x] 节点禁用状态可视化（灰色文字 + BlockHelper 图标）
+- [x] 右侧详情面板根据选中节点类型切换视图（DataTemplateSelector）
+- [x] 任务节点右键菜单：新建方法/复制/粘贴/删除/重命名/禁用启用/设为主动被动（默认任务禁用删除）
+- [x] 方法节点右键菜单：新建动作/复制/粘贴/删除/重命名/禁用启用
+- [x] 动作节点右键菜单：复制/粘贴/删除/禁用启用/执行选中工具
+- [x] 复制粘贴实现深拷贝，副本名称追加 _Copy，运行时状态重置
+- [x] 禁用启用节点后树形可视化与执行跳过均生效
+- [x] ProcessSequenceService 新增 AddMethod/DeleteMethod/RenameMethod/CopyNode/PasteNode/ToggleNodeEnabled/SetTaskRunMode 命令
+- [x] 序列化 DTO 扩展为 Methods 列表格式，加载旧 Steps 格式自动迁移
+- [x] RunTaskDetail 模型与 IRunTaskExecutor 接口已创建（ProcessSequenceService 实现 IRunTaskExecutor，替代独立 RunTaskStepAction）
+- [x] IRunTaskExecutor 从 IProcessSequenceService 查找 Passive 任务并按方法顺序执行
+- [x] 循环调用检测生效，触发报警并终止执行
+- [x] RunTaskDetailViewModel/View 用于选择目标 Passive 任务
+- [x] ProcessStepExecutor 接收扁平化后的 Step 列表（ProcessSequenceService.FlattenEnabledSteps 将启用方法/动作扁平化为 ObservableCollection<ProcessStep>，方法遍历在扁平化阶段完成）
+- [x] 执行时跳过 IsEnabled=false 的任务/方法/动作并记录日志
+- [x] RUNTASK 步骤正确调用 IRunTaskExecutor.ExecutePassiveTaskAsync 并传递 CallStack（ProcessStepExecutor 通过构造函数注入 IRunTaskExecutor）
+- [x] 同方法内动作拖拽排序生效，Seq 自动重编号
+- [x] 拖拽排序后 BranchConfig/CheckDetail 步骤引用正确更新
+- [x] 拖拽视觉反馈已实现（通过 DragOver 设置 DragDropEffects.Move 实现光标反馈，非插入线指示器）
+- [x] 跨方法拖拽评估结论已记录在 spec 文档
+- [x] 所有新增 UI 字符串在 Strings.zh-CN.xaml 与 Strings.en-US.xaml 同步添加 PSE_ 键
+- [x] 所有新增 UI 字符串使用 {lang:Lang KEY} 绑定，无硬编码字符串
+- [x] 旧格式序列文件加载自动迁移为 Methods 结构
+- [x] Passive 任务不可直接启动，提示用户通过调用任务动作触发
+- [x] 所有按钮图标使用 materialDesign:PackIcon，无 emoji
+- [x] 代码遵循 WPF + PRISM + MaterialDesignInXAML 架构，无倒置依赖
+- [x] 关键方法与关键点已添加注释

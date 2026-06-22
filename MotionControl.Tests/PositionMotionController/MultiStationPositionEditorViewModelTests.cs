@@ -71,6 +71,15 @@ namespace MotionControl.Tests.PositionMotionController
             _motionServiceMock
                 .Setup(m => m.MoveAbsAsync(It.IsAny<int>(), It.IsAny<double>(), It.IsAny<double>(), default))
                 .Returns(Task.CompletedTask);
+            // 多轴同时启动走 MoveAbsMultiAxisAsync（避免并行 MoveAbsAsync 引发运动卡 DLL 交叉干扰）
+            _motionServiceMock
+                .Setup(m => m.MoveAbsMultiAxisAsync(It.IsAny<IReadOnlyList<(int axisId, double position, double velocity)>>(), default))
+                .Returns(Task.CompletedTask);
+            // 回零检查默认返回已回零（1=已回零）
+            _motionServiceMock.Setup(m => m.CheckHomeDoneAsync(It.IsAny<int>())).ReturnsAsync(1);
+            // 轴状态默认已使能
+            _motionServiceMock.Setup(m => m.GetAxisState(It.IsAny<int>()))
+                .Returns(new AxisState { IsEnabled = true, IsHomeOk = true });
 
             _dialogServiceMock
                 .Setup(d => d.ShowDialog("ConfirmationDialog", It.IsAny<IDialogParameters>(), It.IsAny<System.Action<IDialogResult>>()))
@@ -83,6 +92,7 @@ namespace MotionControl.Tests.PositionMotionController
             var recipeChangedEvent = new Recipe.Events.RecipeChangedEvent();
             var poolChangedEvent = new Recipe.Events.RecipePoolChangedEvent();
             var stationRegisteredEvent = new Core.Events.StationRegisteredEvent();
+            var savePositionEditorEvent = new Recipe.Events.SavePositionEditorEvent();
 
             _eaMock.Setup(e => e.GetEvent<Recipe.Events.RecipeChangedEvent>())
                 .Returns(recipeChangedEvent);
@@ -90,6 +100,8 @@ namespace MotionControl.Tests.PositionMotionController
                 .Returns(poolChangedEvent);
             _eaMock.Setup(e => e.GetEvent<Core.Events.StationRegisteredEvent>())
                 .Returns(stationRegisteredEvent);
+            _eaMock.Setup(e => e.GetEvent<Recipe.Events.SavePositionEditorEvent>())
+                .Returns(savePositionEditorEvent);
         }
 
         private MultiStationPositionEditorViewModel CreateViewModel()
@@ -162,9 +174,40 @@ namespace MotionControl.Tests.PositionMotionController
             vm.SetSelectedAxisColumn(2);
             Assert.Equal("X", vm.SelectedAxisColumnName);
 
-            // 索引0对应PositionName，非轴列
+            // 索引0对应PositionName，非轴列——实现 intentionally 保留上一次有效选择
             vm.SetSelectedAxisColumn(0);
-            Assert.Null(vm.SelectedAxisColumnName);
+            Assert.Equal("X", vm.SelectedAxisColumnName);
+        }
+
+        /// <summary>
+        /// 验证"多轴同时启动"走 MoveAbsMultiAxisAsync（而非并行 MoveAbsAsync）。
+        /// 并行 MoveAbsAsync 会触发运动卡 DLL 交叉干扰，导致部分轴"不动位"。
+        /// 通过反射直接调用私有 GotoSimultaneousAsync，绕过 UI 弹窗依赖。
+        /// </summary>
+        [Fact]
+        public async Task GotoSimultaneousAsync_调用MoveAbsMultiAxisAsync而非并行MoveAbsAsync()
+        {
+            var vm = CreateViewModel();
+            // 目标位置：X=10.0, Y=20.0
+            var targetPositions = new Dictionary<string, double> { { "X", 10.0 }, { "Y", 20.0 } };
+
+            // 反射调用私有方法 GotoSimultaneousAsync
+            var method = typeof(MultiStationPositionEditorViewModel).GetMethod(
+                "GotoSimultaneousAsync",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(method);
+            var task = (Task)method.Invoke(vm, new object[] { targetPositions, 10.0 });
+            await task;
+
+            // 应调用一次 MoveAbsMultiAxisAsync（包含2个轴），且不调用 MoveAbsAsync
+            _motionServiceMock.Verify(
+                m => m.MoveAbsMultiAxisAsync(
+                    It.Is<IReadOnlyList<(int axisId, double position, double velocity)>>(list => list.Count == 2),
+                    default),
+                Times.Once);
+            _motionServiceMock.Verify(
+                m => m.MoveAbsAsync(It.IsAny<int>(), It.IsAny<double>(), It.IsAny<double>(), default),
+                Times.Never);
         }
 
         #endregion

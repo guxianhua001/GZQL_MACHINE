@@ -3241,6 +3241,13 @@
     <sys:String x:Key="RecipeSelection_Select">选择</sys:String>
     <sys:String x:Key="GlobalVariablesView_Title">全局变量</sys:String>
     <sys:String x:Key="GlobalVariablesView_Tip">双击单元格编辑值，支持整数、浮点数和字符串类型</sys:String>
+    <sys:String x:Key="GlobalVariablesView_Group">分组</sys:String>
+    <sys:String x:Key="GlobalVariablesView_DefaultGroup">默认</sys:String>
+    <sys:String x:Key="GlobalVariablesView_AllGroups">全部</sys:String>
+    <sys:String x:Key="GlobalVariablesView_AddGroup">添加分组</sys:String>
+    <sys:String x:Key="GlobalVariablesView_DeleteGroup">删除分组</sys:String>
+    <sys:String x:Key="GlobalVariablesView_RenameGroup">重命名分组</sys:String>
+    <sys:String x:Key="GlobalVariablesView_GroupFilterHint">选择分组过滤</sys:String>
     <sys:String x:Key="PositionEditor_Title">位置编辑器</sys:String>
     <sys:String x:Key="PositionEditor_SelectStation">选择工站:</sys:String>
     <sys:String x:Key="PositionEditor_AddPosition">添加位置</sys:String>
@@ -3415,6 +3422,7 @@
     <sys:String x:Key="Setting_DeviceConfig">设备配置</sys:String>
     <sys:String x:Key="Setting_AxisParamConfig">轴参数配置</sys:String>
     <sys:String x:Key="Setting_OtherConfig">其他配置</sys:String>
+    <sys:String x:Key="Setting_ThemeConfig">主题配置</sys:String>
     <sys:String x:Key="Setting_SafetyZoneConfig">安全区域配置</sys:String>
     <sys:String x:Key="Authority">权限</sys:String>
     <sys:String x:Key="AddUser">添加用户</sys:String>
@@ -3428,7 +3436,7 @@
     <sys:String x:Key="Setting_LoadConfig">加载配置</sys:String>
     <sys:String x:Key="PSE_ClearError">清除错误</sys:String>
     <sys:String x:Key="PSE_SequenceFile">序列文件</sys:String>
-    <sys:String x:Key="PSE_SequenceFileHint">加载 / 保存 / 自动生成工序序列</sys:String>
+    <sys:String x:Key="PSE_SequenceFileHint">加载 / 保存 / 工序序列</sys:String>
     <sys:String x:Key="PSE_CurrentLabel">当前文件</sys:String>
     <sys:String x:Key="PSE_LoadSequence">加载</sys:String>
     <sys:String x:Key="PSE_SaveSequence">保存</sys:String>
@@ -3482,8 +3490,130 @@
     <sys:String x:Key="PSE_DialDistance">拨动距离</sys:String>
     <sys:String x:Key="PSE_PressHeight">下压高度</sys:String>
     <sys:String x:Key="PSE_CanAssemble">可否组装</sys:String>
+    <sys:String x:Key="PSE_H2Height">H2高度</sys:String>
+    <sys:String x:Key="PSE_SlotMeasuredHeight">Slot实测高度</sys:String>
     <sys:String x:Key="PSE_TestResult">检测结果</sys:String>
     <sys:String x:Key="PSE_Condition1">条件1</sys:String>
+    <sys:String x:Key="PSE_TreeViewTitle">任务树</sys:String>
+    <sys:String x:Key="PSE_NewMethod">新建方法</sys:String>
+    <sys:String x:Key="PSE_NewMethodTip">在当前任务下新建方法</sys:String>
+    <sys:String x:Key="PSE_DeleteMethod">删除方法</sys:String>
+    <sys:String x:Key="PSE_RenameMethod">重命名方法</sys:String>
+    <sys:String x:Key="PSE_NewAction">新建动作</sys:String>
+    <sys:String x:Key="PSE_NewActionTip">在当前方法下新建动作</sys:String>
+    <sys:String x:Key="PSE_Copy">复制</sys:String>
+    <sys:String x:Key="PSE_Paste">粘贴</sys:String>
+    <sys:String x:Key="PSE_Delete">删除</sys:String>
+    <sys:String x:Key="PSE_Rename">重命名</sys:String>
+    <sys:String x:Key="PSE_Disable">禁用</sys:String>
+    <sys:String x:Key="PSE_Enable">启用</sys:String>
+    <sys:String x:Key="PSE_SetActive">设为主动</sys:String>
+    <sys:String x:Key="PSE_SetPassive">设为被动</sys:String>
+    <sys:String x:Key="PSE_ExecuteSelected">执行选中工具</sys:String>
+    <sys:String x:Key="PSE_RunMode">运行模式</sys:String>
+    <sys:String x:Key="PSE_ActiveMode">主动执行</sys:String>
+    <sys:String x:Key="PSE_PassiveMode">被动执行</sys:String>
+    <sys:String x:Key="PSE_PassiveTaskNoStart">被动任务不可直接执行，请通过调用任务动作触发</sys:String>
+    <sys:String x:Key="PSE_RunTaskAction">调用任务</sys:String>
+    <sys:String x:Key="PSE_RunTaskActionTip">插入调用被动任务的动作</sys:String>
+    <sys:String x:Key="PSE_SelectTargetTask">选择目标任务</sys:String>
+    <sys:String x:Key="PSE_TargetTask">目标任务</sys:String>
+
+    <!-- BaseDialogWindow 对话框标题 -->
+    <sys:String x:Key="PSE_DialogTitleGoto">跳转设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleVision">视觉检测</sys:String>
+    <sys:String x:Key="PSE_DialogTitleScan">扫码设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleSeek">寻找设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleWait">等待设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleScript">脚本设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitlePick">取料设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleRelease">放料设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleCure">固化设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleDispense">点胶设置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleRunTask">调用任务</sys:String>
+    <sys:String x:Key="PSE_DialogTitleBranch">条件分支</sys:String>
+    <sys:String x:Key="PSE_DialogTitleDashboard">数据看板</sys:String>
+
+    <!-- 主题切换 -->
+    <sys:String x:Key="Setting_Theme">界面主题</sys:String>
+    <sys:String x:Key="Setting_ThemeDark">暗色主题</sys:String>
+    <sys:String x:Key="Setting_ThemeLight">明亮主题</sys:String>
+    <sys:String x:Key="Setting_ToggleTheme">切换主题</sys:String>
+    <sys:String x:Key="PSE_CircularCallDetected">检测到循环调用: {0}</sys:String>
+    <sys:String x:Key="PSE_SkippedDisabledStep">跳过禁用步骤: [{0}] {1}</sys:String>
+    <sys:String x:Key="PSE_SkippedDisabledMethod">跳过禁用方法: {0}</sys:String>
+    <sys:String x:Key="PSE_SkippedDisabledTask">跳过禁用任务: {0}</sys:String>
+    <sys:String x:Key="PSE_TaskProperties">任务属性</sys:String>
+    <sys:String x:Key="PSE_MethodProperties">方法属性</sys:String>
+    <sys:String x:Key="PSE_ActionProperties">动作属性</sys:String>
+    <sys:String x:Key="PSE_DefaultMethodName">默认方法</sys:String>
+    <sys:String x:Key="PSE_CopySuffix">_Copy</sys:String>
+    <sys:String x:Key="PSE_MethodLabel">方法</sys:String>
+    <sys:String x:Key="PSE_RunTaskDetailTitle">调用任务配置</sys:String>
+    <sys:String x:Key="PSE_RunTaskHint">仅可选择被动运行模式的任务</sys:String>
+    <sys:String x:Key="PSE_Save">保存</sys:String>
+    <sys:String x:Key="PSE_Close">关闭</sys:String>
+    <sys:String x:Key="PSE_TaskName">任务名称</sys:String>
+    <sys:String x:Key="PSE_MethodName">方法名称</sys:String>
+    <sys:String x:Key="PSE_Enabled">已启用</sys:String>
+    <sys:String x:Key="PSE_Disabled">已禁用</sys:String>
+    <sys:String x:Key="PSE_NoSelection">未选中节点</sys:String>
+    <sys:String x:Key="PSE_PasteNoTarget">请先选中目标节点再粘贴</sys:String>
+    <sys:String x:Key="PSE_CannotDeleteDefault">默认任务不可删除</sys:String>
+    <sys:String x:Key="PSE_MethodCount">方法数</sys:String>
+    <sys:String x:Key="PSE_ActionCount">动作数</sys:String>
+
+    <!-- 方法级控制 -->
+    <sys:String x:Key="PSE_MethodControl">方法控制</sys:String>
+    <sys:String x:Key="PSE_RunMethod">运行</sys:String>
+    <sys:String x:Key="PSE_RunMethodTip">启动当前方法的独立执行</sys:String>
+    <sys:String x:Key="PSE_PauseMethod">暂停</sys:String>
+    <sys:String x:Key="PSE_PauseMethodTip">暂停当前正在执行的方法</sys:String>
+    <sys:String x:Key="PSE_ResumeMethod">恢复</sys:String>
+    <sys:String x:Key="PSE_ResumeMethodTip">恢复当前被暂停的方法</sys:String>
+    <sys:String x:Key="PSE_StopMethod">停止</sys:String>
+    <sys:String x:Key="PSE_StopMethodTip">停止当前正在执行的方法</sys:String>
+    <sys:String x:Key="PSE_MethodStatusIdle">空闲</sys:String>
+    <sys:String x:Key="PSE_MethodStatusRunning">运行中</sys:String>
+    <sys:String x:Key="PSE_MethodStatusPaused">已暂停</sys:String>
+    <sys:String x:Key="PSE_MethodStatusStopped">已停止</sys:String>
+
+    <!-- 信号交互步骤 -->
+    <sys:String x:Key="PSE_DialogTitleSignalSend">信号发送配置</sys:String>
+    <sys:String x:Key="PSE_DialogTitleSignalWait">信号等待配置</sys:String>
+
+    <!-- IF 条件块步骤 -->
+    <sys:String x:Key="PSE_DialogTitleIf">IF 条件块配置</sys:String>
+    <sys:String x:Key="PSE_IfAction">条件块</sys:String>
+    <sys:String x:Key="PSE_IfActionTip">插入 IF/ELSE 条件块，根据表达式求值结果执行 Then 或 Else 分支</sys:String>
+    <sys:String x:Key="PSE_IfAddSubStep">添加子步骤</sys:String>
+    <sys:String x:Key="IfDetail_Title">IF 条件块配置</sys:String>
+    <sys:String x:Key="IfDetail_ConditionExpression">条件表达式</sys:String>
+    <sys:String x:Key="IfDetail_Description">说明</sys:String>
+    <sys:String x:Key="IfDetail_DescriptionHint">输入 IF 分支用途说明（可选）</sys:String>
+    <sys:String x:Key="IfDetail_DefaultDescription">条件分支</sys:String>
+    <sys:String x:Key="IfDetail_InsertVariable">插入变量</sys:String>
+    <sys:String x:Key="IfDetail_ExpressionTemplates">表达式模板（点击插入）</sys:String>
+    <sys:String x:Key="IfDetail_ValidationPassed">表达式语法校验通过</sys:String>
+    <sys:String x:Key="IfDetail_UsageTitle">使用说明</sys:String>
+    <sys:String x:Key="IfDetail_UsageHint">条件表达式支持 @GV:全局变量 和 @Output:步骤输出 变量引用，支持四则运算、比较运算和布尔运算。表达式求值非 0 为 true（执行 Then 分支），0 或求值失败为 false（执行 Else 分支）。IF 块内可嵌套其他步骤，包括嵌套 IF 块。</sys:String>
+    <sys:String x:Key="IfDetail_Save">保存</sys:String>
+    <sys:String x:Key="IfDetail_Cancel">取消</sys:String>
+    <sys:String x:Key="PSE_SignalName">信号名称</sys:String>
+    <sys:String x:Key="PSE_SignalNameHint">输入信号名称（区分大小写）</sys:String>
+    <sys:String x:Key="PSE_SignalDescription">描述</sys:String>
+    <sys:String x:Key="PSE_SignalDescriptionHint">输入信号用途说明</sys:String>
+    <sys:String x:Key="PSE_SignalTimeout">超时(ms)</sys:String>
+    <sys:String x:Key="PSE_SignalTimeoutHint">-1 表示无限等待，0 表示不等待，正数表示等待指定毫秒数</sys:String>
+    <sys:String x:Key="PSE_SignalSendHint">发送指定名称的信号，唤醒正在等待该信号的Task。信号发送后立即继续执行下一步，不会阻塞。</sys:String>
+    <sys:String x:Key="PSE_SignalWaitHint">等待指定名称的信号。收到信号后自动重置并继续执行下一步。超时未收到信号将触发可恢复异常，暂停任务等待操作员处理。</sys:String>
+    <sys:String x:Key="PSE_SignalWaitTimeoutAlarm">信号等待超时: 信号 [{0}] 在 {1}ms 内未收到</sys:String>
+    <sys:String x:Key="PSE_SignalSendSuccess">信号 [{0}] 已发送</sys:String>
+    <sys:String x:Key="PSE_SignalWaitReceived">信号 [{0}] 已接收</sys:String>
+
+    <!-- 节点注释 -->
+    <sys:String x:Key="PSE_EditComment">添加/编辑注释</sys:String>
+    <sys:String x:Key="PSE_ColumnComment">注释</sys:String>
     <sys:String x:Key="AxisSetting_SaveParams">保存参数</sys:String>
     <sys:String x:Key="AxisSetting_SaveParamsToolTip">保存所有参数到文件</sys:String>
     <sys:String x:Key="AxisSetting_LoadParams">载入参数</sys:String>

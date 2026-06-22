@@ -4,11 +4,18 @@ using Prism.Mvvm;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace StationTasks.Models
 {
-    public enum StepType { GOTO, INDEX, TRAVERSE, ALIGN, SCAN, PICK, VISION, RELEASE, SLOTADJ, APPROACH, CONTACT, INSPECT, VERIFY, CHECK, DISPENSE, CURE, SEEK, WAIT, SCRIPT, IPQC, DASHBOARD, BRANCH }
+    /// <summary>
+    /// 工艺步骤类型枚举。
+    /// SIGNAL_SEND：发送信号（用于 Task 间信号交互，置位指定名称的信号）
+    /// SIGNAL_WAIT：等待信号（阻塞等待指定信号被置位，消费后自动复位，支持超时）
+    /// IF：条件分支块（支持 Then/Else 嵌套子步骤，表达式求值决定执行分支）
+    /// </summary>
+    public enum StepType { GOTO, SCAN, PICK, VISION, RELEASE, DISPENSE, CURE, SEEK, WAIT, SCRIPT, DASHBOARD, BRANCH, RUNTASK, SIGNAL_SEND, SIGNAL_WAIT, IF }
 
     /// <summary> GOTO 步骤的运动模式 </summary>
     public enum GotoModeEnum { Absolute, Home }
@@ -37,6 +44,51 @@ namespace StationTasks.Models
         public string Camera { get; set; } = "—";
         public string Purpose { get; set; }
         public ObservableCollection<SubMove> SubMoves { get; set; } = new ObservableCollection<SubMove>();
+
+        private bool _isEnabled = true;
+        /// <summary> 步骤启用状态：禁用的步骤在执行时被跳过 </summary>
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set
+            {
+                if (_isEnabled != value)
+                {
+                    _isEnabled = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private bool _isExpanded;
+        /// <summary> TreeView 展开状态（叶子节点占位，支持 ItemContainerStyle 统一绑定） </summary>
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                if (_isExpanded != value)
+                {
+                    _isExpanded = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private bool _isSelected;
+        /// <summary> TreeView 选中状态（叶子节点占位，支持 ItemContainerStyle 统一绑定） </summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         private GotoModeEnum _gotoMode = GotoModeEnum.Absolute;
         /// <summary> GOTO 步骤的运动模式：绝对定位 / 回零 </summary>
@@ -208,6 +260,30 @@ namespace StationTasks.Models
             set { if (_scriptDetail != value) { _scriptDetail = value; OnPropertyChanged(); } }
         }
 
+        private RunTaskDetail _runTaskDetail;
+
+        /// <summary> RUNTASK 步骤的配置：要调用的被动任务名称 </summary>
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public RunTaskDetail RunTaskDetail
+        {
+            get => _runTaskDetail;
+            set { if (_runTaskDetail != value) { _runTaskDetail = value; OnPropertyChanged(); } }
+        }
+
+        private SignalDetail _signalDetail;
+
+        /// <summary>
+        /// 信号交互步骤（SIGNAL_SEND / SIGNAL_WAIT）的配置。
+        /// SIGNAL_SEND：发送指定名称的信号；SIGNAL_WAIT：等待指定名称的信号并消费。
+        /// 其他步骤类型为 null。
+        /// </summary>
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public SignalDetail SignalDetail
+        {
+            get => _signalDetail;
+            set { if (_signalDetail != value) { _signalDetail = value; OnPropertyChanged(); } }
+        }
+
         private DispenseDetail _dispenseDetail;
 
         /// <summary> DISPENSE 步骤的点胶配置（仅 StepType.DISPENSE 时使用） </summary>
@@ -250,6 +326,47 @@ namespace StationTasks.Models
         /// <summary> 是否启用了条件分支（扁平属性，供DataGrid列直接绑定） </summary>
         [JsonIgnore]
         public bool IsBranchEnabled => _branchConfig?.IsEnabled == true;
+
+        private IfDetail _ifDetail;
+
+        /// <summary>
+        /// IF 步骤的条件配置（仅 StepType.IF 时使用）。
+        /// 包含条件表达式、描述等信息，表达式支持 @GV: 和 @Output: 变量引用。
+        /// </summary>
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public IfDetail IfDetail
+        {
+            get => _ifDetail;
+            set
+            {
+                if (_ifDetail != value)
+                {
+                    _ifDetail = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private ObservableCollection<IfBranchGroup> _ifBranches;
+
+        /// <summary>
+        /// IF 步骤的分支集合（仅 StepType.IF 时使用）。
+        /// 包含两个 IfBranchGroup：Then 分支和 Else 分支，每个分支持有自己的子步骤列表。
+        /// TreeView 通过此属性递归显示嵌套结构。
+        /// </summary>
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public ObservableCollection<IfBranchGroup> IfBranches
+        {
+            get => _ifBranches;
+            set
+            {
+                if (_ifBranches != value)
+                {
+                    _ifBranches = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         private StepAlarmConfig _alarmConfig;
 
@@ -376,6 +493,21 @@ namespace StationTasks.Models
             }
         }
 
+        private string _comment;
+        /// <summary> 步骤注释（用户备注，可序列化持久化） </summary>
+        public string Comment
+        {
+            get => _comment;
+            set
+            {
+                if (_comment != value)
+                {
+                    _comment = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         /// <summary> JSON反序列化后确保AlarmConfig已正确初始化，通知UI刷新绑定属性 </summary>
         public void EnsureAlarmConfigInitialized()
         {
@@ -396,6 +528,59 @@ namespace StationTasks.Models
             if (_branchConfig == null)
                 _branchConfig = new BranchConfig();
             OnPropertyChanged(nameof(IsBranchEnabled));
+
+            // 初始化 IF 步骤结构（IfDetail 和 IfBranches）
+            // 反序列化后可能为 null，此处保证结构完整，确保 TreeView 正确显示嵌套节点
+            EnsureIfStepStructureInitialized();
+
+            // 递归初始化 IF 分支下的子步骤（支持多层嵌套）
+            if (_ifBranches != null)
+            {
+                foreach (var branch in _ifBranches)
+                {
+                    if (branch?.Steps != null)
+                    {
+                        foreach (var subStep in branch.Steps)
+                        {
+                            subStep?.EnsureAlarmConfigInitialized();
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 确保 IF 步骤的 IfDetail 和 IfBranches 结构已初始化。
+        /// 反序列化旧数据或新建步骤时可能为 null，此处保证结构完整。
+        /// 仅初始化顶层结构，不递归处理子步骤（子步骤由 EnsureAlarmConfigInitialized 递归处理）。
+        /// </summary>
+        private void EnsureIfStepStructureInitialized()
+        {
+            // 仅对 IF 类型步骤初始化 IfDetail 和 IfBranches
+            if (Step != StepType.IF) return;
+
+            if (_ifDetail == null)
+            {
+                _ifDetail = new IfDetail
+                {
+                    ConditionExpression = "",
+                    Description = ""
+                };
+            }
+
+            if (_ifBranches == null || _ifBranches.Count < 2)
+            {
+                var existingThen = _ifBranches?.FirstOrDefault(b =>
+                    string.Equals(b.Header, "Then", StringComparison.OrdinalIgnoreCase));
+                var existingElse = _ifBranches?.FirstOrDefault(b =>
+                    string.Equals(b.Header, "Else", StringComparison.OrdinalIgnoreCase));
+
+                _ifBranches = new ObservableCollection<IfBranchGroup>
+                {
+                    existingThen ?? new IfBranchGroup { Header = "Then", Steps = new ObservableCollection<ProcessStep>() },
+                    existingElse ?? new IfBranchGroup { Header = "Else", Steps = new ObservableCollection<ProcessStep>() }
+                };
+            }
         }
 
         private void OnAlarmConfigChanged(object sender, PropertyChangedEventArgs e)
@@ -1121,6 +1306,133 @@ namespace StationTasks.Models
         {
             get => _description;
             set => SetProperty(ref _description, value);
+        }
+    }
+
+    /// <summary>
+    /// 信号交互步骤（SIGNAL_SEND / SIGNAL_WAIT）的配置模型。
+    /// 用于 Task 间的信号同步：一个 Task 发送信号，另一个 Task 等待信号后才继续执行。
+    /// 信号使用一次性消费语义：被等待方消费后自动复位。
+    /// </summary>
+    public class SignalDetail : BindableBase
+    {
+        private string _signalName;
+        /// <summary>
+        /// 信号名称（全局唯一标识）。
+        /// 命名建议：使用有意义的名称，如 "TaskA_Ready"、"Material_Loaded" 等。
+        /// 发送方和等待方必须使用相同的信号名称才能完成交互。
+        /// </summary>
+        public string SignalName
+        {
+            get => _signalName;
+            set => SetProperty(ref _signalName, value);
+        }
+
+        private int _timeoutMs = -1;
+        /// <summary>
+        /// 等待超时时间（毫秒），仅对 SIGNAL_WAIT 有效。
+        /// &lt;=0：无限等待，直到收到信号或被取消（急停/停止）
+        /// &gt;0：等待指定毫秒数，超时后触发超时处理
+        /// 工业安全考虑：长时间等待应配合急停/停止按钮使用
+        /// </summary>
+        public int TimeoutMs
+        {
+            get => _timeoutMs;
+            set => SetProperty(ref _timeoutMs, value);
+        }
+
+        private string _description;
+        /// <summary> 信号说明（可选，用于备注信号用途） </summary>
+        public string Description
+        {
+            get => _description;
+            set => SetProperty(ref _description, value);
+        }
+    }
+
+    /// <summary>
+    /// IF 步骤的条件配置模型。
+    /// 包含条件表达式（支持 @GV: 和 @Output: 变量引用）和说明信息。
+    /// 表达式由 FormulaEvaluator 求值，非 0 为 true（执行 Then 分支），0 为 false（执行 Else 分支）。
+    /// </summary>
+    public class IfDetail : BindableBase
+    {
+        private string _conditionExpression = "";
+        /// <summary>
+        /// 条件表达式（支持 @GV:全局变量、@Output:步骤输出 变量引用）。
+        /// 示例："@GV:检测结果 == true"、"@Output:PassFlag == 1 && @GV:Count > 0"。
+        /// 表达式为空或求值失败时按 false 处理（执行 Else 分支）。
+        /// </summary>
+        public string ConditionExpression
+        {
+            get => _conditionExpression;
+            set => SetProperty(ref _conditionExpression, value);
+        }
+
+        private string _description;
+        /// <summary> IF 步骤说明（可选，用于备注分支用途） </summary>
+        public string Description
+        {
+            get => _description;
+            set => SetProperty(ref _description, value);
+        }
+
+        private bool _isValidationValid = true;
+        /// <summary> 表达式语法校验是否通过（运行时状态，不序列化） </summary>
+        [JsonIgnore]
+        public bool IsValidationValid
+        {
+            get => _isValidationValid;
+            set => SetProperty(ref _isValidationValid, value);
+        }
+
+        private string _validationMessage;
+        /// <summary> 表达式校验消息（运行时状态，不序列化） </summary>
+        [JsonIgnore]
+        public string ValidationMessage
+        {
+            get => _validationMessage;
+            set => SetProperty(ref _validationMessage, value);
+        }
+    }
+
+    /// <summary>
+    /// IF 步骤的分支组（Then 或 Else）。
+    /// 作为 TreeView 的虚拟中间节点，承载分支标题和子步骤集合，支持递归嵌套。
+    /// 序列化时与 IF 步骤一同保存，反序列化后自动恢复树形结构。
+    /// </summary>
+    public class IfBranchGroup : BindableBase
+    {
+        private string _header;
+        /// <summary> 分支标题："Then" 或 "Else" </summary>
+        public string Header
+        {
+            get => _header;
+            set => SetProperty(ref _header, value);
+        }
+
+        private ObservableCollection<ProcessStep> _steps = new ObservableCollection<ProcessStep>();
+        /// <summary> 该分支下的子步骤集合（支持嵌套 IF 步骤） </summary>
+        public ObservableCollection<ProcessStep> Steps
+        {
+            get => _steps;
+            set => SetProperty(ref _steps, value ?? new ObservableCollection<ProcessStep>());
+        }
+
+        private bool _isExpanded = true;
+        /// <summary> TreeView 展开状态 </summary>
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set => SetProperty(ref _isExpanded, value);
+        }
+
+        private bool _isSelected;
+        /// <summary> TreeView 选中状态 </summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
         }
     }
 }

@@ -24,7 +24,7 @@ namespace Module.ViewModels
     /// SCAN 步骤详细配置 ViewModel，以模态弹窗形式展示
     /// 支持运动配置、IO配置、通讯配置、数据解析脚本、变量映射、执行测试等编辑
     /// </summary>
-    public class ScanDetailViewModel : BindableBase
+    public class ScanDetailViewModel : BindableBase, IDialogCloseable
     {
         private readonly IContainerProvider _containerProvider;
         private readonly IRecipePoolService _recipePoolService;
@@ -42,6 +42,12 @@ namespace Module.ViewModels
         private Action<string, string>? _cameraDataHandler;
         private string _lastReceivedTime;
         private string _lastReceivedData;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary>
         /// 当前编辑的工艺步骤，设置时自动初始化所有配置项
@@ -1072,12 +1078,7 @@ namespace Module.ViewModels
         {
             UnsubscribeCameraData();
             _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         /// <summary>

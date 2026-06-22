@@ -15,10 +15,11 @@ using System.Windows.Input;
 using Core.Abstraction;
 using Prism.Ioc;
 using Recipe.Interfaces;
+using Module.UserControls.Grippers;
 
 namespace Module.ViewModels
 {
-    public class ReleaseDetailViewModel : BindableBase, INavigationAware
+    public class ReleaseDetailViewModel : BindableBase, INavigationAware, IDialogCloseable
     {
         private readonly IRegionManager _regionManager;
         private readonly IContainerProvider _containerProvider;
@@ -26,10 +27,17 @@ namespace Module.ViewModels
         private readonly ILoggerService _logger;
         private readonly IGripperService _gripperService;
         private readonly IDialogService _dialogService;
+        private readonly IBaseDialogService _baseDialogService;
         private readonly IPositionProvider _positionProvider;
         private readonly IStationRegistry _stationRegistry;
         private readonly IRecipePoolService _recipePoolService;
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         /// <summary> 当前编辑的工艺步骤，设置时自动初始化 ReleaseDetail 和 SubMoveRows </summary>
         public ProcessStep Step
@@ -144,6 +152,7 @@ namespace Module.ViewModels
             ILoggerService logger,
             IGripperService gripperService,
             IDialogService dialogService,
+            IBaseDialogService baseDialogService,
             IPositionProvider positionProvider,
             IStationRegistry stationRegistry,
             IRecipePoolService recipePoolService)
@@ -154,6 +163,7 @@ namespace Module.ViewModels
             _logger = logger;
             _gripperService = gripperService;
             _dialogService = dialogService;
+            _baseDialogService = baseDialogService;
             _positionProvider = positionProvider;
             _stationRegistry = stationRegistry;
             _recipePoolService = recipePoolService;
@@ -285,12 +295,7 @@ namespace Module.ViewModels
         /// </summary>
         private void OnClose()
         {
-            try
-            {
-                var session = MaterialDesignThemes.Wpf.DialogHost.GetDialogSession("MainDialogHost");
-                session?.Close(false);
-            }
-            catch (InvalidOperationException) { }
+            RequestClose?.Invoke(false);
         }
 
         /// <summary>
@@ -321,21 +326,21 @@ namespace Module.ViewModels
             }
         }
 
-        private void OnOpenGripperControl()
+        private async void OnOpenGripperControl()
         {
-            var parameters = new DialogParameters
-            {
-                { "clampPosition", 0 },
-                { "releasePosition", ReleasePosition }
-            };
-            _dialogService.ShowDialog("GripperControlView", parameters, result =>
-            {
-                if (result.Result == ButtonResult.OK && result.Parameters != null)
-                {
-                    if (result.Parameters.ContainsKey("releasePosition"))
-                        ReleasePosition = result.Parameters.GetValue<double>("releasePosition");
-                }
-            });
+            // 通过容器解析 ViewModel，创建 View 并绑定
+            var viewModel = _containerProvider.Resolve<GripperControlViewModel>();
+            var view = new GripperControlView { DataContext = viewModel };
+
+            // 初始化夹爪控制面板（传入外部位置参数，启动监控）
+            viewModel.Initialize(null, ReleasePosition);
+
+            // 使用 BaseDialogService 弹出，风格统一跟随主题
+            var title = L("ElectricGripperManualOperation");
+            await _baseDialogService.ShowDialog(view, title, "RobotIndustrial");
+
+            // 关闭后回收资源
+            viewModel.Dispose();
         }
 
         private async Task<ButtonResult> ShowConfirmationAsync(string title, string message)

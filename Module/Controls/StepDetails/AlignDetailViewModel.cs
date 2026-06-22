@@ -1,6 +1,7 @@
 using Core.Models;
 using Core.Services;
 using Core.Utilities;
+using Core.Abstraction;
 using StationTasks.Models;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -15,7 +16,7 @@ using System.Windows.Input;
 
 namespace Module.ViewModels
 {
-    public class AlignDetailViewModel : BindableBase, INavigationAware
+    public class AlignDetailViewModel : BindableBase, INavigationAware, IDialogCloseable
     {
         private readonly IRegionManager _regionManager;
         private IRegion _currentRegion;
@@ -25,6 +26,12 @@ namespace Module.ViewModels
         private readonly IAxisConfigurationService _axisConfig;
         private object _currentView;
         private ProcessStep _step;
+
+        /// <summary>请求关闭对话框时触发</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否可以关闭对话框</summary>
+        public bool CanCloseDialog() => true;
 
         public string StepDescription => _step == null ? "— → —" : $"{_step.CompFeature ?? "—"} → {_step.SiteFeature ?? "—"}";
 
