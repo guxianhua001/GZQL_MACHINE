@@ -8,6 +8,7 @@
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
+             Background="{DynamicResource MaterialDesignPaper}"
              d:DesignHeight="700"
              d:DesignWidth="900">
     <Grid>

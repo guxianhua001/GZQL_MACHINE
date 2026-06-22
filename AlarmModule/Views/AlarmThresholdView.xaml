@@ -9,6 +9,7 @@
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
+             Background="{DynamicResource MaterialDesignPaper}"
              d:DesignHeight="600"
              d:DesignWidth="900">
     <UserControl.Resources>
@@ -56,6 +57,7 @@
                   HeadersVisibility="Column"
                   GridLinesVisibility="Horizontal"
                   materialDesign:DataGridAssist.CellPadding="8,4"
+                  Style="{StaticResource MaterialDesignDataGrid}"
                   Margin="16,8,16,8">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="{lang:Lang AlarmCode}" Binding="{Binding AlarmCode}" Width="120" />

@@ -9,7 +9,7 @@
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
-             Background="#EEF2F5"
+             Background="{DynamicResource MaterialDesignPaper}"
              MinHeight="300"
              MinWidth="800"
              d:DesignHeight="600"
