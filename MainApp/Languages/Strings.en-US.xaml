@@ -2787,6 +2787,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step3_Radio_ContinuousInterpolation">Continuous Interpolation</sys:String>
     <sys:String x:Key="Step3_Radio_SinglePoint">Single Point</sys:String>
     <sys:String x:Key="Step3_Section_DispenseMode">Dispense Mode</sys:String>
+    <sys:String x:Key="Step3_Label_NeedleSelect">Needle (Dz₁ is camera axis)</sys:String>
+    <sys:String x:Key="Step3_Needle1">Needle 1 / Dz₂</sys:String>
+    <sys:String x:Key="Step3_Needle2">Needle 2 / Dz₃</sys:String>
     <sys:String x:Key="Step3_Section_SelectedParams">Selected Segment Params</sys:String>
     <sys:String x:Key="Step3_Section_SinglePointParams">Single Point Params</sys:String>
     <sys:String x:Key="Step3_Title">Step 3: Edit Params</sys:String>

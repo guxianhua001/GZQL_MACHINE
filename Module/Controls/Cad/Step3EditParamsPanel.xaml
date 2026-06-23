@@ -43,6 +43,20 @@
             </DockPanel>
         </materialDesign:Card>
 
+        <!-- 针头选择（全局唯一入口，Step4/5/6 与执行器共用 Step3 所选针头） -->
+        <materialDesign:Card Padding="10" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="Needle" Width="18" Height="18" VerticalAlignment="Center"
+                                         Foreground="#1565C0" Margin="0,0,8,0"/>
+                <TextBlock Text="{lang:Lang Step3_Label_NeedleSelect}" VerticalAlignment="Center"
+                           FontSize="12" FontWeight="SemiBold" Foreground="#1565C0" Margin="0,0,12,0"/>
+                <RadioButton Content="{lang:Lang Step3_Needle1}" IsChecked="{Binding IsNeedle1Selected}"
+                             GroupName="Step3NeedleSelector" FontSize="12" Margin="0,0,16,0"/>
+                <RadioButton Content="{lang:Lang Step3_Needle2}" IsChecked="{Binding IsNeedle2Selected}"
+                             GroupName="Step3NeedleSelector" FontSize="12"/>
+            </StackPanel>
+        </materialDesign:Card>
+
         <!-- 批量操作工具栏 -->
         <materialDesign:Card Padding="8" Margin="0,0,0,8">
             <WrapPanel>

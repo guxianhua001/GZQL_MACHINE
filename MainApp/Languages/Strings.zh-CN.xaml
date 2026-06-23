@@ -2787,6 +2787,9 @@
     <sys:String x:Key="Step3_Radio_ContinuousInterpolation">连续插补</sys:String>
     <sys:String x:Key="Step3_Radio_SinglePoint">单点模式</sys:String>
     <sys:String x:Key="Step3_Section_DispenseMode">点胶模式</sys:String>
+    <sys:String x:Key="Step3_Label_NeedleSelect">针头选择（Dz₁为相机轴不可选）</sys:String>
+    <sys:String x:Key="Step3_Needle1">针头1 / Dz₂</sys:String>
+    <sys:String x:Key="Step3_Needle2">针头2 / Dz₃</sys:String>
     <sys:String x:Key="Step3_Section_SelectedParams">选中段参数</sys:String>
     <sys:String x:Key="Step3_Section_SinglePointParams">单点参数</sys:String>
     <sys:String x:Key="Step3_Title">步骤3：编辑参数</sys:String>

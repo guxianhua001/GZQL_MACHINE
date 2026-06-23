@@ -54,6 +54,9 @@ namespace Module.ViewModels
                     if (_step.DispenseDetail == null)
                         _step.DispenseDetail = new DispenseDetail();
                     _dispenseSegmentStore.CurrentDispenseDetail = _step.DispenseDetail;
+                    // 加载配方时同步针头到 CAD 编辑器 Step3 统一入口
+                    _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>()
+                        .Publish(_step.DispenseDetail.NeedleIndex);
                     RaisePropertyChanged(nameof(DispenseMode));
                     RaisePropertyChanged(nameof(IsDotMode));
                     RaisePropertyChanged(nameof(IsArcMode));

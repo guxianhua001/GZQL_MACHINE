@@ -406,6 +406,8 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(HasSelectedSegment));
                     RaisePropertyChanged(nameof(ShowContinuousInterpolationParams));
                     SelectedSegmentPoints = value?.Points;
+                    // 选中段时按当前针头仿射矩阵重算 Mach X/Y，避免显示上次应用变换的缓存值
+                    RefreshSelectedSegmentMachineCoordDisplay();
                     SegmentSplitCount = value?.SamplePointCount > 0 ? value.SamplePointCount : value?.Points?.Count ?? 1;
                     SyncSelectedEntityFromSegment(value);
                     ApplySegmentSplitCommand.RaiseCanExecuteChanged();
@@ -900,7 +902,7 @@ namespace Module.ViewModels
         private int _currentNeedleIndex;
         private int _previousNeedleIndex; // 追踪上一次针头索引，用于保存数据
 
-        /// <summary>当前针头索引（0=Dz1/针头1, 1=Dz2/针头2）</summary>
+        /// <summary>当前针头索引（0=针头1/Dz₂, 1=针头2/Dz₃；Step3 唯一设置入口）</summary>
         public int CurrentNeedleIndex
         {
             get => _currentNeedleIndex;
@@ -911,6 +913,8 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(IsNeedle1Selected));
                     RaisePropertyChanged(nameof(IsNeedle2Selected));
                     SwitchNeedleData();
+                    SyncNeedleIndexToDispenseDetail();
+                    RefreshSelectedSegmentMachineCoordDisplay();
                 }
             }
         }
@@ -926,6 +930,14 @@ namespace Module.ViewModels
 
             // 3. 更新上一次索引
             _previousNeedleIndex = _currentNeedleIndex;
+        }
+
+        /// <summary>将 Step3 所选针头同步到 DispenseDetail，供 DISPENSE 步骤执行使用</summary>
+        private void SyncNeedleIndexToDispenseDetail()
+        {
+            var detail = _dispenseSegmentStore?.CurrentDispenseDetail;
+            if (detail != null && detail.NeedleIndex != _currentNeedleIndex)
+                detail.NeedleIndex = _currentNeedleIndex;
         }
 
         /// <summary>保存指定针头的仿射标定数据和逐点映射数据</summary>
@@ -1459,10 +1471,10 @@ namespace Module.ViewModels
                 _selectedSegment.Points = newPoints;
                 _selectedSegment.SamplePointCount = _segmentSplitCount;
 
-                // 重采样后恢复/重算机械坐标（仿射变换 + XY补偿，或沿旧点插值）
-                RefreshSegmentMachineCoordinates(_selectedSegment, oldPoints);
+                // 重采样后恢复/重算机械坐标（当前针头仿射变换 + XY补偿，或沿旧点插值）
+                RefreshSegmentMachineCoordinates(_selectedSegment, oldPoints, needleIndex: _currentNeedleIndex);
 
-                SelectedSegmentPoints = newPoints;
+                RefreshSelectedSegmentMachineCoordDisplay();
                 RaisePropertyChanged(nameof(SegmentSummaryDisplay));
 
                 GlobalStatus = string.Format(L("CadPoint_Status_ResampleSuccess"), _selectedSegment.SegmentId, _segmentSplitCount);
@@ -1479,7 +1491,7 @@ namespace Module.ViewModels
             if (_selectedSegment?.Points == null || _selectedSegment.Points.Count == 0)
                 return;
 
-            if (!RefreshSegmentMachineCoordinates(_selectedSegment))
+            if (!RefreshSegmentMachineCoordinates(_selectedSegment, needleIndex: _currentNeedleIndex))
             {
                 GlobalStatus = L("CadPoint_Status_XyCompNeedAlign");
                 return;
@@ -1493,24 +1505,58 @@ namespace Module.ViewModels
         /// <summary>获取仿射标定 Z 基准高度（标定点 Dz 均值）</summary>
         private double GetAffineZBaseline()
         {
-            var validDz = _affineCalibrationPoints.Where(p => p.MachineDz != 0).ToList();
+            return GetAffineZBaselineForNeedle(_currentNeedleIndex);
+        }
+
+        /// <summary>获取指定针头的仿射标定 Z 基准高度（标定点 Dz 均值）</summary>
+        private double GetAffineZBaselineForNeedle(int needleIndex)
+        {
+            var points = needleIndex == 0 ? _affineCalibrationPointsNeedle1 : _affineCalibrationPointsNeedle2;
+            var validDz = points?.Where(p => p.MachineDz != 0).ToList() ?? new List<AffineCalibrationPoint>();
             return validDz.Count > 0 ? validDz.Average(p => p.MachineDz) : 0;
+        }
+
+        /// <summary>获取指定针头的仿射标定结果</summary>
+        private AffineCalibrationResult GetAffineResultForNeedle(int needleIndex) =>
+            needleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+
+        /// <summary>Step3 机械坐标显示与变换统一使用 Step3 所选针头</summary>
+        private int ResolveMachineCoordNeedleIndex() => _currentNeedleIndex;
+
+        /// <summary>
+        /// 按当前应显示的针头矩阵刷新选中段 Mach X/Y，并刷新 Step3 采样点表格绑定
+        /// </summary>
+        private void RefreshSelectedSegmentMachineCoordDisplay(int? needleIndex = null)
+        {
+            if (_selectedSegment == null)
+                return;
+
+            int idx = needleIndex ?? ResolveMachineCoordNeedleIndex();
+            RefreshSegmentMachineCoordinates(_selectedSegment, needleIndex: idx, clearWhenNoAffine: true);
+            SelectedSegmentPoints = _selectedSegment.Points?.ToList();
         }
 
         /// <summary>
         /// 刷新段内所有点的机械坐标：优先仿射变换 + 段级 XY 补偿；
         /// 无仿射时沿重采样前旧点插值机械坐标以保持显示
         /// </summary>
+        /// <param name="needleIndex">指定针头索引；null 时使用当前 Step4 选中针头</param>
+        /// <param name="clearWhenNoAffine">无仿射结果时是否清空机械坐标（Step3 显示切换针头时使用）</param>
         /// <returns>是否成功写入至少一个点的机械坐标</returns>
-        private bool RefreshSegmentMachineCoordinates(DispenseSegment seg, List<CadPoint> resampleFallbackOldPoints = null)
+        private bool RefreshSegmentMachineCoordinates(
+            DispenseSegment seg,
+            List<CadPoint> resampleFallbackOldPoints = null,
+            int? needleIndex = null,
+            bool clearWhenNoAffine = false)
         {
             if (seg?.Points == null || seg.Points.Count == 0)
                 return false;
 
-            var affineResult = _currentNeedleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+            int idx = needleIndex ?? _currentNeedleIndex;
+            var affineResult = GetAffineResultForNeedle(idx);
             if (affineResult != null)
             {
-                double avgDz = GetAffineZBaseline();
+                double avgDz = GetAffineZBaselineForNeedle(idx);
                 foreach (var pt in seg.Points)
                 {
                     var (mx, my) = AffineCalibrationService.Transform(affineResult, pt.X, pt.Y);
@@ -1526,6 +1572,16 @@ namespace Module.ViewModels
             {
                 InterpolateMachineCoordinatesFromOld(resampleFallbackOldPoints, seg.Points);
                 return seg.Points.Any(p => p.MachineX.HasValue && p.MachineY.HasValue);
+            }
+
+            if (clearWhenNoAffine)
+            {
+                foreach (var pt in seg.Points)
+                {
+                    pt.MachineX = null;
+                    pt.MachineY = null;
+                    pt.MachineZ = null;
+                }
             }
 
             return false;
@@ -1872,6 +1928,30 @@ namespace Module.ViewModels
 
             // 监听 SinglePointProcessParams 属性变更，发布同步事件到 DispenseDetailViewModel
             _singlePointProcessParams.PropertyChanged += OnSinglePointProcessParamsChanged;
+
+            // 打开点胶步骤时，将配方针头同步到 Step3（仅加载，不回写 DispenseDetail）
+            _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Subscribe(
+                OnDispenseNeedleIndexLoaded, ThreadOption.UIThread);
+        }
+
+        /// <summary>点胶步骤加载时，将 DispenseDetail 针头同步到 Step3 统一入口</summary>
+        private void OnDispenseNeedleIndexLoaded(int needleIndex)
+        {
+            if (_currentNeedleIndex == needleIndex)
+            {
+                RefreshSelectedSegmentMachineCoordDisplay(needleIndex);
+                return;
+            }
+
+            // 直接切换针头数据，避免 SyncNeedleIndexToDispenseDetail 重复写回
+            SaveCurrentNeedleData(_previousNeedleIndex);
+            _currentNeedleIndex = needleIndex;
+            _previousNeedleIndex = needleIndex;
+            RaisePropertyChanged(nameof(CurrentNeedleIndex));
+            RaisePropertyChanged(nameof(IsNeedle1Selected));
+            RaisePropertyChanged(nameof(IsNeedle2Selected));
+            LoadNeedleData(_currentNeedleIndex);
+            RefreshSelectedSegmentMachineCoordDisplay(needleIndex);
         }
 
         #endregion

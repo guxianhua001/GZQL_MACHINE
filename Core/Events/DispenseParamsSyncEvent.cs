@@ -45,4 +45,9 @@ namespace Core.Events
         public string PropertyName { get; init; }
         public double Value { get; init; }
     }
+
+    /// <summary>
+    /// 点胶步骤针头加载同步事件——打开 DispenseDetail 时将配方 NeedleIndex 同步到 Step3 统一入口
+    /// </summary>
+    public class DispenseNeedleIndexChangedEvent : PubSubEvent<int> { }
 }

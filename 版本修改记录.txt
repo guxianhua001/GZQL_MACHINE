@@ -1,6 +1,37 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — Step3 统一针头选择 & Mach 坐标按所选针头刷新
+-------------------------------------------
+
+1. 问题
+   - Step3 选 Arc 等线段时 Mach X/Y 一直显示 Dz₂ 变换坐标
+   - 根因：ResolveMachineCoordNeedleIndex 优先取 DispenseDetail.NeedleIndex（默认 0），
+     忽略 Step4/5/6 所选针头；多入口设置导致矩阵不一致
+
+2. 实现
+   - Step3EditParamsPanel 新增唯一针头选择器（针头1/Dz₂、针头2/Dz₃）
+   - 移除 Step4/Step5/Step6、DispenseDetail 对话框中的针头选择 UI
+   - CurrentNeedleIndex 变更时同步 DispenseDetail.NeedleIndex 并重算选中段 Mach 坐标
+   - ResolveMachineCoordNeedleIndex 统一返回 Step3 CurrentNeedleIndex
+   - Arc 重采样后按当前针头矩阵重算机械坐标
+   - 打开 DispenseDetail 时将配方 NeedleIndex 同步到 Step3
+   - 多语言：Step3_Label_NeedleSelect / Step3_Needle1 / Step3_Needle2
+
+v2026.06.23 — Step3 采样点 Mach X/Y 按选中针头矩阵显示
+-------------------------------------------
+
+1. 问题
+   - Step3 选中线段后，详细坐标表格 Mach X/Mach Y 显示的是最后一次「应用变换」写入的值
+   - 多针头系统各针头有独立仿射矩阵，切换针头或选中段时未按对应矩阵重算
+
+2. 实现
+   - CadPointEditorViewModel：RefreshSegmentMachineCoordinates 支持指定 needleIndex
+   - 新增 ResolveMachineCoordNeedleIndex（有点胶步骤时取 DispenseDetail.NeedleIndex，否则 Step4 当前针头）
+   - 选中段变更 / 针头切换时调用 RefreshSelectedSegmentMachineCoordDisplay 重算并刷新表格
+   - DispenseNeedleIndexChangedEvent：DispenseDetail 针头切换时通知 CAD 编辑器刷新
+   - DispenseDetailViewModel.NeedleIndex 变更时发布上述事件
+
 v2026.06.23 — 全局变量上移/下移 CollectionView 跨线程异常
 -------------------------------------------
 

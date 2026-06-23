@@ -87,19 +87,6 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- 仿射面板针头选择器 -->
-                <materialDesign:Card Margin="0,0,0,6" Padding="6,4" UniformCornerRadius="4">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="Needle" Width="16" Height="16" VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,6,0"/>
-                        <TextBlock Text="{lang:Lang Step4_Label_NeedleSelect}" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
-                        <RadioButton Content="Dz1" IsChecked="{Binding IsNeedle1Selected}" GroupName="Step4AffineNeedleSelector"
-                                     FontSize="11" Margin="0,0,12,0"/>
-                        <RadioButton Content="Dz2" IsChecked="{Binding IsNeedle2Selected}" GroupName="Step4AffineNeedleSelector"
-                                     FontSize="11"/>
-                    </StackPanel>
-                </materialDesign:Card>
-
                 <!-- 仿射标定点 DataGrid -->
                 <DataGrid ItemsSource="{Binding AffineCalibrationPoints}" AutoGenerateColumns="False"
                           CanUserAddRows="False" CanUserDeleteRows="False"
@@ -174,13 +161,6 @@
                                 Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2" FontSize="11" Margin="0,0,4,0"/>
                     </StackPanel>
                 </Grid>
-
-                <!-- 针头选择器 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                    <TextBlock Text="{lang:Lang Step4_Label_NeedleSelect}" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
-                    <RadioButton Content="Dz1" IsChecked="{Binding IsNeedle1Selected}" GroupName="Step4NeedleSelector" FontSize="11" Margin="0,0,12,0"/>
-                    <RadioButton Content="Dz2" IsChecked="{Binding IsNeedle2Selected}" GroupName="Step4NeedleSelector" FontSize="11"/>
-                </StackPanel>
 
                 <!-- 逐点映射 DataGrid -->
                 <DataGrid ItemsSource="{Binding PointMappingPoints}" AutoGenerateColumns="False"
