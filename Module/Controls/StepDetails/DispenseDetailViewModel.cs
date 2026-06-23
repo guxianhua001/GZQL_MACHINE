@@ -70,6 +70,13 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
                     RaisePropertyChanged(nameof(ManualZCompensation));
+                    RaisePropertyChanged(nameof(EnableComp));
+                    RaisePropertyChanged(nameof(XCompensation));
+                    RaisePropertyChanged(nameof(XCompensationLinkedVar));
+                    RaisePropertyChanged(nameof(IsXCompensationLinked));
+                    RaisePropertyChanged(nameof(YCompensation));
+                    RaisePropertyChanged(nameof(YCompensationLinkedVar));
+                    RaisePropertyChanged(nameof(IsYCompensationLinked));
                     RaisePropertyChanged(nameof(SegmentRefs));
                     RaisePropertyChanged(nameof(DefaultJumpSpeed));
                     RaisePropertyChanged(nameof(DefaultInterpSpeed));
@@ -175,6 +182,70 @@ namespace Module.ViewModels
             set { if (_step?.DispenseDetail != null) _step.DispenseDetail.EnableZCalibration = value; }
         }
 
+        /// <summary>是否启用 XY 方向补偿</summary>
+        public bool EnableComp
+        {
+            get => _step?.DispenseDetail?.EnableComp ?? false;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                    _step.DispenseDetail.EnableComp = value;
+                RaisePropertyChanged(nameof(EnableComp));
+            }
+        }
+
+        public double XCompensation
+        {
+            get => _step?.DispenseDetail?.XCompensation ?? 0.0;
+            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.XCompensation = value; }
+        }
+
+        public string XCompensationLinkedVar
+        {
+            get => _step?.DispenseDetail?.XCompensationLinkedVar;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.XCompensationLinkedVar = value;
+                    RaisePropertyChanged(nameof(XCompensationLinkedVar));
+                    RaisePropertyChanged(nameof(IsXCompensationLinked));
+                    RefreshZCompensationDisplayValues();
+                }
+            }
+        }
+
+        public bool IsXCompensationLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.XCompensationLinkedVar);
+
+        /// <summary>X 补偿链接全局变量的实时显示值</summary>
+        public double XCompensationDisplayValue { get; private set; }
+
+        public double YCompensation
+        {
+            get => _step?.DispenseDetail?.YCompensation ?? 0.0;
+            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.YCompensation = value; }
+        }
+
+        public string YCompensationLinkedVar
+        {
+            get => _step?.DispenseDetail?.YCompensationLinkedVar;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.YCompensationLinkedVar = value;
+                    RaisePropertyChanged(nameof(YCompensationLinkedVar));
+                    RaisePropertyChanged(nameof(IsYCompensationLinked));
+                    RefreshZCompensationDisplayValues();
+                }
+            }
+        }
+
+        public bool IsYCompensationLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.YCompensationLinkedVar);
+
+        /// <summary>Y 补偿链接全局变量的实时显示值</summary>
+        public double YCompensationDisplayValue { get; private set; }
+
         public double ZCompensation3D
         {
             get => _step?.DispenseDetail?.ZCompensation3D ?? 0.0;
@@ -244,6 +315,8 @@ namespace Module.ViewModels
 
         public DelegateCommand UnlinkZCompensation3DCommand { get; }
         public DelegateCommand UnlinkZCompensationCalibratorCommand { get; }
+        public DelegateCommand UnlinkXCompensationCommand { get; }
+        public DelegateCommand UnlinkYCompensationCommand { get; }
 
         #endregion
 
@@ -1022,6 +1095,8 @@ namespace Module.ViewModels
 
             UnlinkZCompensation3DCommand = new DelegateCommand(() => ZCompensation3DLinkedVar = null);
             UnlinkZCompensationCalibratorCommand = new DelegateCommand(() => ZCompensationCalibratorLinkedVar = null);
+            UnlinkXCompensationCommand = new DelegateCommand(() => XCompensationLinkedVar = null);
+            UnlinkYCompensationCommand = new DelegateCommand(() => YCompensationLinkedVar = null);
 
             _ = LoadGlobalVariablesAsync().ConfigureAwait(false);
         }
@@ -1581,6 +1656,13 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
             RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
             RaisePropertyChanged(nameof(ManualZCompensation));
+            RaisePropertyChanged(nameof(EnableComp));
+            RaisePropertyChanged(nameof(XCompensation));
+            RaisePropertyChanged(nameof(XCompensationLinkedVar));
+            RaisePropertyChanged(nameof(IsXCompensationLinked));
+            RaisePropertyChanged(nameof(YCompensation));
+            RaisePropertyChanged(nameof(YCompensationLinkedVar));
+            RaisePropertyChanged(nameof(IsYCompensationLinked));
             RaisePropertyChanged(nameof(SegmentRefs));
             RaisePropertyChanged(nameof(DefaultJumpSpeed));
             RaisePropertyChanged(nameof(DefaultInterpSpeed));
@@ -1656,7 +1738,7 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>刷新 Z 补偿链接全局变量的实时显示值</summary>
+        /// <summary>刷新 Z/XY 补偿链接全局变量的实时显示值</summary>
         private void RefreshZCompensationDisplayValues()
         {
             // Z补偿(3D)
@@ -1682,6 +1764,30 @@ namespace Module.ViewModels
                 ZCompensationCalibratorDisplayValue = ZCompensationCalibrator;
             }
             RaisePropertyChanged(nameof(ZCompensationCalibratorDisplayValue));
+
+            // X 补偿
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.XCompensationLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.XCompensationLinkedVar);
+                XCompensationDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                XCompensationDisplayValue = XCompensation;
+            }
+            RaisePropertyChanged(nameof(XCompensationDisplayValue));
+
+            // Y 补偿
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.YCompensationLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.YCompensationLinkedVar);
+                YCompensationDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                YCompensationDisplayValue = YCompensation;
+            }
+            RaisePropertyChanged(nameof(YCompensationDisplayValue));
         }
 
         #endregion

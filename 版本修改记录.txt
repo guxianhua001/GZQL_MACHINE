@@ -1,6 +1,22 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — 脚本读轴位置 & DISPENSE XY 补偿
+-------------------------------------------
+
+1. 需求
+   - 脚本按 hwcfg 轴名称读取实时位置，计算与 CAD 标定 Y 基准的偏差
+   - DISPENSE 工具 Enable Z Calibration 右侧增加 Enable Comp
+   - X/Y 方向补偿可链接全局变量，运动时 MachineX/MachineY + XY 补偿
+
+2. 实现
+   - ScriptContext：GetAxisPosition / TryGetAxisPosition / GetAxisLogicalId（兼容 Dz₂/Dz2）
+   - DispenseDetail：EnableComp、XCompensation、YCompensation 及 LinkedVar
+   - DispenseDetailView：Enable Comp 复选框 + XY 补偿 GlobalVariableLinkControl
+   - DispenseStepAction：EnableComp 启用时 GetMachineXY 叠加 XY 补偿
+   - ScriptDetailView 提示增加 ctx.GetAxisPosition 说明
+   - 多语言：DispenseDetail_EnableComp / XCompensation / YCompensation / ScriptDetail_Hint_ReadAxisPos
+
 v2026.06.23 — Step3 统一针头选择 & Mach 坐标按所选针头刷新
 -------------------------------------------
 

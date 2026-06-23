@@ -10,6 +10,8 @@ namespace StationTasks.Models
     /// 脚本执行上下文，封装全局变量、步骤输出参数和 IO 操作，自动处理类型转换
     /// 脚本通过 ctx.GetDouble("变量名") 读取、ctx.Set("变量名", value) 写入
     /// 脚本通过 ctx.WriteDO("端口名", true) 写输出、ctx.ReadDI("端口名") 读输入
+    /// 脚本通过 ctx.GetAxisPosition("Dy") 按 hwcfg 轴名称读取实时位置（mm）
+/// 脚本通过 ctx.GetAxisPosition("Dy") 按 hwcfg 轴名称读取实时位置（mm）
     /// </summary>
     public class ScriptContext
     {
@@ -221,11 +223,74 @@ namespace StationTasks.Models
             return _motionService.ReadDo(logicalId);
         }
 
+        // ═══ 轴位置读取（按 hwcfg 轴名称） ═══
+
+        /// <summary>
+        /// 按轴名称读取实时位置（mm），如 ctx.GetAxisPosition("Dx")、ctx.GetAxisPosition("Dy")
+        /// 用于计算实时轴位置与 CAD 标定基准的偏差并写入全局变量
+        /// </summary>
+        /// <param name="axisName">hwcfg.xml 中 AxisConfig.Name，如 Dx、Dy、Dz₂</param>
+        public double GetAxisPosition(string axisName)
+        {
+            EnsureMotionService();
+            return _motionService.GetAxisPosition(ResolveAxisLogicalId(axisName));
+        }
+
+        /// <summary>安全读取轴实时位置，轴不存在或读卡失败时返回 false</summary>
+        public bool TryGetAxisPosition(string axisName, out double position, double defaultValue = 0)
+        {
+            position = defaultValue;
+            if (_motionService == null) return false;
+            try
+            {
+                position = GetAxisPosition(axisName);
+                return true;
+            }
+            catch
+            {
+                position = defaultValue;
+                return false;
+            }
+        }
+
+        /// <summary>按轴名称解析逻辑轴号（hwcfg AxisConfig）</summary>
+        public int GetAxisLogicalId(string axisName) => ResolveAxisLogicalId(axisName);
+
         /// <summary> 确保 IMotionService 已注入，否则抛出明确异常 </summary>
         private void EnsureMotionService()
         {
             if (_motionService == null)
                 throw new InvalidOperationException("IO operation requires IMotionService. ScriptContext was created without motion service.");
+        }
+
+        /// <summary>按 hwcfg 轴名称解析逻辑轴 ID，兼容 Dz₂/Dz2 等写法</summary>
+        private int ResolveAxisLogicalId(string axisName)
+        {
+            if (string.IsNullOrWhiteSpace(axisName))
+                throw new ArgumentException("Axis name cannot be empty");
+
+            var configs = _motionService.GetAxisConfigurations();
+            foreach (var candidate in GetAxisNameCandidates(axisName.Trim()))
+            {
+                var cfg = configs.FirstOrDefault(a => string.Equals(a.Name, candidate, StringComparison.Ordinal));
+                if (cfg != null)
+                    return cfg.LogicalId;
+            }
+
+            throw new ArgumentException($"Axis '{axisName}' not found in hwcfg.xml axis configurations");
+        }
+
+        /// <summary>轴名称候选列表——兼容 hwcfg 中 Dz₂/Dz2 等不同写法</summary>
+        private static IEnumerable<string> GetAxisNameCandidates(string axisName)
+        {
+            yield return axisName;
+            switch (axisName)
+            {
+                case "Dz₂": yield return "Dz2"; break;
+                case "Dz2": yield return "Dz₂"; break;
+                case "Dz₃": yield return "Dz3"; break;
+                case "Dz3": yield return "Dz₃"; break;
+            }
         }
 
         /// <summary> 按 DO 端口名称查找逻辑 ID </summary>

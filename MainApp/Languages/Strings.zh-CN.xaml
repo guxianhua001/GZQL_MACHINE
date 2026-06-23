@@ -2266,6 +2266,9 @@
     <sys:String x:Key="DispenseDetail_ModeDot">单点点胶(Dot)</sys:String>
     <sys:String x:Key="DispenseDetail_ModeArc">圆弧点胶(Arc)</sys:String>
     <sys:String x:Key="DispenseDetail_EnableZCalibration">启用Z向校准</sys:String>
+    <sys:String x:Key="DispenseDetail_EnableComp">启用补偿</sys:String>
+    <sys:String x:Key="DispenseDetail_XCompensation">X方向补偿</sys:String>
+    <sys:String x:Key="DispenseDetail_YCompensation">Y方向补偿</sys:String>
     <sys:String x:Key="DispenseDetail_ZCalibrationHeight">Z校准高度</sys:String>
     <sys:String x:Key="DispenseDetail_ZCompensation3D">Z补偿(3D相机)</sys:String>
     <sys:String x:Key="DispenseDetail_ZCompensationCalibrator">Z补偿(校准器)</sys:String>
@@ -3118,6 +3121,7 @@
     <sys:String x:Key="ScriptDetail_Hint_ReadVar">读取变量:</sys:String>
     <sys:String x:Key="ScriptDetail_Hint_ReturnVal">返回值:</sys:String>
     <sys:String x:Key="ScriptDetail_Hint_WriteVar">写入变量:</sys:String>
+    <sys:String x:Key="ScriptDetail_Hint_ReadAxisPos">读取轴位置:</sys:String>
     <sys:String x:Key="ScriptDetail_ScriptDescHint">脚本描述</sys:String>
     <sys:String x:Key="ScriptDetail_StepOutputParams">步骤输出参数</sys:String>
     <sys:String x:Key="ScriptDetail_ToolTipCompile">编译脚本</sys:String>

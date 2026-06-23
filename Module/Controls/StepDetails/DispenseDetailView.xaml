@@ -40,9 +40,14 @@
                                              IsChecked="{Binding IsArcMode}"
                                              GroupName="DispenseModeGroup" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             </StackPanel>
-                            <CheckBox Content="{lang:Lang DispenseDetail_EnableZCalibration}"
-                                      IsChecked="{Binding EnableZCalibration}"
-                                      Margin="0,4,0,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <CheckBox Content="{lang:Lang DispenseDetail_EnableZCalibration}"
+                                          IsChecked="{Binding EnableZCalibration}"
+                                          Margin="0,0,24,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
+                                <CheckBox Content="{lang:Lang DispenseDetail_EnableComp}"
+                                          IsChecked="{Binding EnableComp}"
+                                          Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
+                            </StackPanel>
                             <StackPanel Margin="24,4,0,0">
                                 <!-- Z向补偿（来自3D相机）+ 全局变量链接 -->
                                 <Grid Margin="0,0,0,6">
@@ -94,6 +99,42 @@
                                                              Maximum="2.55"
                                                              FontSize="11" Margin="0,0,4,0" Width="100"/>
                                     <TextBlock Grid.Column="2" Text="mm" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource DialogTextMutedBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                            <!-- XY 方向补偿（Enable Comp 启用时叠加到运动目标 MachineX/MachineY） -->
+                            <StackPanel Margin="24,6,0,0"
+                                        Visibility="{Binding EnableComp, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_XCompensation}"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <common:GlobalVariableLinkControl Grid.Column="1"
+                                        DisplayValue="{Binding XCompensationDisplayValue, Mode=OneWay}"
+                                        DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                        IsLinked="{Binding IsXCompensationLinked, Mode=OneWay}"
+                                        LinkedVariableName="{Binding XCompensationLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                        UnlinkCommand="{Binding UnlinkXCompensationCommand}"
+                                        ComboBoxWidth="180" />
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_YCompensation}"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <common:GlobalVariableLinkControl Grid.Column="1"
+                                        DisplayValue="{Binding YCompensationDisplayValue, Mode=OneWay}"
+                                        DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                        IsLinked="{Binding IsYCompensationLinked, Mode=OneWay}"
+                                        LinkedVariableName="{Binding YCompensationLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                        UnlinkCommand="{Binding UnlinkYCompensationCommand}"
+                                        ComboBoxWidth="180" />
                                 </Grid>
                             </StackPanel>
                         </StackPanel>

@@ -96,6 +96,46 @@ namespace Core.Models
             set => SetProperty(ref _manualZCompensation, value);
         }
 
+        private bool _enableComp;
+        /// <summary>是否启用 XY 方向补偿（默认 false）</summary>
+        public bool EnableComp
+        {
+            get => _enableComp;
+            set => SetProperty(ref _enableComp, value);
+        }
+
+        private double _xCompensation;
+        /// <summary>X 方向补偿 mm（可链接全局变量）</summary>
+        public double XCompensation
+        {
+            get => _xCompensation;
+            set => SetProperty(ref _xCompensation, value);
+        }
+
+        private string _xCompensationLinkedVar;
+        /// <summary>X 方向补偿链接的全局变量名</summary>
+        public string XCompensationLinkedVar
+        {
+            get => _xCompensationLinkedVar;
+            set => SetProperty(ref _xCompensationLinkedVar, value);
+        }
+
+        private double _yCompensation;
+        /// <summary>Y 方向补偿 mm（可链接全局变量，常用于 CAD 标定偏差）</summary>
+        public double YCompensation
+        {
+            get => _yCompensation;
+            set => SetProperty(ref _yCompensation, value);
+        }
+
+        private string _yCompensationLinkedVar;
+        /// <summary>Y 方向补偿链接的全局变量名</summary>
+        public string YCompensationLinkedVar
+        {
+            get => _yCompensationLinkedVar;
+            set => SetProperty(ref _yCompensationLinkedVar, value);
+        }
+
         #endregion
 
         #region 分段引用集合

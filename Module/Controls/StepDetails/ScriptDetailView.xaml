@@ -198,6 +198,7 @@
                                     <Run Text="{lang:Lang ScriptDetail_Hint_ReadVar}" /> <Run Text=" ctx.GetDouble(&quot;name&quot;)" FontFamily="Consolas" /><LineBreak />
                                     <Run Text="{lang:Lang ScriptDetail_Hint_ReadOutput}" /> <Run Text=" ctx.GetOutputDouble(&quot;name&quot;)" FontFamily="Consolas" /><LineBreak />
                                     <Run Text="{lang:Lang ScriptDetail_Hint_WriteVar}" /> <Run Text=" ctx.Set(&quot;name&quot;, val)" FontFamily="Consolas" /><LineBreak />
+                                    <Run Text="{lang:Lang ScriptDetail_Hint_ReadAxisPos}" /> <Run Text=" ctx.GetAxisPosition(&quot;Dy&quot;)" FontFamily="Consolas" /><LineBreak />
                                     <Run Text="{lang:Lang ScriptDetail_Hint_ReturnVal}" />
                                 </TextBlock>
                             </StackPanel>

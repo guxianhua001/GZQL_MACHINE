@@ -40,6 +40,13 @@ namespace StationTasks.Actions
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
 
+        /// <summary>当前步骤是否启用 XY 补偿</summary>
+        private bool _enableComp;
+
+        /// <summary>当前步骤解析后的 X/Y 补偿量（mm）</summary>
+        private double _xCompensation;
+        private double _yCompensation;
+
         public StepType SupportedStepType => StepType.DISPENSE;
 
         public DispenseStepAction(
@@ -82,6 +89,20 @@ namespace StationTasks.Actions
             int dzAxisId = ResolveDispenseAxisId(dzAxisName);
             int glueIoPort = GetGlueIoPort(needleIndex);
             _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId}), Dx={dxAxisId}, Dy={dyAxisId}, 出胶IO={glueIoPort}");
+
+            // 解析 XY 补偿（启用时叠加到所有运动目标 MachineX/MachineY）
+            _enableComp = detail.EnableComp;
+            if (_enableComp)
+            {
+                _xCompensation = ResolveLinkedValue(detail.XCompensation, detail.XCompensationLinkedVar);
+                _yCompensation = ResolveLinkedValue(detail.YCompensation, detail.YCompensationLinkedVar);
+                _logger.Info($"DISPENSE 步骤 [{step.Seq}] XY补偿已启用: dX={_xCompensation:F4}mm, dY={_yCompensation:F4}mm");
+            }
+            else
+            {
+                _xCompensation = 0;
+                _yCompensation = 0;
+            }
 
             try
             {
@@ -541,14 +562,23 @@ namespace StationTasks.Actions
 
         /// <summary>
         /// 安全获取点的机器坐标——严禁使用 OffsetX/X 等未转换坐标作为运动目标，
-        /// MachineX/MachineY 为空时立即抛出异常中止运动，防止设备撞机
+        /// MachineX/MachineY 为空时立即抛出异常中止运动，防止设备撞机。
+        /// EnableComp 启用时在 MachineX/MachineY 上叠加 XY 补偿。
         /// </summary>
         private (double X, double Y) GetMachineXY(CadPoint pt)
         {
             if (pt.MachineX == null || pt.MachineY == null)
                 throw new InvalidOperationException(
                     $"DISPENSE 致命错误: 点[Id={pt.Id}] MachineX/MachineY 为空，禁止使用未转换坐标执行运动");
-            return (pt.MachineX.Value, pt.MachineY.Value);
+
+            double x = pt.MachineX.Value;
+            double y = pt.MachineY.Value;
+            if (_enableComp)
+            {
+                x += _xCompensation;
+                y += _yCompensation;
+            }
+            return (x, y);
         }
     }
 }

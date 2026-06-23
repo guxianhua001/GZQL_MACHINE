@@ -2266,6 +2266,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_ModeDot">Dot Dispense</sys:String>
     <sys:String x:Key="DispenseDetail_ModeArc">Arc Dispense</sys:String>
     <sys:String x:Key="DispenseDetail_EnableZCalibration">Enable Z Calibration</sys:String>
+    <sys:String x:Key="DispenseDetail_EnableComp">Enable Comp</sys:String>
+    <sys:String x:Key="DispenseDetail_XCompensation">X Compensation</sys:String>
+    <sys:String x:Key="DispenseDetail_YCompensation">Y Compensation</sys:String>
     <sys:String x:Key="DispenseDetail_ZCalibrationHeight">Z Calibration Height</sys:String>
     <sys:String x:Key="DispenseDetail_ZCompensation3D">Z Comp(3D Camera)</sys:String>
     <sys:String x:Key="DispenseDetail_ZCompensationCalibrator">Z Comp(Calibrator)</sys:String>
@@ -3118,6 +3121,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ScriptDetail_Hint_ReadVar">Read Variable:</sys:String>
     <sys:String x:Key="ScriptDetail_Hint_ReturnVal">Return Value:</sys:String>
     <sys:String x:Key="ScriptDetail_Hint_WriteVar">Write Variable:</sys:String>
+    <sys:String x:Key="ScriptDetail_Hint_ReadAxisPos">Read Axis Position:</sys:String>
     <sys:String x:Key="ScriptDetail_ScriptDescHint">Script Description</sys:String>
     <sys:String x:Key="ScriptDetail_StepOutputParams">Step Output Params</sys:String>
     <sys:String x:Key="ScriptDetail_ToolTipCompile">Compile script</sys:String>
