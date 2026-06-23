@@ -420,7 +420,14 @@ namespace StationTasks.Actions
 
                 case StepType.IF:
                     _logger.Info($"[ProcessStepExecutor] 开始执行 IF 步骤 [{step.Seq}]");
-                    await ExecuteIfStepAsync(step, token);
+                    {
+                        int? outerJump = await ExecuteIfStepAsync(step, steps, currentIndex, token);
+                        if (outerJump.HasValue)
+                        {
+                            _logger.Info($"[ProcessStepExecutor] IF 步骤 [{step.Seq}] 因子步骤 BRANCH 块外跳转，继续索引={outerJump.Value}");
+                            return outerJump.Value;
+                        }
+                    }
                     _logger.Info($"[ProcessStepExecutor] IF 步骤 [{step.Seq}] 完成");
                     return currentIndex + 1;
 
@@ -970,12 +977,31 @@ namespace StationTasks.Actions
 
         #region IF 条件块执行逻辑
 
+        /// <summary> IF 子步骤列表执行结果 </summary>
+        private enum IfStepListResultKind { Completed, JumpToOuter }
+
+        private readonly struct IfStepListResult
+        {
+            public IfStepListResult(IfStepListResultKind kind, int outerIndex = 0)
+            {
+                Kind = kind;
+                OuterIndex = outerIndex;
+            }
+
+            public IfStepListResultKind Kind { get; }
+            /// <summary>块外跳转目标索引（Kind=JumpToOuter 时有效，-1 表示终止序列）</summary>
+            public int OuterIndex { get; }
+        }
+
         /// <summary>
         /// 执行 IF 步骤：评估条件表达式，递归执行 Then 或 Else 分支的子步骤集合。
-        /// 支持多层嵌套（IF 子步骤中可再包含 IF 步骤）。
-        /// 表达式为空或求值失败时按 false 处理（执行 Else 分支）。
+        /// 若子步骤中 BRANCH 触发块外跳转，返回外层步骤索引；否则返回 null。
         /// </summary>
-        private async Task ExecuteIfStepAsync(ProcessStep step, CancellationToken token)
+        private async Task<int?> ExecuteIfStepAsync(
+            ProcessStep step,
+            ObservableCollection<ProcessStep> outerSteps,
+            int outerCurrentIndex,
+            CancellationToken token)
         {
             // 确保 IF 步骤已初始化 IfDetail 和 IfBranches
             EnsureIfStepInitialized(step);
@@ -984,7 +1010,7 @@ namespace StationTasks.Actions
             if (ifDetail == null)
             {
                 _logger.Warn($"[IF] 步骤 [{step.Seq}] IfDetail 为 null，跳过执行");
-                return;
+                return null;
             }
 
             // 收集上下文变量（全局变量 + 步骤输出参数）
@@ -1018,32 +1044,39 @@ namespace StationTasks.Actions
             if (branch == null)
             {
                 _logger.Warn($"[IF] 步骤 [{step.Seq}] 未找到 {(conditionResult ? "Then" : "Else")} 分支，跳过执行");
-                return;
+                return null;
             }
 
             _logger.Info($"[IF] 步骤 [{step.Seq}] 执行 {branch.Header} 分支，子步骤数={branch.Steps?.Count ?? 0}");
 
-            // 递归执行分支内的子步骤集合
             if (branch.Steps != null && branch.Steps.Count > 0)
             {
-                await ExecuteStepListAsync(branch.Steps, token);
+                var listResult = await ExecuteStepListAsync(branch.Steps, outerSteps, outerCurrentIndex, token);
+                if (listResult.Kind == IfStepListResultKind.JumpToOuter)
+                    return listResult.OuterIndex;
             }
+
+            return null;
         }
 
         /// <summary>
-        /// 递归执行子步骤集合（用于 IF 分支内的子步骤执行）。
-        /// 支持嵌套 IF 步骤：当遇到 IF 类型时递归调用 ExecuteIfStepAsync。
-        /// 仅顺序执行，不支持 BRANCH 跳转出块外（符合 IF 块语义）。
+        /// 递归执行 IF 分支内子步骤集合。
+        /// BRANCH 步骤支持块外跳转（按方法顶层步骤 Seq 解析目标）。
         /// </summary>
-        private async Task ExecuteStepListAsync(ObservableCollection<ProcessStep> steps, CancellationToken token)
+        private async Task<IfStepListResult> ExecuteStepListAsync(
+            ObservableCollection<ProcessStep> steps,
+            ObservableCollection<ProcessStep> outerSteps,
+            int outerCurrentIndex,
+            CancellationToken token)
         {
-            if (steps == null || steps.Count == 0) return;
+            if (steps == null || steps.Count == 0)
+                return new IfStepListResult(IfStepListResultKind.Completed);
 
-            foreach (var step in steps)
+            for (int i = 0; i < steps.Count; i++)
             {
+                var step = steps[i];
                 token.ThrowIfCancellationRequested();
 
-                // 跳过禁用步骤
                 if (!step.IsEnabled)
                 {
                     _logger.Info($"[IF-Sub] 跳过禁用步骤: [{step.Seq}] {step.Step}");
@@ -1060,26 +1093,25 @@ namespace StationTasks.Actions
 
                     if (step.Step == StepType.IF)
                     {
-                        // 递归执行嵌套 IF 步骤
-                        await ExecuteIfStepAsync(step, token);
+                        int? outerJump = await ExecuteIfStepAsync(step, outerSteps, outerCurrentIndex, token);
+                        if (outerJump.HasValue)
+                            return new IfStepListResult(IfStepListResultKind.JumpToOuter, outerJump.Value);
                     }
                     else if (step.Step == StepType.BRANCH)
                     {
-                        // IF 块内的 BRANCH 步骤：仅评估条件不跳转（块内顺序执行语义）
-                        _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 在 IF 块内仅评估条件，不执行块外跳转");
                         if (step.BranchConfig?.IsEnabled == true)
                         {
-                            var variables = await CollectIfContextVariablesAsync();
-                            if (!string.IsNullOrWhiteSpace(step.BranchConfig.Conditions.FirstOrDefault()?.ConditionExpression))
+                            int? outerJump = await TryExecuteBranchJumpOutAsync(step, outerSteps, token);
+                            if (outerJump.HasValue)
                             {
-                                bool result = EvaluateCondition(step.BranchConfig.Conditions.First().ConditionExpression, variables);
-                                _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 条件评估结果: {result}（块内不跳转）");
+                                _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 块外跳转，目标索引={outerJump.Value}");
+                                return new IfStepListResult(IfStepListResultKind.JumpToOuter, outerJump.Value);
                             }
+                            _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 默认 Continue，继续块内下一步");
                         }
                     }
                     else
                     {
-                        // 普通步骤：通过 ExecuteWithRunStepAsync 执行，享受暂停/急停/报警保护
                         await ExecuteWithRunStepAsync(stepLabel, step, token);
                     }
 
@@ -1096,15 +1128,72 @@ namespace StationTasks.Actions
                     step.IsCurrent = false;
                     _logger.Error($"[IF-Sub] 子步骤 [{step.Seq}] {step.Step} 执行异常: {ex.Message}");
                     if (step.AlarmConfig?.IsEnabled == true)
-                    {
                         step.HasActiveAlarm = true;
-                    }
-                    throw; // 异常向上传播，终止整个 IF 块执行
+                    throw;
                 }
                 finally
                 {
                     step.IsCurrent = false;
                 }
+            }
+
+            return new IfStepListResult(IfStepListResultKind.Completed);
+        }
+
+        /// <summary>
+        /// IF 块内 BRANCH 步骤：评估条件/默认动作，若需块外跳转则返回外层步骤索引；
+        /// 默认 Continue 或无块外跳转时返回 null，继续执行块内后续子步骤。
+        /// </summary>
+        private async Task<int?> TryExecuteBranchJumpOutAsync(
+            ProcessStep step,
+            ObservableCollection<ProcessStep> outerSteps,
+            CancellationToken token)
+        {
+            var branchConfig = step.BranchConfig;
+            if (branchConfig == null || !branchConfig.IsEnabled) return null;
+
+            var variables = await CollectContextVariablesAsync(step, branchConfig);
+
+            int condIdx = 0;
+            foreach (var condition in branchConfig.Conditions ?? Enumerable.Empty<BranchCondition>())
+            {
+                condIdx++;
+                if (string.IsNullOrWhiteSpace(condition.ConditionExpression)) continue;
+
+                try
+                {
+                    bool conditionResult = EvaluateCondition(condition.ConditionExpression, variables);
+                    _logger.Info($"[IF-Sub] BRANCH 条件 '{condition.ConditionExpression}' = {conditionResult}");
+
+                    if (conditionResult)
+                    {
+                        _logger.Info($"[IF-Sub] BRANCH 条件匹配，块外跳转到步骤 Seq={condition.TargetStepSeq} ({condition.Description})");
+                        return await ResolveStepIndexAsync(condition.TargetStepSeq, outerSteps, -1);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"[IF-Sub] BRANCH 条件评估失败: '{condition.ConditionExpression}' - {ex.Message}");
+                }
+            }
+
+            switch (branchConfig.DefaultAction)
+            {
+                case DefaultBranchAction.Stop:
+                    _logger.Warn("[IF-Sub] BRANCH 默认动作 Stop，终止序列");
+                    return -1;
+
+                case DefaultBranchAction.SkipTo:
+                    if (branchConfig.DefaultTargetStepSeq > 0)
+                    {
+                        _logger.Info($"[IF-Sub] BRANCH 默认动作 SkipTo 步骤 Seq={branchConfig.DefaultTargetStepSeq}");
+                        return await ResolveStepIndexAsync(branchConfig.DefaultTargetStepSeq, outerSteps, -1);
+                    }
+                    return await HandleDefaultActionAsync(branchConfig, outerSteps, -1);
+
+                case DefaultBranchAction.Continue:
+                default:
+                    return null;
             }
         }
 

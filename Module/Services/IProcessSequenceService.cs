@@ -21,11 +21,14 @@ namespace Module.Services
         void MoveStepUp();
         void MoveStepDown();
 
-        /// <summary> 将步骤移动到指定方法的指定位置（用于拖拽排序） </summary>
-        /// <param name="step">要移动的步骤</param>
-        /// <param name="targetMethod">目标方法</param>
-        /// <param name="targetIndex">目标索引（-1 表示追加到末尾）</param>
+        /// <summary> 将步骤移动到指定方法的指定位置（用于拖拽排序，方法顶层） </summary>
         void MoveStepTo(ProcessStep step, ProcessMethod targetMethod, int targetIndex);
+
+        /// <summary> 拖拽排序：拖到目标步骤位置（支持 IF 分支内子步骤） </summary>
+        void MoveStepTo(ProcessStep draggedStep, ProcessStep targetStep);
+
+        /// <summary> 判断两步骤是否可拖拽排序（同方法顶层或同 IF 分支组） </summary>
+        bool CanMoveStepTo(ProcessStep draggedStep, ProcessStep targetStep);
 
         /// <summary> 将任务移动到指定位置（用于拖拽排序） </summary>
         /// <param name="task">要移动的任务</param>

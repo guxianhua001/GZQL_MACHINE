@@ -368,10 +368,22 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary> 将步骤移动到指定位置（拖拽排序使用），转发到 Service.MoveStepTo </summary>
+        /// <summary> 将步骤移动到指定位置（拖拽排序使用） </summary>
         public void MoveStepTo(ProcessStep step, ProcessMethod targetMethod, int targetIndex)
         {
             _sequenceService.MoveStepTo(step, targetMethod, targetIndex);
+        }
+
+        /// <summary> 拖拽排序：拖到目标步骤位置（支持 IF 分支内子步骤） </summary>
+        public void MoveStepTo(ProcessStep draggedStep, ProcessStep targetStep)
+        {
+            _sequenceService.MoveStepTo(draggedStep, targetStep);
+        }
+
+        /// <summary> 判断两步骤是否可拖拽排序 </summary>
+        public bool CanMoveStepTo(ProcessStep draggedStep, ProcessStep targetStep)
+        {
+            return _sequenceService.CanMoveStepTo(draggedStep, targetStep);
         }
 
         /// <summary> 将任务移动到指定位置（拖拽排序使用），转发到 Service.MoveTaskTo </summary>

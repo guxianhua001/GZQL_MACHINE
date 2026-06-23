@@ -5,7 +5,9 @@ using Prism.Mvvm;
 using Recipe.Interfaces;
 using StationTasks.Models;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -25,6 +27,7 @@ namespace Module.ViewModels
         private readonly IFormulaEvaluator _formulaEvaluator;
         private readonly ILoggerService _logger;
         private readonly IProcessSequenceService _sequenceService;
+        private readonly ILocalizationService _localization;
         private ProcessStep _step;
 
         /// <summary>请求关闭对话框时触发</summary>
@@ -59,6 +62,8 @@ namespace Module.ViewModels
             {
                 if (SetProperty(ref _conditionExpression, value))
                 {
+                    CheckResultMessage = "";
+                    CheckResultIsTrue = null;
                     ScheduleValidation();
                 }
             }
@@ -88,6 +93,36 @@ namespace Module.ViewModels
             set => SetProperty(ref _validationMessage, value);
         }
 
+        private string _checkResultMessage;
+        /// <summary> 表达式检测结果消息（点击“检测”按钮后显示） </summary>
+        public string CheckResultMessage
+        {
+            get => _checkResultMessage;
+            set => SetProperty(ref _checkResultMessage, value);
+        }
+
+        private bool? _checkResultIsTrue;
+        /// <summary> 表达式检测结果：true/false/null（未检测） </summary>
+        public bool? CheckResultIsTrue
+        {
+            get => _checkResultIsTrue;
+            set
+            {
+                if (SetProperty(ref _checkResultIsTrue, value))
+                {
+                    RaisePropertyChanged(nameof(HasCheckResult));
+                    RaisePropertyChanged(nameof(CheckResultVisibility));
+                }
+            }
+        }
+
+        /// <summary> 是否已有检测结果 </summary>
+        public bool HasCheckResult => _checkResultIsTrue.HasValue;
+
+        /// <summary> 检测结果面板可见性 </summary>
+        public System.Windows.Visibility CheckResultVisibility =>
+            HasCheckResult ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
         /// <summary> 全局变量名列表（含 @GV: 前缀，用于下拉插入） </summary>
         public ObservableCollection<string> GlobalVariableNames { get; } = new ObservableCollection<string>();
 
@@ -116,6 +151,7 @@ namespace Module.ViewModels
         public ICommand CloseCommand { get; }
         public ICommand InsertVariableCommand { get; }
         public ICommand InsertTemplateCommand { get; }
+        public ICommand CheckExpressionCommand { get; }
 
         private DispatcherTimer _validateTimer;
 
@@ -127,17 +163,20 @@ namespace Module.ViewModels
             IRecipePoolService recipePoolService,
             IFormulaEvaluator formulaEvaluator,
             ILoggerService logger,
-            IProcessSequenceService sequenceService)
+            IProcessSequenceService sequenceService,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _formulaEvaluator = formulaEvaluator;
             _logger = logger;
             _sequenceService = sequenceService;
+            _localization = localization;
 
             SaveCommand = new DelegateCommand(OnSave);
             CloseCommand = new DelegateCommand(OnClose);
             InsertVariableCommand = new DelegateCommand<string>(OnInsertVariable);
             InsertTemplateCommand = new DelegateCommand<string>(OnInsertTemplate);
+            CheckExpressionCommand = new DelegateCommand(async () => await OnCheckExpressionAsync());
 
             _validateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             _validateTimer.Tick += (s, e) =>
@@ -167,6 +206,8 @@ namespace Module.ViewModels
 
             ConditionExpression = _step.IfDetail.ConditionExpression ?? "";
             Description = _step.IfDetail.Description;
+            CheckResultMessage = "";
+            CheckResultIsTrue = null;
 
             // 同步收集前序步骤输出参数（@Output: 变量）
             LoadPreviousStepOutputs();
@@ -353,6 +394,77 @@ namespace Module.ViewModels
             if (string.IsNullOrEmpty(template)) return;
             ConditionExpression = template;
         }
+
+        /// <summary>
+        /// 检测当前表达式求值结果：加载全局变量实际值，@Output: 无运行时值时按 0/false 处理。
+        /// </summary>
+        private async Task OnCheckExpressionAsync()
+        {
+            CheckResultMessage = "";
+            CheckResultIsTrue = null;
+
+            if (string.IsNullOrWhiteSpace(ConditionExpression))
+            {
+                CheckResultMessage = L("IfDetail_CheckEmptyExpression");
+                return;
+            }
+
+            ValidateExpression();
+            if (!IsValidationValid)
+            {
+                CheckResultMessage = L("IfDetail_CheckSyntaxError");
+                return;
+            }
+
+            try
+            {
+                var variables = await BuildEvaluationVariablesAsync();
+                bool result = _formulaEvaluator.EvaluateCondition(ConditionExpression, variables);
+                CheckResultIsTrue = result;
+
+                string branchHint = result ? L("IfDetail_CheckBranchThen") : L("IfDetail_CheckBranchElse");
+                CheckResultMessage = string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("IfDetail_CheckResultFormat"),
+                    result ? L("IfDetail_CheckResultTrue") : L("IfDetail_CheckResultFalse"),
+                    branchHint);
+
+                _logger.Info($"[IfDetail] 表达式检测: '{ConditionExpression}' => {result}");
+            }
+            catch (Exception ex)
+            {
+                CheckResultMessage = string.Format(CultureInfo.CurrentCulture, L("IfDetail_CheckFailed"), ex.Message);
+                _logger.Warn($"[IfDetail] 表达式检测失败: {ex.Message}");
+            }
+        }
+
+        /// <summary> 构建求值变量池：@GV: 取配方池全局变量，@Output: 暂用 0（编辑器无运行时输出） </summary>
+        private async Task<Dictionary<string, string>> BuildEvaluationVariablesAsync()
+        {
+            var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            var poolId = _recipePoolService?.CurrentPoolId;
+            if (!string.IsNullOrEmpty(poolId))
+            {
+                var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId);
+                foreach (var gv in globalVars)
+                {
+                    if (!string.IsNullOrEmpty(gv.Name))
+                        variables[$"@GV:{gv.Name}"] = gv.Value ?? "0";
+                }
+            }
+
+            // 前序步骤输出在编辑器中通常无运行时值，缺省为 0/false
+            foreach (var outputName in PreviousStepOutputNames)
+            {
+                if (!variables.ContainsKey(outputName))
+                    variables[outputName] = "0";
+            }
+
+            return variables;
+        }
+
+        private string L(string key) => _localization?.GetResourceOrDefault(key, key) ?? key;
 
         /// <summary>
         /// 保存当前配置到 Step.IfDetail 并关闭弹窗

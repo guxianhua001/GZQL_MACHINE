@@ -180,17 +180,18 @@ namespace Module.Views
 
         /// <summary>
         /// 拖拽经过：验证目标有效性，设置拖拽效果
-        /// - Step 拖拽：目标必须为同方法内的 ProcessStep
+        /// - Step 拖拽：目标须为同方法顶层步骤或同一 IF 分支组内子步骤
         /// - Task 拖拽：目标必须为另一个 TaskItem
         /// </summary>
         private void TreeView_DragOver(object sender, DragEventArgs e)
         {
-            // Step 拖拽验证
             if (e.Data.GetDataPresent(typeof(ProcessStep)))
             {
                 var draggedStep = (ProcessStep)e.Data.GetData(typeof(ProcessStep));
                 var targetStep = GetStepFromDropTarget(e);
-                if (targetStep != null && targetStep != draggedStep && IsSameMethod(draggedStep, targetStep))
+                if (DataContext is ProcessSequenceEditorViewModel vm
+                    && targetStep != null
+                    && vm.CanMoveStepTo(draggedStep, targetStep))
                     e.Effects = DragDropEffects.Move;
                 else
                     e.Effects = DragDropEffects.None;
@@ -226,12 +227,8 @@ namespace Module.Views
                 {
                     var draggedStep = (ProcessStep)e.Data.GetData(typeof(ProcessStep));
                     var targetStep = GetStepFromDropTarget(e);
-                    if (targetStep == null || draggedStep == targetStep) return;
-                    if (!IsSameMethod(draggedStep, targetStep)) return;
-                    var targetMethod = FindMethodContainingStep(targetStep);
-                    if (targetMethod == null) return;
-                    int targetIndex = targetMethod.Steps.IndexOf(targetStep);
-                    vm.MoveStepTo(draggedStep, targetMethod, targetIndex);
+                    if (targetStep == null || !vm.CanMoveStepTo(draggedStep, targetStep)) return;
+                    vm.MoveStepTo(draggedStep, targetStep);
                     e.Handled = true;
                 }
                 // Task 拖拽放置
@@ -271,30 +268,6 @@ namespace Module.Views
             return null;
         }
 
-        /// <summary> 判断两个步骤是否属于同一个方法 </summary>
-        private bool IsSameMethod(ProcessStep step1, ProcessStep step2)
-        {
-            return FindMethodContainingStep(step1) == FindMethodContainingStep(step2);
-        }
-
-        /// <summary> 查找包含指定步骤的方法 </summary>
-        private Module.Models.ProcessMethod FindMethodContainingStep(ProcessStep step)
-        {
-            if (DataContext is ProcessSequenceEditorViewModel vm)
-            {
-                foreach (var task in vm.Tasks)
-                {
-                    if (task.Methods == null) continue;
-                    foreach (var method in task.Methods)
-                    {
-                        if (method.Steps.Contains(step))
-                            return method;
-                    }
-                }
-            }
-            return null;
-        }
-
         /// <summary>
         /// 向上查找指定类型的祖先元素。
         /// 混合使用可视树与逻辑树：Visual/Visual3D 用 VisualTreeHelper，
@@ -306,7 +279,6 @@ namespace Module.Views
             {
                 if (current is T result)
                     return result;
-                // Visual/Visual3D 走可视树
                 if (current is System.Windows.Media.Visual ||
                     current is System.Windows.Media.Media3D.Visual3D)
                 {
@@ -314,7 +286,6 @@ namespace Module.Views
                 }
                 else
                 {
-                    // FrameworkContentElement（如 Run、Span）走逻辑树
                     current = LogicalTreeHelper.GetParent(current);
                 }
             }

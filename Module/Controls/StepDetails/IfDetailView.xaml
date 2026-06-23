@@ -93,6 +93,39 @@
                                            FontSize="11" VerticalAlignment="Center"/>
                             </StackPanel>
 
+                            <!-- 表达式求值检测 -->
+                            <StackPanel Margin="0,10,0,0">
+                                <Button Command="{Binding CheckExpressionCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        HorizontalAlignment="Left"
+                                        Padding="12,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="PlayCircleOutline" Width="16" Height="16"
+                                                                  VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{lang:Lang IfDetail_CheckExpression}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                            Visibility="{Binding HasCheckResult, Converter={StaticResource BoolToVis}}">
+                                    <materialDesign:PackIcon Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="CloseCircleOutline"/>
+                                                <Setter Property="Foreground" Value="#C62828"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CheckResultIsTrue}" Value="True">
+                                                        <Setter Property="Kind" Value="CheckCircleOutline"/>
+                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                    <TextBlock Text="{Binding CheckResultMessage}" FontSize="11" VerticalAlignment="Center"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </StackPanel>
+
                             <!-- 表达式模板快速插入 -->
                             <TextBlock Text="{lang:Lang IfDetail_ExpressionTemplates}" FontSize="11"
                                        Foreground="#616161" Margin="0,12,0,4"/>

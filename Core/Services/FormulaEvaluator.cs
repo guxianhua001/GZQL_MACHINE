@@ -215,17 +215,36 @@ namespace Core.Services
             return left;
         }
 
-        // andExpr ::= comparison (('&&') comparison)*
+        // andExpr ::= comparison (('&&') comparison)* | 相邻比较表达式隐式 AND
         private double ParseAndExpression()
         {
             double left = ParseComparisonAsNumber();
-            while (_currentToken.Type == TokenType.And)
+            while (_currentToken.Type == TokenType.And || IsStartOfImplicitAndComparison())
             {
-                NextToken();
+                if (_currentToken.Type == TokenType.And)
+                    NextToken();
                 double right = ParseComparisonAsNumber();
                 left = (Math.Abs(left) > 0.0001 && Math.Abs(right) > 0.0001) ? 1.0 : 0.0;
             }
             return left;
+        }
+
+        /// <summary>
+        /// 检测相邻比较表达式（未写 && 时按 AND 处理）。
+        /// 例如 "@Output:A == true @GV:B &lt; 0.3" 等价于两个条件 AND。
+        /// </summary>
+        private bool IsStartOfImplicitAndComparison()
+        {
+            if (_currentToken.Type == TokenType.Eof ||
+                _currentToken.Type == TokenType.RParen ||
+                _currentToken.Type == TokenType.Or)
+                return false;
+
+            return _currentToken.Type == TokenType.Number ||
+                   _currentToken.Type == TokenType.True ||
+                   _currentToken.Type == TokenType.False ||
+                   _currentToken.Type == TokenType.Minus ||
+                   _currentToken.Type == TokenType.LParen;
         }
 
         // comparisonAsNumber: 执行比较并返回 1.0/0.0

@@ -134,9 +134,13 @@ namespace Module.Services
                     else if (value is ProcessStep step)
                     {
                         SelectedStep = step;
-                        // 从步骤推导所属任务，确保 CurrentTask 同步
-                        var parentTask = FindTaskContainingStep(step);
-                        if (parentTask != null) CurrentTask = parentTask;
+                        // 从步骤推导所属任务/方法（含 IF 分支内嵌子步骤）
+                        var location = LocateStep(step);
+                        if (location.HasValue)
+                        {
+                            CurrentTask = location.Value.Task;
+                            SelectedMethod = location.Value.Method;
+                        }
                     }
                 }
             }
@@ -154,19 +158,74 @@ namespace Module.Services
             return null;
         }
 
-        /// <summary> 查找包含指定步骤的父任务 </summary>
+        /// <summary> 查找包含指定步骤的父任务（含 IF 分支内嵌子步骤） </summary>
         private TaskItem FindTaskContainingStep(ProcessStep step)
+        {
+            return LocateStep(step)?.Task;
+        }
+
+        /// <summary>
+        /// 步骤在树中的位置：方法顶层步骤 IfBranch 为 null；IF 分支内子步骤 IfBranch 指向所属 Then/Else 组。
+        /// </summary>
+        private readonly struct StepLocation
+        {
+            public StepLocation(TaskItem task, ProcessMethod method, IfBranchGroup ifBranch)
+            {
+                Task = task;
+                Method = method;
+                IfBranch = ifBranch;
+            }
+
+            public TaskItem Task { get; }
+            public ProcessMethod Method { get; }
+            /// <summary>非 null 表示该步骤位于 IF 分支组内</summary>
+            public IfBranchGroup IfBranch { get; }
+        }
+
+        /// <summary> 在任务树中定位步骤（支持 IF 嵌套子步骤） </summary>
+        private StepLocation? LocateStep(ProcessStep step)
         {
             if (step == null) return null;
             foreach (var task in Tasks)
             {
                 if (task.Methods == null) continue;
-                foreach (var m in task.Methods)
+                foreach (var method in task.Methods)
                 {
-                    if (m.Steps.Contains(step)) return task;
+                    if (TryLocateStep(step, method.Steps, null, out var branch))
+                        return new StepLocation(task, method, branch);
                 }
             }
             return null;
+        }
+
+        /// <summary> 递归查找步骤，foundBranch 为 null 表示方法顶层步骤 </summary>
+        private static bool TryLocateStep(
+            ProcessStep target,
+            ObservableCollection<ProcessStep> steps,
+            IfBranchGroup currentBranch,
+            out IfBranchGroup foundBranch)
+        {
+            foundBranch = null;
+            if (steps == null) return false;
+
+            foreach (var step in steps)
+            {
+                if (ReferenceEquals(step, target))
+                {
+                    foundBranch = currentBranch;
+                    return true;
+                }
+
+                if (step.Step != StepType.IF || step.IfBranches == null) continue;
+
+                foreach (var branch in step.IfBranches)
+                {
+                    if (TryLocateStep(target, branch.Steps, branch, out foundBranch))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary> 剪贴板：缓存复制的节点 </summary>
@@ -270,11 +329,34 @@ namespace Module.Services
         public void DeleteStep()
         {
             if (SelectedStep == null) return;
-            var method = SelectedMethod ?? CurrentTask?.Methods?.FirstOrDefault();
-            if (method == null) return;
-            method.Steps.Remove(SelectedStep);
-            RenumberSteps();
-            CurrentTask.SyncStepsFromMethods();
+
+            var location = LocateStep(SelectedStep);
+            if (!location.HasValue) return;
+
+            var loc = location.Value;
+            if (loc.IfBranch != null)
+            {
+                // IF 分支内子步骤：从 Then/Else 组的 Steps 集合中移除
+                loc.IfBranch.Steps.Remove(SelectedStep);
+                RenumberIfBranchSteps(loc.IfBranch);
+            }
+            else
+            {
+                loc.Method.Steps.Remove(SelectedStep);
+                RenumberSteps(loc.Task);
+            }
+
+            loc.Task.SyncStepsFromMethods();
+            SelectedStep = null;
+            SelectedNode = loc.Method;
+        }
+
+        /// <summary> 重编号 IF 分支组内子步骤序号 </summary>
+        private static void RenumberIfBranchSteps(IfBranchGroup branch)
+        {
+            if (branch?.Steps == null) return;
+            for (int i = 0; i < branch.Steps.Count; i++)
+                branch.Steps[i].Seq = i + 1;
         }
 
         public void MoveStepUp()
@@ -301,43 +383,68 @@ namespace Module.Services
             SelectedStep = method.Steps[idx + 1];
         }
 
-        /// <summary>
-        /// 将步骤移动到指定方法的指定位置（拖拽排序使用）。
-        /// 当前仅支持同方法内移动，跨方法移动需评估步骤引用重写的复杂性。
-        /// </summary>
+        /// <summary> 将步骤移动到指定方法的指定位置（拖拽排序使用，方法顶层步骤） </summary>
         public void MoveStepTo(ProcessStep step, ProcessMethod targetMethod, int targetIndex)
         {
             if (step == null || targetMethod == null) return;
-            // 查找步骤当前所属的方法
-            ProcessMethod sourceMethod = null;
-            TaskItem containingTask = null;
-            foreach (var task in Tasks)
+            if (targetIndex >= 0 && targetIndex < targetMethod.Steps.Count)
+                MoveStepTo(step, targetMethod.Steps[targetIndex]);
+        }
+
+        /// <summary>
+        /// 拖拽排序：支持方法顶层步骤及 IF 分支内子步骤（同层级内移动）。
+        /// </summary>
+        public void MoveStepTo(ProcessStep draggedStep, ProcessStep targetStep)
+        {
+            if (draggedStep == null || targetStep == null || ReferenceEquals(draggedStep, targetStep)) return;
+
+            var dragLoc = LocateStep(draggedStep);
+            var targetLoc = LocateStep(targetStep);
+            if (!dragLoc.HasValue || !targetLoc.HasValue) return;
+
+            // IF 分支内：同一 Then/Else 组内排序
+            if (dragLoc.Value.IfBranch != null && targetLoc.Value.IfBranch == dragLoc.Value.IfBranch)
             {
-                if (task.Methods == null) continue;
-                foreach (var m in task.Methods)
-                {
-                    if (m.Steps.Contains(step)) { sourceMethod = m; containingTask = task; break; }
-                }
-                if (sourceMethod != null) break;
-            }
-            if (sourceMethod == null) return;
-            // 仅允许同方法内移动
-            if (sourceMethod != targetMethod)
-            {
-                _logger.Warn("[ProcessSequence] 跨方法拖拽暂不支持，仅允许同方法内排序");
+                var branch = dragLoc.Value.IfBranch;
+                int oldIdx = branch.Steps.IndexOf(draggedStep);
+                int newIdx = branch.Steps.IndexOf(targetStep);
+                if (oldIdx < 0 || newIdx < 0 || oldIdx == newIdx) return;
+                branch.Steps.Move(oldIdx, newIdx);
+                RenumberIfBranchSteps(branch);
+                SelectedStep = draggedStep;
                 return;
             }
-            int oldIndex = sourceMethod.Steps.IndexOf(step);
-            if (oldIndex < 0) return;
-            // 计算实际目标索引（移除源后索引可能偏移）
-            int actualTarget = targetIndex;
-            if (targetIndex < 0 || targetIndex >= sourceMethod.Steps.Count)
-                actualTarget = sourceMethod.Steps.Count - 1;
-            if (oldIndex == actualTarget) return;
-            sourceMethod.Steps.Move(oldIndex, actualTarget);
-            // 对包含该步骤的任务重编号（而非 CurrentTask），确保拖拽后序号自动更新
-            RenumberSteps(containingTask);
-            SelectedStep = step;
+
+            // 方法顶层：同方法内排序
+            if (dragLoc.Value.IfBranch == null && targetLoc.Value.IfBranch == null
+                && dragLoc.Value.Method == targetLoc.Value.Method)
+            {
+                var method = dragLoc.Value.Method;
+                int oldIdx = method.Steps.IndexOf(draggedStep);
+                int newIdx = method.Steps.IndexOf(targetStep);
+                if (oldIdx < 0 || newIdx < 0 || oldIdx == newIdx) return;
+                method.Steps.Move(oldIdx, newIdx);
+                RenumberSteps(dragLoc.Value.Task);
+                SelectedStep = draggedStep;
+                return;
+            }
+
+            _logger.Warn("[ProcessSequence] 不支持跨层级或跨 IF 分支拖拽排序");
+        }
+
+        /// <summary> 判断两个步骤是否可在拖拽中互相排序 </summary>
+        public bool CanMoveStepTo(ProcessStep draggedStep, ProcessStep targetStep)
+        {
+            if (draggedStep == null || targetStep == null || ReferenceEquals(draggedStep, targetStep)) return false;
+
+            var dragLoc = LocateStep(draggedStep);
+            var targetLoc = LocateStep(targetStep);
+            if (!dragLoc.HasValue || !targetLoc.HasValue) return false;
+
+            if (dragLoc.Value.IfBranch != null)
+                return targetLoc.Value.IfBranch == dragLoc.Value.IfBranch;
+
+            return targetLoc.Value.IfBranch == null && dragLoc.Value.Method == targetLoc.Value.Method;
         }
 
         /// <summary> 将任务移动到指定位置（用于拖拽排序） </summary>

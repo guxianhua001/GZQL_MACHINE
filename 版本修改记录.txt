@@ -1,6 +1,39 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — IF 块内 BRANCH 块外跳转 + IF 子步骤拖拽排序
+-------------------------------------------
+
+1. 问题
+   - IF 块内 BRANCH 步骤仅评估条件，不支持向块外跳转
+   - IF ELSE 下 Then/Else 子工具无法拖拽重新排序
+
+2. 实现
+   - ProcessStepExecutor.cs：IF 子步骤 BRANCH 调用 TryExecuteBranchJumpOutAsync，
+     条件匹配/默认 Stop·SkipTo 时返回外层步骤索引并中断 IF 块执行；默认 Continue 继续块内
+   - ProcessSequenceService.cs：MoveStepTo(dragged, target) 与 CanMoveStepTo 支持同 IF 分支组内排序
+   - ProcessSequenceEditorView.xaml.cs：拖拽校验与放置改用 CanMoveStepTo / MoveStepTo
+
+v2026.06.23 — IF ELSE 子步骤删除修复 + 表达式隐式 AND + 检测按钮
+-------------------------------------------
+
+1. 问题
+   - IF ELSE 工具 Then/Else 下选中的子工具无法删除（DeleteStep 只在方法顶层 Steps 查找）
+   - 表达式 "@Output:Step4_VISIONResult == true @GV:SideCamOffsetU < 0.3" 在 SideCamOffsetU=0.795 时
+     错误进入 Then 分支（缺少 && 时只评估第一个比较）
+   - 需要增加“检测表达式”按钮，预览 true/false 及将执行的分支
+
+2. 实现
+   - ProcessSequenceService.cs：新增 LocateStep/TryLocateStep 递归定位 IF 嵌套子步骤
+   - ProcessSequenceService.cs：DeleteStep 支持从 IfBranchGroup.Steps 删除并重编号
+   - ProcessSequenceService.cs：选中 IF 子步骤时同步 CurrentTask/SelectedMethod
+   - FormulaEvaluator.cs：相邻比较表达式按隐式 AND 合并求值
+   - IfDetailViewModel.cs：新增 CheckExpressionCommand，加载全局变量实际值求值
+   - IfDetailView.xaml：新增“检测表达式”按钮及结果显示
+
+3. 多语言
+   - Strings.zh-CN.xaml / Strings.en-US.xaml：新增 IfDetail_Check* 系列键，更新 UsageHint
+
 v2026.06.22 — CadAlignmentView 回转中心/GlobalOffset表格增加移动列
 -------------------------------------------
 
