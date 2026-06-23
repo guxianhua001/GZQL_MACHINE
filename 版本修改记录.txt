@@ -1,6 +1,29 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — 全局变量上移/下移 CollectionView 跨线程异常
+-------------------------------------------
+
+1. 问题
+   - GlobalVariablesViewModel 点击上移/下移报 NotSupportedException
+   - LoadGlobalVariablesAsync 使用 ConfigureAwait(false)，ReloadVariables 在后台线程创建 Variables 与 CollectionView
+
+2. 实现
+   - GlobalVariablesViewModel.cs：ReloadVariables 通过 Dispatcher.InvokeAsync 在 UI 线程赋值 Variables 并 RefreshIndices
+
+v2026.06.23 — 自定义动作流程方法 Stop 后可再次 Run
+-------------------------------------------
+
+1. 问题
+   - 软件重启后，某方法 Run 按钮不可用
+   - 方法 Status 被保存为 Stopped/Running 后，Stop 无法重置，StartMethod 仅允许 Idle
+
+2. 实现
+   - ProcessMethod.cs：Status/LastElapsedMs 添加 [JsonIgnore]，运行时状态不再持久化
+   - ProcessSequenceService.cs：LoadSequenceFromPathAsync 加载时强制方法 Status=Idle
+   - ProcessSequenceService.cs：StopMethod(method) 支持停止执行中方法，或对遗留 Stopped 状态重置为 Idle
+   - ProcessSequenceEditorViewModel.cs：Run 允许 Idle/Stopped；Stop 对非 Idle 状态均可点击恢复
+
 v2026.06.23 — CAD对位步骤4目标点二选一 + 步骤3画布任意坐标拾取
 -------------------------------------------
 

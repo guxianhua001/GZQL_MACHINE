@@ -107,8 +107,9 @@ namespace Module.Services
         void PauseMethod();
         /// <summary> 恢复当前被暂停的方法 </summary>
         void ResumeMethod();
-        /// <summary> 停止当前正在执行的方法 </summary>
-        void StopMethod();
+        /// <summary> 停止指定方法；若未在执行则重置遗留的运行状态以便再次 Run </summary>
+        /// <param name="method">要停止或重置的方法</param>
+        void StopMethod(ProcessMethod method);
 
         /// <summary> 是否启用单步模式（每步执行后等待用户确认再继续） </summary>
         bool IsSingleStepMode { get; set; }

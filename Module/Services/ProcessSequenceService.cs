@@ -876,6 +876,9 @@ namespace Module.Services
                 _logger.Warn($"[ProcessSequence] 方法 [{method.Name}] 已禁用，无法执行");
                 return;
             }
+            // Stopped 为停止后遗留状态，启动前规范为 Idle
+            if (method.Status == TaskItem.TaskStatusEnum.Stopped)
+                method.Status = TaskItem.TaskStatusEnum.Idle;
             var stationTask = FindStationTask();
             if (stationTask == null) return;
 
@@ -994,21 +997,52 @@ namespace Module.Services
             _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已恢复");
         }
 
-        /// <summary> 停止当前正在执行的方法（安全关键：取消执行令牌并停止所有工站运动轴） </summary>
-        public void StopMethod()
+        /// <summary>
+        /// 停止指定方法（安全关键：取消执行令牌并停止所有工站运动轴）。
+        /// 若方法未在执行但 Status 仍为 Running/Paused/Stopped（如重启后遗留），则重置为 Idle 以便再次 Run。
+        /// </summary>
+        /// <param name="method">要停止或重置的方法</param>
+        public void StopMethod(ProcessMethod method)
         {
-            if (!_isMethodExecuting || _executingMethod == null) return;
-            _executionCts?.Cancel();
-            // 解除单步模式等待，避免执行线程永久阻塞
-            _stepNextTcs?.TrySetCanceled();
-            // 遍历所有工站调用 StopAsync（无State守卫）：停止所有轴 + 取消 _cts/_pauseCts
-            foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
-                station.StopAsync();
-            _executingMethod.Status = TaskItem.TaskStatusEnum.Stopped;
-            if (CurrentTask != null)
-                CurrentTask.Status = TaskItem.TaskStatusEnum.Stopped;
-            ResetStepHighlight(_methodExecutionSteps);
-            _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已停止");
+            if (method == null) return;
+
+            // 正在执行：取消令牌并停止运动轴，最终由 ExecuteMethodAsync 的 finally 重置为 Idle
+            if (_isMethodExecuting && _executingMethod == method)
+            {
+                _executionCts?.Cancel();
+                // 解除单步模式等待，避免执行线程永久阻塞
+                _stepNextTcs?.TrySetCanceled();
+                // 遍历所有工站调用 StopAsync（无State守卫）：停止所有轴 + 取消 _cts/_pauseCts
+                foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                    station.StopAsync();
+                ResetStepHighlight(_methodExecutionSteps);
+                _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 已停止");
+                return;
+            }
+
+            // 非执行中的遗留状态：重置为 Idle，解除 Run 按钮不可用
+            if (method.Status != TaskItem.TaskStatusEnum.Idle)
+            {
+                ResetMethodRuntimeState(method);
+                _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 运行状态已重置为 Idle");
+            }
+        }
+
+        /// <summary> 重置单个方法的运行时状态（Status/步骤高亮），加载序列或 Stop 恢复时使用 </summary>
+        private void ResetMethodRuntimeState(ProcessMethod method)
+        {
+            if (method == null) return;
+            method.Status = TaskItem.TaskStatusEnum.Idle;
+            method.LastElapsedMs = 0;
+            var steps = FlattenMethodSteps(method);
+            if (steps.Count > 0)
+            {
+                foreach (var step in steps)
+                    step.IsCurrent = false;
+                steps[0].IsCurrent = true;
+            }
+            if (CurrentTask != null && !_isExecuting && !_isMethodExecuting)
+                CurrentTask.Status = TaskItem.TaskStatusEnum.Idle;
         }
 
         /// <summary> 是否启用单步模式（每步执行后等待用户确认再继续） </summary>
@@ -1338,13 +1372,17 @@ namespace Module.Services
                         task.Methods.Clear();
                         task.Methods.Add(new ProcessMethod(_localization.GetResourceOrDefault("PSE_DefaultMethodName", "默认方法"), taskData.Steps));
                     }
-                    // 重置运行时状态
+                    // 重置运行时状态（方法 Status 可能来自旧版 JSON 持久化，须强制 Idle）
                     foreach (var method in task.Methods)
+                    {
+                        method.Status = TaskItem.TaskStatusEnum.Idle;
+                        method.LastElapsedMs = 0;
                         foreach (var step in method.Steps)
                         {
                             step.IsCurrent = false;
                             step.EnsureAlarmConfigInitialized();
                         }
+                    }
                     task.SyncStepsFromMethods();
                     if (task.Steps.Count > 0)
                         task.Steps[0].IsCurrent = true;

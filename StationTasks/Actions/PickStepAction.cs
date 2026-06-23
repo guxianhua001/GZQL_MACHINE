@@ -97,7 +97,6 @@ namespace StationTasks.Actions
                         targetTask.PublishStepStatus(moveLabel, overrideState);
 
                         await targetTask.ExecuteMoveAsync(axisId, subMove.PositionName, speed, totalOffset);
-                        await Task.Delay(1800);
                         targetTask.CompleteStepStatus(overrideState);
                     }
                 }

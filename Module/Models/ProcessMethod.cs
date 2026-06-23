@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using Prism.Mvvm;
 using StationTasks.Models;
 using System.Collections.Generic;
@@ -52,7 +53,8 @@ namespace Module.Models
         }
 
         private TaskItem.TaskStatusEnum _status = TaskItem.TaskStatusEnum.Idle;
-        /// <summary> 方法级执行状态（Idle/Running/Paused/Stopped），用于方法级独立控制 </summary>
+        /// <summary> 方法级执行状态（Idle/Running/Paused/Stopped），用于方法级独立控制；运行时状态不持久化 </summary>
+        [JsonIgnore]
         public TaskItem.TaskStatusEnum Status
         {
             get => _status;
@@ -68,7 +70,8 @@ namespace Module.Models
         }
 
         private long _lastElapsedMs;
-        /// <summary> 方法最近一次执行的耗时（毫秒），运行时记录 </summary>
+        /// <summary> 方法最近一次执行的耗时（毫秒），运行时记录；不持久化 </summary>
+        [JsonIgnore]
         public long LastElapsedMs
         {
             get => _lastElapsedMs;

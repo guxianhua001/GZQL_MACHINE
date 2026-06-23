@@ -13,6 +13,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Collections.Specialized;
@@ -359,6 +360,8 @@ namespace Recipe.ViewModels
 
         /// <summary>
         /// 统一加载逻辑：加载后规范化 Group 字段（null → 默认分组），并刷新分组集合与视图。
+        /// LoadGlobalVariablesAsync 使用 ConfigureAwait(false)，await 后续在后台线程执行，
+        /// 必须在 UI 线程更新 ObservableCollection / CollectionView，否则 Move/Add 等操作会抛 NotSupportedException。
         /// </summary>
         private async Task ReloadVariables(string poolId)
         {
@@ -371,8 +374,12 @@ namespace Recipe.ViewModels
                 if (v.Group == null)
                     v.Group = GlobalVariable.DefaultGroupKey;
             }
-            Variables = new ObservableCollection<GlobalVariable>(list);
-            RefreshIndices();
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                Variables = new ObservableCollection<GlobalVariable>(list);
+                RefreshIndices();
+            });
         }
 
         /// <summary>

@@ -111,7 +111,10 @@ namespace Module.ViewModels
                 {
                     _sequenceService.StartMethod(method);
                 },
-                method => method != null && method.Status == TaskItem.TaskStatusEnum.Idle
+                // Idle/Stopped 均可启动；Stopped 为停止后或重启遗留状态
+                method => method != null
+                          && (method.Status == TaskItem.TaskStatusEnum.Idle
+                              || method.Status == TaskItem.TaskStatusEnum.Stopped)
                           && !_sequenceService.IsExecuting);
             PauseMethodCommand = new DelegateCommand<ProcessMethod>(method =>
                 {
@@ -128,11 +131,10 @@ namespace Module.ViewModels
                 method => method != null && method.Status == TaskItem.TaskStatusEnum.Paused);
             StopMethodCommand = new DelegateCommand<ProcessMethod>(method =>
                 {
-                    if (_sequenceService.ExecutingMethod == method)
-                        _sequenceService.StopMethod();
+                    _sequenceService.StopMethod(method);
                 },
-                method => method != null && (method.Status == TaskItem.TaskStatusEnum.Running
-                                             || method.Status == TaskItem.TaskStatusEnum.Paused));
+                // Running/Paused/Stopped 均可点 Stop：执行中则取消，遗留 Stopped 则重置为 Idle
+                method => method != null && method.Status != TaskItem.TaskStatusEnum.Idle);
 
             // 单步模式命令
             ToggleSingleStepCommand = new DelegateCommand(OnToggleSingleStep);
