@@ -496,7 +496,15 @@ namespace Module.ViewModels
         public int BasePairIndex { get => _basePairIndex; set => SetProperty(ref _basePairIndex, value); }
 
         private int _targetPairIndex;
-        public int TargetPairIndex { get => _targetPairIndex; set => SetProperty(ref _targetPairIndex, value); }
+        public int TargetPairIndex
+        {
+            get => _targetPairIndex;
+            set
+            {
+                if (SetProperty(ref _targetPairIndex, value))
+                    (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged();
+            }
+        }
 
         private List<string> _pairNames = new();
         public List<string> PairNames { get => _pairNames; set => SetProperty(ref _pairNames, value); }
@@ -566,7 +574,13 @@ namespace Module.ViewModels
         private bool _step3Done;
         public bool Step3Done { get => _step3Done; set { SetProperty(ref _step3Done, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
 
-        public bool CanInheritFromStep3 => Step3Done && ThetaDeg != 0;
+        /// <summary>步骤3是否已选取目标点位（起点即可，不要求完成旋转角计算或θ≠0）</summary>
+        public bool HasStep3TargetPointSelected =>
+            (HasCadDrawingLoaded && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            || (!HasCadDrawingLoaded && CorrespondencePoints != null && TargetPairIndex * 2 < CorrespondencePoints.Count);
+
+        /// <summary>「使用步骤3目标点」按钮是否可用：已选取任意目标起点即可</summary>
+        public bool CanInheritFromStep3 => HasStep3TargetPointSelected;
 
         // === 产品对齐角度 ===
         private double _alignmentAngle;
@@ -663,7 +677,15 @@ namespace Module.ViewModels
 
         // 目标线段起点/终点索引（指向 ImportedCadPoints）
         private int _targetStartIndex = -1;
-        public int TargetStartIndex { get => _targetStartIndex; set => SetProperty(ref _targetStartIndex, value); }
+        public int TargetStartIndex
+        {
+            get => _targetStartIndex;
+            set
+            {
+                if (SetProperty(ref _targetStartIndex, value))
+                    (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged();
+            }
+        }
         private int _targetEndIndex = -1;
         public int TargetEndIndex { get => _targetEndIndex; set => SetProperty(ref _targetEndIndex, value); }
 
@@ -2267,7 +2289,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         {
             if (!CanInheritFromStep3)
             {
-                StatusMessage = L("CAD_NeedStep3_First");
+                StatusMessage = L("CAD_NeedTargetPoint_First");
                 return;
             }
 

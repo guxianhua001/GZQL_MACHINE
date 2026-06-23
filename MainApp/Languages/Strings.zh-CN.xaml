@@ -2511,6 +2511,7 @@
     <sys:String x:Key="CAD_AutoRecommend_Done">已自动推荐基准和目标线段</sys:String>
     <sys:String x:Key="CAD_NeedStep2_First">请先完成步骤2（全局偏移）</sys:String>
     <sys:String x:Key="CAD_NeedStep3_First">请先完成步骤3（旋转角度）</sys:String>
+    <sys:String x:Key="CAD_NeedTargetPoint_First">请先在步骤3选取目标起点</sys:String>
     <sys:String x:Key="CAD_NeedStep4_First">请先完成步骤4（坐标变换）</sys:String>
     <sys:String x:Key="CAD_Inherit_Step3_Success">已继承步骤3目标线段起点</sys:String>
     <sys:String x:Key="CAD_Single_Transform_Done">单点变换完成</sys:String>

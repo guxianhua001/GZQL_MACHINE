@@ -1,6 +1,22 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — CAD对位步骤4「使用步骤3目标点」启用条件放宽
+-------------------------------------------
+
+1. 问题
+   - Coord Transform 中「使用步骤3目标点」按钮仅在步骤3完成且 θ≠0 时可点击
+   - 当基准线与目标线平行（θ=0）或仅选取目标起点时，无法使用该功能
+
+2. 实现
+   - CadAlignmentViewModel.cs：CanInheritFromStep3 改为 HasStep3TargetPointSelected
+     （CAD模式：TargetStartIndex 有效；对应点模式：TargetPairIndex 有效即可）
+   - TargetStartIndex / TargetPairIndex 变更时刷新按钮 CanExecute
+   - 未选目标点时提示 CAD_NeedTargetPoint_First
+
+3. 多语言
+   - Strings.zh-CN.xaml / Strings.en-US.xaml：新增 CAD_NeedTargetPoint_First
+
 v2026.06.23 — IF 块内 BRANCH 块外跳转 + IF 子步骤拖拽排序
 -------------------------------------------
 

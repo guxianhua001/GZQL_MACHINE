@@ -2511,6 +2511,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CAD_AutoRecommend_Done">Auto-recommended baseline and target</sys:String>
     <sys:String x:Key="CAD_NeedStep2_First">Please complete Step 2 (Global Offset) first</sys:String>
     <sys:String x:Key="CAD_NeedStep3_First">Please complete Step 3 (Rotation Angle) first</sys:String>
+    <sys:String x:Key="CAD_NeedTargetPoint_First">Please select a target start point in Step 3 first</sys:String>
     <sys:String x:Key="CAD_NeedStep4_First">Please complete Step 4 (Coord Transform) first</sys:String>
     <sys:String x:Key="CAD_Inherit_Step3_Success">Inherited Step 3 target start point</sys:String>
     <sys:String x:Key="CAD_Single_Transform_Done">Single point transform complete</sys:String>
