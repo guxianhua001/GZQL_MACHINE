@@ -2464,6 +2464,10 @@
     <sys:String x:Key="CadAlignment_TransformTitle">坐标变换</sys:String>
     <sys:String x:Key="CadAlignment_UnitLabel">单位: mm / °</sys:String>
     <sys:String x:Key="CadAlignment_UseStep3Target">使用步骤3目标点</sys:String>
+    <sys:String x:Key="CadAlignment_UseStep3TargetTip">继承步骤3已选目标点作为坐标变换输入</sys:String>
+    <sys:String x:Key="CadAlignment_TargetStartPoint">目标起点</sys:String>
+    <sys:String x:Key="CadAlignment_TargetEndPoint">目标终点</sys:String>
+    <sys:String x:Key="CAD_Inherit_Step3_CorrPoint">已继承步骤3目标点 {0}（索引={1}）</sys:String>
     <sys:String x:Key="CadAlignment_WriteGlobalVar">写入全局变量</sys:String>
     <sys:String x:Key="CadAlignment_LoadFile">加载</sys:String>
     <sys:String x:Key="CadAlignment_SaveFile">保存</sys:String>

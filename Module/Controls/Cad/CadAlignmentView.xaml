@@ -825,7 +825,7 @@
 
                                         <TextBlock Grid.Row="0" FontSize="10.5" Foreground="#555" Margin="0,0,0,6">
                                                         <Run Text="{lang:Lang CadAlignment_CADPreview}"/>
-                                                        <Run Foreground="#7B1FA2" FontWeight="SemiBold" Text="{lang:Lang CAD_Pick_Points_Hint}"/>
+                                                        <Run Foreground="#7B1FA2" FontWeight="SemiBold" Text="{lang:Lang Step4_Btn_PickFromCanvas}"/>
                                         </TextBlock>
 
                                         <!-- 图形区域：靠左 + 固定尺寸 -->
@@ -1129,7 +1129,7 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Button Command="{Binding InheritTargetFromStep3Command}"
                                             Style="{StaticResource SecondaryActionButton}" Padding="8,3"
-                                            ToolTip="自动使用步骤3的目标线段起点作为变换目标"
+                                            ToolTip="{lang:Lang CadAlignment_UseStep3TargetTip}"
                                             VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
                                             <materialDesign:PackIcon Kind="ArrowDownBoldHexagonOutline" Width="13" Height="13"
@@ -1137,6 +1137,16 @@
                                             <TextBlock Text="{lang:Lang CadAlignment_UseStep3Target}" FontSize="10" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
+                                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <RadioButton GroupName="Step3TargetForTransform" IsChecked="{Binding IsStep3TargetStartSelected}"
+                                                     VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang CadAlignment_TargetStartPoint}" FontSize="10" Foreground="#555"
+                                                   Margin="4,0,10,0" VerticalAlignment="Center"/>
+                                        <RadioButton GroupName="Step3TargetForTransform" IsChecked="{Binding IsStep3TargetEndSelected}"
+                                                     VerticalAlignment="Center"/>
+                                        <TextBlock Text="{lang:Lang CadAlignment_TargetEndPoint}" FontSize="10" Foreground="#555"
+                                                   Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
                                     <!-- X/Y/θ角度取反开关 -->
                                     <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                                         <ToggleButton IsChecked="{Binding InvertXAngle}" VerticalAlignment="Center"/>

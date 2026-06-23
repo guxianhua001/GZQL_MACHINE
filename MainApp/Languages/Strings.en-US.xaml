@@ -2464,6 +2464,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadAlignment_TransformTitle">Coordinate Transform</sys:String>
     <sys:String x:Key="CadAlignment_UnitLabel">Unit: mm / °</sys:String>
     <sys:String x:Key="CadAlignment_UseStep3Target">Use Step 3 Target Point</sys:String>
+    <sys:String x:Key="CadAlignment_UseStep3TargetTip">Inherit the selected Step 3 target point for coord transform</sys:String>
+    <sys:String x:Key="CadAlignment_TargetStartPoint">Target Start</sys:String>
+    <sys:String x:Key="CadAlignment_TargetEndPoint">Target End</sys:String>
+    <sys:String x:Key="CAD_Inherit_Step3_CorrPoint">Inherited Step 3 target {0} (index={1})</sys:String>
     <sys:String x:Key="CadAlignment_WriteGlobalVar">Write Global Variable</sys:String>
     <sys:String x:Key="CadAlignment_LoadFile">Load</sys:String>
     <sys:String x:Key="CadAlignment_SaveFile">Save</sys:String>

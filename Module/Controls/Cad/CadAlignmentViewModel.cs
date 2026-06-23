@@ -93,6 +93,56 @@ namespace Module.ViewModels
     /// </summary>
     public class CadAlignmentViewModel : BindableBase
     {
+        /// <summary>
+        /// 线段端点：支持画布任意坐标拾取（与 Global Offset Pick from Canvas 一致，不限于 ImportedCadPoints）
+        /// </summary>
+        private sealed class SegmentEndpoint
+        {
+            public double X { get; set; }
+            public double Y { get; set; }
+            public int ImportedIndex { get; set; } = -1;
+            public bool IsSet { get; set; }
+
+            public void Clear()
+            {
+                X = Y = 0;
+                ImportedIndex = -1;
+                IsSet = false;
+            }
+
+            /// <summary>画布点击：直接使用 CAD 坐标，不吸附最近导入点</summary>
+            public void SetFromCanvas(double x, double y)
+            {
+                X = Math.Round(x, 3);
+                Y = Math.Round(y, 3);
+                ImportedIndex = -1;
+                IsSet = true;
+            }
+
+            public void SetFromImported(double x, double y, int index)
+            {
+                X = x;
+                Y = y;
+                ImportedIndex = index;
+                IsSet = true;
+            }
+
+            public void CopyFrom(SegmentEndpoint other)
+            {
+                X = other.X;
+                Y = other.Y;
+                ImportedIndex = other.ImportedIndex;
+                IsSet = other.IsSet;
+            }
+
+            public bool IsSameLocation(double x, double y, double tolerance = 0.01)
+            {
+                if (!IsSet) return false;
+                double dx = X - x, dy = Y - y;
+                return dx * dx + dy * dy < tolerance * tolerance;
+            }
+        }
+
         private readonly IRecipePoolService _recipePoolService;
         private readonly IContainerProvider _containerProvider;
         private readonly IEventAggregator _eventAggregator;
@@ -518,10 +568,10 @@ namespace Module.ViewModels
         public string TargetlineDisplayText { get => _targetlineDisplayText; set => SetProperty(ref _targetlineDisplayText, value); }
 
         /// <summary>是否已选取基准线段（控制"显示基准线段"按钮启用状态）</summary>
-        public bool HasBaselineSelected => BaseStartIndex >= 0 && BaseEndIndex >= 0;
+        public bool HasBaselineSelected => _baseStartEp.IsSet && _baseEndEp.IsSet;
 
         /// <summary>是否已选取目标线段（控制"显示目标线段"按钮启用状态）</summary>
-        public bool HasTargetlineSelected => TargetStartIndex >= 0 && TargetEndIndex >= 0;
+        public bool HasTargetlineSelected => _targetStartEp.IsSet && _targetEndEp.IsSet;
 
         /// <summary>基准起点变换后坐标显示文本</summary>
         private string _baseStartTransformedText = "";
@@ -574,10 +624,13 @@ namespace Module.ViewModels
         private bool _step3Done;
         public bool Step3Done { get => _step3Done; set { SetProperty(ref _step3Done, value); (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged(); } }
 
-        /// <summary>步骤3是否已选取目标点位（起点即可，不要求完成旋转角计算或θ≠0）</summary>
+        /// <summary>步骤3是否已选取目标点位（起点/终点二选一，不要求完成旋转角计算）</summary>
         public bool HasStep3TargetPointSelected =>
-            (HasCadDrawingLoaded && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
-            || (!HasCadDrawingLoaded && CorrespondencePoints != null && TargetPairIndex * 2 < CorrespondencePoints.Count);
+            (HasCadDrawingLoaded && GetStep3TargetEndpointForTransform().IsSet)
+            || (!HasCadDrawingLoaded && CorrespondencePoints != null && (
+                UseStep3TargetEndPoint
+                    ? TargetPairIndex * 2 + 1 < CorrespondencePoints.Count
+                    : TargetPairIndex * 2 < CorrespondencePoints.Count));
 
         /// <summary>「使用步骤3目标点」按钮是否可用：已选取任意目标起点即可</summary>
         public bool CanInheritFromStep3 => HasStep3TargetPointSelected;
@@ -669,13 +722,21 @@ namespace Module.ViewModels
             }
         }
 
-        // 基准线段起点/终点索引（指向 ImportedCadPoints）
+        // 基准/目标线段端点（画布任意坐标或 ImportedCadPoints 索引）
+        private readonly SegmentEndpoint _baseStartEp = new();
+        private readonly SegmentEndpoint _baseEndEp = new();
+        private readonly SegmentEndpoint _targetStartEp = new();
+        private readonly SegmentEndpoint _targetEndEp = new();
+        /// <summary>步骤4坐标变换时继承的步骤3目标点快照</summary>
+        private readonly SegmentEndpoint _step4TransformSource = new();
+
+        // 基准线段起点/终点索引（ImportedCadPoints 索引，画布拾取时为 -1）
         private int _baseStartIndex = -1;
         public int BaseStartIndex { get => _baseStartIndex; set => SetProperty(ref _baseStartIndex, value); }
         private int _baseEndIndex = -1;
         public int BaseEndIndex { get => _baseEndIndex; set => SetProperty(ref _baseEndIndex, value); }
 
-        // 目标线段起点/终点索引（指向 ImportedCadPoints）
+        // 目标线段起点/终点索引（ImportedCadPoints 索引，画布拾取时为 -1）
         private int _targetStartIndex = -1;
         public int TargetStartIndex
         {
@@ -687,7 +748,15 @@ namespace Module.ViewModels
             }
         }
         private int _targetEndIndex = -1;
-        public int TargetEndIndex { get => _targetEndIndex; set => SetProperty(ref _targetEndIndex, value); }
+        public int TargetEndIndex
+        {
+            get => _targetEndIndex;
+            set
+            {
+                if (SetProperty(ref _targetEndIndex, value))
+                    (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged();
+            }
+        }
 
         // 导入文件路径显示
         private string _cadFilePath = "";
@@ -740,6 +809,36 @@ namespace Module.ViewModels
 
         /// <summary>是否使用步骤3的CAD目标点位作为步骤4变换源（而非CorrespondencePoints）</summary>
         private bool _useStep3TargetForTransform;
+
+        /// <summary>步骤4继承步骤3目标点时使用终点（false=起点，true=终点）</summary>
+        private bool _useStep3TargetEndPoint;
+        public bool UseStep3TargetEndPoint
+        {
+            get => _useStep3TargetEndPoint;
+            set
+            {
+                if (SetProperty(ref _useStep3TargetEndPoint, value))
+            {
+                RaisePropertyChanged(nameof(IsStep3TargetStartSelected));
+                RaisePropertyChanged(nameof(IsStep3TargetEndSelected));
+                (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged();
+            }
+            }
+        }
+
+        /// <summary>步骤4继承目标：选中起点（与 UseStep3TargetEndPoint 互斥）</summary>
+        public bool IsStep3TargetStartSelected
+        {
+            get => !_useStep3TargetEndPoint;
+            set { if (value) UseStep3TargetEndPoint = false; }
+        }
+
+        /// <summary>步骤4继承目标：选中终点（与 IsStep3TargetStartSelected 互斥）</summary>
+        public bool IsStep3TargetEndSelected
+        {
+            get => _useStep3TargetEndPoint;
+            set { if (value) UseStep3TargetEndPoint = true; }
+        }
 
         private double _transXm;
         public double TransXm { get => _transXm; set => SetProperty(ref _transXm, value); }
@@ -1306,26 +1405,11 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         /// </summary>
         private void ComputeCadRotationAngle()
         {
-            // 优先使用从 CAD 导入点位选取的线段
-            if (HasCadDrawingLoaded && BaseEndIndex >= 0 && TargetEndIndex >= 0)
+            // 优先使用从 CAD 导入/画布拾取的线段端点坐标
+            if (HasCadDrawingLoaded && HasBaselineSelected && HasTargetlineSelected)
             {
-                // 边界检查：确保所有索引都在有效范围内
-                if (BaseStartIndex < 0 || BaseStartIndex >= ImportedCadPoints.Count ||
-                    BaseEndIndex < 0 || BaseEndIndex >= ImportedCadPoints.Count ||
-                    TargetStartIndex < 0 || TargetStartIndex >= ImportedCadPoints.Count ||
-                    TargetEndIndex < 0 || TargetEndIndex >= ImportedCadPoints.Count)
-                {
-                    StatusMessage = L("CAD_Rotation_InvalidIndex");
-                    return;
-                }
-
-                var p1 = ImportedCadPoints[BaseStartIndex];
-                var p2 = ImportedCadPoints[BaseEndIndex];
-                var p3 = ImportedCadPoints[TargetStartIndex];
-                var p4 = ImportedCadPoints[TargetEndIndex];
-
-                double alphaBaseRad = Math.Atan2(p2.Y - p1.Y, p2.X - p1.X);
-                double alphaTargetRad = Math.Atan2(p4.Y - p3.Y, p4.X - p3.X);
+                double alphaBaseRad = Math.Atan2(_baseEndEp.Y - _baseStartEp.Y, _baseEndEp.X - _baseStartEp.X);
+                double alphaTargetRad = Math.Atan2(_targetEndEp.Y - _targetStartEp.Y, _targetEndEp.X - _targetStartEp.X);
 
                 AlphaBaseDeg = alphaBaseRad * 180.0 / Math.PI;
                 AlphaTargetDeg = alphaTargetRad * 180.0 / Math.PI;
@@ -1333,7 +1417,6 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 double theta = AlphaBaseDeg - AlphaTargetDeg;
 
                 // 归一化到 (-360, 0]：保证始终顺时针旋转
-                // 圆弧上多点对齐场景，要求每个位置都按同一方向（顺时针）转到基准角度
                 while (theta > 0.0) theta -= 360.0;
                 while (theta <= -360.0) theta += 360.0;
 
@@ -1390,8 +1473,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             _isPickingTarget = false;
             _isPickingAffineCadCoord = false;
 
-            BaseStartIndex = -1;
-            BaseEndIndex = -1;
+            ClearBaseSegmentEndpoints();
             UpdateCadPointRoles();
 
             CadSelectedSegmentPoints = null;
@@ -1415,8 +1497,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             _isPickingBaseline = false;
             _isPickingAffineCadCoord = false;
 
-            TargetStartIndex = -1;
-            TargetEndIndex = -1;
+            ClearTargetSegmentEndpoints();
             UpdateCadPointRoles();
 
             CadSelectedSegmentPoints = null;
@@ -1487,8 +1568,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 // 导入后立即用当前偏移量更新图像坐标（FitToAll回调会再次更新）
                 UpdateImageCoordinates();
 
-                BaseStartIndex = BaseEndIndex = -1;
-                TargetStartIndex = TargetEndIndex = -1;
+                ClearAllSegmentEndpoints();
                 _isPickingBaseline = _isPickingTarget = false;
                 _isPickingAffineCadCoord = false;
                 _selectedAffineCalibrationPoint = null;
@@ -1719,109 +1799,193 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
         }
 
-        /// <summary>DataGrid 行选中时触发，根据当前选取模式分配到基准或目标线段</summary>
-        /// <remarks>
-        /// ✅ 性能优化：单次触发模式
-        /// - CadSelectedSegmentPoints只赋值一次（避免多次触发HalconCanvas重绘）
-        /// - UpdateCadPointRoles()内部已优化为批量更新
-        /// - 状态消息即时反馈（用户体验优先）
-        /// </remarks>
+        #region 线段端点拾取辅助
+
+        /// <summary>步骤4继承时使用的步骤3目标端点（起点/终点二选一）</summary>
+        private SegmentEndpoint GetStep3TargetEndpointForTransform() =>
+            UseStep3TargetEndPoint ? _targetEndEp : _targetStartEp;
+
+        private void ClearBaseSegmentEndpoints()
+        {
+            _baseStartEp.Clear();
+            _baseEndEp.Clear();
+            BaseStartIndex = BaseEndIndex = -1;
+        }
+
+        private void ClearTargetSegmentEndpoints()
+        {
+            _targetStartEp.Clear();
+            _targetEndEp.Clear();
+            TargetStartIndex = TargetEndIndex = -1;
+        }
+
+        private void ClearAllSegmentEndpoints()
+        {
+            ClearBaseSegmentEndpoints();
+            ClearTargetSegmentEndpoints();
+        }
+
+        private void SyncEndpointFromImported(SegmentEndpoint ep, int index)
+        {
+            if (index >= 0 && index < ImportedCadPoints.Count)
+            {
+                var pt = ImportedCadPoints[index];
+                ep.SetFromImported(pt.X, pt.Y, index);
+            }
+            else
+                ep.Clear();
+        }
+
+        private void SyncAllSegmentEndpointsFromIndices()
+        {
+            SyncEndpointFromImported(_baseStartEp, BaseStartIndex);
+            SyncEndpointFromImported(_baseEndEp, BaseEndIndex);
+            SyncEndpointFromImported(_targetStartEp, TargetStartIndex);
+            SyncEndpointFromImported(_targetEndEp, TargetEndIndex);
+        }
+
+        private void AssignEndpoint(SegmentEndpoint ep, ref int indexField, double x, double y, int importedIndex)
+        {
+            if (importedIndex >= 0)
+                ep.SetFromImported(x, y, importedIndex);
+            else
+                ep.SetFromCanvas(x, y);
+            indexField = importedIndex;
+        }
+
+        private string FormatEndpointLabel(SegmentEndpoint ep)
+        {
+            if (!ep.IsSet) return "?";
+            if (ep.ImportedIndex >= 0 && ep.ImportedIndex < ImportedCadPoints.Count)
+                return $"#{ImportedCadPoints[ep.ImportedIndex].Id}";
+            return string.Format("({0}, {1})", ep.X.ToString("F1"), ep.Y.ToString("F1"));
+        }
+
+        private CadPoint CreateEndpointMarker(SegmentEndpoint ep)
+        {
+            if (!ep.IsSet) return null;
+            if (ep.ImportedIndex >= 0 && ep.ImportedIndex < ImportedCadPoints.Count)
+                return ImportedCadPoints[ep.ImportedIndex];
+            return new CadPoint(ep.X, ep.Y, 0) { Id = "Pick" };
+        }
+
+        private string FormatEndpointTransformText(SegmentEndpoint ep)
+        {
+            if (!ep.IsSet) return "";
+            string original = string.Format("({0}, {1})", ep.X.ToString("F2"), ep.Y.ToString("F2"));
+            if (!Step2Done) return string.Format("原始: {0}", original);
+
+            double xm, ym;
+            if (_useAffineCalibration && _affineResult != null)
+            {
+                var (mx, my) = AffineCalibrationService.Transform(_affineResult, ep.X, ep.Y);
+                xm = mx;
+                ym = my;
+            }
+            else
+            {
+                xm = ep.X + DeltaX;
+                ym = ep.Y + DeltaY;
+            }
+            string machine = string.Format("({0}, {1})", xm.ToString("F2"), ym.ToString("F2"));
+            return string.Format("原始: {0}\n机械: {1}", original, machine);
+        }
+
+        /// <summary>DataGrid 行选中：从 ImportedCadPoints 拾取端点</summary>
         private void OnCadPointSelected(CadPoint point)
         {
             if (point == null) return;
-
             var idx = ImportedCadPoints.IndexOf(point);
-            if (idx < 0 || idx >= ImportedCadPoints.Count) return;
+            if (idx < 0) return;
+            ApplySegmentEndpointPick(point.X, point.Y, idx, point);
+        }
 
-            // ✅ 优化：请求画布开始批量更新，暂停渲染，避免多次属性变更导致闪烁
+        /// <summary>画布点击：直接使用 CAD 坐标拾取（与 Global Offset Pick from Canvas 一致）</summary>
+        private void OnCadCoordinatePicked(double cadX, double cadY)
+        {
+            ApplySegmentEndpointPick(cadX, cadY, -1, null);
+        }
+
+        /// <summary>基准/目标线段端点拾取统一入口</summary>
+        private void ApplySegmentEndpointPick(double x, double y, int importedIndex, CadPoint markerPoint)
+        {
+            if (!_isPickingBaseline && !_isPickingTarget) return;
+
             BatchUpdateStartRequested?.Invoke();
-
             try
             {
-                CadSelectedPointIndex = idx;
-
-                // 按需显示X标记：只在基准/目标线段选取模式下显示选中点
-                if (_isPickingBaseline || _isPickingTarget)
-                {
-                    CadSelectedSegmentPoints = new List<CadPoint> { point };
-                }
+                CadSelectedPointIndex = importedIndex;
+                CadPoint marker;
+                if (markerPoint != null)
+                    marker = markerPoint;
+                else if (importedIndex >= 0 && importedIndex < ImportedCadPoints.Count)
+                    marker = ImportedCadPoints[importedIndex];
                 else
-                {
-                    CadSelectedSegmentPoints = null;
-                }
+                    marker = new CadPoint(Math.Round(x, 3), Math.Round(y, 3), 0) { Id = "Pick" };
+                CadSelectedSegmentPoints = new List<CadPoint> { marker };
 
                 if (_isPickingBaseline)
                 {
-                    if (BaseStartIndex < 0)
+                    if (!_baseStartEp.IsSet)
                     {
-                        BaseStartIndex = idx;
+                        AssignEndpoint(_baseStartEp, ref _baseStartIndex, x, y, importedIndex);
+                        RaisePropertyChanged(nameof(BaseStartIndex));
                         UpdateCadPointRoles();
-                        CadPickStatus = string.Format(L("CAD_Baseline_Start_Selected"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
-                        StatusMessage = string.Format(L("CAD_Baseline_Start_Status"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
+                        CadPickStatus = string.Format(L("CAD_Baseline_Start_Selected"), FormatEndpointLabel(_baseStartEp), x.ToString("F1"), y.ToString("F1"));
+                        StatusMessage = string.Format(L("CAD_Baseline_Start_Status"), FormatEndpointLabel(_baseStartEp), x.ToString("F1"), y.ToString("F1"));
                     }
-                    else if (BaseEndIndex < 0 && idx != BaseStartIndex)
+                    else if (!_baseEndEp.IsSet && !_baseStartEp.IsSameLocation(x, y))
                     {
-                        BaseEndIndex = idx;
+                        AssignEndpoint(_baseEndEp, ref _baseEndIndex, x, y, importedIndex);
+                        RaisePropertyChanged(nameof(BaseEndIndex));
                         UpdateCadPointRoles();
-                        if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
-                        {
-                            var p1 = ImportedCadPoints[BaseStartIndex];
-
-                            AlphaBaseDeg = Math.Atan2(point.Y - p1.Y, point.X - p1.X) * 180 / Math.PI;
-                            RaisePropertyChanged(nameof(AlphaBaseDeg));
-
-                            _isPickingBaseline = false;
-                            CadPickStatus = string.Format(L("CAD_Baseline_Done"), p1.Id, point.Id, AlphaBaseDeg.ToString("F2"));
-                            StatusMessage = string.Format(L("CAD_Baseline_Done_Status"), p1.X.ToString("F1"), p1.Y.ToString("F1"), point.X.ToString("F1"), point.Y.ToString("F1"));
-                        }
+                        AlphaBaseDeg = Math.Atan2(_baseEndEp.Y - _baseStartEp.Y, _baseEndEp.X - _baseStartEp.X) * 180 / Math.PI;
+                        RaisePropertyChanged(nameof(AlphaBaseDeg));
+                        _isPickingBaseline = false;
+                        CadPickStatus = string.Format(L("CAD_Baseline_Done"), FormatEndpointLabel(_baseStartEp), FormatEndpointLabel(_baseEndEp), AlphaBaseDeg.ToString("F2"));
+                        StatusMessage = string.Format(L("CAD_Baseline_Done_Status"), _baseStartEp.X.ToString("F1"), _baseStartEp.Y.ToString("F1"), x.ToString("F1"), y.ToString("F1"));
                     }
-                    else if (idx == BaseStartIndex)
+                    else if (_baseStartEp.IsSameLocation(x, y))
                     {
                         CadPickStatus = L("CAD_SamePoint_Warning_Base");
                     }
                 }
                 else if (_isPickingTarget)
                 {
-                    if (TargetStartIndex < 0)
+                    if (!_targetStartEp.IsSet)
                     {
-                        TargetStartIndex = idx;
+                        AssignEndpoint(_targetStartEp, ref _targetStartIndex, x, y, importedIndex);
+                        RaisePropertyChanged(nameof(TargetStartIndex));
                         UpdateCadPointRoles();
-                        CadPickStatus = string.Format(L("CAD_Target_Start_Selected"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
-                        StatusMessage = string.Format(L("CAD_Target_Start_Status"), point.Id, point.X.ToString("F1"), point.Y.ToString("F1"));
+                        CadPickStatus = string.Format(L("CAD_Target_Start_Selected"), FormatEndpointLabel(_targetStartEp), x.ToString("F1"), y.ToString("F1"));
+                        StatusMessage = string.Format(L("CAD_Target_Start_Status"), FormatEndpointLabel(_targetStartEp), x.ToString("F1"), y.ToString("F1"));
                     }
-                    else if (TargetEndIndex < 0 && idx != TargetStartIndex)
+                    else if (!_targetEndEp.IsSet && !_targetStartEp.IsSameLocation(x, y))
                     {
-                        TargetEndIndex = idx;
+                        AssignEndpoint(_targetEndEp, ref _targetEndIndex, x, y, importedIndex);
+                        RaisePropertyChanged(nameof(TargetEndIndex));
                         UpdateCadPointRoles();
-                        if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
-                        {
-                            var p3 = ImportedCadPoints[TargetStartIndex];
-
-                            AlphaTargetDeg = Math.Atan2(point.Y - p3.Y, point.X - p3.X) * 180 / Math.PI;
-                            RaisePropertyChanged(nameof(AlphaTargetDeg));
-
-                            _isPickingTarget = false;
-                            CadPickStatus = string.Format(L("CAD_Target_Done"), p3.Id, point.Id, AlphaTargetDeg.ToString("F2"));
-                            StatusMessage = string.Format(L("CAD_Target_Done_Status"), p3.X.ToString("F1"), p3.Y.ToString("F1"), point.X.ToString("F1"), point.Y.ToString("F1"));
-
-                            if (BaseEndIndex >= 0 && TargetEndIndex >= 0)
-                            {
-                                CadPickStatus += "\n" + L("CAD_TwoLines_Ready");
-                            }
-                        }
+                        AlphaTargetDeg = Math.Atan2(_targetEndEp.Y - _targetStartEp.Y, _targetEndEp.X - _targetStartEp.X) * 180 / Math.PI;
+                        RaisePropertyChanged(nameof(AlphaTargetDeg));
+                        _isPickingTarget = false;
+                        CadPickStatus = string.Format(L("CAD_Target_Done"), FormatEndpointLabel(_targetStartEp), FormatEndpointLabel(_targetEndEp), AlphaTargetDeg.ToString("F2"));
+                        StatusMessage = string.Format(L("CAD_Target_Done_Status"), _targetStartEp.X.ToString("F1"), _targetStartEp.Y.ToString("F1"), x.ToString("F1"), y.ToString("F1"));
+                        if (HasBaselineSelected && HasTargetlineSelected)
+                            CadPickStatus += "\n" + L("CAD_TwoLines_Ready");
                     }
-                }
-                else if (idx == TargetStartIndex)
-                {
-                    CadPickStatus = L("CAD_SamePoint_Warning_Target");
+                    else if (_targetStartEp.IsSameLocation(x, y))
+                    {
+                        CadPickStatus = L("CAD_SamePoint_Warning_Target");
+                    }
                 }
             }
             finally
             {
-                // 请求画布结束批量更新，恢复渲染，执行一次完整重绘
                 BatchUpdateEndRequested?.Invoke();
             }
         }
+
+        #endregion
 
         /// <summary>根据当前选取索引更新每个CAD点位的AssySite角色标记，并重建图形叠加层和X标记</summary>
         /// <remarks>
@@ -1856,10 +2020,10 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         /// <summary>更新已选点位的变换后坐标显示文本（原始CAD坐标 → 平移后 → 旋转后）</summary>
         private void UpdateTransformedCoordText()
         {
-            BaseStartTransformedText = FormatPointTransformText(BaseStartIndex);
-            BaseEndTransformedText = FormatPointTransformText(BaseEndIndex);
-            TargetStartTransformedText = FormatPointTransformText(TargetStartIndex);
-            TargetEndTransformedText = FormatPointTransformText(TargetEndIndex);
+            BaseStartTransformedText = FormatEndpointTransformText(_baseStartEp);
+            BaseEndTransformedText = FormatEndpointTransformText(_baseEndEp);
+            TargetStartTransformedText = FormatEndpointTransformText(_targetStartEp);
+            TargetEndTransformedText = FormatEndpointTransformText(_targetEndEp);
             RaisePropertyChanged(nameof(HasStep3TransformResult));
         }
 
@@ -1898,40 +2062,28 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         /// <summary>更新基准线段/目标线段的坐标点显示文本</summary>
         private void UpdateLineSegmentDisplayText()
         {
-            if (BaseStartIndex >= 0 && BaseEndIndex >= 0 &&
-                BaseStartIndex < ImportedCadPoints.Count && BaseEndIndex < ImportedCadPoints.Count)
+            if (_baseStartEp.IsSet && _baseEndEp.IsSet)
             {
-                var p1 = ImportedCadPoints[BaseStartIndex];
-                var p2 = ImportedCadPoints[BaseEndIndex];
-                BaselineDisplayText = string.Format("#{0} ({1}, {2}) → #{3} ({4}, {5})",
-                    p1.Id, p1.X.ToString("F1"), p1.Y.ToString("F1"),
-                    p2.Id, p2.X.ToString("F1"), p2.Y.ToString("F1"));
+                BaselineDisplayText = string.Format("{0} → {1}",
+                    FormatEndpointLabel(_baseStartEp), FormatEndpointLabel(_baseEndEp));
             }
-            else if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
+            else if (_baseStartEp.IsSet)
             {
-                var p1 = ImportedCadPoints[BaseStartIndex];
-                BaselineDisplayText = string.Format("#{0} ({1}, {2}) → ?",
-                    p1.Id, p1.X.ToString("F1"), p1.Y.ToString("F1"));
+                BaselineDisplayText = string.Format("{0} → ?", FormatEndpointLabel(_baseStartEp));
             }
             else
             {
                 BaselineDisplayText = "";
             }
 
-            if (TargetStartIndex >= 0 && TargetEndIndex >= 0 &&
-                TargetStartIndex < ImportedCadPoints.Count && TargetEndIndex < ImportedCadPoints.Count)
+            if (_targetStartEp.IsSet && _targetEndEp.IsSet)
             {
-                var p3 = ImportedCadPoints[TargetStartIndex];
-                var p4 = ImportedCadPoints[TargetEndIndex];
-                TargetlineDisplayText = string.Format("#{0} ({1}, {2}) → #{3} ({4}, {5})",
-                    p3.Id, p3.X.ToString("F1"), p3.Y.ToString("F1"),
-                    p4.Id, p4.X.ToString("F1"), p4.Y.ToString("F1"));
+                TargetlineDisplayText = string.Format("{0} → {1}",
+                    FormatEndpointLabel(_targetStartEp), FormatEndpointLabel(_targetEndEp));
             }
-            else if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            else if (_targetStartEp.IsSet)
             {
-                var p3 = ImportedCadPoints[TargetStartIndex];
-                TargetlineDisplayText = string.Format("#{0} ({1}, {2}) → ?",
-                    p3.Id, p3.X.ToString("F1"), p3.Y.ToString("F1"));
+                TargetlineDisplayText = string.Format("{0} → ?", FormatEndpointLabel(_targetStartEp));
             }
             else
             {
@@ -1940,28 +2092,21 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             RaisePropertyChanged(nameof(HasBaselineSelected));
             RaisePropertyChanged(nameof(HasTargetlineSelected));
+            (InheritTargetFromStep3Command as DelegateCommand)?.RaiseCanExecuteChanged();
         }
 
         /// <summary>更新HalconCanvas原生X标记系统：将已选点位集合和当前高亮索引同步到画布</summary>
         private void UpdateCanvasPointMarkers()
         {
             var markedPoints = new List<CadPoint>();
-            int highlightIndex = -1;
-
-            if (BaseStartIndex >= 0 && BaseStartIndex < ImportedCadPoints.Count)
-                markedPoints.Add(ImportedCadPoints[BaseStartIndex]);
-            if (BaseEndIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count)
-                markedPoints.Add(ImportedCadPoints[BaseEndIndex]);
-            if (TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
-                markedPoints.Add(ImportedCadPoints[TargetStartIndex]);
-            if (TargetEndIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count)
-                markedPoints.Add(ImportedCadPoints[TargetEndIndex]);
-
-            if (markedPoints.Count > 0)
-                highlightIndex = markedPoints.Count - 1;
+            foreach (var ep in new[] { _baseStartEp, _baseEndEp, _targetStartEp, _targetEndEp })
+            {
+                var m = CreateEndpointMarker(ep);
+                if (m != null) markedPoints.Add(m);
+            }
 
             CadSelectedSegmentPoints = markedPoints.Count > 0 ? markedPoints : null;
-            CadSelectedPointIndex = highlightIndex;
+            CadSelectedPointIndex = markedPoints.Count > 0 ? markedPoints.Count - 1 : -1;
         }
 
         /// <summary>重建选取标记叠加层：蓝色基准线段 + 红色目标线段</summary>
@@ -1972,27 +2117,19 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         private void RebuildAlignmentMarkers()
         {
             _alignmentMarkers.Clear();
-            if (ImportedCadPoints == null || ImportedCadPoints.Count == 0) return;
 
-            // 基准线段 (蓝色粗线)
-            if (BaseStartIndex >= 0 && BaseEndIndex >= 0 &&
-                BaseStartIndex < ImportedCadPoints.Count && BaseEndIndex < ImportedCadPoints.Count)
+            if (_baseStartEp.IsSet && _baseEndEp.IsSet)
             {
-                var p1 = ImportedCadPoints[BaseStartIndex];
-                var p2 = ImportedCadPoints[BaseEndIndex];
-                _alignmentMarkers.Add(new CadLine(p1.X, p1.Y, p2.X, p2.Y) { Color = "#1565C0", LayerName = "_BASELINE_" });
+                _alignmentMarkers.Add(new CadLine(_baseStartEp.X, _baseStartEp.Y, _baseEndEp.X, _baseEndEp.Y)
+                    { Color = "#1565C0", LayerName = "_BASELINE_" });
             }
 
-            // 目标线段 (红色粗线)
-            if (TargetStartIndex >= 0 && TargetEndIndex >= 0 &&
-                TargetStartIndex < ImportedCadPoints.Count && TargetEndIndex < ImportedCadPoints.Count)
+            if (_targetStartEp.IsSet && _targetEndEp.IsSet)
             {
-                var p3 = ImportedCadPoints[TargetStartIndex];
-                var p4 = ImportedCadPoints[TargetEndIndex];
-                _alignmentMarkers.Add(new CadLine(p3.X, p3.Y, p4.X, p4.Y) { Color = "#C62828", LayerName = "_TARGETLINE_" });
+                _alignmentMarkers.Add(new CadLine(_targetStartEp.X, _targetStartEp.Y, _targetEndEp.X, _targetEndEp.Y)
+                    { Color = "#C62828", LayerName = "_TARGETLINE_" });
             }
 
-            // 重建 ObservableCollection 以触发 HalcanCanvasControl.Entities DP 回调 → RenderEntities()
             RebuildCanvasDisplayEntities();
         }
 
@@ -2025,21 +2162,9 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
 
             if (!_isPickingBaseline && !_isPickingTarget) return;
-            if (ImportedCadPoints.Count == 0) return;
 
-            int nearestIdx = FindNearestPointIndex(cadX, cadY);
-            if (nearestIdx < 0)
-            {
-                StatusMessage = L("CAD_Click_Miss");
-                CadPickStatus = L("CAD_Click_Miss_Status");
-                return;
-            }
-
-            var point = ImportedCadPoints[nearestIdx];
-
-            // 直接触发 OnCadPointSelected，由其内部的 BatchUpdate 机制统一处理
-            // 避免在批量更新作用域外设置属性导致额外渲染
-            OnCadPointSelected(point);
+            // 与 Global Offset Pick from Canvas 一致：直接使用点击处 CAD 坐标，不吸附最近导入点
+            OnCadCoordinatePicked(cadX, cadY);
         }
 
         /// <summary>找到距离指定坐标最近的点位索引（容差根据图形尺寸动态调整）</summary>
@@ -2159,33 +2284,33 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
         /// <summary>显示基准线段：高亮X标记并聚焦视口到基准线段区域</summary>
         private void OnShowBaselineSegment()
         {
-            if (BaseStartIndex < 0 || BaseEndIndex < 0 ||
-                BaseStartIndex >= ImportedCadPoints.Count || BaseEndIndex >= ImportedCadPoints.Count) return;
+            if (!HasBaselineSelected) return;
 
-            var p1 = ImportedCadPoints[BaseStartIndex];
-            var p2 = ImportedCadPoints[BaseEndIndex];
-
+            var p1 = CreateEndpointMarker(_baseStartEp);
+            var p2 = CreateEndpointMarker(_baseEndEp);
             CadSelectedSegmentPoints = new List<CadPoint> { p1, p2 };
             CadSelectedPointIndex = 1;
 
-            FitToSegmentRequested?.Invoke(p1.X, p1.Y, p2.X, p2.Y);
-            StatusMessage = string.Format(L("CAD_ShowBaseline_Status"), p1.Id, p1.X.ToString("F1"), p1.Y.ToString("F1"), p2.Id, p2.X.ToString("F1"), p2.Y.ToString("F1"), AlphaBaseDeg.ToString("F2"));
+            FitToSegmentRequested?.Invoke(_baseStartEp.X, _baseStartEp.Y, _baseEndEp.X, _baseEndEp.Y);
+            StatusMessage = string.Format(L("CAD_ShowBaseline_Status"),
+                FormatEndpointLabel(_baseStartEp), _baseStartEp.X.ToString("F1"), _baseStartEp.Y.ToString("F1"),
+                FormatEndpointLabel(_baseEndEp), _baseEndEp.X.ToString("F1"), _baseEndEp.Y.ToString("F1"), AlphaBaseDeg.ToString("F2"));
         }
 
         /// <summary>显示目标线段：高亮X标记并聚焦视口到目标线段区域</summary>
         private void OnShowTargetlineSegment()
         {
-            if (TargetStartIndex < 0 || TargetEndIndex < 0 ||
-                TargetStartIndex >= ImportedCadPoints.Count || TargetEndIndex >= ImportedCadPoints.Count) return;
+            if (!HasTargetlineSelected) return;
 
-            var p3 = ImportedCadPoints[TargetStartIndex];
-            var p4 = ImportedCadPoints[TargetEndIndex];
-
+            var p3 = CreateEndpointMarker(_targetStartEp);
+            var p4 = CreateEndpointMarker(_targetEndEp);
             CadSelectedSegmentPoints = new List<CadPoint> { p3, p4 };
             CadSelectedPointIndex = 1;
 
-            FitToSegmentRequested?.Invoke(p3.X, p3.Y, p4.X, p4.Y);
-            StatusMessage = string.Format(L("CAD_ShowTarget_Status"), p3.Id, p3.X.ToString("F1"), p3.Y.ToString("F1"), p4.Id, p4.X.ToString("F1"), p4.Y.ToString("F1"), AlphaTargetDeg.ToString("F2"));
+            FitToSegmentRequested?.Invoke(_targetStartEp.X, _targetStartEp.Y, _targetEndEp.X, _targetEndEp.Y);
+            StatusMessage = string.Format(L("CAD_ShowTarget_Status"),
+                FormatEndpointLabel(_targetStartEp), _targetStartEp.X.ToString("F1"), _targetStartEp.Y.ToString("F1"),
+                FormatEndpointLabel(_targetEndEp), _targetEndEp.X.ToString("F1"), _targetEndEp.Y.ToString("F1"), AlphaTargetDeg.ToString("F2"));
         }
 
         /// <summary>基于点位分布智能推荐基准/目标线段（最长线段策略+最大夹角策略）</summary>
@@ -2207,26 +2332,17 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             BaseEndIndex = i2;
             TargetStartIndex = i3;
             TargetEndIndex = i4;
+            SyncAllSegmentEndpointsFromIndices();
             UpdateCadPointRoles();
 
-            // 自动计算方向角
-            CadPoint bp1 = null, bp2 = null, tp3 = null, tp4 = null;
-            if (BaseEndIndex >= 0 && BaseStartIndex >= 0 && BaseEndIndex < ImportedCadPoints.Count && BaseStartIndex < ImportedCadPoints.Count)
-            {
-                bp1 = ImportedCadPoints[BaseStartIndex];
-                bp2 = ImportedCadPoints[BaseEndIndex];
-                AlphaBaseDeg = Math.Atan2(bp2.Y - bp1.Y, bp2.X - bp1.X) * 180 / Math.PI;
-                RaisePropertyChanged(nameof(AlphaBaseDeg));
-            }
-            if (TargetEndIndex >= 0 && TargetStartIndex >= 0 && TargetEndIndex < ImportedCadPoints.Count && TargetStartIndex < ImportedCadPoints.Count)
-            {
-                tp3 = ImportedCadPoints[TargetStartIndex];
-                tp4 = ImportedCadPoints[TargetEndIndex];
-                AlphaTargetDeg = Math.Atan2(tp4.Y - tp3.Y, tp4.X - tp3.X) * 180 / Math.PI;
-                RaisePropertyChanged(nameof(AlphaTargetDeg));
-            }
+            AlphaBaseDeg = Math.Atan2(_baseEndEp.Y - _baseStartEp.Y, _baseEndEp.X - _baseStartEp.X) * 180 / Math.PI;
+            AlphaTargetDeg = Math.Atan2(_targetEndEp.Y - _targetStartEp.Y, _targetEndEp.X - _targetStartEp.X) * 180 / Math.PI;
+            RaisePropertyChanged(nameof(AlphaBaseDeg));
+            RaisePropertyChanged(nameof(AlphaTargetDeg));
 
-            CadPickStatus = string.Format(L("CAD_AutoRecommend_Done"), bp1?.Id ?? "?", bp2?.Id ?? "?", tp3?.Id ?? "?", tp4?.Id ?? "?");
+            CadPickStatus = string.Format(L("CAD_AutoRecommend_Done"),
+                FormatEndpointLabel(_baseStartEp), FormatEndpointLabel(_baseEndEp),
+                FormatEndpointLabel(_targetStartEp), FormatEndpointLabel(_targetEndEp));
             StatusMessage = L("CAD_AutoRecommend_Confirm");
         }
 
@@ -2293,39 +2409,45 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 return;
             }
 
-            if (HasCadDrawingLoaded && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            if (HasCadDrawingLoaded && GetStep3TargetEndpointForTransform().IsSet)
             {
-                var pt = ImportedCadPoints[TargetStartIndex];
+                var src = GetStep3TargetEndpointForTransform();
+                _step4TransformSource.CopyFrom(src);
 
                 double xm, ym;
                 if (_useAffineCalibration && _affineResult != null)
                 {
-                    // 仿射模式: 使用矩阵运算
-                    var (mx, my) = AffineCalibrationService.Transform(_affineResult, pt.X, pt.Y);
+                    var (mx, my) = AffineCalibrationService.Transform(_affineResult, src.X, src.Y);
                     xm = mx;
                     ym = my;
                 }
                 else
                 {
-                    xm = pt.X + DeltaX;
-                    ym = pt.Y + DeltaY;
+                    xm = src.X + DeltaX;
+                    ym = src.Y + DeltaY;
                 }
 
-                Step4TargetCadText = string.Format("#{0} ({1}, {2})", pt.Id, pt.X.ToString("F2"), pt.Y.ToString("F2"));
+                string label = FormatEndpointLabel(src);
+                Step4TargetCadText = string.Format("{0} ({1}, {2})", label, src.X.ToString("F2"), src.Y.ToString("F2"));
                 Step4TargetOffsetText = string.Format("({0}, {1})", xm.ToString("F2"), ym.ToString("F2"));
 
                 TransXm = xm;
                 TransYm = ym;
                 _useStep3TargetForTransform = true;
 
-                StatusMessage = string.Format(L("CAD_Inherit_Step3_Success"), pt.Id, pt.X.ToString("F2"), pt.Y.ToString("F2"));
+                StatusMessage = string.Format(L("CAD_Inherit_Step3_Success"), label, src.X.ToString("F2"), src.Y.ToString("F2"));
             }
             else if (TargetPairIndex * 2 < CorrespondencePoints.Count)
             {
-                int targetPointStartIdx = TargetPairIndex * 2;
-                TransformSelectedIndex = targetPointStartIdx;
+                int targetPointIdx = TargetPairIndex * 2 + (UseStep3TargetEndPoint ? 1 : 0);
+                if (targetPointIdx >= CorrespondencePoints.Count)
+                {
+                    StatusMessage = L("CAD_NeedTargetPoint_First");
+                    return;
+                }
+                TransformSelectedIndex = targetPointIdx;
 
-                var pt = CorrespondencePoints[targetPointStartIdx];
+                var pt = CorrespondencePoints[targetPointIdx];
 
                 if (_useAffineCalibration && _affineResult != null)
                 {
@@ -2343,7 +2465,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 Step4TargetOffsetText = string.Format("({0}, {1})", TransXm.ToString("F2"), TransYm.ToString("F2"));
                 _useStep3TargetForTransform = false;
 
-                StatusMessage = $"已继承步骤3目标点 {pt.Name}（索引={targetPointStartIdx}）";
+                StatusMessage = string.Format(L("CAD_Inherit_Step3_CorrPoint"), pt.Name, targetPointIdx);
             }
         }
 
@@ -2368,12 +2490,11 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             double cadX, cadY;
             string pointName;
 
-            if (_useStep3TargetForTransform && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            if (_useStep3TargetForTransform && _step4TransformSource.IsSet)
             {
-                var pt = ImportedCadPoints[TargetStartIndex];
-                pointName = $"#{pt.Id}";
-                cadX = pt.X;
-                cadY = pt.Y;
+                pointName = FormatEndpointLabel(_step4TransformSource);
+                cadX = _step4TransformSource.X;
+                cadY = _step4TransformSource.Y;
             }
             else
             {
@@ -2445,12 +2566,13 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 TransResultY = edx * sinT + edy * cosT + Moy;
             }
 
-            if (_useStep3TargetForTransform && TargetStartIndex >= 0 && TargetStartIndex < ImportedCadPoints.Count)
+            if (_useStep3TargetForTransform && _step4TransformSource.IsSet
+                && _step4TransformSource.ImportedIndex >= 0 && _step4TransformSource.ImportedIndex < ImportedCadPoints.Count)
             {
-                ImportedCadPoints[TargetStartIndex].MachineX = Math.Round(TransResultX, 3);
-                ImportedCadPoints[TargetStartIndex].MachineY = Math.Round(TransResultY, 3);
+                ImportedCadPoints[_step4TransformSource.ImportedIndex].MachineX = Math.Round(TransResultX, 3);
+                ImportedCadPoints[_step4TransformSource.ImportedIndex].MachineY = Math.Round(TransResultY, 3);
             }
-            else
+            else if (!_useStep3TargetForTransform)
             {
                 var cp = CorrespondencePoints[TransformSelectedIndex];
                 cp.RotatedX = TransResultX;
@@ -3189,6 +3311,11 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["BaseEndIndex"] = BaseEndIndex,
                 ["TargetStartIndex"] = TargetStartIndex,
                 ["TargetEndIndex"] = TargetEndIndex,
+                ["UseStep3TargetEndPoint"] = UseStep3TargetEndPoint,
+                ["BaseStartSet"] = _baseStartEp.IsSet, ["BaseStartX"] = _baseStartEp.X, ["BaseStartY"] = _baseStartEp.Y, ["BaseStartImportedIndex"] = _baseStartEp.ImportedIndex,
+                ["BaseEndSet"] = _baseEndEp.IsSet, ["BaseEndX"] = _baseEndEp.X, ["BaseEndY"] = _baseEndEp.Y, ["BaseEndImportedIndex"] = _baseEndEp.ImportedIndex,
+                ["TargetStartSet"] = _targetStartEp.IsSet, ["TargetStartX"] = _targetStartEp.X, ["TargetStartY"] = _targetStartEp.Y, ["TargetStartImportedIndex"] = _targetStartEp.ImportedIndex,
+                ["TargetEndSet"] = _targetEndEp.IsSet, ["TargetEndX"] = _targetEndEp.X, ["TargetEndY"] = _targetEndEp.Y, ["TargetEndImportedIndex"] = _targetEndEp.ImportedIndex,
                 // 产品对齐角度（Tab3新增）
                 ["AlignmentAngle"] = AlignmentAngle,
                 ["IsAlignmentAngleLinked"] = IsAlignmentAngleLinked,
@@ -3218,6 +3345,40 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 ["CameraOffsetX"] = CameraOffsetX, ["CameraOffsetY"] = CameraOffsetY,
                 ["GripperFinalX"] = GripperFinalX, ["GripperFinalY"] = GripperFinalY, ["GripperFinalZ"] = GripperFinalZ,
             };
+        }
+
+        private void LoadSegmentEndpointsFromConfig(Dictionary<string, object> config)
+        {
+            LoadOneSegmentEndpoint(config, "BaseStart", _baseStartEp, v => BaseStartIndex = v);
+            LoadOneSegmentEndpoint(config, "BaseEnd", _baseEndEp, v => BaseEndIndex = v);
+            LoadOneSegmentEndpoint(config, "TargetStart", _targetStartEp, v => TargetStartIndex = v);
+            LoadOneSegmentEndpoint(config, "TargetEnd", _targetEndEp, v => TargetEndIndex = v);
+        }
+
+        /// <summary>从配置加载线段端点；新格式含坐标，旧配置回退到 ImportedCadPoints 索引</summary>
+        private void LoadOneSegmentEndpoint(Dictionary<string, object> config, string prefix, SegmentEndpoint ep, Action<int> setIndex)
+        {
+            if (config.TryGetValue($"{prefix}Set", out var setObj) && Convert.ToBoolean(setObj))
+            {
+                ep.IsSet = true;
+                if (config.TryGetValue($"{prefix}X", out var x)) ep.X = Convert.ToDouble(x);
+                if (config.TryGetValue($"{prefix}Y", out var y)) ep.Y = Convert.ToDouble(y);
+                if (config.TryGetValue($"{prefix}ImportedIndex", out var idx))
+                    setIndex(Convert.ToInt32(idx));
+                else
+                    setIndex(-1);
+                return;
+            }
+
+            int index = prefix switch
+            {
+                "BaseStart" => BaseStartIndex,
+                "BaseEnd" => BaseEndIndex,
+                "TargetStart" => TargetStartIndex,
+                "TargetEnd" => TargetEndIndex,
+                _ => -1
+            };
+            SyncEndpointFromImported(ep, index);
         }
 
         /// <summary>将字典配置应用到当前ViewModel属性</summary>
@@ -3293,6 +3454,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (config.TryGetValue("BaseEndIndex", out var bei)) BaseEndIndex = Convert.ToInt32(bei);
             if (config.TryGetValue("TargetStartIndex", out var tsi)) TargetStartIndex = Convert.ToInt32(tsi);
             if (config.TryGetValue("TargetEndIndex", out var tei)) TargetEndIndex = Convert.ToInt32(tei);
+            if (config.TryGetValue("UseStep3TargetEndPoint", out var uste)) UseStep3TargetEndPoint = Convert.ToBoolean(uste);
+            LoadSegmentEndpointsFromConfig(config);
             // 产品对齐角度（Tab3新增）
             if (config.TryGetValue("AlignmentAngle", out var alignAngle)) AlignmentAngle = Convert.ToDouble(alignAngle);
             if (config.TryGetValue("IsAlignmentAngleLinked", out var iaal)) IsAlignmentAngleLinked = Convert.ToBoolean(iaal);
@@ -3374,8 +3537,7 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             // ── 第4步：刷新所有UI状态（点位已就绪，索引有效） ──
             UpdateStepStates(CurrentStep);
             UpdateMachineCoordinates();
-            UpdateTransformedCoordText();
-            UpdateLineSegmentDisplayText();
+            UpdateCadPointRoles();
 
             // 触发回转中心可视化更新
             RotationCenterVisualUpdateRequested?.Invoke();

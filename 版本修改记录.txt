@@ -1,6 +1,23 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — CAD对位步骤4目标点二选一 + 步骤3画布任意坐标拾取
+-------------------------------------------
+
+1. 需求
+   - Coord Transform「使用步骤3目标点」增加目标起点/终点二选一
+   - Rotation Angle「Pick from CAD」十字交点无法选中，改为与 Global Offset Pick from Canvas 相同（直接使用点击 CAD 坐标）
+
+2. 实现
+   - CadAlignmentViewModel.cs：新增 SegmentEndpoint，基准/目标线段端点支持画布任意坐标
+   - OnCanvasPointClicked 步骤3拾取不再吸附 ImportedCadPoints，与仿射标定取点一致
+   - 步骤4新增 UseStep3TargetEndPoint / 起点·终点 RadioButton，继承与 ExecuteTransform 按所选端点执行
+   - 配置保存/加载端点坐标（BaseStartX/Y 等），兼容旧索引配置
+   - CadAlignmentView.xaml：步骤4目标点选择 UI；步骤3预览提示改为 Pick from Canvas
+
+3. 多语言
+   - CadAlignment_UseStep3TargetTip / TargetStartPoint / TargetEndPoint / CAD_Inherit_Step3_CorrPoint
+
 v2026.06.23 — CAD对位步骤4「使用步骤3目标点」启用条件放宽
 -------------------------------------------
 
