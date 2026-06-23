@@ -13,5 +13,10 @@ namespace Core.Abstraction
         /// 获取当前可用的源轨迹段列表（优先级：共享存储 → 工站参数 → LastSegmentConfigPath JSON）
         /// </summary>
         IReadOnlyList<DispenseSegment> GetSourceSegments();
+
+        /// <summary>
+        /// 从与轨迹段相同的数据源加载坐标对齐数据（含双针头仿射矩阵）
+        /// </summary>
+        CoordinateAlignData TryLoadAlignData();
     }
 }

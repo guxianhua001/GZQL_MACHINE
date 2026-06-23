@@ -938,6 +938,9 @@ namespace Module.ViewModels
             var detail = _dispenseSegmentStore?.CurrentDispenseDetail;
             if (detail != null && detail.NeedleIndex != _currentNeedleIndex)
                 detail.NeedleIndex = _currentNeedleIndex;
+
+            // 通知 DISPENSE 工具刷新只读针头显示
+            _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Publish(_currentNeedleIndex);
         }
 
         /// <summary>保存指定针头的仿射标定数据和逐点映射数据</summary>

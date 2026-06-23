@@ -47,7 +47,7 @@ namespace Core.Events
     }
 
     /// <summary>
-    /// 点胶步骤针头加载同步事件——打开 DispenseDetail 时将配方 NeedleIndex 同步到 Step3 统一入口
+    /// 点胶针头同步事件——Step3 切换针头或打开 DispenseDetail 时发布，同步 NeedleIndex 与 UI 显示
     /// </summary>
     public class DispenseNeedleIndexChangedEvent : PubSubEvent<int> { }
 }

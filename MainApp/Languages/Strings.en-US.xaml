@@ -3003,6 +3003,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_NeedleSelection">Needle Selection (Dz₁ is camera axis, not selectable)</sys:String>
     <sys:String x:Key="DispenseDetail_Needle1">Needle 1 / Dz₂</sys:String>
     <sys:String x:Key="DispenseDetail_Needle2">Needle 2 / Dz₃</sys:String>
+    <sys:String x:Key="DispenseDetail_ActiveNeedleLabel">Active Needle:</sys:String>
+    <sys:String x:Key="DispenseDetail_NeedleFromStep3Hint">Set in Dispensing → Edit → Step 3; complete Step 4 affine calibration for this needle and save trajectory JSON</sys:String>
     <sys:String x:Key="GotoDetail_AbsoluteMode">Absolute</sys:String>
     <sys:String x:Key="GotoDetail_Add">Add</sys:String>
     <sys:String x:Key="GotoDetail_Delete">Delete</sys:String>

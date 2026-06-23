@@ -1,6 +1,45 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.23 — 修复工序树开关偶发崩溃（ThumbGrid 命名作用域）
+-------------------------------------------
+
+1. 问题
+   - 偶发：System.InvalidOperationException: 'ThumbGrid' name cannot be found
+     in the name scope of 'System.Windows.Controls.Grid'.
+   - 根因：节点详情面板里的「启用」开关使用 MaterialDesignSwitchToggleButton，
+     其模板内部用 VisualStateManager 命名故事板（ThumbGrid/Thumb/SwitchGrid）。
+     当 SelectedNode 变化、节点详情 DataTemplate 被切换/容器回收卸载时，
+     故事板在已脱离的命名作用域中解析 "ThumbGrid" 失败而抛异常（MD 库已知问题）。
+
+2. 方案
+   - 新增 SafeSwitchToggleButton 样式：纯属性 Setter 触发器驱动滑块位移与高亮，
+     不使用任何命名目标故事板/动画，彻底规避命名作用域崩溃。
+   - 与本视图已设置的 TransitionAssist.DisableTransitions / RippleAssist.IsDisabled 一致。
+
+3. 实现
+   - ProcessSequenceEditorView.xaml：新增 SafeSwitchToggleButton（ControlTemplate.Triggers）
+   - 第 232 行「启用」开关由 MaterialDesignSwitchToggleButton 改为 SafeSwitchToggleButton
+   - 备注：ModuleCore/Views/Setting.xaml 仍有两处 MaterialDesignSwitchToggleButton，
+     设置弹窗未被虚拟化/频繁切换，风险较低；如需彻底统一可改用同样式。
+
+v2026.06.23 — DISPENSE 针头与坐标对齐 & 只读针头显示
+-------------------------------------------
+
+1. 问题
+   - 执行用 NeedleIndex，但 MachineX/Y 可能是另一针头「应用变换」写入的缓存
+   - DISPENSE 工具无法看到当前将使用哪根针头
+
+2. 方案（推荐 Step3 唯一设置针头）
+   - 针头仅在 Step3 设置，自动同步到 DispenseDetail.NeedleIndex
+   - DISPENSE 对话框只读显示「执行针头」及 Step3 设置说明
+   - DispenseStepAction 执行时从轨迹 JSON 加载对应针头仿射矩阵，实时换算坐标
+
+3. 实现
+   - IDispenseSegmentSourceService.TryLoadAlignData / LoadAlignDataFromFile
+   - DispenseStepAction.GetMachineXY 优先仿射实时换算 + 段级 XY 补偿 + EnableComp
+   - DispenseDetailView 只读针头状态卡片；Step3 切换时事件刷新
+
 v2026.06.23 — 脚本读轴位置 & DISPENSE XY 补偿
 -------------------------------------------
 

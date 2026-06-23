@@ -3003,6 +3003,8 @@
     <sys:String x:Key="DispenseDetail_NeedleSelection">针头选择（Dz₁为相机轴不可选）</sys:String>
     <sys:String x:Key="DispenseDetail_Needle1">针头1 / Dz₂</sys:String>
     <sys:String x:Key="DispenseDetail_Needle2">针头2 / Dz₃</sys:String>
+    <sys:String x:Key="DispenseDetail_ActiveNeedleLabel">执行针头:</sys:String>
+    <sys:String x:Key="DispenseDetail_NeedleFromStep3Hint">在 Dispensing → Edit → Step 3 中设置；Step 4 需完成对应针头仿射标定并保存轨迹 JSON</sys:String>
     <sys:String x:Key="GotoDetail_AbsoluteMode">绝对定位</sys:String>
     <sys:String x:Key="GotoDetail_Add">添加</sys:String>
     <sys:String x:Key="GotoDetail_Delete">删除</sys:String>

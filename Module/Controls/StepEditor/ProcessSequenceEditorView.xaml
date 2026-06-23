@@ -49,6 +49,65 @@
             <Setter Property="Margin" Value="6,0,0,0"/>
         </Style>
 
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- 安全开关样式（替代 MaterialDesignSwitchToggleButton）             -->
+        <!-- 关键点：原生 MD 开关模板使用 VisualStateManager 命名故事板         -->
+        <!-- (ThumbGrid/Thumb/SwitchGrid)，当节点详情 DataTemplate 随          -->
+        <!-- SelectedNode 切换被回收/卸载时，故事板在已脱离的命名作用域中        -->
+        <!-- 解析 "ThumbGrid" 会偶发抛出 InvalidOperationException。           -->
+        <!-- 此处改用纯属性 Setter 触发器（无故事板动画），彻底规避命名作用域崩溃， -->
+        <!-- 同时与本视图已禁用的过渡/水波纹保持一致。                          -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <Style x:Key="SafeSwitchToggleButton" TargetType="ToggleButton">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="#BDBDBD"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid Background="Transparent">
+                            <!-- 轨道 -->
+                            <Border x:Name="Track"
+                                    CornerRadius="12"
+                                    Background="{TemplateBinding Background}"/>
+                            <!-- 滑块 -->
+                            <Border x:Name="Thumb"
+                                    Width="18" Height="18"
+                                    CornerRadius="9"
+                                    HorizontalAlignment="Left"
+                                    Margin="3,0,0,0"
+                                    Background="{TemplateBinding Foreground}">
+                                <Border.RenderTransform>
+                                    <!-- 默认未选中：滑块在左侧 -->
+                                    <TranslateTransform X="0"/>
+                                </Border.RenderTransform>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <!-- 选中：滑块右移 + 轨道高亮（纯 Setter，无动画，安全） -->
+                            <!-- 注意：触发器无法直接以名称定位嵌套的 TranslateTransform， -->
+                            <!-- 故整体替换 Thumb 的 RenderTransform 实现位移。 -->
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                <Setter TargetName="Thumb" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <TranslateTransform X="20"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.4"/>
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- 类型过滤转换器：用于三个重叠 ContentControl 的内容过滤 -->
         <converters:TypeFilterConverter x:Key="TypeFilterConverter"/>
         <converters:TypeToVisibilityConverter x:Key="TypeToVisibilityConverter"/>
@@ -229,7 +288,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>
-                                <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource MaterialDesignSwitchToggleButton}" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource SafeSwitchToggleButton}" VerticalAlignment="Center"/>
                             </Grid>
                             <!-- 动作编辑工具栏 -->
                             <ToolBarTray Grid.Row="2" IsLocked="True">

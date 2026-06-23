@@ -62,6 +62,17 @@ namespace Core.Services
             return fileSegments;
         }
 
+        /// <inheritdoc />
+        public CoordinateAlignData TryLoadAlignData()
+        {
+            var stationParams = GetDispenserStationParameters();
+            var configPath = ResolveSegmentConfigPath(stationParams);
+            if (string.IsNullOrWhiteSpace(configPath))
+                return null;
+
+            return DispenseSegmentFileLoader.LoadAlignDataFromFile(configPath, _logger);
+        }
+
         /// <summary>获取点胶工站当前参数对象</summary>
         private object GetDispenserStationParameters()
         {
@@ -165,6 +176,25 @@ namespace Core.Services
             {
                 logger?.Warn($"[DispenseSegmentFileLoader] 轨迹配置文件反序列化失败 [{path}]: {ex.Message}");
                 return new List<DispenseSegment>();
+            }
+        }
+
+        /// <summary>从 JSON 文件加载坐标对齐数据（AlignData 字段）</summary>
+        public static CoordinateAlignData LoadAlignDataFromFile(string path, ILoggerService logger = null)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                return null;
+
+            try
+            {
+                string json = File.ReadAllText(path);
+                var saveData = JsonSerializer.Deserialize<SegmentSaveData>(json, SegmentJsonOptions);
+                return saveData?.AlignData;
+            }
+            catch (Exception ex)
+            {
+                logger?.Warn($"[DispenseSegmentFileLoader] 对齐数据加载失败 [{path}]: {ex.Message}");
+                return null;
             }
         }
     }

@@ -35,6 +35,7 @@ namespace Module.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private bool _syncingFromSelection;
         private ProcessStep _step;
+        private DispenseDetail _subscribedDispenseDetail;
 
         /// <summary>请求关闭对话框时触发</summary>
         public event Action<object> RequestClose;
@@ -53,6 +54,7 @@ namespace Module.ViewModels
                 {
                     if (_step.DispenseDetail == null)
                         _step.DispenseDetail = new DispenseDetail();
+                    AttachDispenseDetailListener(_step.DispenseDetail);
                     _dispenseSegmentStore.CurrentDispenseDetail = _step.DispenseDetail;
                     // 加载配方时同步针头到 CAD 编辑器 Step3 统一入口
                     _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>()
@@ -71,6 +73,9 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
                     RaisePropertyChanged(nameof(ManualZCompensation));
                     RaisePropertyChanged(nameof(EnableComp));
+                    RaisePropertyChanged(nameof(NeedleIndex));
+                    RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
+                    RaisePropertyChanged(nameof(ActiveNeedleStatusHint));
                     RaisePropertyChanged(nameof(XCompensation));
                     RaisePropertyChanged(nameof(XCompensationLinkedVar));
                     RaisePropertyChanged(nameof(IsXCompensationLinked));
@@ -175,6 +180,13 @@ namespace Module.ViewModels
             get => NeedleIndex == 1;
             set { if (value) NeedleIndex = 1; }
         }
+
+        /// <summary>当前执行将使用的针头显示文本（只读，来自 Step3 设置）</summary>
+        public string ActiveNeedleDisplayText =>
+            NeedleIndex == 0 ? L("DispenseDetail_Needle1") : L("DispenseDetail_Needle2");
+
+        /// <summary>针头设置来源说明</summary>
+        public string ActiveNeedleStatusHint => L("DispenseDetail_NeedleFromStep3Hint");
 
         public bool EnableZCalibration
         {
@@ -1085,6 +1097,9 @@ namespace Module.ViewModels
             _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Subscribe(
                 OnGlobalVariablesChanged, ThreadOption.UIThread);
 
+            _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Subscribe(
+                OnNeedleIndexSyncedFromEditor, ThreadOption.UIThread);
+
             ImportLinesCommand = new DelegateCommand(OnImportLines);
             ImportArcsCommand = new DelegateCommand(OnImportArcs);
             RemoveSelectedCommand = new DelegateCommand(OnRemoveSelected);
@@ -1620,7 +1635,46 @@ namespace Module.ViewModels
         private void OnClose()
         {
             _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
+            _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Unsubscribe(OnNeedleIndexSyncedFromEditor);
+            DetachDispenseDetailListener();
             RequestClose?.Invoke(false);
+        }
+
+        /// <summary>监听 DispenseDetail 针头变更（Step3 同步写入时刷新只读显示）</summary>
+        private void AttachDispenseDetailListener(DispenseDetail detail)
+        {
+            DetachDispenseDetailListener();
+            if (detail == null) return;
+            _subscribedDispenseDetail = detail;
+            _subscribedDispenseDetail.PropertyChanged += OnDispenseDetailPropertyChanged;
+        }
+
+        private void DetachDispenseDetailListener()
+        {
+            if (_subscribedDispenseDetail != null)
+            {
+                _subscribedDispenseDetail.PropertyChanged -= OnDispenseDetailPropertyChanged;
+                _subscribedDispenseDetail = null;
+            }
+        }
+
+        private void OnDispenseDetailPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DispenseDetail.NeedleIndex))
+                RefreshActiveNeedleDisplay();
+        }
+
+        /// <summary>Step3 切换针头后刷新 DISPENSE 只读针头状态</summary>
+        private void OnNeedleIndexSyncedFromEditor(int needleIndex)
+        {
+            RefreshActiveNeedleDisplay();
+        }
+
+        private void RefreshActiveNeedleDisplay()
+        {
+            RaisePropertyChanged(nameof(NeedleIndex));
+            RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
+            RaisePropertyChanged(nameof(ActiveNeedleStatusHint));
         }
 
         private void OnSave()
@@ -1640,6 +1694,8 @@ namespace Module.ViewModels
             if (_step.DispenseDetail == null)
                 _step.DispenseDetail = new DispenseDetail();
 
+            AttachDispenseDetailListener(_step.DispenseDetail);
+
             RefreshSourceSegmentInfo();
 
             RaisePropertyChanged(nameof(DispenseMode));
@@ -1657,6 +1713,9 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
             RaisePropertyChanged(nameof(ManualZCompensation));
             RaisePropertyChanged(nameof(EnableComp));
+            RaisePropertyChanged(nameof(NeedleIndex));
+            RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
+            RaisePropertyChanged(nameof(ActiveNeedleStatusHint));
             RaisePropertyChanged(nameof(XCompensation));
             RaisePropertyChanged(nameof(XCompensationLinkedVar));
             RaisePropertyChanged(nameof(IsXCompensationLinked));

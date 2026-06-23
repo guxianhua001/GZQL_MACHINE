@@ -40,7 +40,22 @@
                                              IsChecked="{Binding IsArcMode}"
                                              GroupName="DispenseModeGroup" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <!-- 当前执行针头（只读，在 Step3 设置） -->
+                            <materialDesign:Card Padding="8,6" Margin="0,8,0,0" Background="{DynamicResource DialogElevatedBrush}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Needle" Width="16" Height="16" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource DialogAccentBrush}" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{lang:Lang DispenseDetail_ActiveNeedleLabel}" VerticalAlignment="Center"
+                                                   FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding ActiveNeedleDisplayText}" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource DialogAccentBrush}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ActiveNeedleStatusHint}" FontSize="10"
+                                               Foreground="{DynamicResource DialogTextMutedBrush}" Margin="24,4,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </materialDesign:Card>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                 <CheckBox Content="{lang:Lang DispenseDetail_EnableZCalibration}"
                                           IsChecked="{Binding EnableZCalibration}"
                                           Margin="0,0,24,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>

@@ -1,5 +1,6 @@
 using Core.Abstraction;
 using Core.Models;
+using Core.Services;
 using Core.Utilities;
 using MotionControl.Interfaces;
 using StationTasks.Models;
@@ -46,6 +47,9 @@ namespace StationTasks.Actions
         /// <summary>当前步骤解析后的 X/Y 补偿量（mm）</summary>
         private double _xCompensation;
         private double _yCompensation;
+
+        /// <summary>执行时按 NeedleIndex 加载的仿射矩阵（优先于点内缓存 MachineX/Y）</summary>
+        private AffineCalibrationResult _runtimeAffine;
 
         public StepType SupportedStepType => StepType.DISPENSE;
 
@@ -103,6 +107,13 @@ namespace StationTasks.Actions
                 _xCompensation = 0;
                 _yCompensation = 0;
             }
+
+            // 按配方针头加载仿射矩阵，执行时实时换算 MachineX/Y，避免与 Step3 所选针头不一致
+            _runtimeAffine = LoadAffineForNeedle(detail.NeedleIndex);
+            if (_runtimeAffine != null)
+                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}仿射矩阵实时换算坐标 (RMS={_runtimeAffine.RmsError:F4}mm)");
+            else
+                _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未找到针头{needleIndex + 1}仿射矩阵，回退使用点内 MachineX/MachineY");
 
             try
             {
@@ -173,7 +184,7 @@ namespace StationTasks.Actions
                 await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
                 var startPt = seg.Points.First();
-                var (startX, startY) = GetMachineXY(startPt);
+                var (startX, startY) = GetMachineXY(startPt, seg);
 
                 await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, token);
@@ -181,7 +192,7 @@ namespace StationTasks.Actions
                 foreach (var pt in seg.Points.Skip(1))
                 {
                     token.ThrowIfCancellationRequested();
-                    var (px, py) = GetMachineXY(pt);
+                    var (px, py) = GetMachineXY(pt, seg);
                     await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                         new[] { px, py }, moveSpeed, token);
                 }
@@ -246,7 +257,7 @@ namespace StationTasks.Actions
                 {
                     token.ThrowIfCancellationRequested();
 
-                    var (px, py) = GetMachineXY(point);
+                    var (px, py) = GetMachineXY(point, seg);
 
                     await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
@@ -347,7 +358,7 @@ namespace StationTasks.Actions
                 await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
 
                 var startPt = seg.Points.First();
-                var (startX, startY) = GetMachineXY(startPt);
+                var (startX, startY) = GetMachineXY(startPt, seg);
                 await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, token);
 
@@ -381,7 +392,7 @@ namespace StationTasks.Actions
 
                 foreach (var pt in seg.Points)
                 {
-                    var (px, py) = GetMachineXY(pt);
+                    var (px, py) = GetMachineXY(pt, seg);
                     _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
                 }
 
@@ -560,24 +571,68 @@ namespace StationTasks.Actions
             catch { }
         }
 
-        /// <summary>
-        /// 安全获取点的机器坐标——严禁使用 OffsetX/X 等未转换坐标作为运动目标，
-        /// MachineX/MachineY 为空时立即抛出异常中止运动，防止设备撞机。
-        /// EnableComp 启用时在 MachineX/MachineY 上叠加 XY 补偿。
-        /// </summary>
-        private (double X, double Y) GetMachineXY(CadPoint pt)
+        /// <summary>从轨迹 JSON 对齐数据加载指定针头的仿射矩阵</summary>
+        private AffineCalibrationResult LoadAffineForNeedle(int needleIndex)
         {
-            if (pt.MachineX == null || pt.MachineY == null)
-                throw new InvalidOperationException(
-                    $"DISPENSE 致命错误: 点[Id={pt.Id}] MachineX/MachineY 为空，禁止使用未转换坐标执行运动");
+            var alignData = _segmentSourceService.TryLoadAlignData();
+            if (alignData == null)
+                return null;
 
-            double x = pt.MachineX.Value;
-            double y = pt.MachineY.Value;
+            var data = needleIndex == 0
+                ? alignData.AffineResultDataNeedle1 ?? alignData.AffineResultData
+                : alignData.AffineResultDataNeedle2;
+
+            if (data == null || data.PointCount < 3)
+                return null;
+
+            return new AffineCalibrationResult
+            {
+                A = data.A,
+                B = data.B,
+                C = data.C,
+                D = data.D,
+                Tx = data.Tx,
+                Ty = data.Ty,
+                RmsError = data.RmsError,
+                PointCount = data.PointCount
+            };
+        }
+
+        /// <summary>
+        /// 安全获取点的机器坐标——优先按当前针头仿射矩阵从 CAD 坐标实时换算；
+        /// 无仿射时回退点内 MachineX/MachineY。EnableComp 启用时叠加 XY 补偿。
+        /// </summary>
+        private (double X, double Y) GetMachineXY(CadPoint pt, DispenseSegment seg = null)
+        {
+            double x;
+            double y;
+
+            if (_runtimeAffine != null)
+            {
+                (x, y) = AffineCalibrationService.Transform(_runtimeAffine, pt.X, pt.Y);
+                if (seg != null)
+                {
+                    x += seg.XyCompensationX;
+                    y += seg.XyCompensationY;
+                }
+            }
+            else if (pt.MachineX != null && pt.MachineY != null)
+            {
+                x = pt.MachineX.Value;
+                y = pt.MachineY.Value;
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"DISPENSE 致命错误: 点[Id={pt.Id}] 无仿射矩阵且 MachineX/MachineY 为空，禁止运动");
+            }
+
             if (_enableComp)
             {
                 x += _xCompensation;
                 y += _yCompensation;
             }
+
             return (x, y);
         }
     }
