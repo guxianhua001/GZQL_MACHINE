@@ -36,6 +36,7 @@ namespace Module.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IRecipePoolService _recipePoolService;
+        private readonly IConfigFileRetentionService _configRetentionService;
 
         private readonly ConcurrentQueue<string> _logQueue = new();
         private readonly Timer _logTimer;
@@ -43,8 +44,6 @@ namespace Module.ViewModels
         private CancellationTokenSource _calibrationCts;
         /// <summary>搜索点移动取消令牌，供停止按钮中断运动</summary>
         private CancellationTokenSource _searchPointMoveCts;
-        /// <summary>配置文件保留天数</summary>
-        private const int ConfigRetentionDays = 30;
 
         /// <summary>各系统参数快照缓存（含文件路径），切换系统时保留未保存的编辑</summary>
         private readonly Dictionary<int, NeedleSystemState> _systemStateCache = new();
@@ -558,7 +557,8 @@ namespace Module.ViewModels
             IDialogService dialogService,
             IEventAggregator eventAggregator,
             NeedleCompensationManager compensationManager,
-            IRecipePoolService recipePoolService)
+            IRecipePoolService recipePoolService,
+            IConfigFileRetentionService configRetentionService)
         {
             _needleMotion = needleMotion;
             _safetyZoneMonitor = safetyZoneMonitor;
@@ -572,6 +572,7 @@ namespace Module.ViewModels
             _compensationManager.PropertyChanged += OnCompensationManagerPropertyChanged;
             _parameters.PropertyChanged += OnParametersPropertyChanged;
             _recipePoolService = recipePoolService;
+            _configRetentionService = configRetentionService;
 
             _logTimer = new Timer(ProcessLogQueue, null, 100, 100);
 
@@ -1838,7 +1839,10 @@ namespace Module.ViewModels
                 if (syncGlobalVariables)
                     await WriteCompensationToGlobalVariablesAsync(CalculatedCompX, CalculatedCompY, CalculatedCompZ);
 
-                QueueCleanupOldConfigFiles(calibrationDir, filePath, SystemNumber);
+                // 后台按数量清理旧文件，避免阻塞UI（按系统号选择对应文件夹）
+                var folderKey = SystemNumber == 1 ? "CalibrationSystem1" : "CalibrationSystem2";
+                var filePattern = $"NeedleCalibration_System{SystemNumber}_*.json";
+                _ = _configRetentionService.CleanupFolderByCountAsync(folderKey, filePattern, filePath);
 
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_ParametersSaved",
@@ -2322,46 +2326,6 @@ namespace Module.ViewModels
             {
                 _logger.Warn($"[NeedleAligner] 自动加载校准配置失败: {ex.Message}");
             }
-        }
-
-        /// <summary>后台异步清理过期校准配置文件，避免阻塞UI线程</summary>
-        private void QueueCleanupOldConfigFiles(string configDir, string currentFilePath, int systemNumber)
-        {
-            _ = Task.Run(() =>
-            {
-                try
-                {
-                    var cutoff = DateTime.Now.AddDays(-ConfigRetentionDays);
-                    var cleanedCount = 0;
-
-                    foreach (var file in Directory.EnumerateFiles(configDir, $"NeedleCalibration_System{systemNumber}_*.json"))
-                    {
-                        if (string.Equals(file, currentFilePath, StringComparison.OrdinalIgnoreCase))
-                            continue;
-
-                        try
-                        {
-                            if (File.GetLastWriteTime(file) >= cutoff)
-                                continue;
-
-                            File.Delete(file);
-                            cleanedCount++;
-                            _logger.Info($"[NeedleAligner] 已清理过期校准配置文件: {file}");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.Warn($"[NeedleAligner] 清理文件失败: {file}, {ex.Message}");
-                        }
-                    }
-
-                    if (cleanedCount > 0)
-                        _logger.Info($"[NeedleAligner] 本次清理了 {cleanedCount} 个过期文件 (保留{ConfigRetentionDays}天)");
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warn($"[NeedleAligner] 清理旧校准配置文件异常: {ex.Message}");
-                }
-            });
         }
 
         /// <summary>构建搜索点传感器下拉选项（多语言）</summary>

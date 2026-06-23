@@ -146,12 +146,14 @@ namespace Module.ViewModels
         private readonly IRecipePoolService _recipePoolService;
         private readonly IContainerProvider _containerProvider;
         private readonly IEventAggregator _eventAggregator;
+        private readonly ICadAlignTransformService _cadAlignTransformService;
 
-        public CadAlignmentViewModel(IRecipePoolService recipePoolService, IContainerProvider containerProvider, IEventAggregator eventAggregator)
+        public CadAlignmentViewModel(IRecipePoolService recipePoolService, IContainerProvider containerProvider, IEventAggregator eventAggregator, ICadAlignTransformService cadAlignTransformService)
         {
             _recipePoolService = recipePoolService;
             _containerProvider = containerProvider;
             _eventAggregator = eventAggregator;
+            _cadAlignTransformService = cadAlignTransformService;
 
             // 订阅全局变量变更事件，其他模块写入 GV 时同步刷新本地下拉列表
             _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
@@ -1208,6 +1210,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             // 通知View更新回转中心可视化画布
             RotationCenterVisualUpdateRequested?.Invoke();
+            // 回转中心变更后发布快照，通知 Dispense 等订阅者同步更新
+            PublishTransformSnapshot();
         }
 
         private void OnFitRotationCenter() => FitRotationCenter();
@@ -1237,6 +1241,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             UpdateMachineCoordinates();
             UpdateTransformedCoordText();
             StatusMessage = string.Format(L("CAD_Offset_Done"), DeltaX.ToString("F3"), DeltaY.ToString("F3"));
+            // 偏移变更后发布快照，通知 Dispense 等订阅者同步更新
+            PublishTransformSnapshot();
         }
 
         /// <summary>
@@ -1306,6 +1312,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             UpdateMachineCoordinates();
             UpdateTransformedCoordText();
             StatusMessage = string.Format(L("CAD_Affine_Done"), AffineRmsError.ToString("F4"), AffineQualityText);
+            // 仿射标定变更后发布快照，通知 Dispense 等订阅者同步更新
+            PublishTransformSnapshot();
         }
 
         private void OnComputeGlobalOffset() => ComputeGlobalOffset();
@@ -2581,6 +2589,8 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
             Step4Done = true;
             StatusMessage = string.Format(L("CAD_Single_Transform_Done"), pointName, TransResultX.ToString("F3"), TransResultY.ToString("F3"));
+            // 单点变换完成后发布快照，通知 Dispense 等订阅者同步更新
+            PublishTransformSnapshot();
         }
 
         private void OnExecuteTransform() => ExecuteTransform();
@@ -2650,9 +2660,37 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             Step4Done = true;
             StatusMessage = $"批量坐标变换完成：共变换 {transformedCount} 个点（P3~P{2 + transformedCount - 1}）";
+            // 变换完成后发布快照，通知 Dispense 等订阅者同步更新
+            PublishTransformSnapshot();
         }
 
         private void OnExecuteBatchTransform() => ExecuteBatchTransform();
+
+        /// <summary>
+        /// 构建并发布当前 CAD 对齐变换快照到共享服务——
+        /// 供 Dispense 等工具按产品旋转角度换算坐标。在以下时机调用：
+        /// ① Step1 回转中心拟合完成 ② Step2 偏移/仿射计算完成
+        /// ③ Step4 坐标变换完成 ④ 配置加载完成
+        /// </summary>
+        private void PublishTransformSnapshot()
+        {
+            if (_cadAlignTransformService == null) return;
+
+            var snapshot = new CadAlignTransformSnapshot
+            {
+                IsValid = Step1Done && Step2Done,
+                Mox = Mox,
+                Moy = Moy,
+                DeltaX = DeltaX,
+                DeltaY = DeltaY,
+                UseAffineCalibration = _useAffineCalibration,
+                AffineResult = _affineResult,
+                InvertXAngle = InvertXAngle,
+                InvertYAngle = InvertYAngle,
+                InvertThetaAngle = InvertThetaAngle
+            };
+            _cadAlignTransformService.UpdateSnapshot(snapshot);
+        }
 
         /// <summary>
         /// 根据 CorrespondencePoints 动态生成点对名称和点位名称
@@ -3232,6 +3270,17 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                 CurrentFileName = fileName;
                 await SaveCurrentFileToRecipePoolAsync();
 
+                // 后台按数量清理旧文件，避免阻塞UI
+                try
+                {
+                    var retentionService = _containerProvider.Resolve<IConfigFileRetentionService>();
+                    _ = retentionService.CleanupFolderByCountAsync("CadAlignment", "CadAlignment_*.json", filePath);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CadAlignment] 清理服务解析失败: {ex.Message}");
+                }
+
                 StatusMessage = string.Format(L("CadAlignment_ConfigSaved"), CurrentFileName);
             }
             catch (Exception ex)
@@ -3541,6 +3590,9 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
 
             // 触发回转中心可视化更新
             RotationCenterVisualUpdateRequested?.Invoke();
+
+            // 配置加载完成后发布变换快照，通知 Dispense 等订阅者同步更新
+            PublishTransformSnapshot();
         }
 
         /// <summary>将当前配置文件路径保存到配方池扩展数据</summary>

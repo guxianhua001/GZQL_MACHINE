@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.CompilerServices;
 
 namespace AlarmModule.Models
 {
@@ -7,7 +9,7 @@ namespace AlarmModule.Models
     /// 报警阈值配置：允许用户在不修改代码的情况下设置报警阈值
     /// </summary>
     [Table("AlarmThresholdConfigs")]
-    public class AlarmThresholdConfig
+    public class AlarmThresholdConfig : INotifyPropertyChanged
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -32,5 +34,28 @@ namespace AlarmModule.Models
         public int SuppressionWindowSeconds { get; set; } = 60;
 
         public bool IsEnabled { get; set; } = true;
+
+        /// <summary>
+        /// UI选中状态（不映射到数据库）：用于批量操作的复选框绑定
+        /// </summary>
+        [NotMapped]
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private bool _isSelected;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

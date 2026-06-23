@@ -139,103 +139,132 @@
                 </materialDesign:Card>
 
                 <!-- 配置文件路径设置 -->
-                <Border Background="{DynamicResource MaterialDesignPaper}"
-                        CornerRadius="4"
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <!-- 路径标题 -->
-                        <TextBlock Text="{lang:Lang DeviceConfig_DataFileLocation}"
-                                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
-                                   Grid.Row="0"
-                                   Grid.ColumnSpan="2"
-                                   Margin="0,0,0,8" />
-                        <!-- 路径输入框 -->
-                        <TextBox Text="{Binding DataSavePath, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 Grid.Row="1"
-                                 Grid.Column="0"
-                                 Margin="0,0,8,0"
-                                 materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_ConfigStoragePath}"
-                                 VerticalAlignment="Center" />
-                        <!-- 浏览按钮 -->
-                        <Button Command="{Binding BrowsePathCommand}"
-                                Content="{lang:Lang DeviceConfig_Browse}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Grid.Row="1"
-                                Grid.Column="1"
-                                Padding="16,4"
-                                VerticalAlignment="Center"
-                                ToolTip="{lang:Lang DeviceConfig_BrowseToolTip}" />
-                    </Grid>
-                </Border>
+                <materialDesign:Card Margin="0,8"
+                                     Padding="0">
+                    <Expander Header="{lang:Lang DeviceConfig_DataFileLocation}"
+                              IsExpanded="True">
+                        <StackPanel Margin="16,8">
+                            <!-- 路径输入框 + 浏览按钮 -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding DataSavePath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Grid.Column="0"
+                                         Margin="0,0,8,0"
+                                         materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_ConfigStoragePath}"
+                                         VerticalAlignment="Center" />
+                                <Button Command="{Binding BrowsePathCommand}"
+                                        Content="{lang:Lang DeviceConfig_Browse}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Grid.Column="1"
+                                        Padding="16,4"
+                                        VerticalAlignment="Center"
+                                        ToolTip="{lang:Lang DeviceConfig_BrowseToolTip}" />
+                            </Grid>
 
-                <!-- 数据保留设置 -->
-                <Border Background="{DynamicResource MaterialDesignPaper}"
-                        CornerRadius="4"
-                        Padding="16"
-                        Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                            <!-- 数据保留设置分隔标题 -->
+                            <TextBlock Text="{lang:Lang DeviceConfig_DataRetentionSettings}"
+                                       Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                                       Margin="0,16,0,8" />
 
-                        <TextBlock Text="{lang:Lang DeviceConfig_DataRetentionSettings}"
-                                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
-                                   Grid.Row="0"
-                                   Grid.ColumnSpan="2"
-                                   Margin="0,0,0,8" />
+                            <!-- 自动清理开关 -->
+                            <CheckBox Content="{lang:Lang DeviceConfig_AutoCleanOldData}"
+                                      IsChecked="{Binding AutoCleanOldData}"
+                                      Style="{StaticResource MaterialDesignCheckBox}"
+                                      Margin="0,8"
+                                      VerticalAlignment="Center"
+                                      ToolTip="{lang:Lang DeviceConfig_AutoCleanToolTip}" />
 
-                        <!-- 自动清理开关 -->
-                        <CheckBox Content="{lang:Lang DeviceConfig_AutoCleanOldData}"
-                                  IsChecked="{Binding AutoCleanOldData}"
-                                  Style="{StaticResource MaterialDesignCheckBox}"
-                                  Grid.Row="1"
-                                  Grid.Column="0"
-                                  Margin="0,8,16,0"
-                                  VerticalAlignment="Center"
-                                  ToolTip="{lang:Lang DeviceConfig_AutoCleanToolTip}"
-                                  Grid.ColumnSpan="2" />
+                            <!-- 保留天数设置 -->
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,8,0,0">
+                                <TextBlock Text="{lang:Lang DeviceConfig_RetentionDays}"
+                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0" />
+                                <TextBox Text="{Binding DataRetentionDays}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Width="80"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Center"
+                                         materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_DaysHint}">
+                                    <TextBox.InputBindings>
+                                        <!-- 限制只能输入整数 -->
+                                        <KeyBinding Command="{x:Null}"
+                                                    Key="Space" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+                </materialDesign:Card>
 
-                        <!-- 保留天数设置 -->
-                        <TextBlock Text="{lang:Lang DeviceConfig_RetentionDays}"
-                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                   Grid.Row="2"
-                                   Grid.Column="0"
-                                   VerticalAlignment="Center"
-                                   Margin="0,8" />
+                <!-- 配置文件保留策略（按数量清理） -->
+                <materialDesign:Card Margin="0,8"
+                                     Padding="0">
+                    <Expander Header="{lang:Lang DeviceConfig_ConfigRetentionGroup}"
+                              IsExpanded="False">
+                        <StackPanel Margin="16,8">
+                            <!-- 启用开关 -->
+                            <CheckBox IsChecked="{Binding ConfigRetentionEnabled}"
+                                      Style="{StaticResource MaterialDesignCheckBox}"
+                                      Margin="0,8"
+                                      ToolTip="{lang:Lang DeviceConfig_ConfigRetentionEnabledToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileRefresh"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,8,0" />
+                                    <TextBlock Text="{lang:Lang DeviceConfig_ConfigRetentionEnabled}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <CheckBox.LayoutTransform>
+                                    <ScaleTransform ScaleX="1.2"
+                                                    ScaleY="1.2" />
+                                </CheckBox.LayoutTransform>
+                            </CheckBox>
 
-                        <TextBox Text="{Binding DataRetentionDays}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 Grid.Row="2"
-                                 Grid.Column="1"
-                                 VerticalAlignment="Center"
-                                 Margin="0,8"
-                                 Width="80"
-                                 HorizontalAlignment="Left"
-                                 materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_DaysHint}">
-                            <TextBox.InputBindings>
-                                <!-- 限制只能输入整数 -->
-                                <KeyBinding Command="{x:Null}"
-                                            Key="Space" />
-                            </TextBox.InputBindings>
-                        </TextBox>
-                    </Grid>
-                </Border>
+                            <!-- 配置文件根目录 -->
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding ConfigFileBasePath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Grid.Column="0"
+                                         Margin="0,0,8,0"
+                                         materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_ConfigFileBasePathHint}"
+                                         ToolTip="{lang:Lang DeviceConfig_ConfigFileBasePathToolTip}"
+                                         VerticalAlignment="Center" />
+                                <Button Command="{Binding BrowseConfigBasePathCommand}"
+                                        Content="{lang:Lang DeviceConfig_Browse}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Grid.Column="1"
+                                        Padding="16,4"
+                                        VerticalAlignment="Center"
+                                        ToolTip="{lang:Lang DeviceConfig_BrowseToolTip}" />
+                            </Grid>
+
+                            <!-- 最大文件数量（统一应用于所有文件夹） -->
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,8,0,0">
+                                <TextBlock Text="{lang:Lang DeviceConfig_DefaultMaxFileCount}"
+                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0" />
+                                <TextBox Text="{Binding DefaultMaxFileCount, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Width="100"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Center"
+                                         materialDesign:HintAssist.Hint="{lang:Lang DeviceConfig_MaxFileCountHint}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+                </materialDesign:Card>
 
             </StackPanel>
         </Border>

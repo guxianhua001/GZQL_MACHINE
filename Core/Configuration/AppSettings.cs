@@ -29,6 +29,12 @@ namespace Core.Configuration
         public bool EnableSafetyEventLog { get; set; } = true;
 
         /// <summary>
+        /// 配置文件保留策略：按文件夹最大文件数量清理旧文件。
+        /// 默认根目录为 &lt;应用基目录&gt;\Config，可通过 ConfigFileRetention.BasePath 自定义。
+        /// </summary>
+        public ConfigFileRetentionSettings ConfigFileRetention { get; set; } = new();
+
+        /// <summary>
         /// 捕获 JSON 中未显式映射的其他配置项
         /// 例如："HardwareConfigPath": "D:\\Config\\hwcfg.xml"
         /// </summary>

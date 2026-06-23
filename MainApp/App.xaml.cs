@@ -130,6 +130,15 @@ namespace MainApp
             containerRegistry.RegisterSingleton<IStationRegistry, StationRegistry>();
             containerRegistry.RegisterSingleton<IDispenseSegmentStore, DispenseSegmentStore>();
             containerRegistry.RegisterSingleton<IDispenseSegmentSourceService, Core.Services.DispenseSegmentSourceService>();
+            // 配置文件保留策略服务：按文件夹最大文件数量清理旧文件
+            containerRegistry.RegisterSingleton<Core.Abstraction.IConfigFileRetentionService, Core.Services.ConfigFileRetentionService>();
+            // ZScanConfigService 需注入 IConfigFileRetentionService 以支持按数量清理
+            containerRegistry.RegisterSingleton<Core.Abstraction.IZScanConfigService>(() =>
+            {
+                var basePath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Config", "ZScan");
+                var retentionService = Container.Resolve<Core.Abstraction.IConfigFileRetentionService>();
+                return new Core.Services.ZScanConfigService(basePath, retentionService);
+            });
 
             _logger = Container.Resolve<ILoggerService>();
         }

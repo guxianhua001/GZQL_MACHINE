@@ -25,6 +25,8 @@ namespace AlarmModule.Interfaces
         Task<List<AlarmThresholdConfig>> GetAllThresholdConfigsAsync();
         Task SaveThresholdConfigAsync(AlarmThresholdConfig config);
         Task DeleteThresholdConfigAsync(int id);
+        Task BatchUpdateEnabledAsync(IReadOnlyList<int> ids, bool isEnabled);
+        Task BatchDeleteAsync(IReadOnlyList<int> ids);
 
         Task<Dictionary<AlarmLevel, int>> GetLevelDistributionAsync(DateTime? start, DateTime? end);
         Task<List<(string Source, int Count)>> GetTopSourcesAsync(int topN, DateTime? start, DateTime? end);

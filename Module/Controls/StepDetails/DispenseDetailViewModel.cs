@@ -18,6 +18,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Module.Views;
 
 namespace Module.ViewModels
 {
@@ -33,6 +34,8 @@ namespace Module.ViewModels
         private readonly IDispenseSegmentStore _dispenseSegmentStore;
         private readonly IDispenseSegmentSourceService _segmentSourceService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly ICadAlignTransformService _cadAlignTransformService;
+        private readonly IBaseDialogService _baseDialogService;
         private bool _syncingFromSelection;
         private ProcessStep _step;
         private DispenseDetail _subscribedDispenseDetail;
@@ -82,6 +85,11 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(YCompensation));
                     RaisePropertyChanged(nameof(YCompensationLinkedVar));
                     RaisePropertyChanged(nameof(IsYCompensationLinked));
+                    RaisePropertyChanged(nameof(EnableRotationComp));
+                    RaisePropertyChanged(nameof(RotationAngle));
+                    RaisePropertyChanged(nameof(RotationAngleLinkedVar));
+                    RaisePropertyChanged(nameof(IsRotationAngleLinked));
+                    RaisePropertyChanged(nameof(IsTransformAvailable));
                     RaisePropertyChanged(nameof(SegmentRefs));
                     RaisePropertyChanged(nameof(DefaultJumpSpeed));
                     RaisePropertyChanged(nameof(DefaultInterpSpeed));
@@ -258,6 +266,50 @@ namespace Module.ViewModels
         /// <summary>Y 补偿链接全局变量的实时显示值</summary>
         public double YCompensationDisplayValue { get; private set; }
 
+        /// <summary>是否启用旋转补偿（产品旋转后按 Coord Transform 换算新坐标）</summary>
+        public bool EnableRotationComp
+        {
+            get => _step?.DispenseDetail?.EnableRotationComp ?? false;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                    _step.DispenseDetail.EnableRotationComp = value;
+                RaisePropertyChanged(nameof(EnableRotationComp));
+            }
+        }
+
+        /// <summary>产品旋转角度（度数，可链接全局变量）</summary>
+        public double RotationAngle
+        {
+            get => _step?.DispenseDetail?.RotationAngle ?? 0.0;
+            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.RotationAngle = value; }
+        }
+
+        /// <summary>产品旋转角度链接的全局变量名</summary>
+        public string RotationAngleLinkedVar
+        {
+            get => _step?.DispenseDetail?.RotationAngleLinkedVar;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.RotationAngleLinkedVar = value;
+                    RaisePropertyChanged(nameof(RotationAngleLinkedVar));
+                    RaisePropertyChanged(nameof(IsRotationAngleLinked));
+                    RefreshZCompensationDisplayValues();
+                }
+            }
+        }
+
+        /// <summary>旋转角度是否已链接全局变量</summary>
+        public bool IsRotationAngleLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.RotationAngleLinkedVar);
+
+        /// <summary>旋转角度链接全局变量的实时显示值</summary>
+        public double RotationAngleDisplayValue { get; private set; }
+
+        /// <summary>CAD 对齐变换快照是否有效（来自共享服务）</summary>
+        public bool IsTransformAvailable => _cadAlignTransformService?.CurrentSnapshot?.IsValid == true;
+
         public double ZCompensation3D
         {
             get => _step?.DispenseDetail?.ZCompensation3D ?? 0.0;
@@ -329,6 +381,9 @@ namespace Module.ViewModels
         public DelegateCommand UnlinkZCompensationCalibratorCommand { get; }
         public DelegateCommand UnlinkXCompensationCommand { get; }
         public DelegateCommand UnlinkYCompensationCommand { get; }
+        public DelegateCommand UnlinkRotationAngleCommand { get; }
+        /// <summary>查看旋转后坐标弹窗命令</summary>
+        public DelegateCommand ViewRotatedCoordsCommand { get; }
 
         #endregion
 
@@ -1075,7 +1130,9 @@ namespace Module.ViewModels
             IStationRegistry stationRegistry,
             IDispenseSegmentStore dispenseSegmentStore,
             IDispenseSegmentSourceService segmentSourceService,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            ICadAlignTransformService cadAlignTransformService,
+            IBaseDialogService baseDialogService)
         {
             _containerProvider = containerProvider;
             _logger = logger;
@@ -1084,6 +1141,8 @@ namespace Module.ViewModels
             _dispenseSegmentStore = dispenseSegmentStore;
             _segmentSourceService = segmentSourceService;
             _eventAggregator = eventAggregator;
+            _cadAlignTransformService = cadAlignTransformService;
+            _baseDialogService = baseDialogService;
 
             _eventAggregator?.GetEvent<SegmentParamChangedEvent>().Subscribe(
                 OnSegmentParamChanged, ThreadOption.PublisherThread, false);
@@ -1100,6 +1159,10 @@ namespace Module.ViewModels
             _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Subscribe(
                 OnNeedleIndexSyncedFromEditor, ThreadOption.UIThread);
 
+            // 订阅 CAD 对齐坐标变换变更事件——变换更新时同步刷新旋转后坐标预览
+            _eventAggregator?.GetEvent<CadAlignTransformChangedEvent>().Subscribe(
+                OnCadAlignTransformChanged, ThreadOption.UIThread);
+
             ImportLinesCommand = new DelegateCommand(OnImportLines);
             ImportArcsCommand = new DelegateCommand(OnImportArcs);
             RemoveSelectedCommand = new DelegateCommand(OnRemoveSelected);
@@ -1112,6 +1175,9 @@ namespace Module.ViewModels
             UnlinkZCompensationCalibratorCommand = new DelegateCommand(() => ZCompensationCalibratorLinkedVar = null);
             UnlinkXCompensationCommand = new DelegateCommand(() => XCompensationLinkedVar = null);
             UnlinkYCompensationCommand = new DelegateCommand(() => YCompensationLinkedVar = null);
+            UnlinkRotationAngleCommand = new DelegateCommand(() => RotationAngleLinkedVar = null);
+            // 查看旋转后坐标弹窗命令（异步打开弹窗）
+            ViewRotatedCoordsCommand = new DelegateCommand(async () => await OnViewRotatedCoordsAsync());
 
             _ = LoadGlobalVariablesAsync().ConfigureAwait(false);
         }
@@ -1722,6 +1788,11 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(YCompensation));
             RaisePropertyChanged(nameof(YCompensationLinkedVar));
             RaisePropertyChanged(nameof(IsYCompensationLinked));
+            RaisePropertyChanged(nameof(EnableRotationComp));
+            RaisePropertyChanged(nameof(RotationAngle));
+            RaisePropertyChanged(nameof(RotationAngleLinkedVar));
+            RaisePropertyChanged(nameof(IsRotationAngleLinked));
+            RaisePropertyChanged(nameof(IsTransformAvailable));
             RaisePropertyChanged(nameof(SegmentRefs));
             RaisePropertyChanged(nameof(DefaultJumpSpeed));
             RaisePropertyChanged(nameof(DefaultInterpSpeed));
@@ -1847,6 +1918,118 @@ namespace Module.ViewModels
                 YCompensationDisplayValue = YCompensation;
             }
             RaisePropertyChanged(nameof(YCompensationDisplayValue));
+
+            // 旋转角度
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.RotationAngleLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.RotationAngleLinkedVar);
+                RotationAngleDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                RotationAngleDisplayValue = RotationAngle;
+            }
+            RaisePropertyChanged(nameof(RotationAngleDisplayValue));
+        }
+
+        #endregion
+
+        #region CAD 对齐坐标变换同步
+
+        /// <summary>
+        /// CAD 对齐变换变更回调——CadAlignment 发布新快照时刷新本地图标状态与预览
+        /// </summary>
+        private void OnCadAlignTransformChanged(CadAlignTransformSnapshot snapshot)
+        {
+            RaisePropertyChanged(nameof(IsTransformAvailable));
+        }
+
+        /// <summary>
+        /// 打开旋转后坐标查看弹窗——展示所有段的 CAD 原始坐标与旋转后机械坐标对照
+        /// </summary>
+        private async Task OnViewRotatedCoordsAsync()
+        {
+            try
+            {
+                _logger?.Info("[DispenseDetail] ViewRotatedCoords 按钮已点击，开始构建坐标对照");
+
+                var snapshot = _cadAlignTransformService?.CurrentSnapshot;
+                if (snapshot == null || !snapshot.IsValid)
+                {
+                    _logger?.Warn("[DispenseDetail] CAD 对齐变换不可用，无法查看旋转后坐标");
+                    System.Windows.MessageBox.Show(
+                        L("DispenseDetail_TransformUnavailable"),
+                        L("DispenseDetail_RotatedCoordsTitle"),
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+
+                double rotationAngle = IsRotationAngleLinked ? RotationAngleDisplayValue : RotationAngle;
+                _logger?.Info($"[DispenseDetail] 旋转角度={rotationAngle:F3}°, 回转中心=({snapshot.Mox:F3}, {snapshot.Moy:F3})");
+
+                // 构建坐标对照列表
+                var coordList = new List<DispenseRotatedCoordItem>();
+                var sourceSegments = _segmentSourceService.GetSourceSegments();
+                _logger?.Info($"[DispenseDetail] 源段数={sourceSegments.Count}, SegmentRefs数={SegmentRefs?.Count ?? 0}");
+
+                foreach (var segRef in SegmentRefs ?? new ObservableCollection<DispenseSegmentRef>())
+                {
+                    if (!segRef.IsEnabled) continue;
+                    var seg = sourceSegments.FirstOrDefault(s => s.SegmentId == segRef.SourceSegmentId);
+                    if (seg?.Points == null)
+                    {
+                        _logger?.Warn($"[DispenseDetail] 段 {segRef.SourceSegmentId} 未找到或无点数据");
+                        continue;
+                    }
+
+                    for (int i = 0; i < seg.Points.Count; i++)
+                    {
+                        var pt = seg.Points[i];
+                        var (newX, newY) = snapshot.Transform(pt.X, pt.Y, rotationAngle);
+                        coordList.Add(new DispenseRotatedCoordItem
+                        {
+                            SegmentName = seg.LayerName ?? seg.SegmentId,
+                            PointIndex = i + 1,
+                            CadX = pt.X,
+                            CadY = pt.Y,
+                            RotatedX = Math.Round(newX, 3),
+                            RotatedY = Math.Round(newY, 3)
+                        });
+                    }
+                }
+
+                if (coordList.Count == 0)
+                {
+                    _logger?.Warn("[DispenseDetail] 无可用的段坐标点，请先导入段");
+                    System.Windows.MessageBox.Show(
+                        L("DispenseDetail_NoCoordPoints"),
+                        L("DispenseDetail_RotatedCoordsTitle"),
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+
+                _logger?.Info($"[DispenseDetail] 坐标对照列表构建完成，共 {coordList.Count} 个点");
+
+                // 解析并显示弹窗（await 确保对话框正常显示）
+                var dialogVm = _containerProvider.Resolve<DispenseRotatedCoordsViewModel>();
+                dialogVm.Initialize(coordList, rotationAngle, snapshot.Mox, snapshot.Moy);
+                var view = new Views.DispenseRotatedCoordsView { DataContext = dialogVm };
+                var title = L("DispenseDetail_RotatedCoordsTitle");
+                _logger?.Info($"[DispenseDetail] 准备显示弹窗: title={title}, _baseDialogService={_baseDialogService?.GetType().Name ?? "null"}");
+                await _baseDialogService.ShowDialog(view, title, "MapMarkerDistance");
+                _logger?.Info("[DispenseDetail] 弹窗已关闭");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error(ex, "[DispenseDetail] 打开旋转后坐标弹窗失败");
+                System.Windows.MessageBox.Show(
+                    ex.ToString(),
+                    "ViewRotatedCoords Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
         }
 
         #endregion

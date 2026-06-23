@@ -136,6 +136,30 @@ namespace Core.Models
             set => SetProperty(ref _yCompensationLinkedVar, value);
         }
 
+        private bool _enableRotationComp;
+        /// <summary>是否启用旋转补偿（产品旋转后按 Coord Transform 换算新坐标进行点胶）</summary>
+        public bool EnableRotationComp
+        {
+            get => _enableRotationComp;
+            set => SetProperty(ref _enableRotationComp, value);
+        }
+
+        private double _rotationAngle;
+        /// <summary>产品旋转角度（度数，可链接全局变量获取实际旋转角度）</summary>
+        public double RotationAngle
+        {
+            get => _rotationAngle;
+            set => SetProperty(ref _rotationAngle, value);
+        }
+
+        private string _rotationAngleLinkedVar;
+        /// <summary>产品旋转角度链接的全局变量名（运行时从全局变量读取实际旋转角度）</summary>
+        public string RotationAngleLinkedVar
+        {
+            get => _rotationAngleLinkedVar;
+            set => SetProperty(ref _rotationAngleLinkedVar, value);
+        }
+
         #endregion
 
         #region 分段引用集合

@@ -5,7 +5,7 @@
 	             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
 	             xmlns:langView="clr-namespace:Language.Views;assembly=Language"
 	             prism:ViewModelLocator.AutoWireViewModel="True"
-	             Background="#EEF2F5"
+             Background="{DynamicResource MaterialDesignPaper}"
                  MinHeight="300"
                  MinWidth="800">
     <Grid>
@@ -17,7 +17,7 @@
         <!-- ============================================== -->
         <!-- 1. 顶部快捷操作栏 -->
         <!-- ============================================== -->
-        <Border Grid.Row="0" Background="White" Padding="15,10" Margin="0">
+        <Border Grid.Row="0" Background="{DynamicResource MaterialDesignCardBackground}" Padding="15,10" Margin="0">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.1" Direction="270"/>
             </Border.Effect>
@@ -105,7 +105,7 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <langView:LanguageSelectorView Margin="0,0,15,0" />
-                    <TextBlock Foreground="#9E9E9E" FontSize="12"
+                    <TextBlock Foreground="{DynamicResource MaterialDesignBodyLight}" FontSize="12"
                                Text="{Binding SystemTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -119,16 +119,16 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="380"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Background="White" CornerRadius="8" Margin="0,0,5,0" ClipToBounds="True">
+            <Border Grid.Column="0" Background="{DynamicResource MaterialDesignCardBackground}" CornerRadius="8" Margin="0,0,5,0" ClipToBounds="True">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.1" Direction="270"/>
                 </Border.Effect>
                 <Grid>
                     <ContentControl prism:RegionManager.RegionName="OverviewDeviceRegion" />
-                    <TextBlock Text="{lang:Lang OverView_Placeholder_MainVisual}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" Foreground="#E0E0E0" FontWeight="Bold" IsHitTestVisible="False"/>
+                    <TextBlock Text="{lang:Lang OverView_Placeholder_MainVisual}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" Foreground="{DynamicResource MaterialDesignBodyLight}" FontWeight="Bold" IsHitTestVisible="False"/>
                 </Grid>
             </Border>
-            <Border Grid.Column="1" Background="#F3F3F3" CornerRadius="8" Margin="5,0,0,0" Padding="8">
+            <Border Grid.Column="1" Background="{DynamicResource MaterialDesignBackground}" CornerRadius="8" Margin="5,0,0,0" Padding="8">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.1" Direction="270"/>
                 </Border.Effect>
@@ -145,7 +145,7 @@
         <!-- ============================================== -->
         <!-- 3. 底部流程控制栏 -->
         <!-- ============================================== -->
-        <Border Grid.Row="2" Background="#2D3748" Margin="0,10,0,0" Padding="20,15" CornerRadius="0">
+        <Border Grid.Row="2" Background="{DynamicResource MaterialDesignToolBarBackground}" Margin="0,10,0,0" Padding="20,15" CornerRadius="0">
             <Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                     <Button Command="{Binding ToggleSingleStepCommand}" Margin="0,0,10,0"

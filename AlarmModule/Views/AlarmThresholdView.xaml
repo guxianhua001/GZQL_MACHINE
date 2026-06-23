@@ -10,10 +10,12 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              mc:Ignorable="d"
              Background="{DynamicResource MaterialDesignPaper}"
-             d:DesignHeight="600"
-             d:DesignWidth="900">
+             d:DesignHeight="700"
+             d:DesignWidth="1000">
     <UserControl.Resources>
         <local:AlarmLevelToTextConverter x:Key="AlarmLevelToTextConverter" />
+        <local:AlarmTypeToTextConverter x:Key="AlarmTypeToTextConverter" />
+        <local:EnabledFilterToTextConverter x:Key="EnabledFilterToTextConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </UserControl.Resources>
 
@@ -21,7 +23,9 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -32,22 +36,80 @@
                        FontWeight="Bold"
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource MaterialDesignBody}" />
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="{lang:Lang Refresh}"
-                        Command="{Binding RefreshCommand}"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Margin="0,0,8,0" />
-                <Button Content="{lang:Lang Save}"
-                        Command="{Binding SaveCommand}"
-                        Style="{StaticResource MaterialDesignRaisedButton}" />
-            </StackPanel>
+            <Button DockPanel.Dock="Right"
+                    Content="{lang:Lang Refresh}"
+                    Command="{Binding RefreshCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    HorizontalAlignment="Right" />
         </DockPanel>
 
         <!-- 分隔线 -->
         <Separator Grid.Row="1" Margin="16,0" />
 
+        <!-- 筛选与批量操作栏 -->
+        <materialDesign:Card Grid.Row="2" Margin="16,8" Padding="8">
+            <DockPanel>
+                <!-- 批量操作按钮（右侧） -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="8,0,0,0">
+                    <Button Content="{lang:Lang BatchEnable}"
+                            Command="{Binding BatchEnableCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            FontSize="12"
+                            Padding="8,4"
+                            Margin="0,0,4,0" />
+                    <Button Content="{lang:Lang BatchDisable}"
+                            Command="{Binding BatchDisableCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            FontSize="12"
+                            Padding="8,4"
+                            Margin="0,0,4,0" />
+                    <Button Content="{lang:Lang BatchDelete}"
+                            Command="{Binding BatchDeleteCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            FontSize="12"
+                            Padding="8,4" />
+                </StackPanel>
+
+                <!-- 筛选条件（左侧） -->
+                <WrapPanel Orientation="Horizontal">
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="{lang:Lang Keyword}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <TextBox Text="{Binding SearchKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="160"
+                                 materialDesign:HintAssist.Hint="{lang:Lang SearchCodeOrSource}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="{lang:Lang FilterLevel}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <ComboBox ItemsSource="{Binding AlarmLevelFilters}"
+                                  SelectedItem="{Binding FilterLevel}"
+                                  Width="110"
+                                  materialDesign:HintAssist.Hint="{lang:Lang All}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="{lang:Lang FilterType}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <ComboBox ItemsSource="{Binding AlarmTypeFilters}"
+                                  SelectedItem="{Binding FilterType}"
+                                  Width="130"
+                                  materialDesign:HintAssist.Hint="{lang:Lang All}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,0">
+                        <TextBlock Text="{lang:Lang FilterEnabled}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <ComboBox ItemsSource="{Binding EnabledFilters}"
+                                  SelectedItem="{Binding FilterEnabled}"
+                                  Width="100">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource EnabledFilterToTextConverter}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </WrapPanel>
+            </DockPanel>
+        </materialDesign:Card>
+
         <!-- 阈值配置表格 -->
-        <DataGrid Grid.Row="2"
+        <DataGrid Grid.Row="3"
                   ItemsSource="{Binding ThresholdConfigs}"
                   SelectedItem="{Binding SelectedConfig}"
                   AutoGenerateColumns="False"
@@ -60,10 +122,25 @@
                   Style="{StaticResource MaterialDesignDataGrid}"
                   Margin="16,8,16,8">
             <DataGrid.Columns>
+                <!-- 全选/行选复选框列 -->
+                <DataGridTemplateColumn Width="44">
+                    <DataGridTemplateColumn.Header>
+                        <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}"
+                                  IsThreeState="True"
+                                  HorizontalAlignment="Center" />
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="{lang:Lang AlarmCode}" Binding="{Binding AlarmCode}" Width="120" />
                 <DataGridTextColumn Header="{lang:Lang AlarmSource}" Binding="{Binding AlarmSource}" Width="140" />
                 <DataGridTextColumn Header="{lang:Lang Threshold}" Binding="{Binding ThresholdValue}" Width="100" />
-                <DataGridTemplateColumn Header="{lang:Lang AlarmLevel}" Width="100">
+                <DataGridTemplateColumn Header="{lang:Lang AlarmLevel}" Width="90">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding AlarmLevel, Converter={StaticResource AlarmLevelToTextConverter}}"
@@ -75,12 +152,14 @@
                 <DataGridTemplateColumn Header="{lang:Lang AlarmType}" Width="110">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding AlarmType}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding AlarmType, Converter={StaticResource AlarmTypeToTextConverter}}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="{lang:Lang DebounceWindowSec}" Binding="{Binding SuppressionWindowSeconds}" Width="110" />
-                <DataGridTemplateColumn Header="{lang:Lang Enabled}" Width="60">
+                <DataGridTemplateColumn Header="{lang:Lang Enabled}" Width="70">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}"
@@ -114,11 +193,86 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- 底部操作栏 -->
-        <DockPanel Grid.Row="3" Margin="16,8,16,16">
+        <!-- 编辑面板（新增/编辑） -->
+        <materialDesign:Card Grid.Row="4"
+                             Margin="16,0,16,8"
+                             Padding="16"
+                             Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <DockPanel>
+                <!-- 面板标题与操作按钮 -->
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <TextBlock Text="{Binding EditPanelTitle}"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource MaterialDesignBody}" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="{lang:Lang CancelEdit}"
+                                Command="{Binding CancelCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Margin="0,0,8,0" />
+                        <Button Content="{lang:Lang Save}"
+                                Command="{Binding SaveCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- 编辑字段 -->
+                <WrapPanel Orientation="Horizontal">
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{lang:Lang AlarmCode}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <TextBox Text="{Binding EditAlarmCode, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="160" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{lang:Lang AlarmSource}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <TextBox Text="{Binding EditAlarmSource, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="160" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{lang:Lang Threshold}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <TextBox Text="{Binding EditThresholdValue, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="120" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{lang:Lang AlarmLevel}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <ComboBox ItemsSource="{Binding AlarmLevels}"
+                                  SelectedItem="{Binding EditAlarmLevel}"
+                                  Width="120" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{lang:Lang AlarmType}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <ComboBox ItemsSource="{Binding AlarmTypes}"
+                                  SelectedItem="{Binding EditAlarmType}"
+                                  Width="140" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,8">
+                        <TextBlock Text="{lang:Lang DebounceWindowSec}" FontSize="12" Margin="0,0,0,4" Opacity="0.7" />
+                        <TextBox Text="{Binding EditSuppressionWindowSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="100" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,8" VerticalAlignment="Bottom">
+                        <CheckBox Content="{lang:Lang Enabled}"
+                                  IsChecked="{Binding EditIsEnabled}"
+                                  VerticalAlignment="Center" />
+                    </StackPanel>
+                </WrapPanel>
+            </DockPanel>
+        </materialDesign:Card>
+
+        <!-- 底部状态栏 -->
+        <DockPanel Grid.Row="5" Margin="16,0,16,16">
             <Button Content="{lang:Lang AddNewConfig}"
                     Command="{Binding AddCommand}"
-                    Style="{StaticResource MaterialDesignRaisedButton}" />
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    DockPanel.Dock="Left" />
+            <TextBlock DockPanel.Dock="Right"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       FontSize="12"
+                       Opacity="0.7">
+                <Run Text="{Binding SelectedCountText, Mode=OneWay}" /><Run Text="    " /><Run Text="{Binding TotalCountText, Mode=OneWay}" />
+            </TextBlock>
         </DockPanel>
     </Grid>
 </UserControl>

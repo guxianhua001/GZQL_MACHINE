@@ -61,6 +61,9 @@
                                           Margin="0,0,24,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                                 <CheckBox Content="{lang:Lang DispenseDetail_EnableComp}"
                                           IsChecked="{Binding EnableComp}"
+                                          Margin="0,0,24,0" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
+                                <CheckBox Content="{lang:Lang DispenseDetail_EnableRotationComp}"
+                                          IsChecked="{Binding EnableRotationComp}"
                                           Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
                             </StackPanel>
                             <StackPanel Margin="24,4,0,0">
@@ -151,6 +154,44 @@
                                         UnlinkCommand="{Binding UnlinkYCompensationCommand}"
                                         ComboBoxWidth="180" />
                                 </Grid>
+                            </StackPanel>
+                            <!-- 旋转补偿（Enable Rotation Comp 启用时按 Coord Transform 换算旋转后坐标进行点胶） -->
+                            <StackPanel Margin="24,6,0,0"
+                                        Visibility="{Binding EnableRotationComp, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_RotationAngle}"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <common:GlobalVariableLinkControl Grid.Column="1"
+                                        DisplayValue="{Binding RotationAngleDisplayValue, Mode=OneWay}"
+                                        DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                        IsLinked="{Binding IsRotationAngleLinked, Mode=OneWay}"
+                                        LinkedVariableName="{Binding RotationAngleLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                        UnlinkCommand="{Binding UnlinkRotationAngleCommand}"
+                                        ComboBoxWidth="180" />
+                                    <!-- 查看旋转后坐标弹窗按钮 -->
+                                    <Button Grid.Column="2" Command="{Binding ViewRotatedCoordsCommand}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="8,2" Margin="8,0,0,0" FontSize="11"
+                                            ToolTip="{lang:Lang DispenseDetail_ViewRotatedCoords}"
+                                            IsEnabled="{Binding IsTransformAvailable}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="MapMarkerDistance" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{lang:Lang DispenseDetail_ViewRotatedCoords}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <!-- Coord Transform 状态提示 -->
+                                <TextBlock FontSize="10" Foreground="{DynamicResource DialogTextMutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap">
+                                    <Run Text="{lang:Lang DispenseDetail_CoordTransformHint}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding IsTransformAvailable, Mode=OneWay}"/>
+                                </TextBlock>
                             </StackPanel>
                         </StackPanel>
                     </DockPanel>

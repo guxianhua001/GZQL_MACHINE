@@ -31,6 +31,7 @@ namespace Module.Services
         private readonly IStationRegistry _stationRegistry;
         private readonly Prism.Ioc.IContainerProvider _containerProvider;
         private readonly ILocalizationService _localization;
+        private readonly IConfigFileRetentionService _configRetentionService;
         private CancellationTokenSource _executionCts;
         private bool _isExecuting;
         private StationTaskBase _activeStationTask;
@@ -50,8 +51,6 @@ namespace Module.Services
         private const string LastPathKey = "LastProcessSequencePath";
         private const string RecentPathsKey = "RecentProcessSequencePaths";
         private const int MaxRecentFiles = 10;
-        /// <summary> 配置文件保留天数，超过此天数的旧文件在保存时自动清理 </summary>
-        private const int ConfigRetentionDays = 30;
 
         private ObservableCollection<Component> _components = new ObservableCollection<Component>();
         private ObservableCollection<Site> _sites = new ObservableCollection<Site>();
@@ -66,7 +65,8 @@ namespace Module.Services
             ILoggerService logger,
             IStationRegistry stationRegistry,
             Prism.Ioc.IContainerProvider containerProvider,
-            ILocalizationService localization)
+            ILocalizationService localization,
+            IConfigFileRetentionService configRetentionService)
         {
             _recipePoolService = recipePoolService;
             _parameterStorage = parameterStorage;
@@ -76,6 +76,7 @@ namespace Module.Services
             _stationRegistry = stationRegistry;
             _containerProvider = containerProvider;
             _localization = localization;
+            _configRetentionService = configRetentionService;
             Tasks = new ObservableCollection<TaskItem>();
             RecentFiles = new ObservableCollection<string>();
             CameraOptions = new ObservableCollection<string>();
@@ -1233,7 +1234,7 @@ namespace Module.Services
 
         /// <summary>
         /// 自动保存工序序列到默认目录，文件名格式：ProcessSequences_yyyyMMdd_HHmmss.json
-        /// 保存后自动清理超过保留天数的旧文件
+        /// 保存后按最大文件数量清理旧文件（由 IConfigFileRetentionService 统一管理）
         /// </summary>
         /// <param name="stationId">工站标识（保留参数兼容性，不再用于文件名）</param>
         public Task SaveSequenceAsync(string stationId = null)
@@ -1246,56 +1247,9 @@ namespace Module.Services
             Directory.CreateDirectory(dir);
             var filePath = Path.Combine(dir, fileName);
             var result = SaveSequenceToPathAsync(filePath);
-            // 后台清理过期文件，避免阻塞UI
-            QueueCleanupOldFiles(dir, filePath);
+            // 后台按数量清理旧文件，避免阻塞UI
+            _ = _configRetentionService.CleanupFolderByCountAsync("ProcessSequences", "ProcessSequences_*.json", filePath);
             return result;
-        }
-
-        /// <summary> 后台异步清理过期配置文件，避免阻塞UI线程 </summary>
-        private void QueueCleanupOldFiles(string configDir, string currentFilePath)
-        {
-            _ = Task.Run(() => CleanupOldFiles(configDir, currentFilePath));
-        }
-
-        /// <summary>
-        /// 清理超过保留天数的旧配置文件。
-        /// 仅删除匹配 ProcessSequences_*.json 模式的文件，跳过当前刚保存的文件。
-        /// 清理失败仅记录日志，不影响主流程。
-        /// </summary>
-        private void CleanupOldFiles(string configDir, string currentFilePath)
-        {
-            try
-            {
-                var cutoff = DateTime.Now.AddDays(-ConfigRetentionDays);
-                var cleanedCount = 0;
-
-                foreach (var file in Directory.EnumerateFiles(configDir, "ProcessSequences_*.json"))
-                {
-                    if (string.Equals(file, currentFilePath, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    if (File.GetLastWriteTime(file) < cutoff)
-                    {
-                        try
-                        {
-                            File.Delete(file);
-                            cleanedCount++;
-                            _logger.Info($"[ProcessSequence] 已清理过期配置文件: {file} (超过{ConfigRetentionDays}天)");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.Warn($"[ProcessSequence] 清理过期配置文件失败: {file}, {ex.Message}");
-                        }
-                    }
-                }
-
-                if (cleanedCount > 0)
-                    _logger.Info($"[ProcessSequence] 本次清理了 {cleanedCount} 个过期配置文件 (保留{ConfigRetentionDays}天)");
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"[ProcessSequence] 清理过期配置文件异常: {ex.Message}");
-            }
         }
 
         /// <summary>

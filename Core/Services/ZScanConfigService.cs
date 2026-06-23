@@ -11,15 +11,26 @@ namespace Core.Services
     {
         private readonly string _configDirectory;
         private readonly JsonSerializerSettings _serializerSettings;
+        private readonly IConfigFileRetentionService _configRetentionService;
 
         public ZScanConfigService() : this(
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "ZScan"))
         {
         }
 
-        public ZScanConfigService(string configDirectory)
+        public ZScanConfigService(string configDirectory) : this(configDirectory, null)
+        {
+        }
+
+        /// <summary>
+        /// 构造函数：指定配置目录和可选的保留策略服务。
+        /// </summary>
+        /// <param name="configDirectory">配置文件目录</param>
+        /// <param name="configRetentionService">配置文件保留策略服务（可选，为 null 时不执行按数量清理）</param>
+        public ZScanConfigService(string configDirectory, IConfigFileRetentionService configRetentionService)
         {
             _configDirectory = configDirectory;
+            _configRetentionService = configRetentionService;
             _serializerSettings = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
@@ -82,6 +93,10 @@ namespace Core.Services
             var json = JsonConvert.SerializeObject(config, _serializerSettings);
             File.WriteAllText(filePath, json);
             _lastSavedFilePath = filePath;
+
+            // 后台按数量清理旧文件，避免阻塞UI
+            _configRetentionService?.CleanupFolderByCountAsync("ZScan", "ZScan_*.json", filePath);
+
             return filePath;
         }
 

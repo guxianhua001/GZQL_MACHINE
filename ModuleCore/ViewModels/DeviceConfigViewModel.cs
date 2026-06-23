@@ -98,6 +98,36 @@ namespace ModuleCore.ViewModels
 
         #endregion
 
+        #region 配置文件保留策略属性
+
+        private bool _configRetentionEnabled = true;
+        /// <summary>是否启用按数量清理配置文件</summary>
+        public bool ConfigRetentionEnabled
+        {
+            get => _configRetentionEnabled;
+            set => SetProperty(ref _configRetentionEnabled, value);
+        }
+
+        private string _configFileBasePath;
+        /// <summary>
+        /// 配置文件根目录。为空时使用默认值 &lt;应用基目录&gt;\Config。
+        /// </summary>
+        public string ConfigFileBasePath
+        {
+            get => _configFileBasePath;
+            set => SetProperty(ref _configFileBasePath, value);
+        }
+
+        private int _defaultMaxFileCount = 100;
+        /// <summary>每个文件夹保留的最大文件数量（统一应用于所有受管理文件夹）</summary>
+        public int DefaultMaxFileCount
+        {
+            get => _defaultMaxFileCount;
+            set => SetProperty(ref _defaultMaxFileCount, value);
+        }
+
+        #endregion
+
         #region SEC/GEM 相关属性
 
         private bool _enableSecsGem;
@@ -162,13 +192,19 @@ namespace ModuleCore.ViewModels
         #endregion
 
         #region 命令
+
         /// <summary>保存配置命令</summary>
         public DelegateCommand SaveCommand { get; }
 
         private DelegateCommand _browsePathCommand;
-        /// <summary>浏览路径命令</summary>
+        /// <summary>浏览数据保存路径命令</summary>
         public DelegateCommand BrowsePathCommand =>
             _browsePathCommand ??= new DelegateCommand(ExecuteBrowsePath);
+
+        private DelegateCommand _browseConfigBasePathCommand;
+        /// <summary>浏览配置文件根目录命令</summary>
+        public DelegateCommand BrowseConfigBasePathCommand =>
+            _browseConfigBasePathCommand ??= new DelegateCommand(ExecuteBrowseConfigBasePath);
 
         private DelegateCommand _loadDefaultCommand;
         /// <summary>加载默认配置命令</summary>
@@ -182,18 +218,21 @@ namespace ModuleCore.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private readonly ILoggerService _logger;
         private readonly IAppSettingService _appSettingService;
+        private readonly IConfigFileRetentionService _configRetentionService;
 
         /// <summary>
-        /// 构造函数：注入事件聚合器、日志服务和应用配置服务
+        /// 构造函数：注入事件聚合器、日志服务、应用配置服务和配置文件保留策略服务
         /// </summary>
         public DeviceConfigViewModel(
             IEventAggregator eventAggregator,
             ILoggerService logger,
-            IAppSettingService appSettingService)
+            IAppSettingService appSettingService,
+            IConfigFileRetentionService configRetentionService)
         {
             _eventAggregator = eventAggregator;
             _logger = logger;
             _appSettingService = appSettingService;
+            _configRetentionService = configRetentionService;
 
             LoadDeviceConfig();
             SaveCommand = new DelegateCommand(ExecuteSave);
@@ -228,6 +267,21 @@ namespace ModuleCore.ViewModels
             DataSavePath = GetExtensionString(nameof(DataSavePath), GetDefaultDataPath());
             DataRetentionDays = GetExtensionInt(nameof(DataRetentionDays), 30);
             AutoCleanOldData = GetExtensionBool(nameof(AutoCleanOldData), true);
+
+            // 加载配置文件保留策略设置
+            LoadConfigRetentionSettings();
+        }
+
+        /// <summary>
+        /// 加载配置文件保留策略设置到 UI 绑定属性
+        /// </summary>
+        private void LoadConfigRetentionSettings()
+        {
+            var retention = _appSettingService.Settings.ConfigFileRetention ?? new ConfigFileRetentionSettings();
+
+            ConfigRetentionEnabled = retention.Enabled;
+            ConfigFileBasePath = retention.BasePath ?? string.Empty;
+            DefaultMaxFileCount = retention.DefaultMaxFileCount > 0 ? retention.DefaultMaxFileCount : 100;
         }
 
         /// <summary>
@@ -258,7 +312,18 @@ namespace ModuleCore.ViewModels
                 SetExtensionValue(nameof(DataRetentionDays), DataRetentionDays);
                 SetExtensionValue(nameof(AutoCleanOldData), AutoCleanOldData);
 
+                // 写入配置文件保留策略（统一最大文件数量，不区分文件夹）
+                settings.ConfigFileRetention = new ConfigFileRetentionSettings
+                {
+                    Enabled = ConfigRetentionEnabled,
+                    BasePath = ConfigFileBasePath ?? string.Empty,
+                    DefaultMaxFileCount = DefaultMaxFileCount
+                };
+
                 _appSettingService.Save();
+
+                // 刷新保留策略服务缓存，使后续清理使用最新配置
+                _configRetentionService.RefreshSettings();
 
                 // 发布配置变更事件，载荷为当前 AppSettings 实例
                 _eventAggregator.GetEvent<DeviceConfigChangedEvent>()
@@ -287,6 +352,11 @@ namespace ModuleCore.ViewModels
             SecsGemPort = "5000";
             SecsGemDeviceId = "0";
             DataSavePath = GetDefaultDataPath();
+
+            // 配置文件保留策略默认值
+            ConfigRetentionEnabled = true;
+            ConfigFileBasePath = string.Empty;
+            DefaultMaxFileCount = 100;
         }
 
         #endregion
@@ -307,6 +377,27 @@ namespace ModuleCore.ViewModels
             if (dialog.ShowDialog() == true)
             {
                 DataSavePath = dialog.FolderName;
+            }
+        }
+
+        /// <summary>
+        /// 打开文件夹选择对话框，选择配置文件根目录
+        /// </summary>
+        private void ExecuteBrowseConfigBasePath()
+        {
+            var initialDir = string.IsNullOrWhiteSpace(ConfigFileBasePath)
+                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config")
+                : ConfigFileBasePath;
+
+            var dialog = new Microsoft.Win32.OpenFolderDialog
+            {
+                InitialDirectory = Directory.Exists(initialDir) ? initialDir : AppDomain.CurrentDomain.BaseDirectory,
+                Title = "Select config file base directory"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                ConfigFileBasePath = dialog.FolderName;
             }
         }
 

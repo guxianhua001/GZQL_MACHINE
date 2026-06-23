@@ -1,6 +1,104 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.24 — DISPENSE 旋转补偿（Coord Transform 联动）
+-------------------------------------------
+1. 需求
+   - 点胶时产品必须经过旋转，使用原始 CAD 坐标必然点不中目标。
+   - 需增加使用旋转角度和 Coord Transform 得出旋转后的新坐标进行点胶。
+   - 旋转角度可通过链接全局变量获取；Coord Transform 来自 CAD Alignment。
+   - 原始 Coord Transform 改变时，Dispense 工具需同步更新。
+   - 新增功能放在 Enable Comp 右侧区域；坐标点可在弹出小窗口查看。
+
+2. 方案与实现
+   - 新增 CadAlignTransformSnapshot 模型（Core\Models）：封装回转中心(Mox,Moy)、
+     偏移(DeltaX/DeltaY)或仿射结果、方向取反开关，提供 Transform(cadX,cadY,angle) 方法
+     按「CAD→机械坐标（仿射/平移）→绕回转中心旋转」流程换算坐标。
+   - 新增 ICadAlignTransformService 接口（Core\Abstraction）+ CadAlignTransformService
+     实现（Module\Services，单例）：持有当前变换快照，通过 CadAlignTransformChangedEvent
+     通知订阅者。CadAlignmentViewModel 在 Step1/Step2/Step4 完成及配置加载后发布快照。
+   - DispenseDetail 模型新增 EnableRotationComp、RotationAngle、RotationAngleLinkedVar。
+   - DispenseDetailViewModel 新增旋转属性、订阅变换变更事件、ViewRotatedCoordsCommand
+     打开弹窗查看旋转后坐标对照表。
+   - DispenseDetailView.xaml 在 Enable Comp 右侧增加 Enable Rotation Comp 复选框，
+     启用时显示旋转角度链接控件 + 查看坐标按钮。
+   - 新增 DispenseRotatedCoordsView/ViewModel 弹窗：DataGrid 展示段名/序号/CAD原始坐标/
+     旋转后坐标，顶部显示旋转角度与回转中心。
+   - DispenseStepAction 运行时：EnableRotationComp 启用且变换快照有效时，优先使用
+     snapshot.Transform 换算坐标；变换不可用时安全回退到原始坐标并告警。
+   - 多语言支持：zh-CN/en-US 新增 16 个本地化键。
+
+3. 架构说明
+   - 单向依赖：Core 定义接口与模型，Module 实现服务，StationTasks 通过接口注入使用。
+   - 共享服务单例确保 CadAlignment 与 Dispense 始终使用同一份变换数据。
+   - 运动安全：变换不可用时回退原始坐标并记录告警，不阻塞生产。
+
+v2026.06.24 — OverView 页面跟随主题切换
+-------------------------------------------
+1. 需求
+   - OverView 页面使用硬编码颜色，不随暗色/亮色主题切换变化。
+   - 需将结构性背景与文本颜色改为 MaterialDesign 动态资源，跟随主题。
+
+2. 方案与实现
+   - Module/Views/OverView.xaml 替换硬编码颜色为 DynamicResource：
+     · 根背景 #EEF2F5 → MaterialDesignPaper
+     · 顶部快捷操作栏 White → MaterialDesignCardBackground
+     · 中部主区卡片 White → MaterialDesignCardBackground
+     · 中部右侧任务监控栏 #F3F3F3 → MaterialDesignBackground
+     · 底部流程控制栏 #2D3748 → MaterialDesignToolBarBackground
+     · 顶部时间文本 #9E9E9E → MaterialDesignBodyLight
+     · 中部主视觉占位符文本 #E0E0E0 → MaterialDesignBodyLight
+   - 保留语义色与功能按钮强调色：
+     · 状态指示器（安全门/三色灯/速度）保留语义色 #E8F5E9/#FFF3E0/#E3F2FD 等。
+     · 功能按钮（工作灯/吹气/日志/单步/下一步）保留强调色 #546E7A/#00897B 等，白色文本保证对比度。
+
+3. 关键点
+   - 主题资源键由 DialogThemeHelper 映射到 DialogTheme.xaml 中的深/浅色配色，切换主题时自动更新。
+   - 不引入倒置依赖，仅修改视图层 XAML 资源引用，架构保持不变。
+   - 状态色与按钮强调色为设备语义信息，需在两种主题下保持一致，故不跟随主题。
+
+v2026.06.24 — 复位按钮初始化前校验控制卡连接状态
+-------------------------------------------
+1. 问题
+   - 软件启动时若未连接硬件控制卡，DI 读取为 0，
+     LowActive 极性的复位按钮信号被误判为"按下"状态。
+   - 5 秒后系统误触发整机初始化，导致未连接硬件下执行回零等动作引发异常。
+
+2. 方案与实现
+   - SystemStateService.CheckResetButtonLongPress：
+     · 长按检测入口新增 IsControlCardConnected() 前置校验。
+     · 模拟模式或 EtherCAT 总线异常时禁用长按检测，避免误触发。
+   - MachineInitializationService.InitializeMachineAsync：
+     · 注入 IMotionService，初始化序列执行前再次校验控制卡连接状态。
+     · 未连接硬件时发布 SystemResetResultEvent(false) 并直接返回，作为安全兜底。
+   - 双重防护：状态机层拦截误触发 + 初始化服务层兜底校验。
+
+3. 关键点
+   - IsControlCardConnected()：非模拟模式且 GetEtherCatBusErrorCode()==0 时返回 true。
+   - 符合工业设备控制安全性：未连接硬件时禁止执行初始化动作。
+   - 架构层次保持 StationTasks → MotionControl → Core，无倒置依赖。
+
+v2026.06.24 — 流程树指示灯改为平面圆形 + 节点视觉优化
+-------------------------------------------
+1. 需求
+   - 步骤状态灯使用平面⚪，运行时绿色。
+   - 流程节点整体美化。
+
+2. 方案与实现
+   - 动作节点（ProcessStep）状态灯：平面 Ellipse 22×22 纯色填充。
+     · 状态色：默认灰 #546E7A / IF 紫 #7B1FA2 / 运行中绿 #228B20 / 报警红 #F44336 / 禁用浅灰 #BDBDBD。
+     · IF 步骤叠加白色 SourceBranch 图标居中，保留分支语义。
+     · 触发器优先级：IF → IsCurrent → HasActiveAlarm → IsEnabled（后者覆盖前者）。
+   - 节点美化：
+     · TaskItem 图标 16→18，文本 FontSize=13 SemiBold。
+     · ProcessMethod 图标 16→18，文本 FontSize=13 SemiBold。
+     · IfBranchGroup 图标 18→20，文本 FontSize=13。
+     · ProcessStep 文本：序号加粗、括号弱化、步骤类型 SemiBold，层次更清晰。
+
+3. 关键点
+   - 纯色 Ellipse 无渐变/光晕，渲染开销最低，符合运动控制快速响应性能要求。
+   - 触发器置于各 Ellipse 自身 Style，避免 Style Setter 不支持 TargetName 的限制。
+
 v2026.06.23 — 修复工序树开关偶发崩溃（ThumbGrid 命名作用域）
 -------------------------------------------
 

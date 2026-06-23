@@ -218,7 +218,7 @@
                     <ColumnDefinition x:Name="gridMenu"
                                       Width="{Binding ElementName=toggle, Path=IsChecked, Converter={StaticResource mwc}}" />
                     <ColumnDefinition />
-                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="84" />
                 </Grid.ColumnDefinitions>
 
                 <!--  左侧边  -->

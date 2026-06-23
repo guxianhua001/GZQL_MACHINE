@@ -22,9 +22,9 @@ namespace AlarmModule.Converters
                 return type switch
                 {
                     AlarmType.HardwareFault => _localizationService?.GetResourceOrDefault("AlarmType_HardwareFault", "硬件故障") ?? "硬件故障",
-                    AlarmType.ParameterOutOfLimit => _localizationService?.GetResourceOrDefault("AlarmType_Threshold", "参数超限") ?? "参数超限",
-                    AlarmType.CommunicationError => _localizationService?.GetResourceOrDefault("AlarmType_Communication", "通信错误") ?? "通信错误",
-                    AlarmType.ProcessError => _localizationService?.GetResourceOrDefault("AlarmType_Status", "工艺错误") ?? "工艺错误",
+                    AlarmType.ParameterOutOfLimit => _localizationService?.GetResourceOrDefault("AlarmType_ParameterOutOfLimit", "参数超限") ?? "参数超限",
+                    AlarmType.CommunicationError => _localizationService?.GetResourceOrDefault("AlarmType_CommunicationError", "通信错误") ?? "通信错误",
+                    AlarmType.ProcessError => _localizationService?.GetResourceOrDefault("AlarmType_ProcessError", "工艺错误") ?? "工艺错误",
                     _ => type.ToString()
                 };
             }

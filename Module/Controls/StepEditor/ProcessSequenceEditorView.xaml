@@ -880,7 +880,7 @@
                                             </MenuItem>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
-                                    <materialDesign:PackIcon Kind="Folder" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <materialDesign:PackIcon Kind="Folder" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Setter Property="Foreground" Value="#1565C0"/>
@@ -896,7 +896,7 @@
                                             </Style>
                                         </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="#37474F"/>
@@ -996,8 +996,8 @@
                                             </MenuItem>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
-                                    <materialDesign:PackIcon Kind="FunctionVariant" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#00838F"/>
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="FunctionVariant" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#00838F"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="#37474F"/>
@@ -1086,32 +1086,55 @@
                                             </MenuItem>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
-                                    <materialDesign:PackIcon Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <materialDesign:PackIcon.Style>
-                                            <Style TargetType="materialDesign:PackIcon">
-                                                <Setter Property="Kind" Value="CircleMedium"/>
-                                                <Setter Property="Foreground" Value="#546E7A"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Step}" Value="IF">
-                                                        <Setter Property="Kind" Value="SourceBranch"/>
-                                                        <Setter Property="Foreground" Value="#7B1FA2"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                                                        <Setter Property="Foreground" Value="#228B20"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding HasActiveAlarm}" Value="True">
-                                                        <Setter Property="Foreground" Value="#F44336"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
-                                                        <Setter Property="Foreground" Value="#BDBDBD"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </materialDesign:PackIcon.Style>
-                                    </materialDesign:PackIcon>
-                                    <TextBlock VerticalAlignment="Center">
-                                        <Run Text="["/><Run Text="{Binding Seq}"/><Run Text="] "/>
-                                        <Run Text="{Binding Step}"/>
+                                    <!-- 步骤状态灯：平面圆形，运行时绿色，行高不变 -->
+                                    <Grid Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <!-- 平面状态圆（纯色填充，由触发器切换状态色） -->
+                                        <Ellipse Width="22" Height="22">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <!-- 默认：灰色 -->
+                                                    <Setter Property="Fill" Value="#546E7A"/>
+                                                    <Style.Triggers>
+                                                        <!-- IF 步骤：紫色 -->
+                                                        <DataTrigger Binding="{Binding Step}" Value="IF">
+                                                            <Setter Property="Fill" Value="#7B1FA2"/>
+                                                        </DataTrigger>
+                                                        <!-- 当前执行（运行中）：绿色 -->
+                                                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                            <Setter Property="Fill" Value="#228B20"/>
+                                                        </DataTrigger>
+                                                        <!-- 报警：红色 -->
+                                                        <DataTrigger Binding="{Binding HasActiveAlarm}" Value="True">
+                                                            <Setter Property="Fill" Value="#F44336"/>
+                                                        </DataTrigger>
+                                                        <!-- 禁用：浅灰 -->
+                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                            <Setter Property="Fill" Value="#BDBDBD"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <!-- IF 步骤：叠加白色分支图标居中显示 -->
+                                        <materialDesign:PackIcon Kind="SourceBranch" Width="13" Height="13"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                 Foreground="White">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Step}" Value="IF">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
+                                    </Grid>
+                                    <!-- 步骤文本：序号 + 类型，美化字重与颜色层次 -->
+                                    <TextBlock VerticalAlignment="Center" FontSize="13">
+                                        <Run Text="[" Foreground="#9E9E9E"/><Run Text="{Binding Seq}" FontWeight="SemiBold"/><Run Text="] " Foreground="#9E9E9E"/>
+                                        <Run Text="{Binding Step}" FontWeight="SemiBold" Foreground="#37474F"/>
                                     </TextBlock>
                                     <!-- IF 步骤显示条件表达式摘要 -->
                                     <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" Foreground="#7B1FA2" FontSize="11"
@@ -1175,7 +1198,7 @@
                                             </MenuItem>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
-                                    <materialDesign:PackIcon Kind="CallSplit" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <materialDesign:PackIcon Kind="CallSplit" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Setter Property="Foreground" Value="#00838F"/>
@@ -1192,7 +1215,7 @@
                                             </Style>
                                         </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
-                                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold">
+                                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="#37474F"/>

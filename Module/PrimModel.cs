@@ -80,6 +80,8 @@ namespace Module
 
             containerRegistry.Register<Core.Abstraction.IZScanGlobalVariableLinkService, Module.Services.ZScanGlobalVariableLinkService>();
             containerRegistry.Register<Core.Abstraction.INeedleTeachService, Module.Services.NeedleTeachService>();
+            // CAD 对齐坐标变换共享服务（单例）——CadAlignment 发布，Dispense 订阅
+            containerRegistry.RegisterSingleton<Core.Abstraction.ICadAlignTransformService, Module.Services.CadAlignTransformService>();
             containerRegistry.RegisterSingleton<Core.Abstraction.IStageCalibrationService, Module.Services.StageCalibrationService>();
             containerRegistry.RegisterSingleton<Core.Abstraction.INeedleService, Module.Services.NeedleService>();
             containerRegistry.RegisterSingleton<Core.Services.NeedleCompensationManager>();
@@ -111,6 +113,8 @@ namespace Module
             containerRegistry.Register<WaitDetailViewModel>();
             containerRegistry.Register<ScriptDetailViewModel>();
             containerRegistry.Register<RunTaskDetailViewModel>();
+            // 旋转后坐标查看弹窗 ViewModel（供 DispenseDetailViewModel 通过 IContainerProvider 解析）
+            containerRegistry.Register<DispenseRotatedCoordsViewModel>();
             // 信号交互步骤详情 ViewModel 注册
             containerRegistry.Register<SignalSendDetailViewModel>();
             containerRegistry.Register<SignalWaitDetailViewModel>();

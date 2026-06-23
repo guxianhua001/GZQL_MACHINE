@@ -47,15 +47,11 @@ namespace Module.ViewModels
         private readonly ILocalizationService _localizationService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IDialogService _dialogService;
+        private readonly IConfigFileRetentionService _configRetentionService;
 
         private Dictionary<string, double> _allPositions = new Dictionary<string, double>();
         private CancellationTokenSource _dispenseCts;
         private readonly ManualResetEventSlim _pauseEvent = new ManualResetEventSlim(true);
-
-        /// <summary>
-        /// 配置文件保留天数，超过此天数的旧文件在保存时自动清理
-        /// </summary>
-        private const int ConfigRetentionDays = 30;
 
         private ObservableCollection<string> _groups = new ObservableCollection<string>();
         public ObservableCollection<string> Groups
@@ -1014,7 +1010,8 @@ namespace Module.ViewModels
             ILocalizationService localizationService,
             IEventAggregator eventAggregator,
             IDialogService dialogService,
-            IAxisParameterService axisParameterService)
+            IAxisParameterService axisParameterService,
+            IConfigFileRetentionService configRetentionService)
         {
             _recipePoolService = recipePoolService;
             _positionProvider = positionProvider;
@@ -1029,6 +1026,7 @@ namespace Module.ViewModels
             _localizationService = localizationService;
             _eventAggregator = eventAggregator;
             _dialogService = dialogService;
+            _configRetentionService = configRetentionService;
 
             // 订阅 MachinePoints 集合变化以更新 PointsDisplay
             _machinePoints.CollectionChanged += (s, e) => RaisePropertyChanged(nameof(PointsDisplay));
@@ -2480,7 +2478,8 @@ namespace Module.ViewModels
                 CurrentFileName = fileName;
                 await SaveCurrentFileToRecipePoolAsync();
 
-                QueueCleanupOldConfigFiles(configDir, filePath);
+                // 后台按数量清理旧文件，避免阻塞UI
+                _ = _configRetentionService.CleanupFolderByCountAsync("VisionCapture", "VisionCapture_*.json", filePath);
 
                 StatusMessage = string.Format(L("VisionCapture_Status_ConfigSaved"), CurrentFileName);
                 _logger.Info($"[VisionCapture] 配置已保存: {filePath}");
@@ -2489,55 +2488,6 @@ namespace Module.ViewModels
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_SaveFail"), ex.Message);
                 _logger.Error($"[VisionCapture] 保存配置失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 后台清理过期配置文件，避免保存配置时同步IO堵塞UI线程。
-        /// </summary>
-        private void QueueCleanupOldConfigFiles(string configDir, string currentFilePath)
-        {
-            _ = Task.Run(() => CleanupOldConfigFiles(configDir, currentFilePath));
-        }
-
-        /// <summary>
-        /// 清理超过保留天数的旧配置文件。
-        /// 仅删除匹配 VisionCapture_*.json 模式的文件，跳过当前刚保存的文件。
-        /// 清理失败仅记录日志，不影响主流程。
-        /// </summary>
-        private void CleanupOldConfigFiles(string configDir, string currentFilePath)
-        {
-            try
-            {
-                var cutoff = DateTime.Now.AddDays(-ConfigRetentionDays);
-                var cleanedCount = 0;
-
-                foreach (var file in Directory.EnumerateFiles(configDir, "VisionCapture_*.json"))
-                {
-                    if (string.Equals(file, currentFilePath, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    try
-                    {
-                        if (File.GetLastWriteTime(file) >= cutoff)
-                            continue;
-
-                        File.Delete(file);
-                        cleanedCount++;
-                        _logger.Info($"[VisionCapture] 已清理过期配置文件: {file} (超过{ConfigRetentionDays}天)");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Warn($"[VisionCapture] 清理过期配置文件失败: {file}, {ex.Message}");
-                    }
-                }
-
-                if (cleanedCount > 0)
-                    _logger.Info($"[VisionCapture] 本次清理了 {cleanedCount} 个过期配置文件 (保留{ConfigRetentionDays}天)");
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"[VisionCapture] 清理旧配置文件异常: {ex.Message}");
             }
         }
 

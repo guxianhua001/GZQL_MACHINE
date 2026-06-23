@@ -53,7 +53,7 @@ namespace Framework
             containerRegistry.RegisterDialog<MessageDialog, MessageDialogViewModel>(name: "MessageDialog");
             containerRegistry.RegisterDialog<NotificationDialog, NotificationDialogViewModel>(name: "NotificationDialog");
 
-            containerRegistry.RegisterSingleton<Core.Abstraction.IZScanConfigService, Core.Services.ZScanConfigService>();
+            // IZScanConfigService 已在 App.xaml.cs 中注册（需注入 IConfigFileRetentionService）
             containerRegistry.RegisterSingleton<Core.Abstraction.IZScanCalibrationService, Core.Services.ZScanCalibrationService>();
             containerRegistry.RegisterSingleton<Core.Abstraction.IZScanArcCompensationService, Core.Services.ZScanArcCompensationService>();
         }

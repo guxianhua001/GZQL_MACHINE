@@ -25,6 +25,7 @@ namespace StationTasks.Actions
         private readonly IStationRegistry _stationRegistry;
         private readonly IMotionService _motionService;
         private readonly IDispenseSegmentSourceService _segmentSourceService;
+        private readonly ICadAlignTransformService _cadAlignTransformService;
 
         /// <summary>直线插补坐标系 ID（MoveLineAbsAsync）</summary>
         private const int CoordIdLinear = 0;
@@ -48,6 +49,15 @@ namespace StationTasks.Actions
         private double _xCompensation;
         private double _yCompensation;
 
+        /// <summary>当前步骤是否启用旋转补偿（产品旋转后按 Coord Transform 换算坐标）</summary>
+        private bool _enableRotationComp;
+
+        /// <summary>当前步骤解析后的产品旋转角度（度数）</summary>
+        private double _rotationAngle;
+
+        /// <summary>CAD 对齐坐标变换快照（启用旋转补偿时使用）</summary>
+        private CadAlignTransformSnapshot _cadAlignSnapshot;
+
         /// <summary>执行时按 NeedleIndex 加载的仿射矩阵（优先于点内缓存 MachineX/Y）</summary>
         private AffineCalibrationResult _runtimeAffine;
 
@@ -58,13 +68,15 @@ namespace StationTasks.Actions
             ILoggerService logger,
             IStationRegistry stationRegistry,
             IMotionService motionService,
-            IDispenseSegmentSourceService segmentSourceService)
+            IDispenseSegmentSourceService segmentSourceService,
+            ICadAlignTransformService cadAlignTransformService)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _stationRegistry = stationRegistry;
             _motionService = motionService;
             _segmentSourceService = segmentSourceService;
+            _cadAlignTransformService = cadAlignTransformService;
         }
 
         /// <summary>
@@ -106,6 +118,23 @@ namespace StationTasks.Actions
             {
                 _xCompensation = 0;
                 _yCompensation = 0;
+            }
+
+            // 解析旋转补偿（启用时按 CAD 对齐 Coord Transform 换算旋转后坐标）
+            _enableRotationComp = detail.EnableRotationComp;
+            if (_enableRotationComp)
+            {
+                _rotationAngle = ResolveLinkedValue(detail.RotationAngle, detail.RotationAngleLinkedVar);
+                _cadAlignSnapshot = _cadAlignTransformService?.CurrentSnapshot;
+                if (_cadAlignSnapshot == null || !_cadAlignSnapshot.IsValid)
+                {
+                    _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 旋转补偿已启用但 CAD 对齐变换不可用，回退使用原始坐标");
+                    _enableRotationComp = false;
+                }
+                else
+                {
+                    _logger.Info($"DISPENSE 步骤 [{step.Seq}] 旋转补偿已启用: 旋转角度={_rotationAngle:F3}°, 回转中心=({_cadAlignSnapshot.Mox:F3}, {_cadAlignSnapshot.Moy:F3})");
+                }
             }
 
             // 按配方针头加载仿射矩阵，执行时实时换算 MachineX/Y，避免与 Step3 所选针头不一致
@@ -601,13 +630,24 @@ namespace StationTasks.Actions
         /// <summary>
         /// 安全获取点的机器坐标——优先按当前针头仿射矩阵从 CAD 坐标实时换算；
         /// 无仿射时回退点内 MachineX/MachineY。EnableComp 启用时叠加 XY 补偿。
+        /// EnableRotationComp 启用时使用 CAD 对齐 Coord Transform 换算旋转后坐标。
         /// </summary>
         private (double X, double Y) GetMachineXY(CadPoint pt, DispenseSegment seg = null)
         {
             double x;
             double y;
 
-            if (_runtimeAffine != null)
+            // 旋转补偿优先：使用 CAD 对齐变换快照按旋转角度换算坐标
+            if (_enableRotationComp && _cadAlignSnapshot != null && _cadAlignSnapshot.IsValid)
+            {
+                (x, y) = _cadAlignSnapshot.Transform(pt.X, pt.Y, _rotationAngle);
+                if (seg != null)
+                {
+                    x += seg.XyCompensationX;
+                    y += seg.XyCompensationY;
+                }
+            }
+            else if (_runtimeAffine != null)
             {
                 (x, y) = AffineCalibrationService.Transform(_runtimeAffine, pt.X, pt.Y);
                 if (seg != null)

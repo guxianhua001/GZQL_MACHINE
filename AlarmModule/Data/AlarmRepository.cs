@@ -152,6 +152,27 @@ namespace AlarmModule.Data
         public async Task SaveThresholdConfigAsync(AlarmThresholdConfig config)
         {
             using var context = CreateContext();
+
+            // 编辑模式：按主键Id更新，允许修改AlarmCode/AlarmSource
+            if (config.Id > 0)
+            {
+                var existingById = await context.AlarmThresholdConfigs.FindAsync(config.Id);
+                if (existingById != null)
+                {
+                    existingById.AlarmCode = config.AlarmCode;
+                    existingById.AlarmSource = config.AlarmSource;
+                    existingById.ThresholdValue = config.ThresholdValue;
+                    existingById.AlarmLevel = config.AlarmLevel;
+                    existingById.AlarmType = config.AlarmType;
+                    existingById.SuppressionWindowSeconds = config.SuppressionWindowSeconds;
+                    existingById.IsEnabled = config.IsEnabled;
+                    context.AlarmThresholdConfigs.Update(existingById);
+                    await context.SaveChangesAsync();
+                    return;
+                }
+            }
+
+            // 新增模式：按AlarmCode+AlarmSource判断是否存在，存在则更新其余字段
             var existing = await context.AlarmThresholdConfigs
                 .FirstOrDefaultAsync(t => t.AlarmCode == config.AlarmCode && t.AlarmSource == config.AlarmSource);
 
@@ -169,6 +190,45 @@ namespace AlarmModule.Data
                 context.AlarmThresholdConfigs.Add(config);
             }
 
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// 批量更新阈值配置的启用状态
+        /// </summary>
+        /// <param name="ids">需要更新的配置Id集合</param>
+        /// <param name="isEnabled">目标启用状态</param>
+        public async Task BatchUpdateEnabledAsync(IReadOnlyList<int> ids, bool isEnabled)
+        {
+            if (ids == null || ids.Count == 0) return;
+
+            using var context = CreateContext();
+            var targets = await context.AlarmThresholdConfigs
+                .Where(t => ids.Contains(t.Id))
+                .ToListAsync();
+
+            foreach (var target in targets)
+            {
+                target.IsEnabled = isEnabled;
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// 批量删除阈值配置
+        /// </summary>
+        /// <param name="ids">需要删除的配置Id集合</param>
+        public async Task BatchDeleteAsync(IReadOnlyList<int> ids)
+        {
+            if (ids == null || ids.Count == 0) return;
+
+            using var context = CreateContext();
+            var targets = await context.AlarmThresholdConfigs
+                .Where(t => ids.Contains(t.Id))
+                .ToListAsync();
+
+            context.AlarmThresholdConfigs.RemoveRange(targets);
             await context.SaveChangesAsync();
         }
 

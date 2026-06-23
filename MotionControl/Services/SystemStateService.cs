@@ -270,9 +270,24 @@ namespace MotionControl.Services
         ///   - 当前 polarity="LowActive" 时改为 polarity="HighActive"
         ///   - 当前 polarity="HighActive" 时改为 polarity="LowActive"
         /// 信号取反后，未按下时 DI 读取为非激活，按下时读取为激活。
+        /// 安全机制：硬件未连接时 DI 读取为 0，LowActive 信号会被误判为激活（按下），
+        /// 因此在检测前先校验控制卡连接状态，避免未连接硬件时误触发初始化。
         /// </summary>
         private void CheckResetButtonLongPress()
         {
+            // 硬件未连接时跳过长按检测：未连接硬件时 DI 读取为 0，
+            // LowActive 信号会被误判为激活（按下），导致误触发初始化
+            if (!IsControlCardConnected())
+            {
+                if (_resetButtonPressedTime != null || _resetLongPressHandled)
+                {
+                    _logger.Warn("控制卡未连接，复位按钮长按检测已禁用，避免误触发整机初始化。");
+                    _resetButtonPressedTime = null;
+                    _resetLongPressHandled = false;
+                }
+                return;
+            }
+
             var resetSignals = _controlButtons.Where(s => s.Name == "ResetButton" && s.LogicalId.HasValue).ToList();
             if (resetSignals.Count == 0) return;
 
@@ -302,6 +317,29 @@ namespace MotionControl.Services
                 // 发布整机初始化请求事件，MachineInitializationService 订阅后执行初始化序列
                 _ea.GetEvent<Core.Events.MachineInitializationRequestedEvent>().Publish();
             }
+        }
+
+        /// <summary>
+        /// 检查控制卡是否已连接且通信正常。
+        /// 初始化前安全校验：非模拟模式且 EtherCAT 总线无错误时返回 true。
+        /// 用于避免未连接硬件时执行初始化导致异常或误动作。
+        /// </summary>
+        /// <returns>true=控制卡已连接且总线正常；false=模拟模式或总线异常</returns>
+        private bool IsControlCardConnected()
+        {
+            // 模拟模式下无真实硬件卡，视为未连接
+            if (_motion.IsSimulationMode)
+                return false;
+
+            // EtherCAT 总线错误码非 0 表示通信异常
+            int busError = _motion.GetEtherCatBusErrorCode();
+            if (busError != 0)
+            {
+                _logger.Warn($"控制卡连接异常：EtherCAT 总线错误码 0x{busError:X}。");
+                return false;
+            }
+
+            return true;
         }
         // ---------- 状态机控制 ----------
         public void RequestStart()

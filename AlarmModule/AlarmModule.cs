@@ -60,6 +60,7 @@ namespace AlarmModule
             AlarmLevelToTextConverter.Initialize(localizationService);
             AlarmStatusToTextConverter.Initialize(localizationService);
             AlarmTypeToTextConverter.Initialize(localizationService);
+            Converters.EnabledFilterToTextConverter.Initialize(localizationService);
         }
     }
 }

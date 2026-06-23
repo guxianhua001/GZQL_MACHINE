@@ -42,6 +42,7 @@ namespace Module.ViewModels
         private readonly IRecipePoolService _recipePoolService;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILocalizationService _localizationService;
+        private readonly IConfigFileRetentionService _configRetentionService;
         private CancellationTokenSource _cts;
 
         #endregion
@@ -239,13 +240,15 @@ namespace Module.ViewModels
             IDialogService dialogService,
             IRecipePoolService recipePoolService,
             IEventAggregator eventAggregator,
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            IConfigFileRetentionService configRetentionService)
         {
             _dotDispenseService = dotDispenseService;
             _dialogService = dialogService;
             _recipePoolService = recipePoolService;
             _eventAggregator = eventAggregator;
             _localizationService = localizationService;
+            _configRetentionService = configRetentionService;
 
             _dotDispenseService.ProgressChanged += OnProgressChanged;
             _dotDispenseService.StatusChanged += OnStatusChanged;
@@ -581,6 +584,9 @@ namespace Module.ViewModels
 
                 CurrentFilePath = fileName;  // 仅显示文件名
                 Status = L("Dispensing_Dot_Success_DataSaved");
+
+                // 后台按数量清理旧文件，避免阻塞UI
+                _ = _configRetentionService.CleanupFolderByCountAsync("Dot", "DotPoint_*.json", filePath);
             }
             catch (Exception ex)
             {
