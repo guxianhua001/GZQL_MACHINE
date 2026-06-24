@@ -13,11 +13,12 @@
                                             TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
     </UserControl.Resources>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <TextBlock Text="{Binding DisplayValue, RelativeSource={RelativeSource AncestorType=UserControl}, StringFormat=F3}"
+        <TextBlock Text="{Binding FormattedDisplayText, RelativeSource={RelativeSource AncestorType=UserControl}}"
                    FontWeight="Bold"
                    Foreground="{Binding DisplayForeground, RelativeSource={RelativeSource AncestorType=UserControl}}"
                    FontSize="11" VerticalAlignment="Center" Margin="0,0,2,0" />
         <Button Command="{Binding UnlinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                PreviewMouseDown="OnUnlinkButtonPreviewMouseDown"
                 Style="{StaticResource MaterialDesignIconButton}"
                 Padding="0" Width="16" Height="16" VerticalAlignment="Center"
                 ToolTip="{lang:Lang VisionCapture_UnlinkGlobalVariable}" Margin="2,0,0,0">
@@ -27,7 +28,7 @@
         </Button>
         <ComboBox x:Name="PART_ComboBox" ItemsSource="{Binding LinkableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
                   SelectedValuePath="Name" DisplayMemberPath="Name"
-                  SelectedValue="{Binding LinkedVariableName, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                  SelectedValue="{Binding LinkedVariableName, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                   IsEditable="True" IsTextSearchEnabled="True"
                   Width="{Binding ComboBoxWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"
                   FontSize="9" Margin="2,0,0,0" VerticalAlignment="Center"

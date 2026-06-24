@@ -3,10 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
-             Width="680" Height="480">
+             xmlns:common="clr-namespace:ModuleCore.UserControls;assembly=ModuleCore"
+             xmlns:conv="clr-namespace:Module.Converters"
+             Width="760" Height="640">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:InverseBooleanConverter x:Key="InverseBoolConverter"/>
+    </UserControl.Resources>
     <Border Padding="16" Background="{DynamicResource DialogCardBrush}" CornerRadius="4">
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
@@ -36,8 +43,117 @@
                 </TextBlock>
             </Grid>
 
+            <!-- 针头偏移补偿配置区：相机中心坐标 → 实际针头点胶坐标 -->
+            <materialDesign:Card Grid.Row="1" Padding="10" Margin="0,0,0,8" Background="{DynamicResource DialogElevatedBrush}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,6">
+                        <CheckBox DockPanel.Dock="Left"
+                                  Content="{lang:Lang DispenseDetail_EnableNeedleOffsetComp}"
+                                  IsChecked="{Binding EnableNeedleOffsetComp}"
+                                  FontWeight="Bold" Foreground="{DynamicResource DialogAccentBrush}"/>
+                        <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12">
+                            <Run Text="{lang:Lang DispenseDetail_NeedleOffsetTotal}"/>
+                            <Run Text="("/><Run Text="{Binding TotalOffsetX, StringFormat={}{0:F3}, Mode=OneWay}"/><Run Text=", "/>
+                            <Run Text="{Binding TotalOffsetY, StringFormat={}{0:F3}, Mode=OneWay}"/><Run Text=")"/>
+                        </TextBlock>
+                    </DockPanel>
+
+                    <StackPanel Visibility="{Binding EnableNeedleOffsetComp, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <!-- 相机与针头固定距离 -->
+                        <TextBlock Text="{lang:Lang DispenseDetail_CameraNeedleOffset}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource DialogTextPrimaryBrush}" Margin="0,2,0,2"/>
+                        <CheckBox Content="{lang:Lang DispenseDetail_LinkNeedleCalibrationOffset}"
+                                  IsChecked="{Binding LinkCameraNeedleOffsetToCalibration}"
+                                  FontSize="11" Margin="8,0,0,4" Foreground="{DynamicResource DialogTextPrimaryBrush}"/>
+                        <StackPanel Margin="8,0,0,6"
+                                    Visibility="{Binding LinkCameraNeedleOffsetToCalibration, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="X" VerticalAlignment="Center" FontSize="11"/>
+                                <common:GlobalVariableLinkControl Grid.Column="1"
+                                    DisplayValue="{Binding CameraNeedleOffsetXDisplayValue, Mode=OneWay}"
+                                    DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                    IsLinked="{Binding IsCameraNeedleOffsetXLinked, Mode=OneWay}"
+                                    LinkedVariableName="{Binding CameraNeedleOffsetXLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                    UnlinkCommand="{Binding UnlinkCameraNeedleOffsetXCommand}"
+                                    ComboBoxWidth="200"/>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Y" VerticalAlignment="Center" FontSize="11"/>
+                                <common:GlobalVariableLinkControl Grid.Column="1"
+                                    DisplayValue="{Binding CameraNeedleOffsetYDisplayValue, Mode=OneWay}"
+                                    DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                    IsLinked="{Binding IsCameraNeedleOffsetYLinked, Mode=OneWay}"
+                                    LinkedVariableName="{Binding CameraNeedleOffsetYLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                    UnlinkCommand="{Binding UnlinkCameraNeedleOffsetYCommand}"
+                                    ComboBoxWidth="200"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- 对针补偿 -->
+                        <TextBlock Text="{lang:Lang DispenseDetail_NeedleAlignComp}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource DialogTextPrimaryBrush}" Margin="0,2,0,2"/>
+                            <Grid Margin="8,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28"/>
+                                    <ColumnDefinition Width="118"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="X" VerticalAlignment="Center" FontSize="11"/>
+                                <materialDesign:DecimalUpDown Grid.Column="1"
+                                                              Value="{Binding NeedleAlignCompX, UpdateSourceTrigger=PropertyChanged}"
+                                                              ValueStep="0.01" FontSize="11" Margin="0,0,6,0"
+                                                              MinWidth="112" HorizontalAlignment="Stretch"
+                                                              materialDesign:TextFieldAssist.PrefixText="{Binding NeedleAlignCompXPrefix, Mode=OneWay}"
+                                                              IsEnabled="{Binding IsNeedleAlignCompXLinked, Converter={StaticResource InverseBoolConverter}}"/>
+                                <common:GlobalVariableLinkControl Grid.Column="2"
+                                DisplayValue="{Binding NeedleAlignCompXDisplayValue, Mode=OneWay}"
+                                DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                DisplayStringFormat="+0.000;-0.000;0.000"
+                                IsLinked="{Binding IsNeedleAlignCompXLinked, Mode=OneWay}"
+                                LinkedVariableName="{Binding NeedleAlignCompXLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                UnlinkCommand="{Binding UnlinkNeedleAlignCompXCommand}"
+                                ComboBoxWidth="180"/>
+                        </Grid>
+                            <Grid Margin="8,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28"/>
+                                    <ColumnDefinition Width="118"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Y" VerticalAlignment="Center" FontSize="11"/>
+                                <materialDesign:DecimalUpDown Grid.Column="1"
+                                                              Value="{Binding NeedleAlignCompY, UpdateSourceTrigger=PropertyChanged}"
+                                                              ValueStep="0.01" FontSize="11" Margin="0,0,6,0"
+                                                              MinWidth="112" HorizontalAlignment="Stretch"
+                                                              materialDesign:TextFieldAssist.PrefixText="{Binding NeedleAlignCompYPrefix, Mode=OneWay}"
+                                                              IsEnabled="{Binding IsNeedleAlignCompYLinked, Converter={StaticResource InverseBoolConverter}}"/>
+                                <common:GlobalVariableLinkControl Grid.Column="2"
+                                DisplayValue="{Binding NeedleAlignCompYDisplayValue, Mode=OneWay}"
+                                DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                DisplayStringFormat="+0.000;-0.000;0.000"
+                                IsLinked="{Binding IsNeedleAlignCompYLinked, Mode=OneWay}"
+                                LinkedVariableName="{Binding NeedleAlignCompYLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                UnlinkCommand="{Binding UnlinkNeedleAlignCompYCommand}"
+                                ComboBoxWidth="180"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
             <!-- 坐标对照表 -->
-            <DataGrid Grid.Row="1"
+            <DataGrid Grid.Row="2"
                       ItemsSource="{Binding CoordItems}"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False"
@@ -51,11 +167,13 @@
                       AlternatingRowBackground="{DynamicResource DialogCardBrush}"
                       FontSize="11">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordSegment}" Binding="{Binding SegmentName}" Width="120"/>
-                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordIndex}" Binding="{Binding PointIndex}" Width="60"/>
+                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordSegment}" Binding="{Binding SegmentName}" Width="100"/>
+                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordIndex}" Binding="{Binding PointIndex}" Width="44"/>
                     <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordCadX}" Binding="{Binding CadX, StringFormat={}{0:F3}}" Width="*"/>
                     <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordCadY}" Binding="{Binding CadY, StringFormat={}{0:F3}}" Width="*"/>
-                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordRotatedX}" Binding="{Binding RotatedX, StringFormat={}{0:F3}}" Width="*">
+                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordRotatedX}" Binding="{Binding RotatedX, StringFormat={}{0:F3}}" Width="*"/>
+                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordRotatedY}" Binding="{Binding RotatedY, StringFormat={}{0:F3}}" Width="*"/>
+                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordFinalX}" Binding="{Binding FinalX, StringFormat={}{0:F3}}" Width="*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource DialogAccentBrush}"/>
@@ -63,7 +181,7 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordRotatedY}" Binding="{Binding RotatedY, StringFormat={}{0:F3}}" Width="*">
+                    <DataGridTextColumn Header="{lang:Lang DispenseDetail_CoordFinalY}" Binding="{Binding FinalY, StringFormat={}{0:F3}}" Width="*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource DialogAccentBrush}"/>
@@ -75,7 +193,7 @@
             </DataGrid>
 
             <!-- 底部信息与关闭按钮 -->
-            <DockPanel Grid.Row="2" Margin="0,12,0,0" LastChildFill="True">
+            <DockPanel Grid.Row="3" Margin="0,12,0,0" LastChildFill="True">
                 <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
                            FontSize="11" Foreground="{DynamicResource DialogTextMutedBrush}">
                     <Run Text="{lang:Lang DispenseDetail_CoordPointCount}"/>

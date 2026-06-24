@@ -74,7 +74,12 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(ZCompensationCalibrator));
                     RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-                    RaisePropertyChanged(nameof(ManualZCompensation));
+                    RaisePropertyChanged(nameof(XCompensationCalibrator));
+                    RaisePropertyChanged(nameof(XCompensationCalibratorLinkedVar));
+                    RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
+                    RaisePropertyChanged(nameof(YCompensationCalibrator));
+                    RaisePropertyChanged(nameof(YCompensationCalibratorLinkedVar));
+                    RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
                     RaisePropertyChanged(nameof(EnableComp));
                     RaisePropertyChanged(nameof(NeedleIndex));
                     RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
@@ -196,10 +201,16 @@ namespace Module.ViewModels
         /// <summary>针头设置来源说明</summary>
         public string ActiveNeedleStatusHint => L("DispenseDetail_NeedleFromStep3Hint");
 
+        /// <summary>是否启用校准（控制 X/Y/Z Comp 校准器与 Z Comp 3D Camera 显示及运行时叠加）</summary>
         public bool EnableZCalibration
         {
             get => _step?.DispenseDetail?.EnableZCalibration ?? false;
-            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.EnableZCalibration = value; }
+            set
+            {
+                if (_step?.DispenseDetail == null || _step.DispenseDetail.EnableZCalibration == value) return;
+                _step.DispenseDetail.EnableZCalibration = value;
+                RaisePropertyChanged();
+            }
         }
 
         /// <summary>是否启用 XY 方向补偿</summary>
@@ -230,7 +241,7 @@ namespace Module.ViewModels
                     _step.DispenseDetail.XCompensationLinkedVar = value;
                     RaisePropertyChanged(nameof(XCompensationLinkedVar));
                     RaisePropertyChanged(nameof(IsXCompensationLinked));
-                    RefreshZCompensationDisplayValues();
+                    RefreshCalibrationDisplayValues();
                 }
             }
         }
@@ -256,7 +267,7 @@ namespace Module.ViewModels
                     _step.DispenseDetail.YCompensationLinkedVar = value;
                     RaisePropertyChanged(nameof(YCompensationLinkedVar));
                     RaisePropertyChanged(nameof(IsYCompensationLinked));
-                    RefreshZCompensationDisplayValues();
+                    RefreshCalibrationDisplayValues();
                 }
             }
         }
@@ -296,7 +307,7 @@ namespace Module.ViewModels
                     _step.DispenseDetail.RotationAngleLinkedVar = value;
                     RaisePropertyChanged(nameof(RotationAngleLinkedVar));
                     RaisePropertyChanged(nameof(IsRotationAngleLinked));
-                    RefreshZCompensationDisplayValues();
+                    RefreshCalibrationDisplayValues();
                 }
             }
         }
@@ -327,7 +338,7 @@ namespace Module.ViewModels
                     // 通知绑定引擎属性已变更，驱动 GlobalVariableLinkControl 清空 ComboBox
                     RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensation3DLinked));
-                    RefreshZCompensationDisplayValues();
+                    RefreshCalibrationDisplayValues();
                 }
             }
         }
@@ -354,21 +365,67 @@ namespace Module.ViewModels
                     // 通知绑定引擎属性已变更，驱动 GlobalVariableLinkControl 清空 ComboBox
                     RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
                     RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-                    RefreshZCompensationDisplayValues();
+                    RefreshCalibrationDisplayValues();
                 }
             }
         }
 
         public bool IsZCompensationCalibratorLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensationCalibratorLinkedVar);
 
-        /// <summary>Z补偿(校准器)链接全局变量的实时显示值</summary>
+        /// <summary>Z Comp（校准器）链接全局变量的实时显示值</summary>
         public double ZCompensationCalibratorDisplayValue { get; private set; }
 
-        public double ManualZCompensation
+        public double XCompensationCalibrator
         {
-            get => _step?.DispenseDetail?.ManualZCompensation ?? 0.0;
-            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.ManualZCompensation = value; }
+            get => _step?.DispenseDetail?.XCompensationCalibrator ?? 0.0;
+            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.XCompensationCalibrator = value; }
         }
+
+        public string XCompensationCalibratorLinkedVar
+        {
+            get => _step?.DispenseDetail?.XCompensationCalibratorLinkedVar;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.XCompensationCalibratorLinkedVar = value;
+                    RaisePropertyChanged(nameof(XCompensationCalibratorLinkedVar));
+                    RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
+                    RefreshCalibrationDisplayValues();
+                }
+            }
+        }
+
+        public bool IsXCompensationCalibratorLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.XCompensationCalibratorLinkedVar);
+
+        /// <summary>X Comp（校准器）链接全局变量的实时显示值</summary>
+        public double XCompensationCalibratorDisplayValue { get; private set; }
+
+        public double YCompensationCalibrator
+        {
+            get => _step?.DispenseDetail?.YCompensationCalibrator ?? 0.0;
+            set { if (_step?.DispenseDetail != null) _step.DispenseDetail.YCompensationCalibrator = value; }
+        }
+
+        public string YCompensationCalibratorLinkedVar
+        {
+            get => _step?.DispenseDetail?.YCompensationCalibratorLinkedVar;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.YCompensationCalibratorLinkedVar = value;
+                    RaisePropertyChanged(nameof(YCompensationCalibratorLinkedVar));
+                    RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
+                    RefreshCalibrationDisplayValues();
+                }
+            }
+        }
+
+        public bool IsYCompensationCalibratorLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.YCompensationCalibratorLinkedVar);
+
+        /// <summary>Y Comp（校准器）链接全局变量的实时显示值</summary>
+        public double YCompensationCalibratorDisplayValue { get; private set; }
 
         private ObservableCollection<GlobalVariable> _availableGlobalVariables = new ObservableCollection<GlobalVariable>();
         public ObservableCollection<GlobalVariable> AvailableGlobalVariables
@@ -379,6 +436,8 @@ namespace Module.ViewModels
 
         public DelegateCommand UnlinkZCompensation3DCommand { get; }
         public DelegateCommand UnlinkZCompensationCalibratorCommand { get; }
+        public DelegateCommand UnlinkXCompensationCalibratorCommand { get; }
+        public DelegateCommand UnlinkYCompensationCalibratorCommand { get; }
         public DelegateCommand UnlinkXCompensationCommand { get; }
         public DelegateCommand UnlinkYCompensationCommand { get; }
         public DelegateCommand UnlinkRotationAngleCommand { get; }
@@ -1173,6 +1232,8 @@ namespace Module.ViewModels
 
             UnlinkZCompensation3DCommand = new DelegateCommand(() => ZCompensation3DLinkedVar = null);
             UnlinkZCompensationCalibratorCommand = new DelegateCommand(() => ZCompensationCalibratorLinkedVar = null);
+            UnlinkXCompensationCalibratorCommand = new DelegateCommand(() => XCompensationCalibratorLinkedVar = null);
+            UnlinkYCompensationCalibratorCommand = new DelegateCommand(() => YCompensationCalibratorLinkedVar = null);
             UnlinkXCompensationCommand = new DelegateCommand(() => XCompensationLinkedVar = null);
             UnlinkYCompensationCommand = new DelegateCommand(() => YCompensationLinkedVar = null);
             UnlinkRotationAngleCommand = new DelegateCommand(() => RotationAngleLinkedVar = null);
@@ -1762,6 +1823,9 @@ namespace Module.ViewModels
 
             AttachDispenseDetailListener(_step.DispenseDetail);
 
+            // 打开 Dispense 详情时确保 CAD 对齐变换快照已从持久化配置恢复（解决重启后按钮不可用）
+            _ = EnsureCadAlignSnapshotRestoredAsync();
+
             RefreshSourceSegmentInfo();
 
             RaisePropertyChanged(nameof(DispenseMode));
@@ -1777,7 +1841,12 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(ZCompensationCalibrator));
             RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
             RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-            RaisePropertyChanged(nameof(ManualZCompensation));
+            RaisePropertyChanged(nameof(XCompensationCalibrator));
+            RaisePropertyChanged(nameof(XCompensationCalibratorLinkedVar));
+            RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
+            RaisePropertyChanged(nameof(YCompensationCalibrator));
+            RaisePropertyChanged(nameof(YCompensationCalibratorLinkedVar));
+            RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
             RaisePropertyChanged(nameof(EnableComp));
             RaisePropertyChanged(nameof(NeedleIndex));
             RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
@@ -1811,7 +1880,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(IsDryRunMode));
             RaisePropertyChanged(nameof(IsRealDispenseMode));
             RaisePropertyChanged(nameof(StepDescription));
-            RefreshZCompensationDisplayValues();
+            RefreshCalibrationDisplayValues();
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
@@ -1834,9 +1903,11 @@ namespace Module.ViewModels
                 foreach (var v in variables)
                     AvailableGlobalVariables.Add(v);
 
-                RefreshZCompensationDisplayValues();
+                RefreshCalibrationDisplayValues();
                 RaisePropertyChanged(nameof(IsZCompensation3DLinked));
                 RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
+                RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
+                RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
             }
             catch (Exception ex)
             {
@@ -1860,7 +1931,7 @@ namespace Module.ViewModels
                 foreach (var v in variables)
                     AvailableGlobalVariables.Add(v);
 
-                RefreshZCompensationDisplayValues();
+                RefreshCalibrationDisplayValues();
             }
             catch (Exception ex)
             {
@@ -1868,10 +1939,10 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary>刷新 Z/XY 补偿链接全局变量的实时显示值</summary>
-        private void RefreshZCompensationDisplayValues()
+        /// <summary>刷新校准/补偿链接全局变量的实时显示值</summary>
+        private void RefreshCalibrationDisplayValues()
         {
-            // Z补偿(3D)
+            // Z Comp（3D Camera）
             if (!string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensation3DLinkedVar))
             {
                 var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.ZCompensation3DLinkedVar);
@@ -1883,7 +1954,7 @@ namespace Module.ViewModels
             }
             RaisePropertyChanged(nameof(ZCompensation3DDisplayValue));
 
-            // Z补偿(校准器)
+            // Z Comp（校准器）
             if (!string.IsNullOrEmpty(_step?.DispenseDetail?.ZCompensationCalibratorLinkedVar))
             {
                 var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.ZCompensationCalibratorLinkedVar);
@@ -1895,7 +1966,31 @@ namespace Module.ViewModels
             }
             RaisePropertyChanged(nameof(ZCompensationCalibratorDisplayValue));
 
-            // X 补偿
+            // X Comp（校准器）
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.XCompensationCalibratorLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.XCompensationCalibratorLinkedVar);
+                XCompensationCalibratorDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                XCompensationCalibratorDisplayValue = XCompensationCalibrator;
+            }
+            RaisePropertyChanged(nameof(XCompensationCalibratorDisplayValue));
+
+            // Y Comp（校准器）
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.YCompensationCalibratorLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.YCompensationCalibratorLinkedVar);
+                YCompensationCalibratorDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                YCompensationCalibratorDisplayValue = YCompensationCalibrator;
+            }
+            RaisePropertyChanged(nameof(YCompensationCalibratorDisplayValue));
+
+            // X Compensation
             if (!string.IsNullOrEmpty(_step?.DispenseDetail?.XCompensationLinkedVar))
             {
                 var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.XCompensationLinkedVar);
@@ -1944,6 +2039,21 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(IsTransformAvailable));
         }
 
+        /// <summary>打开 Dispense 详情时从持久化配置恢复 CAD 对齐变换快照（重启后无需先进入 CAD Alignment）</summary>
+        private async Task EnsureCadAlignSnapshotRestoredAsync()
+        {
+            try
+            {
+                if (_cadAlignTransformService == null) return;
+                await _cadAlignTransformService.EnsureSnapshotRestoredAsync().ConfigureAwait(true);
+                RaisePropertyChanged(nameof(IsTransformAvailable));
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"[DispenseDetail] 恢复 CAD 对齐变换快照失败: {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// 打开旋转后坐标查看弹窗——展示所有段的 CAD 原始坐标与旋转后机械坐标对照
         /// </summary>
@@ -1952,6 +2062,9 @@ namespace Module.ViewModels
             try
             {
                 _logger?.Info("[DispenseDetail] ViewRotatedCoords 按钮已点击，开始构建坐标对照");
+
+                // 打开弹窗前再次确保快照已恢复（防止启动时异步恢复尚未完成）
+                await EnsureCadAlignSnapshotRestoredAsync().ConfigureAwait(true);
 
                 var snapshot = _cadAlignTransformService?.CurrentSnapshot;
                 if (snapshot == null || !snapshot.IsValid)
@@ -2014,7 +2127,9 @@ namespace Module.ViewModels
 
                 // 解析并显示弹窗（await 确保对话框正常显示）
                 var dialogVm = _containerProvider.Resolve<DispenseRotatedCoordsViewModel>();
-                dialogVm.Initialize(coordList, rotationAngle, snapshot.Mox, snapshot.Moy);
+                // 传入 DispenseDetail（补偿配置持久化）、当前针头索引、可链接全局变量
+                dialogVm.Initialize(coordList, rotationAngle, snapshot.Mox, snapshot.Moy,
+                    _step.DispenseDetail, _step.DispenseDetail?.NeedleIndex ?? 0, AvailableGlobalVariables);
                 var view = new Views.DispenseRotatedCoordsView { DataContext = dialogVm };
                 var title = L("DispenseDetail_RotatedCoordsTitle");
                 _logger?.Info($"[DispenseDetail] 准备显示弹窗: title={title}, _baseDialogService={_baseDialogService?.GetType().Name ?? "null"}");

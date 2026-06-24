@@ -8,12 +8,28 @@ namespace Recipe.Models
         private readonly HashSet<string> _dirtyStations = new HashSet<string>();
         private readonly object _lock = new object();
 
-        public void Stage(string stationIdentifier, object parameters)
+        /// <summary>位置编辑器暂存时标记为 true，提交时完整替换 Positions（含删除）</summary>
+        private readonly Dictionary<string, bool> _replacePositionsFlags = new Dictionary<string, bool>();
+
+        public void Stage(string stationIdentifier, object parameters, bool replacePositions = false)
         {
             lock (_lock)
             {
                 _stagedParameters[stationIdentifier] = parameters;
                 _dirtyStations.Add(stationIdentifier);
+                if (replacePositions)
+                    _replacePositionsFlags[stationIdentifier] = true;
+                else
+                    _replacePositionsFlags.Remove(stationIdentifier);
+            }
+        }
+
+        /// <summary>该工站暂存数据是否应完整替换 Positions 节点</summary>
+        public bool ShouldReplacePositions(string stationIdentifier)
+        {
+            lock (_lock)
+            {
+                return _replacePositionsFlags.TryGetValue(stationIdentifier, out var flag) && flag;
             }
         }
 
@@ -55,6 +71,7 @@ namespace Recipe.Models
             {
                 _dirtyStations.Clear();
                 _stagedParameters.Clear(); // 同步清理暂存区，避免旧数据残留
+                _replacePositionsFlags.Clear();
             }
         }
 
@@ -64,6 +81,7 @@ namespace Recipe.Models
             {
                 _stagedParameters.Clear();
                 _dirtyStations.Clear();
+                _replacePositionsFlags.Clear();
             }
         }
 

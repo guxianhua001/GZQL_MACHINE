@@ -18,7 +18,7 @@ namespace StationTasks.Actions
         /// </summary>
         /// <param name="step">工艺步骤数据</param>
         /// <param name="task">所属工站任务，用于调用运动/IO等方法</param>
-        /// <param name="token">取消令牌</param>
+        /// <param name="token">停止取消令牌（不含暂停信号）；运动调用请使用 task.MotionCancellationToken</param>
         Task ExecuteAsync(ProcessStep step, StationTaskBase task, CancellationToken token);
     }
 }

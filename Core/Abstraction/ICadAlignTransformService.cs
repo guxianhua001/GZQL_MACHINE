@@ -19,5 +19,10 @@ namespace Core.Abstraction
         /// </summary>
         /// <param name="snapshot">新的变换快照</param>
         void UpdateSnapshot(CadAlignTransformSnapshot snapshot);
+
+        /// <summary>
+        /// 若当前快照无效，尝试从持久化 CAD 对齐配置恢复（供 Dispense 等工具打开时调用）
+        /// </summary>
+        System.Threading.Tasks.Task EnsureSnapshotRestoredAsync();
     }
 }

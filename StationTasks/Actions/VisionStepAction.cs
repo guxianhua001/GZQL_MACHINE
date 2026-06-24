@@ -187,7 +187,10 @@ namespace StationTasks.Actions
                 return;
             }
 
-            var poolId = _recipePoolService.CurrentPoolName;
+            // 配方池键与 GOTO 一致：优先 Name，保证 VISION 写入与 GOTO 读取同一池
+            var poolId = !string.IsNullOrEmpty(_recipePoolService.CurrentPoolName)
+                ? _recipePoolService.CurrentPoolName
+                : _recipePoolService.CurrentPoolId;
             if (string.IsNullOrEmpty(poolId)) return;
 
             var globalVars = await _recipePoolService.LoadGlobalVariablesAsync(poolId);

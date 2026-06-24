@@ -33,6 +33,9 @@ namespace Module.ViewModels
         /// <summary>配置文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
 
+        /// <summary>各系统参数快照缓存（含文件路径），切换系统时保留未保存的编辑</summary>
+        private readonly Dictionary<int, NeedleCameraSystemState> _systemStateCache = new();
+
         private int _selectedSystemNumber = 1;
         private double _cameraCenterX;
         private double _cameraCenterY;
@@ -84,29 +87,32 @@ namespace Module.ViewModels
             _ = InitializeAsync().ConfigureAwait(false);
         }
 
-        /// <summary>初始化：确保默认全局变量存在，加载变量列表，再自动加载 JSON 配置</summary>
+        /// <summary>初始化：确保默认全局变量存在，预加载系统1/2参数，再应用当前系统到 UI</summary>
         private async Task InitializeAsync()
         {
             await EnsureDefaultCompGlobalVariablesAsync(1, 2);
             await LoadGlobalVariablesAsync();
-            await TryAutoLoadConfigAsync();
+            await EnsureSystemCachedAsync(1);
+            await EnsureSystemCachedAsync(2);
+
+            if (_systemStateCache.TryGetValue(_selectedSystemNumber, out var state))
+                ApplySystemState(state, _selectedSystemNumber);
         }
 
         #region 属性
 
-        /// <summary>当前选择的系统编号（1或2）</summary>
+        /// <summary>当前选择的系统编号（1或2），切换时缓存旧系统并加载新系统独立参数</summary>
         public int SelectedSystemNumber
         {
             get => _selectedSystemNumber;
             set
             {
+                if (_selectedSystemNumber == value) return;
+                var previous = _selectedSystemNumber;
                 if (SetProperty(ref _selectedSystemNumber, value))
                 {
                     RaisePropertyChanged(nameof(NeedleTipZAxisLabel));
-                    _ = TryAutoLoadConfigAsync().ConfigureAwait(false);
-                    UpdateStatus(
-                        _localization.GetResource("NeedleCamera_Status_SystemSwitched", _selectedSystemNumber),
-                        Brushes.LightBlue);
+                    _ = SwitchSystemAsync(previous, value);
                 }
             }
         }
@@ -397,6 +403,7 @@ namespace Module.ViewModels
 
                 CurrentFilePath = filePath;
                 CurrentFileName = fileName;
+                StashCurrentSystemState(_selectedSystemNumber);
                 await SaveCurrentFileToRecipePoolAsync();
                 await WriteCompToGlobalVariablesAsync();
 
@@ -453,7 +460,10 @@ namespace Module.ViewModels
             CompensationY = 0;
             CompensationXExpression = null;
             CompensationYExpression = null;
-            _ = ApplyDefaultLinkedVariablesAsync(_selectedSystemNumber);
+            CompXLinkedVar = NeedleCameraGlobalVariableNames.GetDefaultCompXLinkedVar(_selectedSystemNumber);
+            CompYLinkedVar = NeedleCameraGlobalVariableNames.GetDefaultCompYLinkedVar(_selectedSystemNumber);
+            StashCurrentSystemState(_selectedSystemNumber);
+            _ = EnsureDefaultCompGlobalVariablesAsync(_selectedSystemNumber);
 
             UpdateStatus(
                 _localization.GetResource("NeedleCamera_Status_ParametersReset"),
@@ -564,6 +574,7 @@ namespace Module.ViewModels
 
             CurrentFilePath = filePath;
             CurrentFileName = Path.GetFileName(filePath);
+            StashCurrentSystemState(_selectedSystemNumber);
 
             UpdateStatus(_localization.GetResource("NeedleCamera_Status_LoadSuccess"), Brushes.LightGreen);
             _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}配置已加载: {filePath}");
@@ -697,6 +708,139 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>切换系统：缓存旧系统完整状态，加载新系统缓存或磁盘配置</summary>
+        private async Task SwitchSystemAsync(int previousSystem, int newSystem)
+        {
+            try
+            {
+                StashCurrentSystemState(previousSystem);
+
+                if (_systemStateCache.TryGetValue(newSystem, out var cached))
+                {
+                    ApplySystemState(cached, newSystem);
+                    UpdateStatus(
+                        _localization.GetResource("NeedleCamera_Status_SystemSwitched", newSystem),
+                        Brushes.LightBlue);
+                    return;
+                }
+
+                var loaded = await LoadSystemStateFromDiskAsync(newSystem);
+                _systemStateCache[newSystem] = loaded;
+                ApplySystemState(loaded, newSystem);
+                UpdateStatus(
+                    _localization.GetResource("NeedleCamera_Status_SystemSwitched", newSystem),
+                    Brushes.LightBlue);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleCamera] 切换系统失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>缓存当前系统的参数与文件信息（深拷贝，避免切换后互相污染）</summary>
+        private void StashCurrentSystemState(int systemNumber)
+        {
+            var parameters = BuildCurrentParams();
+            parameters.SystemNumber = systemNumber;
+            _systemStateCache[systemNumber] = new NeedleCameraSystemState
+            {
+                Parameters = parameters.Clone(),
+                CurrentFilePath = CurrentFilePath,
+                CurrentFileName = CurrentFileName
+            };
+        }
+
+        /// <summary>应用指定系统的完整状态到 UI</summary>
+        private void ApplySystemState(NeedleCameraSystemState state, int systemNumber)
+        {
+            if (state?.Parameters == null)
+                state = CreateDefaultSystemState(systemNumber);
+
+            ApplyParams(state.Parameters);
+            CurrentFilePath = state.CurrentFilePath;
+            CurrentFileName = state.CurrentFileName;
+            RaisePropertyChanged(nameof(CalculatedCompX));
+            RaisePropertyChanged(nameof(CalculatedCompY));
+        }
+
+        /// <summary>创建指定系统的默认参数集（全零 + 默认补偿链接）</summary>
+        private static NeedleCameraSystemState CreateDefaultSystemState(int systemNumber) =>
+            new()
+            {
+                Parameters = new NeedleCameraCalibrationParams
+                {
+                    SystemNumber = systemNumber,
+                    CompXLinkedVar = NeedleCameraGlobalVariableNames.GetDefaultCompXLinkedVar(systemNumber),
+                    CompYLinkedVar = NeedleCameraGlobalVariableNames.GetDefaultCompYLinkedVar(systemNumber)
+                }
+            };
+
+        /// <summary>预加载另一系统参数到缓存（不切换 UI）</summary>
+        private async Task EnsureSystemCachedAsync(int systemNumber)
+        {
+            if (_systemStateCache.ContainsKey(systemNumber))
+                return;
+
+            _systemStateCache[systemNumber] = await LoadSystemStateFromDiskAsync(systemNumber);
+        }
+
+        /// <summary>从配方池记录或目录加载指定系统的参数快照</summary>
+        private async Task<NeedleCameraSystemState> LoadSystemStateFromDiskAsync(int systemNumber)
+        {
+            try
+            {
+                var poolName = _recipePoolService?.CurrentPoolName ?? "Default";
+                var extKey = $"NeedleCamera_CurrentFile_System{systemNumber}";
+                var extData = await _recipePoolService.GetExtensionDataAsync<NeedleCameraFileRecord>(poolName, extKey);
+
+                if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                {
+                    var json = await File.ReadAllTextAsync(extData.FilePath);
+                    var parameters = JsonConvert.DeserializeObject<NeedleCameraCalibrationParams>(json);
+                    if (parameters != null)
+                    {
+                        _logger.Info($"[NeedleCamera] 系统{systemNumber}从配方池记录加载: {extData.FilePath}");
+                        return new NeedleCameraSystemState
+                        {
+                            Parameters = parameters,
+                            CurrentFilePath = extData.FilePath,
+                            CurrentFileName = Path.GetFileName(extData.FilePath)
+                        };
+                    }
+                }
+
+                var configDir = GetConfigDirectory(systemNumber);
+                var latest = Directory
+                    .EnumerateFiles(configDir, $"NeedleCalibration_System{systemNumber}_*.json")
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .FirstOrDefault();
+
+                if (latest != null)
+                {
+                    var json = await File.ReadAllTextAsync(latest);
+                    var parameters = JsonConvert.DeserializeObject<NeedleCameraCalibrationParams>(json);
+                    if (parameters != null)
+                    {
+                        _logger.Info($"[NeedleCamera] 系统{systemNumber}加载最新文件: {latest}");
+                        return new NeedleCameraSystemState
+                        {
+                            Parameters = parameters,
+                            CurrentFilePath = latest,
+                            CurrentFileName = Path.GetFileName(latest)
+                        };
+                    }
+                }
+
+                _logger.Info($"[NeedleCamera] 系统{systemNumber}无可加载的配置文件，使用默认参数");
+                return CreateDefaultSystemState(systemNumber);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[NeedleCamera] 加载系统{systemNumber}配置失败: {ex.Message}");
+                return CreateDefaultSystemState(systemNumber);
+            }
+        }
+
         /// <summary>从ViewModel当前状态构建参数对象</summary>
         private NeedleCameraCalibrationParams BuildCurrentParams()
         {
@@ -718,45 +862,6 @@ namespace Module.ViewModels
                 LastCalibrated = DateTime.Now,
                 SystemNumber = _selectedSystemNumber
             };
-        }
-
-        /// <summary>尝试从配方池记录自动加载最近使用的配置文件</summary>
-        private async Task TryAutoLoadConfigAsync()
-        {
-            try
-            {
-                var poolName = _recipePoolService?.CurrentPoolName ?? "Default";
-                var extKey = $"NeedleCamera_CurrentFile_System{_selectedSystemNumber}";
-                var extData = await _recipePoolService.GetExtensionDataAsync<NeedleCameraFileRecord>(poolName, extKey);
-
-                if (extData?.FilePath != null && File.Exists(extData.FilePath))
-                {
-                    _logger.Info($"[NeedleCamera] 从配方池记录加载: {extData.FilePath}");
-                    await LoadConfigFromPathAsync(extData.FilePath);
-                    return;
-                }
-
-                // 回退：加载目录中最新的配置文件
-                var configDir = GetConfigDirectory(_selectedSystemNumber);
-                var latest = Directory
-                    .EnumerateFiles(configDir, $"NeedleCalibration_System{_selectedSystemNumber}_*.json")
-                    .OrderByDescending(f => File.GetLastWriteTime(f))
-                    .FirstOrDefault();
-
-                if (latest != null)
-                {
-                    _logger.Info($"[NeedleCamera] 配方池无记录，加载最新文件: {latest}");
-                    await LoadConfigFromPathAsync(latest);
-                    return;
-                }
-
-                await ApplyDefaultLinkedVariablesAsync(_selectedSystemNumber);
-                _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}无可加载的配置文件，已应用默认补偿链接");
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"[NeedleCamera] 自动加载配置失败: {ex.Message}");
-            }
         }
 
         /// <summary>将当前文件路径保存到配方池ExtensionData</summary>
@@ -938,6 +1043,14 @@ namespace Module.ViewModels
         }
 
         #endregion
+    }
+
+    /// <summary>单系统针头相机标定状态（参数 + 文件路径）</summary>
+    internal sealed class NeedleCameraSystemState
+    {
+        public NeedleCameraCalibrationParams Parameters { get; init; }
+        public string CurrentFilePath { get; init; }
+        public string CurrentFileName { get; init; }
     }
 
     /// <summary>记录最后使用的参数文件路径</summary>

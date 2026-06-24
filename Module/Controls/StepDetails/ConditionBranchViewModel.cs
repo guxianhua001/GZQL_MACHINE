@@ -1,6 +1,7 @@
 using Core.Models;
 using Core.Utilities;
 using Core.Abstraction;
+using Module.Models;
 using Module.Services;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -9,6 +10,7 @@ using StationTasks.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -19,6 +21,8 @@ namespace Module.ViewModels
     {
         private readonly IProcessSequenceService _sequenceService;
         private readonly IRecipePoolService _recipePoolService;
+        private readonly IFormulaEvaluator _formulaEvaluator;
+        private readonly ILocalizationService _localization;
         private readonly ILoggerService _logger;
         private ProcessStep _step;
 
@@ -35,10 +39,14 @@ namespace Module.ViewModels
         public ConditionBranchViewModel(
             IProcessSequenceService sequenceService,
             IRecipePoolService recipePoolService,
+            IFormulaEvaluator formulaEvaluator,
+            ILocalizationService localization,
             ILoggerService logger)
         {
             _sequenceService = sequenceService;
             _recipePoolService = recipePoolService;
+            _formulaEvaluator = formulaEvaluator;
+            _localization = localization;
             _logger = logger;
 
             OutputParameters = new ObservableCollection<BranchOutputParameter>();
@@ -65,6 +73,7 @@ namespace Module.ViewModels
             CancelCommand = new DelegateCommand(OnCancel);
             MoveUpCommand = new DelegateCommand<BranchCondition>(OnMoveUp);
             MoveDownCommand = new DelegateCommand<BranchCondition>(OnMoveDown);
+            CheckConditionCommand = new DelegateCommand<BranchCondition>(async c => await OnCheckConditionAsync(c));
         }
 
         /// <summary> 当前正在配置的步骤（设置时自动加载现有配置） </summary>
@@ -217,6 +226,7 @@ namespace Module.ViewModels
         public ICommand CancelCommand { get; }
         public ICommand MoveUpCommand { get; }
         public ICommand MoveDownCommand { get; }
+        public ICommand CheckConditionCommand { get; }
 
         /// <summary> 从步骤加载现有的分支配置到UI </summary>
         private void LoadFromStep(ProcessStep step)
@@ -282,7 +292,9 @@ namespace Module.ViewModels
             GlobalVariableNames.Clear();
             try
             {
-                var poolId = _recipePoolService?.CurrentPoolId;
+                var poolId = !string.IsNullOrEmpty(_recipePoolService?.CurrentPoolName)
+                    ? _recipePoolService.CurrentPoolName
+                    : _recipePoolService?.CurrentPoolId;
                 if (string.IsNullOrEmpty(poolId)) return;
 
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
@@ -320,48 +332,202 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 收集当前步骤之前所有步骤的输出参数，供条件表达式中引用和输出参数下拉选择
-        /// 自动为每个前序步骤生成一个布尔型"整体结果"输出（如 @Output:步骤3_结果）
-        /// 同时收集已配置的 BranchConfig.OutputParameters 和 VisionDetail.VariableMappings
+        /// 支持 IF 分支内子步骤：收集 IF 之前顶层步骤 + 同分支前序子步骤
         /// </summary>
         private void LoadPreviousStepOutputs(ProcessStep currentStep)
         {
             PreviousStepOutputs.Clear();
             PreviousStepOutputNames.Clear();
 
-            if (_sequenceService?.CurrentTask?.Steps == null || currentStep == null) return;
+            if (currentStep == null) return;
 
-            foreach (var step in _sequenceService.CurrentTask.Steps)
+            // 跨全部方法搜索 IF 子步骤（方法4 可能不是当前 SelectedMethod）
+            if (TryFindIfSubStepInTask(currentStep, out var parentMethod, out var parentIf, out var branch, out int subIndex))
             {
-                if (step.Seq >= currentStep.Seq) break;
-
-                // 为每个前序步骤自动添加布尔型“整体结果”输出
-                string stepResultName = $"@Output:Step{step.Seq}_{step.Step}Result";
-                AddStepOutput(stepResultName, GlobalVariableType.Bool);
-
-                // 收集已配置的 BranchConfig 输出参数（携带类型信息）
-                if (step.BranchConfig?.OutputParameters != null)
+                if (parentMethod?.Steps != null)
                 {
-                    foreach (var param in step.BranchConfig.OutputParameters)
+                    foreach (var step in parentMethod.Steps)
                     {
-                        if (!string.IsNullOrEmpty(param.Name))
-                        {
-                            string refName = $"@Output:{param.Name}";
-                            AddStepOutput(refName, param.OutputType);
-                        }
+                        if (ReferenceEquals(step, parentIf)) break;
+                        CollectStepOutputsForEditor(step, null, null);
                     }
                 }
 
-                // 收集 VISION 步骤的变量映射输出（根据全局变量类型推断）
-                if (step.VisionDetail?.VariableMappings != null)
+                if (branch.Steps != null)
                 {
-                    foreach (var mapping in step.VisionDetail.VariableMappings)
+                    for (int i = 0; i < subIndex && i < branch.Steps.Count; i++)
+                        CollectStepOutputsForEditor(branch.Steps[i], parentIf, branch.Header);
+                }
+                return;
+            }
+
+            var methodSteps = ResolveMethodStepsForStep(currentStep);
+            if (methodSteps == null) return;
+
+            foreach (var step in methodSteps)
+            {
+                if (step.Seq >= currentStep.Seq) break;
+                CollectStepOutputsForEditor(step, null, null);
+            }
+        }
+
+        /// <summary> 解析步骤所属方法的顶层步骤列表 </summary>
+        private ObservableCollection<ProcessStep> ResolveMethodStepsForStep(ProcessStep currentStep)
+        {
+            if (_sequenceService?.CurrentTask?.Methods != null)
+            {
+                foreach (var method in _sequenceService.CurrentTask.Methods)
+                {
+                    if (method.Steps == null) continue;
+                    if (method.Steps.Any(s => ReferenceEquals(s, currentStep))
+                        || ContainsStepRecursive(method.Steps, currentStep))
+                        return method.Steps;
+                }
+            }
+
+            return _sequenceService?.SelectedMethod?.Steps
+                   ?? _sequenceService?.CurrentTask?.Steps;
+        }
+
+        private static bool ContainsStepRecursive(IEnumerable<ProcessStep> steps, ProcessStep target)
+        {
+            foreach (var step in steps)
+            {
+                if (ReferenceEquals(step, target)) return true;
+                if (step.IfBranches == null) continue;
+                foreach (var branch in step.IfBranches)
+                {
+                    if (branch.Steps != null && ContainsStepRecursive(branch.Steps, target))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary> 在任务全部方法中定位 IF 分支内子步骤 </summary>
+        private bool TryFindIfSubStepInTask(
+            ProcessStep target,
+            out ProcessMethod parentMethod,
+            out ProcessStep parentIf,
+            out IfBranchGroup branch,
+            out int subIndex)
+        {
+            parentMethod = null;
+            parentIf = null;
+            branch = null;
+            subIndex = -1;
+
+            var methods = _sequenceService?.CurrentTask?.Methods;
+            if (methods == null) return false;
+
+            foreach (var method in methods)
+            {
+                if (method.Steps == null) continue;
+                if (TryFindIfSubStepContext(method.Steps, target, out parentIf, out branch, out subIndex))
+                {
+                    parentMethod = method;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary> 在方法步骤树中定位 IF 分支内子步骤 </summary>
+        private static bool TryFindIfSubStepContext(
+            IEnumerable<ProcessStep> rootSteps,
+            ProcessStep target,
+            out ProcessStep parentIf,
+            out IfBranchGroup branch,
+            out int subIndex)
+        {
+            parentIf = null;
+            branch = null;
+            subIndex = -1;
+
+            foreach (var root in rootSteps)
+            {
+                if (root.Step != StepType.IF || root.IfBranches == null) continue;
+
+                foreach (var br in root.IfBranches)
+                {
+                    if (SearchInIfBranch(root, br, target, out parentIf, out branch, out subIndex))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary> 递归搜索 IF 分支组内的子步骤 </summary>
+        private static bool SearchInIfBranch(
+            ProcessStep ownerIf,
+            IfBranchGroup branch,
+            ProcessStep target,
+            out ProcessStep parentIf,
+            out IfBranchGroup foundBranch,
+            out int subIndex)
+        {
+            parentIf = null;
+            foundBranch = null;
+            subIndex = -1;
+
+            if (branch.Steps == null) return false;
+
+            for (int i = 0; i < branch.Steps.Count; i++)
+            {
+                var sub = branch.Steps[i];
+                if (ReferenceEquals(sub, target))
+                {
+                    parentIf = ownerIf;
+                    foundBranch = branch;
+                    subIndex = i;
+                    return true;
+                }
+
+                if (sub.Step == StepType.IF && sub.IfBranches != null)
+                {
+                    foreach (var nested in sub.IfBranches)
                     {
-                        if (!string.IsNullOrEmpty(mapping.GlobalVariableName))
-                        {
-                            string refName = $"@GV:{mapping.GlobalVariableName}";
-                            var gvType = GlobalVariables.FirstOrDefault(g => g.Name == mapping.GlobalVariableName);
-                            AddStepOutput(refName, gvType?.Type ?? GlobalVariableType.Double);
-                        }
+                        if (SearchInIfBranch(sub, nested, target, out parentIf, out foundBranch, out subIndex))
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary> 收集单个步骤的可引用输出（与 ProcessStepExecutor 运行时键名一致） </summary>
+        private void CollectStepOutputsForEditor(ProcessStep step, ProcessStep parentIf, string branchHeader)
+        {
+            bool isIfSub = parentIf != null;
+            string qualifiedName = isIfSub
+                ? $"@Output:If{parentIf.Seq}_{branchHeader}_Step{step.Seq}_{step.Step}Result"
+                : $"@Output:Step{step.Seq}_{step.Step}Result";
+            AddStepOutput(qualifiedName, GlobalVariableType.Bool);
+
+            if (isIfSub)
+                AddStepOutput($"@Output:Step{step.Seq}_{step.Step}Result", GlobalVariableType.Bool);
+
+            if (step.BranchConfig?.OutputParameters != null)
+            {
+                foreach (var param in step.BranchConfig.OutputParameters)
+                {
+                    if (!string.IsNullOrEmpty(param.Name))
+                        AddStepOutput($"@Output:{param.Name}", param.OutputType);
+                }
+            }
+
+            if (step.VisionDetail?.VariableMappings != null)
+            {
+                foreach (var mapping in step.VisionDetail.VariableMappings)
+                {
+                    if (!string.IsNullOrEmpty(mapping.GlobalVariableName))
+                    {
+                        string refName = $"@GV:{mapping.GlobalVariableName}";
+                        var gvType = GlobalVariables.FirstOrDefault(g => g.Name == mapping.GlobalVariableName);
+                        AddStepOutput(refName, gvType?.Type ?? GlobalVariableType.Double);
                     }
                 }
             }
@@ -388,6 +554,83 @@ namespace Module.ViewModels
             ConditionErrors[condition] = error;
             RaisePropertyChanged(nameof(HasValidationErrors));
         }
+
+        /// <summary>
+        /// 检测单条条件表达式求值结果：加载全局变量实际值，@Output: 无运行时值时按 0/false 处理。
+        /// </summary>
+        private async Task OnCheckConditionAsync(BranchCondition condition)
+        {
+            if (condition == null) return;
+
+            condition.CheckResultMessage = "";
+            condition.CheckResultIsTrue = null;
+
+            if (string.IsNullOrWhiteSpace(condition.ConditionExpression))
+            {
+                condition.CheckResultMessage = L("BranchDetail_CheckEmptyExpression");
+                return;
+            }
+
+            ValidateCondition(condition);
+            if (!string.IsNullOrEmpty(ConditionErrors.GetValueOrDefault(condition)))
+            {
+                condition.CheckResultMessage = L("BranchDetail_CheckSyntaxError");
+                return;
+            }
+
+            try
+            {
+                var variables = await BuildEvaluationVariablesAsync();
+                bool result = _formulaEvaluator.EvaluateCondition(condition.ConditionExpression, variables);
+                condition.CheckResultIsTrue = result;
+
+                string resultText = result ? L("BranchDetail_CheckResultTrue") : L("BranchDetail_CheckResultFalse");
+                string branchHint = result
+                    ? string.Format(CultureInfo.CurrentCulture, L("BranchDetail_CheckBranchMatched"), condition.TargetStepSeq)
+                    : L("BranchDetail_CheckBranchNotMatched");
+                condition.CheckResultMessage = string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("BranchDetail_CheckResultFormat"),
+                    resultText,
+                    branchHint);
+
+                _logger?.Info($"[ConditionBranch] 表达式检测: '{condition.ConditionExpression}' => {result}");
+            }
+            catch (Exception ex)
+            {
+                condition.CheckResultMessage = string.Format(CultureInfo.CurrentCulture, L("BranchDetail_CheckFailed"), ex.Message);
+                _logger?.Warn($"[ConditionBranch] 表达式检测失败: {ex.Message}");
+            }
+        }
+
+        /// <summary> 构建求值变量池：@GV: 取配方池全局变量，@Output: 暂用 0（编辑器无运行时输出） </summary>
+        private async Task<Dictionary<string, string>> BuildEvaluationVariablesAsync()
+        {
+            var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            var poolId = !string.IsNullOrEmpty(_recipePoolService?.CurrentPoolName)
+                ? _recipePoolService.CurrentPoolName
+                : _recipePoolService?.CurrentPoolId;
+            if (!string.IsNullOrEmpty(poolId))
+            {
+                var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId);
+                foreach (var gv in globalVars)
+                {
+                    if (!string.IsNullOrEmpty(gv.Name))
+                        variables[$"@GV:{gv.Name}"] = gv.Value ?? "0";
+                }
+            }
+
+            foreach (var outputName in PreviousStepOutputNames)
+            {
+                if (!variables.ContainsKey(outputName))
+                    variables[outputName] = "0";
+            }
+
+            return variables;
+        }
+
+        private string L(string key) => _localization?.GetResourceOrDefault(key, key) ?? key;
 
         /// <summary> 校验所有条件表达式 </summary>
         public void ValidateAllConditions()

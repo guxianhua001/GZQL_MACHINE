@@ -49,7 +49,7 @@ namespace Core.Models
         }
 
         private bool _enableZCalibration;
-        /// <summary>是否启用Z轴校准（默认 false）</summary>
+        /// <summary>是否启用校准（X/Y/Z Comp 校准器 + Z Comp 3D Camera，默认 false）</summary>
         public bool EnableZCalibration
         {
             get => _enableZCalibration;
@@ -81,19 +81,43 @@ namespace Core.Models
         }
 
         private string _zCompensationCalibratorLinkedVar;
-        /// <summary>Z补偿（校准器）链接的全局变量名</summary>
+        /// <summary>Z Comp（校准器）链接的全局变量名</summary>
         public string ZCompensationCalibratorLinkedVar
         {
             get => _zCompensationCalibratorLinkedVar;
             set => SetProperty(ref _zCompensationCalibratorLinkedVar, value);
         }
 
-        private double _manualZCompensation;
-        /// <summary>手动Z补偿（人工输入）mm</summary>
-        public double ManualZCompensation
+        private double _xCompensationCalibrator;
+        /// <summary>X Comp（校准器）mm（可链接全局变量）</summary>
+        public double XCompensationCalibrator
         {
-            get => _manualZCompensation;
-            set => SetProperty(ref _manualZCompensation, value);
+            get => _xCompensationCalibrator;
+            set => SetProperty(ref _xCompensationCalibrator, value);
+        }
+
+        private string _xCompensationCalibratorLinkedVar;
+        /// <summary>X Comp（校准器）链接的全局变量名</summary>
+        public string XCompensationCalibratorLinkedVar
+        {
+            get => _xCompensationCalibratorLinkedVar;
+            set => SetProperty(ref _xCompensationCalibratorLinkedVar, value);
+        }
+
+        private double _yCompensationCalibrator;
+        /// <summary>Y Comp（校准器）mm（可链接全局变量）</summary>
+        public double YCompensationCalibrator
+        {
+            get => _yCompensationCalibrator;
+            set => SetProperty(ref _yCompensationCalibrator, value);
+        }
+
+        private string _yCompensationCalibratorLinkedVar;
+        /// <summary>Y Comp（校准器）链接的全局变量名</summary>
+        public string YCompensationCalibratorLinkedVar
+        {
+            get => _yCompensationCalibratorLinkedVar;
+            set => SetProperty(ref _yCompensationCalibratorLinkedVar, value);
         }
 
         private bool _enableComp;
@@ -158,6 +182,96 @@ namespace Core.Models
         {
             get => _rotationAngleLinkedVar;
             set => SetProperty(ref _rotationAngleLinkedVar, value);
+        }
+
+        #endregion
+
+        #region 针头偏移补偿（旋转后坐标→实际点胶针头坐标）
+
+        // 旋转后坐标(RotatedX/Y)得到的是相机中心坐标，实际点胶针头与相机中心存在固定间距。
+        // 最终点胶坐标 = RotatedX + 相机与针头固定距离X + 对针补偿X（Y 同理）。
+        // X/Y Comp(校准器)与 X/Y Compensation 在 DISPENSE 详情页配置，由 Enable Calibration / Enable Comp 控制。
+
+        private bool _enableNeedleOffsetComp;
+        /// <summary>是否启用针头偏移补偿（将相机中心坐标换算为实际针头点胶坐标）</summary>
+        public bool EnableNeedleOffsetComp
+        {
+            get => _enableNeedleOffsetComp;
+            set => SetProperty(ref _enableNeedleOffsetComp, value);
+        }
+
+        private double _cameraNeedleOffsetX;
+        /// <summary>相机与针头固定距离 X（mm，可链接全局变量或针头标定偏移量）</summary>
+        public double CameraNeedleOffsetX
+        {
+            get => _cameraNeedleOffsetX;
+            set => SetProperty(ref _cameraNeedleOffsetX, value);
+        }
+
+        private double _cameraNeedleOffsetY;
+        /// <summary>相机与针头固定距离 Y（mm，可链接全局变量或针头标定偏移量）</summary>
+        public double CameraNeedleOffsetY
+        {
+            get => _cameraNeedleOffsetY;
+            set => SetProperty(ref _cameraNeedleOffsetY, value);
+        }
+
+        private string _cameraNeedleOffsetXLinkedVar;
+        /// <summary>相机与针头固定距离 X 链接的全局变量名</summary>
+        public string CameraNeedleOffsetXLinkedVar
+        {
+            get => _cameraNeedleOffsetXLinkedVar;
+            set => SetProperty(ref _cameraNeedleOffsetXLinkedVar, value);
+        }
+
+        private string _cameraNeedleOffsetYLinkedVar;
+        /// <summary>相机与针头固定距离 Y 链接的全局变量名</summary>
+        public string CameraNeedleOffsetYLinkedVar
+        {
+            get => _cameraNeedleOffsetYLinkedVar;
+            set => SetProperty(ref _cameraNeedleOffsetYLinkedVar, value);
+        }
+
+        private bool _linkCameraNeedleOffsetToCalibration;
+        /// <summary>
+        /// 是否链接相机与针头固定距离（勾选时取全局变量值，不勾选则为 0）。
+        /// </summary>
+        public bool LinkCameraNeedleOffsetToCalibration
+        {
+            get => _linkCameraNeedleOffsetToCalibration;
+            set => SetProperty(ref _linkCameraNeedleOffsetToCalibration, value);
+        }
+
+        private double _needleAlignCompX;
+        /// <summary>对针补偿 X（mm，可链接全局变量，默认对应对针校准结果）</summary>
+        public double NeedleAlignCompX
+        {
+            get => _needleAlignCompX;
+            set => SetProperty(ref _needleAlignCompX, value);
+        }
+
+        private double _needleAlignCompY;
+        /// <summary>对针补偿 Y（mm，可链接全局变量，默认对应对针校准结果）</summary>
+        public double NeedleAlignCompY
+        {
+            get => _needleAlignCompY;
+            set => SetProperty(ref _needleAlignCompY, value);
+        }
+
+        private string _needleAlignCompXLinkedVar;
+        /// <summary>对针补偿 X 链接的全局变量名（默认 NeedleAligner_CompX_LinkedVar）</summary>
+        public string NeedleAlignCompXLinkedVar
+        {
+            get => _needleAlignCompXLinkedVar;
+            set => SetProperty(ref _needleAlignCompXLinkedVar, value);
+        }
+
+        private string _needleAlignCompYLinkedVar;
+        /// <summary>对针补偿 Y 链接的全局变量名（默认 NeedleAligner_CompY_LinkedVar）</summary>
+        public string NeedleAlignCompYLinkedVar
+        {
+            get => _needleAlignCompYLinkedVar;
+            set => SetProperty(ref _needleAlignCompYLinkedVar, value);
         }
 
         #endregion

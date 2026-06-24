@@ -48,6 +48,39 @@ namespace StationTasks.Actions
         /// <summary> 步骤输出参数累积字典，供 SCRIPT 步骤读取前序步骤输出 </summary>
         private Dictionary<string, string> _stepOutputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary> IF 分支内子步骤执行上下文，用于生成唯一输出键并供 BRANCH 表达式引用 </summary>
+        private readonly struct IfExecutionContext
+        {
+            public ProcessStep ParentIfStep { get; init; }
+            public string BranchHeader { get; init; }
+            public bool IsActive => ParentIfStep != null;
+        }
+
+        /// <summary> 构建步骤整体结果输出键；IF 子步骤使用 If{父Seq}_{分支}_Step{子Seq}_{类型}Result 避免与顶层步骤冲突 </summary>
+        private static string BuildStepResultKey(ProcessStep step, IfExecutionContext? ifCtx)
+        {
+            if (ifCtx?.IsActive == true)
+                return $"If{ifCtx.Value.ParentIfStep.Seq}_{ifCtx.Value.BranchHeader}_Step{step.Seq}_{step.Step}Result";
+            return $"Step{step.Seq}_{step.Step}Result";
+        }
+
+        /// <summary> 记录步骤整体结果到 _stepOutputs；IF 子步骤同时写入短别名供 @Output:Step{子Seq}_{类型}Result 引用 </summary>
+        private void RecordStepResultOutput(ProcessStep step, string value, IfExecutionContext? ifCtx)
+        {
+            string key = BuildStepResultKey(step, ifCtx);
+            _stepOutputs[key] = value;
+            if (ifCtx?.IsActive == true)
+                _stepOutputs[$"Step{step.Seq}_{step.Step}Result"] = value;
+        }
+
+        /// <summary> 获取当前配方池标识（优先 Name，与持久化键一致） </summary>
+        private string GetCurrentPoolKey()
+        {
+            if (!string.IsNullOrEmpty(_recipePoolService?.CurrentPoolName))
+                return _recipePoolService.CurrentPoolName;
+            return _recipePoolService?.CurrentPoolId;
+        }
+
         /// <summary> 步骤标签→步骤对象映射，用于事件回调时快速查找 </summary>
         private Dictionary<string, ProcessStep> _stepLookup;
 
@@ -56,6 +89,19 @@ namespace StationTasks.Actions
         /// 若为 null 表示不启用单步模式。
         /// </summary>
         public Func<CancellationToken, Task> StepGate { get; set; }
+
+        /// <summary>
+        /// 当前正在执行的步骤变更回调（含 IF 分支内子步骤），供 UI 同步 SelectedMethod/SelectedStep。
+        /// </summary>
+        public Action<ProcessStep> ExecutingStepChanged { get; set; }
+
+        /// <summary> 通知 UI 当前执行步骤，并设置 IsCurrent 高亮 </summary>
+        private void NotifyExecutingStep(ProcessStep step)
+        {
+            if (step == null) return;
+            step.IsCurrent = true;
+            ExecutingStepChanged?.Invoke(step);
+        }
 
         public ProcessStepExecutor(
             StationTaskBase task,
@@ -174,13 +220,13 @@ namespace StationTasks.Actions
                     }
 
                     // 标记当前步骤
-                    step.IsCurrent = true;
+                    NotifyExecutingStep(step);
                     _logger.Info($"=== 执行步骤 [{step.Seq}] {step.Step} ({step.CompFeature} → {step.SiteFeature}) ===");
 
                     try
                     {
                         var sw = Stopwatch.StartNew();
-                        int nextIndex = await ExecuteSingleStepAsync(step, steps, currentIndex, token);
+                        int nextIndex = await ExecuteSingleStepAsync(step, steps, currentIndex, token).ConfigureAwait(false);
                         sw.Stop();
                         step.LastElapsedMs = sw.ElapsedMilliseconds;
                         step.IsCurrent = false;
@@ -441,7 +487,11 @@ namespace StationTasks.Actions
         /// 通过 RunStep 包装执行步骤动作，享受暂停/急停/单步/可恢复异常保护
         /// 将步骤的 AlarmConfig 传递到 RunStep，实现步骤级自定义报警
         /// </summary>
-        private async Task ExecuteWithRunStepAsync(string stepLabel, ProcessStep step, CancellationToken token)
+        private async Task ExecuteWithRunStepAsync(
+            string stepLabel,
+            ProcessStep step,
+            CancellationToken token,
+            IfExecutionContext? ifCtx = null)
         {
             if (_actionMap.TryGetValue(step.Step, out var action))
             {
@@ -454,8 +504,8 @@ namespace StationTasks.Actions
                 bool publishStatus = step.Step != StepType.GOTO;
                 await _task.ExecuteStepSafeAsync(stepLabel, async () =>
                 {
-                    await action.ExecuteAsync(step, _task, token);
-                }, publishStatus, step.AlarmConfig);
+                    await action.ExecuteAsync(step, _task, token).ConfigureAwait(false);
+                }, publishStatus, step.AlarmConfig).ConfigureAwait(false);
 
                 // 步骤执行完成后，收集输出参数到累积字典，并写入目标全局变量
                 if (step.BranchConfig?.OutputParameters != null)
@@ -468,24 +518,22 @@ namespace StationTasks.Actions
                         }
                     }
 
-                    await WriteOutputParamsToGlobalVariablesAsync(step.BranchConfig.OutputParameters);
+                    await WriteOutputParamsToGlobalVariablesAsync(step.BranchConfig.OutputParameters).ConfigureAwait(false);
                 }
 
                 // DASHBOARD 步骤：结果根据确认结果判定（OK=true, NG=false）
                 if (step.Step == StepType.DASHBOARD && step.DashboardDetail != null)
                 {
-                    // 步骤整体结果 = 确认结果（OK=true, NG=false）
-                    string stepResultKey = $"Step{step.Seq}_{step.Step}Result";
+                    string stepResultKey = BuildStepResultKey(step, ifCtx);
                     if (step.DashboardDetail.ConfirmResult.HasValue)
                     {
-                        _stepOutputs[stepResultKey] = step.DashboardDetail.ConfirmResult.Value ? "true" : "false";
+                        RecordStepResultOutput(step, step.DashboardDetail.ConfirmResult.Value ? "true" : "false", ifCtx);
                     }
                     else
                     {
-                        _stepOutputs[stepResultKey] = "true";
+                        RecordStepResultOutput(step, "true", ifCtx);
                     }
 
-                    // 写入确认结果（OK=true, NG=false），供下游 BRANCH 步骤引用
                     if (step.DashboardDetail.ConfirmResult.HasValue)
                     {
                         string confirmKey = $"Step{step.Seq}_DASHBOARDConfirmResult";
@@ -503,9 +551,7 @@ namespace StationTasks.Actions
                 }
                 else
                 {
-                    // 非 DASHBOARD 步骤：步骤成功完成 = true
-                    string stepResultKey = $"Step{step.Seq}_{step.Step}Result";
-                    _stepOutputs[stepResultKey] = "true";
+                    RecordStepResultOutput(step, "true", ifCtx);
                 }
             }
             else
@@ -770,10 +816,10 @@ namespace StationTasks.Actions
         {
             try
             {
-                var poolId = _recipePoolService?.CurrentPoolId;
+                var poolId = GetCurrentPoolKey();
                 if (string.IsNullOrEmpty(poolId)) return;
 
-                var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId);
+                var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId).ConfigureAwait(false);
                 bool changed = false;
 
                 foreach (var output in outputParameters)
@@ -802,7 +848,7 @@ namespace StationTasks.Actions
 
                 if (changed)
                 {
-                    await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
+                    await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars).ConfigureAwait(false);
                     _logger.Info("[Branch] 全局变量已保存");
 
                     // 通知所有订阅者全局变量已更新
@@ -815,22 +861,26 @@ namespace StationTasks.Actions
             }
         }
 
+        /// <summary>
         /// 将输出参数以 @Output: 前缀加入变量池，供条件表达式引用
         /// 同时将前序步骤累积的输出参数（_stepOutputs）以 @Output: 前缀加入
+        /// branchPrecedingSteps：IF 分支内当前 BRANCH 之前的子步骤，确保同分支内工具输出可被表达式引用
         /// </summary>
         private async Task<Dictionary<string, string>> CollectContextVariablesAsync(
             ProcessStep step,
-            BranchConfig branchConfig)
+            BranchConfig branchConfig,
+            IfExecutionContext? ifCtx = null,
+            IReadOnlyList<ProcessStep> branchPrecedingSteps = null)
         {
             var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             // 加载全局变量（@GV: 前缀）
             try
             {
-                var poolId = _recipePoolService?.CurrentPoolId;
+                var poolId = GetCurrentPoolKey();
                 if (!string.IsNullOrEmpty(poolId))
                 {
-                    var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId);
+                    var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId).ConfigureAwait(false);
                     foreach (var gv in globalVars)
                     {
                         if (!string.IsNullOrEmpty(gv.Name))
@@ -853,8 +903,32 @@ namespace StationTasks.Actions
                 _logger.Info($"[Branch] 变量池 += {key} = {kv.Value}");
             }
 
+            // IF 分支内：显式合并同分支前序子步骤的输出（含 BranchConfig.OutputParameters）
+            if (branchPrecedingSteps != null && ifCtx?.IsActive == true)
+            {
+                foreach (var preceding in branchPrecedingSteps)
+                {
+                    string resultKey = BuildStepResultKey(preceding, ifCtx);
+                    if (_stepOutputs.TryGetValue(resultKey, out var resultVal))
+                        variables[$"@Output:{resultKey}"] = resultVal;
+
+                    string shortKey = $"Step{preceding.Seq}_{preceding.Step}Result";
+                    if (_stepOutputs.TryGetValue(shortKey, out var shortVal))
+                        variables[$"@Output:{shortKey}"] = shortVal;
+
+                    if (preceding.BranchConfig?.OutputParameters != null)
+                    {
+                        foreach (var output in preceding.BranchConfig.OutputParameters)
+                        {
+                            if (!string.IsNullOrEmpty(output.Name))
+                                variables[$"@Output:{output.Name}"] = output.Value ?? _stepOutputs.GetValueOrDefault(output.Name) ?? "false";
+                        }
+                    }
+                }
+            }
+
             // 将当前步骤配置的输出参数加入变量池（@Output: 前缀，可覆盖同名累积值）
-            if (branchConfig.OutputParameters != null)
+            if (branchConfig?.OutputParameters != null)
             {
                 foreach (var output in branchConfig.OutputParameters)
                 {
@@ -1051,7 +1125,8 @@ namespace StationTasks.Actions
 
             if (branch.Steps != null && branch.Steps.Count > 0)
             {
-                var listResult = await ExecuteStepListAsync(branch.Steps, outerSteps, outerCurrentIndex, token);
+                var ifCtx = new IfExecutionContext { ParentIfStep = step, BranchHeader = branch.Header };
+                var listResult = await ExecuteStepListAsync(branch.Steps, outerSteps, outerCurrentIndex, token, ifCtx).ConfigureAwait(false);
                 if (listResult.Kind == IfStepListResultKind.JumpToOuter)
                     return listResult.OuterIndex;
             }
@@ -1067,7 +1142,8 @@ namespace StationTasks.Actions
             ObservableCollection<ProcessStep> steps,
             ObservableCollection<ProcessStep> outerSteps,
             int outerCurrentIndex,
-            CancellationToken token)
+            CancellationToken token,
+            IfExecutionContext? ifCtx = null)
         {
             if (steps == null || steps.Count == 0)
                 return new IfStepListResult(IfStepListResultKind.Completed);
@@ -1083,7 +1159,7 @@ namespace StationTasks.Actions
                     continue;
                 }
 
-                step.IsCurrent = true;
+                NotifyExecutingStep(step);
                 _logger.Info($"[IF-Sub] === 执行子步骤 [{step.Seq}] {step.Step} ===");
 
                 try
@@ -1093,7 +1169,7 @@ namespace StationTasks.Actions
 
                     if (step.Step == StepType.IF)
                     {
-                        int? outerJump = await ExecuteIfStepAsync(step, outerSteps, outerCurrentIndex, token);
+                        int? outerJump = await ExecuteIfStepAsync(step, outerSteps, outerCurrentIndex, token).ConfigureAwait(false);
                         if (outerJump.HasValue)
                             return new IfStepListResult(IfStepListResultKind.JumpToOuter, outerJump.Value);
                     }
@@ -1101,7 +1177,8 @@ namespace StationTasks.Actions
                     {
                         if (step.BranchConfig?.IsEnabled == true)
                         {
-                            int? outerJump = await TryExecuteBranchJumpOutAsync(step, outerSteps, token);
+                            var precedingSteps = steps.Take(i).ToList();
+                            int? outerJump = await TryExecuteBranchJumpOutAsync(step, outerSteps, token, ifCtx, precedingSteps).ConfigureAwait(false);
                             if (outerJump.HasValue)
                             {
                                 _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 块外跳转，目标索引={outerJump.Value}");
@@ -1112,7 +1189,7 @@ namespace StationTasks.Actions
                     }
                     else
                     {
-                        await ExecuteWithRunStepAsync(stepLabel, step, token);
+                        await ExecuteWithRunStepAsync(stepLabel, step, token, ifCtx).ConfigureAwait(false);
                     }
 
                     sw.Stop();
@@ -1135,6 +1212,9 @@ namespace StationTasks.Actions
                 {
                     step.IsCurrent = false;
                 }
+
+                // 让出 UI 线程，避免 WAIT→GOTO→BRANCH 快速循环时界面卡顿
+                await Task.Yield();
             }
 
             return new IfStepListResult(IfStepListResultKind.Completed);
@@ -1147,12 +1227,14 @@ namespace StationTasks.Actions
         private async Task<int?> TryExecuteBranchJumpOutAsync(
             ProcessStep step,
             ObservableCollection<ProcessStep> outerSteps,
-            CancellationToken token)
+            CancellationToken token,
+            IfExecutionContext? ifCtx = null,
+            IReadOnlyList<ProcessStep> branchPrecedingSteps = null)
         {
             var branchConfig = step.BranchConfig;
             if (branchConfig == null || !branchConfig.IsEnabled) return null;
 
-            var variables = await CollectContextVariablesAsync(step, branchConfig);
+            var variables = await CollectContextVariablesAsync(step, branchConfig, ifCtx, branchPrecedingSteps).ConfigureAwait(false);
 
             int condIdx = 0;
             foreach (var condition in branchConfig.Conditions ?? Enumerable.Empty<BranchCondition>())
@@ -1238,10 +1320,10 @@ namespace StationTasks.Actions
             // 加载全局变量（@GV: 前缀）
             try
             {
-                var poolId = _recipePoolService?.CurrentPoolId;
+                var poolId = GetCurrentPoolKey();
                 if (!string.IsNullOrEmpty(poolId))
                 {
-                    var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId);
+                    var globalVars = await _recipePoolService!.LoadGlobalVariablesAsync(poolId).ConfigureAwait(false);
                     foreach (var gv in globalVars)
                     {
                         if (!string.IsNullOrEmpty(gv.Name))

@@ -44,6 +44,13 @@ namespace MotionControl.Services
                 return CancellationTokenSource.CreateLinkedTokenSource(stopToken, _pauseCts.Token).Token;
             }
         }
+
+        /// <summary>
+        /// 运动专用取消令牌（停止 + 暂停）：供工艺步骤 Action 传入 MoveAbsAsync / WaitForDone 等。
+        /// 暂停时 _pauseCts 取消，可立即中断运动等待，避免误报运动超时。
+        /// </summary>
+        public CancellationToken MotionCancellationToken => PauseAwareToken;
+
         public string TaskName { get; }
         public int TaskId { get; }
         public TaskState State { get; protected set; } = TaskState.Stopped;

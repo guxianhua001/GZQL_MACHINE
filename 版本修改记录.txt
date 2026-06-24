@@ -1,6 +1,314 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.24 — Rotation Coordinates 对针补偿递增按钮修复
+-------------------------------------------
+1. 问题：对针补偿旁独立「+」TextBlock 挤占宽度，DecimalUpDown 递增按钮被裁切无法点击。
+2. 修复：移除外部 + 号 TextBlock，改用 TextFieldAssist.PrefixText 显示正号，并加宽输入框。
+
+3. 修改文件
+   - Module/Controls/StepDetails/DispenseRotatedCoordsView.xaml
+   - Module/Controls/StepDetails/DispenseRotatedCoordsViewModel.cs
+
+v2026.06.24 — 位置编辑器删除位置未写入配方池
+-------------------------------------------
+1. 问题：删除 DispenserStation 等工站自定义位置后 UI 已移除，但配方池文件仍保留该位置。
+2. 原因：MergeStationParameter 在 incoming 位置数少于文件时会保留旧 Positions（防陈旧内存覆盖），误拦截了位置编辑器的合法删除。
+3. 修复：位置编辑器保存/暂存时传入 replacePositions=true，完整替换 Positions 节点；工站参数保存仍走合并保护逻辑。
+4. 修改文件
+   - RecipeManagement/Models/ParameterStagingArea.cs
+   - RecipeManagement/Models/RecipePoolSaveContext.cs
+   - RecipeManagement/Models/RecipeInfo.cs
+   - RecipeManagement/Interfaces/IRecipePoolService.cs
+   - RecipeManagement/Services/RecipePoolService.cs
+   - RecipeManagement/ViewModels/MultiStationPositionEditorViewModel.cs
+   - MotionControl.Tests/Recipe/RecipeInfoMergeTests.cs
+
+v2026.06.24 — DISPENSE 详情补偿区并排布局
+-------------------------------------------
+1. 第一排：Enable Calibration | Enable Comp 开关。
+2. 第二排：左列校准组 2×2 | 右列补偿组 X/Y（同一行两列）。
+3. 第三排：Enable Rotation Comp 及旋转角度配置。
+
+4. 修改文件
+   - Module/Controls/StepDetails/DispenseDetailView.xaml
+
+v2026.06.24 — Rotation Coordinates 偏移逻辑与 DISPENSE 详情布局
+-------------------------------------------
+1. Rotation Coordinates
+   - Link Needle Offset：勾选时相机-针头距离取全局变量，不勾选为 0；删除手动 XY 输入。
+   - Needle Alignment Comp 手动输入增加「+」前缀，链接显示带正负号格式。
+   - Final = Rotated + Camera-Needle(Link) + NeedleAlign + X/Y Comp(Enable Calibration) + X/Y Compensation(Enable Comp)。
+
+2. DISPENSE 详情布局
+   - 第一排：Enable Calibration + Enable Comp 开关。
+   - 第二排：校准组/补偿组各两列排列。
+   - 第三排：Enable Rotation Comp 及旋转配置。
+
+3. 修改文件
+   - ModuleCore/UserControls/GlobalVariableLinkControl.*
+   - Module/Controls/StepDetails/DispenseRotatedCoordsView.*
+   - Module/Controls/StepDetails/DispenseDetailView.xaml
+   - StationTasks/Actions/DispenseStepAction.cs
+
+v2026.06.24 — DISPENSE 补偿分组重构
+-------------------------------------------
+1. Enable Calibration 组（四选一链接控件）
+   - X Comp (Calibrator)、Y Comp (Calibrator)
+   - Z Comp (Calibrator)、Z Comp (3D Camera)
+   - 运行时仅在 Enable Calibration 启用时叠加 XY/Z 校准补偿
+
+2. Enable Comp 组
+   - X Compensation、Y Compensation（不变）
+
+3. 删除 Manual Comp（含手动 Z 补偿 UI 与模型字段）
+
+4. Rotation Coordinates 弹窗恢复为仅针头偏移（相机-针头距离 + 对针补偿）
+
+5. 修改文件
+   - Core/Models/DispenseDetail.cs
+   - Module/Controls/StepDetails/DispenseDetailView.xaml / ViewModel.cs
+   - Module/Controls/StepDetails/DispenseRotatedCoordsView.xaml / ViewModel.cs
+   - StationTasks/Actions/DispenseStepAction.cs
+   - MainApp/Languages/Strings.zh-CN.xaml / Strings.en-US.xaml
+
+v2026.06.24 — DISPENSE 补偿命名与最终坐标公式
+-------------------------------------------
+1. UI 重命名
+   - Enable Z Calibration → Enable Calibration（启用校准）。
+   - Manual Comp → X Comp (Calibrator) / Y Comp (Calibrator)。
+   - Z 向补偿区随「启用校准」开关显示；运行时仅启用时叠加 Z 补偿。
+
+2. 最终点胶坐标公式（预览与运动执行一致）
+   - FinalX = RotatedX + 针头偏移(可选) + X Comp(校准器) + X Compensation(可选)。
+   - FinalY 同理。
+
+3. 修改文件
+   - Core/Models/DispenseDetail.cs
+   - Module/Controls/StepDetails/DispenseDetailView.xaml
+   - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+   - Module/Controls/StepDetails/DispenseRotatedCoordsView.xaml
+   - Module/Controls/StepDetails/DispenseRotatedCoordsViewModel.cs
+   - StationTasks/Actions/DispenseStepAction.cs
+   - MainApp/Languages/Strings.zh-CN.xaml / Strings.en-US.xaml
+
+v2026.06.24 — IF/ELSE 子步骤 DASHBOARD 跨线程 CollectionView 崩溃修复
+-------------------------------------------
+1. 问题
+   - ELSE 分支下 DASHBOARD 步骤致命异常：
+     CollectionView does not support changes to SourceCollection from a thread
+     different from the dispatcher thread.
+
+2. 根因
+   - ProcessStepExecutor 在后台线程执行 IF 子步骤并发布 ShowDashboardEvent。
+   - DataDashboardViewModel 默认在发布线程订阅并 Fields.Clear/Add，触发 WPF 跨线程异常。
+   - DashboardDialogService 新建 VM 时事件已发布完毕，未直接注入载荷。
+
+3. 修复
+   - DataDashboardViewModel：移除事件订阅，新增 ApplyPayload（强制 UI 线程填充集合）。
+   - LoadGlobalVariables 异步回调通过 Dispatcher 更新 GlobalVariables。
+   - DashboardDialogService / ProcessSequenceEditorViewModel：创建 VM 后调用 ApplyPayload。
+
+4. 修改文件
+   - Module/Controls/StepDetails/DataDashboardViewModel.cs
+   - Module/Services/DashboardDialogService.cs
+   - Module/Controls/StepEditor/ProcessSequenceEditorViewModel.cs
+
+v2026.06.24 — 方案A 视觉结果即偏移（同一全局变量）说明与池键对齐
+-------------------------------------------
+1. 配置约定（方案A）
+   - VISION 变量映射：解析键 → @GV:偏移变量（每拍覆盖写入）
+   - GOTO Ofs：链接同一 @GV:偏移变量；SubMove.Offset 仅放固定机械补偿（无则填 0）
+   - 配方中该 GV 默认值建议 0（首拍前占位）
+
+2. 实现
+   - VisionStepAction：配方池键与 GOTO 一致（CurrentPoolName 优先）
+   - VisionDetailView / GotoDetailView：增加方案A 配置提示（中英多语言）
+
+3. 修改文件
+   - StationTasks/Actions/VisionStepAction.cs
+   - Module/Controls/StepDetails/VisionDetailView.xaml
+   - Module/Controls/StepDetails/GotoDetailView.xaml
+   - MainApp/Languages/Strings.zh-CN.xaml / Strings.en-US.xaml
+
+v2026.06.24 — 方法4 IF/ELSE 分支 GOTO 全局偏移显示丢失专项修复
+-------------------------------------------
+1. 现象
+   - 仅方法4（含 IF/ELSE→WAIT→GOTO→BRANCH 循环）执行时，GOTO 链接的全局偏移量在 UI 丢失；
+     方法1-3 正常。
+
+2. 根因
+   - 方法4 循环中 VISION 频繁触发 GlobalVariablesChangedEvent，GotoDetailViewModel
+     Clear+重建 LinkableOffsetVariables 导致 Ofs 列短暂失去链接显示。
+   - 执行 IF 子步骤时未同步 SelectedMethod/SelectedStep，UI 仍停留于其他方法上下文。
+   - GOTO 仅在步骤开始时加载一次全局变量，循环中 VISION 更新后 SubMove 读到旧值。
+   - ResetStepHighlight 未递归清除 IF 嵌套子步骤 IsCurrent。
+
+3. 修复
+   - GotoDetailViewModel：GlobalVariables 就地更新 Value + 200ms 防抖，避免 Ofs 闪烁丢失。
+   - ProcessStepExecutor：ExecutingStepChanged 回调；ProcessSequenceService 同步方法/步骤选中。
+   - GotoStepAction：每个 SubMove 前重新 LoadGlobalVariablesAsync。
+   - ProcessSequenceService：ClearStepHighlightsRecursive 递归重置高亮。
+   - ConditionBranchViewModel：跨全部方法定位 IF 子步骤（不限 SelectedMethod）。
+
+4. 修改文件
+   - Module/Controls/StepDetails/GotoDetailViewModel.cs
+   - Module/Services/ProcessSequenceService.cs
+   - StationTasks/Actions/ProcessStepExecutor.cs
+   - StationTasks/Actions/GotoStepAction.cs
+   - Module/Controls/StepDetails/ConditionBranchViewModel.cs
+
+v2026.06.24 — IF/ELSE 分支内 BRANCH 表达式与全局偏移量修复
+-------------------------------------------
+1. 问题
+   - 链路 WAIT→VISION→IF→ELSE(WAIT→GOTO→BRANCH) 在 IF 条件不满足时循环，
+     ELSE 内 BRANCH 表达式无法正确获取同分支前序工具输出及 @GV: 全局变量。
+   - GOTO 全局偏移量在 ELSE 分支执行期间不显示/不生效；WAIT 200ms 循环仍卡顿 UI。
+
+2. 根因
+   - 配方池持久化键为 Name，ProcessStepExecutor/BRANCH 使用 CurrentPoolId（GUID）
+     加载全局变量失败，@GV: 表达式恒为 0。
+   - IF 子步骤输出键 Step{子Seq}_{类型}Result 与顶层步骤冲突，BRANCH 变量池不完整。
+   - IF 子步骤快速循环未让出 UI 线程。
+
+3. 修复
+   - RecipePoolService.cs：ResolvePoolStorageKey，Load/Save/Update 全局变量时 Id→Name 映射。
+   - ProcessStepExecutor.cs：IfExecutionContext 唯一输出键；BRANCH 合并同分支前序子步骤输出；
+     GetCurrentPoolKey；IF 子步骤循环 Task.Yield()。
+   - ConditionBranchViewModel.cs：LoadPreviousStepOutputs 支持 IF 分支内子步骤。
+   - GotoStepAction.cs：偏移变量加载统一 pool 键解析。
+
+4. 修改文件
+   - RecipeManagement/Services/RecipePoolService.cs
+   - StationTasks/Actions/ProcessStepExecutor.cs
+   - Module/Controls/StepDetails/ConditionBranchViewModel.cs
+   - StationTasks/Actions/GotoStepAction.cs
+
+v2026.06.24 — ConditionBranchView 条件表达式求值检测
+-------------------------------------------
+1. 功能
+   - 条件分支配置对话框中，每条条件表达式下方增加「检测表达式」按钮。
+   - 点击后使用 FormulaEvaluator 结合当前全局变量值求值，显示 True/False 及跳转提示。
+   - @Output: 变量在编辑器中无运行时值时按 0 处理（与 IfDetail 一致）。
+
+2. 修改文件
+   - Core/Models/BranchConfig.cs：BranchCondition 增加检测结果 UI 属性（JsonIgnore）
+   - Module/Controls/StepDetails/ConditionBranchViewModel.cs：注入求值器与多语言，实现检测逻辑
+   - Module/Controls/StepDetails/ConditionBranchView.xaml：表达式列下方增加检测按钮与结果展示
+   - MainApp/Languages/Strings.zh-CN.xaml / Strings.en-US.xaml：BranchDetail_Check* 多语言键
+
+v2026.06.24 — 旋转坐标弹窗取消链接 & 工序树开关崩溃修复
+-------------------------------------------
+1. 问题
+   - Rotation Coordinates 弹窗中 GlobalVariableLinkControl 点击取消链接无效，
+     ComboBox 仍显示已链接变量名。
+   - 工序树 SelectedNode 切换时偶发崩溃：
+     System.InvalidOperationException: 'ThumbGrid' name cannot be found
+     in the name scope of 'System.Windows.Controls.Grid'.
+
+2. 根因
+   - 取消链接：点击 LinkOff 时 ComboBox 先触发 LostFocus/SelectedValue 写回，
+     与 UnlinkCommand 清空链接名产生竞态，绑定源被旧变量名覆盖。
+   - 崩溃：ProcessSequenceEditorView 任务/动作详情「启用」开关未使用
+     SafeSwitchToggleButton，切换 DataTemplate 卸载时 MD 开关故事板命名作用域失效。
+
+3. 修复
+   - GlobalVariableLinkControl：Unlink 按钮 PreviewMouseDown 抢先清空链接；
+     ComboBox SelectedValue 改为 PropertyChanged；LostFocus 写回抑制。
+   - DispenseRotatedCoordsViewModel：Unlink 保留当前显示值到手动字段；
+     使用 string.Empty 标记「已显式取消链接」避免 Initialize 再次自动链接；
+     LinkedVar setter 显式 RaisePropertyChanged(nameof(...))。
+   - ProcessSequenceEditorView：任务/动作详情启用开关统一 SafeSwitchToggleButton。
+
+v2026.06.24 — 自定义动作流程暂停时运动超时修复
+-------------------------------------------
+1. 问题
+   - 自定义动作流程（工艺步骤序列）执行中点击暂停，WaitForDone 未立即退出，
+     约 30s 后误报「轴运动超时」RecoverableException。
+
+2. 根因
+   - 暂停时 CancelMotionPause 取消的是工站 _pauseCts（PauseAwareToken），
+     而 DISPENSE 等步骤 Action 将 ProcessSequence 的停止令牌 token 直接传入
+     MoveAbsAsync / WaitForCoordDone，WaitForDone 感知不到暂停。
+   - 轴已被 StopAxis 减速停止但未到位，循环等待直至超时。
+   - RunStep 仅将 MotionPausedException 视为暂停中断，未处理暂停导致的 OCE。
+
+3. 修复
+   - TaskBase 新增公开属性 MotionCancellationToken（合并停止+暂停）。
+   - DispenseStepAction 所有运动/工艺等待改用 task.MotionCancellationToken。
+   - RunStep 捕获「暂停且非停止」的 OperationCanceledException，与 MotionPausedException
+     同等处理：等待恢复后重试当前步骤（提取 WaitForResumeAfterPauseAsync）。
+
+v2026.06.24 — DISPENSE 旋转补偿重启后 View Rotation Coords 不可用修复
+-------------------------------------------
+1. 问题
+   - Enable Rotation Comp 勾选且 CAD Alignment 保存后，View Rotation Coords 可点击。
+   - 软件重启后按钮又变为不可用，变换状态未保持。
+
+2. 根因
+   - CadAlignTransformService 启动时 CurrentSnapshot 为无效空快照。
+   - 仅当用户打开 CAD Alignment 页面时 TryAutoLoadConfigAsync 才会加载配置并
+     PublishTransformSnapshot；Dispense 依赖的 IsTransformAvailable 因此失效。
+
+3. 修复
+   - 新增 CadAlignTransformSnapshotLoader：从配方池扩展记录 CadAlignment_CurrentFile
+     或 Config/CadAlignment 目录最新配置文件恢复变换快照。
+   - CadAlignTransformService 启动时自动恢复；订阅 RecipePoolChangedEvent 及
+     CurrentPoolName 变更，配方池切换时同步恢复。
+   - ICadAlignTransformService 新增 EnsureSnapshotRestoredAsync()。
+   - DispenseDetailViewModel 在 OnNavigatedTo 及打开旋转坐标弹窗前调用恢复。
+
+v2026.06.24 — NeedleCameraAlignmentView 系统1/2 独立参数切换
+-------------------------------------------
+1. 问题
+   - 切换系统1/系统2时 UI 参数未跟随切换，两系统共用同一套显示值。
+   - 目标系统无已保存 JSON 时仅更新补偿链接变量，其余坐标/补偿仍保留上一系统数据。
+
+2. 修复
+   - NeedleCameraAlignmentViewModel 增加 _systemStateCache，切换前缓存当前系统完整快照
+     （深拷贝 NeedleCameraCalibrationParams + 文件路径）。
+   - 新增 SwitchSystemAsync / LoadSystemStateFromDiskAsync / EnsureSystemCachedAsync，
+     对齐 NeedleAlignerViewModel 的双系统独立参数模式。
+   - 初始化时预加载系统1、系统2 配置；无文件时使用各系统默认参数（全零 + 默认链接名）。
+   - NeedleCameraCalibrationParams 增加 Clone() 供缓存深拷贝。
+   - 保存/加载/重置后同步更新当前系统缓存。
+
+v2026.06.24 — DISPENSE 旋转后坐标针头偏移补偿（相机中心→针头坐标）
+-------------------------------------------
+1. 需求
+   - Rotation Coordinates 弹窗得到的 (Rotated X, Rotated Y) 是相机中心坐标，
+     实际点胶针头与相机中心存在固定间距。
+   - Rotation Coordinates 页面需增加“相机与针头的固定距离”，支持：
+     链接全局变量、链接针头偏移量(标定)、手动输入补偿。
+   - 最终点胶坐标 = Rotated X + 相机与针头固定距离X + 对针补偿X + 手动补偿X（Y 同理）。
+   - 配置需持久化，且实际点胶执行时同样生效。
+
+2. 方案与实现
+   - DispenseDetail 模型新增针头偏移补偿字段：EnableNeedleOffsetComp、
+     CameraNeedleOffsetX/Y(+LinkedVar)、LinkCameraNeedleOffsetToCalibration、
+     NeedleAlignCompX/Y(+LinkedVar)、ManualDispenseCompX/Y。
+   - DispenseRotatedCoordItem 新增 FinalX/FinalY（最终针头坐标）。
+   - 新增 INeedleCameraCalibrationProvider 接口（Core\Abstraction）+
+     NeedleCameraCalibrationProvider 实现（Module\Services，单例）：按系统号
+     (针头1→系统1、针头2→系统2) 读取针头相机标定文件，返回 针尖-相机中心 偏移
+     （即针头偏移量）。配方池记录优先，回退目录最新文件。
+   - DispenseRotatedCoordsViewModel 重构为可编辑：三类补偿支持全局变量链接/
+     标定链接/手动输入，实时计算合计偏移与每点最终坐标，配置回写 DispenseDetail。
+     对针补偿默认链接 NeedleAligner_CompX/Y_LinkedVar。
+   - DispenseRotatedCoordsView.xaml 增加补偿配置区（启用开关、相机与针头固定距离、
+     对针补偿、手动补偿）与 DataGrid 最终 X/Y 列、合计偏移显示。
+   - DispenseDetailViewModel 打开弹窗时传入 DispenseDetail、当前针头索引、
+     可链接全局变量集合。
+   - DispenseStepAction 执行时：EnableNeedleOffsetComp 启用则按
+     相机与针头固定距离+对针补偿+手动补偿叠加到运动目标坐标，将相机中心坐标
+     换算为实际针头点胶坐标。
+   - 多语言支持：zh-CN/en-US 新增 10 个本地化键。
+
+3. 架构与安全
+   - 单向依赖：Core 定义接口/模型，Module 实现服务并注册，StationTasks 通过接口注入。
+   - 标定数据读取失败时偏移安全回退为 0，不阻塞生产；未启用时偏移恒为 0，行为不变。
+   - 显示与执行复用同一补偿语义，弹窗最终坐标与实际点胶坐标一致。
+
 v2026.06.24 — DISPENSE 旋转补偿（Coord Transform 联动）
 -------------------------------------------
 1. 需求

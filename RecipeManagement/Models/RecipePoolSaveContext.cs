@@ -12,6 +12,7 @@ namespace Recipe.Models
         private readonly string _poolId;
         private readonly string _recipeName;
         private readonly Dictionary<string, object> _stationParameters = new Dictionary<string, object>();
+        private readonly Dictionary<string, bool> _replacePositionsFlags = new Dictionary<string, bool>();
 
         public string PoolId => _poolId;
         public string RecipeName => _recipeName;
@@ -24,9 +25,11 @@ namespace Recipe.Models
             _recipeName = recipeName;
         }
 
-        public void AddStation(string stationIdentifier, object parameters)
+        public void AddStation(string stationIdentifier, object parameters, bool replacePositions = false)
         {
             _stationParameters[stationIdentifier] = parameters;
+            if (replacePositions)
+                _replacePositionsFlags[stationIdentifier] = true;
         }
 
         public async Task<bool> CommitAsync()
@@ -65,7 +68,8 @@ namespace Recipe.Models
                 // 合并写入工站参数，避免陈旧内存对象整对象覆盖位置编辑器等已持久化的 Positions
                 foreach (var kv in _stationParameters)
                 {
-                    recipe.MergeStationParameter(kv.Key, kv.Value);
+                    var replacePositions = _replacePositionsFlags.TryGetValue(kv.Key, out var flag) && flag;
+                    recipe.MergeStationParameter(kv.Key, kv.Value, replacePositions);
                 }
 
                 // 更新配方池修改时间，确保 Save Pool 后 ModifiedTime 反映最新操作

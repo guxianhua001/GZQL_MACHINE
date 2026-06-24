@@ -189,6 +189,11 @@
                         <!-- 变量映射 Expander -->
                         <Expander IsExpanded="True" Header="{lang:Lang VisionDetail_VariableMapping}" Margin="0,0,0,8">
                             <StackPanel Margin="4">
+                                <TextBlock Text="{lang:Lang VisionDetail_SchemeA_Hint}"
+                                           TextWrapping="Wrap"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource DialogTextSecondaryBrush}"
+                                           Margin="0,0,0,6"/>
                                 <DataGrid ItemsSource="{Binding MappingRows}"
                                           SelectedItem="{Binding SelectedMapping}"
                                           AutoGenerateColumns="False"

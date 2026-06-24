@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using Prism.Mvvm;
 using System;
 using System.Collections.Generic;
@@ -59,6 +60,8 @@ namespace Core.Models
         private string _conditionExpression;
         private int _targetStepSeq;
         private string _description;
+        private string _checkResultMessage;
+        private bool? _checkResultIsTrue;
 
         /// <summary>
         /// 条件表达式，支持格式：
@@ -67,13 +70,52 @@ namespace Core.Models
         /// - 复合表达式: "@GV:H2 - @GV:Slot > 0.27"
         /// - 布尔判断: "@GV:检测结果 == true"
         /// </summary>
-        public string ConditionExpression { get => _conditionExpression; set => SetProperty(ref _conditionExpression, value); }
+        public string ConditionExpression
+        {
+            get => _conditionExpression;
+            set
+            {
+                if (SetProperty(ref _conditionExpression, value))
+                    ClearCheckResult();
+            }
+        }
 
         /// <summary> 条件满足时跳转的目标步骤Seq号（0表示继续下一步） </summary>
         public int TargetStepSeq { get => _targetStepSeq; set => SetProperty(ref _targetStepSeq, value); }
 
         /// <summary> 条件描述（用于UI显示，如"检测通过→跳转组装"） </summary>
         public string Description { get => _description; set => SetProperty(ref _description, value); }
+
+        /// <summary> 表达式检测结果消息（仅 UI 使用，不序列化） </summary>
+        [JsonIgnore]
+        public string CheckResultMessage
+        {
+            get => _checkResultMessage;
+            set => SetProperty(ref _checkResultMessage, value);
+        }
+
+        /// <summary> 表达式检测结果：true/false/null（未检测，仅 UI 使用） </summary>
+        [JsonIgnore]
+        public bool? CheckResultIsTrue
+        {
+            get => _checkResultIsTrue;
+            set
+            {
+                if (SetProperty(ref _checkResultIsTrue, value))
+                    RaisePropertyChanged(nameof(HasCheckResult));
+            }
+        }
+
+        /// <summary> 是否已有检测结果 </summary>
+        [JsonIgnore]
+        public bool HasCheckResult => _checkResultIsTrue.HasValue;
+
+        /// <summary> 清除检测结果（表达式变更时调用） </summary>
+        public void ClearCheckResult()
+        {
+            CheckResultMessage = "";
+            CheckResultIsTrue = null;
+        }
     }
 
     /// <summary>

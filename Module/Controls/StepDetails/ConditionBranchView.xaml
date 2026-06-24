@@ -134,36 +134,72 @@
                                                             Width="300" MinWidth="200">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBox Grid.Column="0"
-                                                             Text="{Binding ConditionExpression, UpdateSourceTrigger=PropertyChanged}"
-                                                             IsReadOnly="False"
-                                                             VerticalAlignment="Center"
-                                                             LostFocus="OnExprTextBox_LostFocus"
-                                                             AcceptsReturn="False"
-                                                             materialDesign:HintAssist.Hint="@Output:xxx > 10 or @GV:varName == 0"
-                                                             BorderThickness="0"
-                                                             Background="Transparent" />
-                                                    <ComboBox Grid.Column="1"
-                                                              ItemsSource="{Binding DataContext.PreviousStepOutputNames, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              SelectedIndex="-1"
-                                                              SelectionChanged="OnVariableSelected"
-                                                              ToolTip="{lang:Lang BranchDetail_InsertVar}"
-                                                              Width="28" Height="24"
-                                                              BorderThickness="0"
-                                                              Background="Transparent"
-                                                              Padding="0">
-                                                        <ComboBox.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <TextBlock Text="{Binding}" FontSize="10" />
-                                                            </DataTemplate>
-                                                        </ComboBox.ItemTemplate>
-                                                    </ComboBox>
-                                                </Grid>
+                                                <StackPanel Margin="0,2">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Grid.Column="0"
+                                                                 Text="{Binding ConditionExpression, UpdateSourceTrigger=PropertyChanged}"
+                                                                 IsReadOnly="False"
+                                                                 VerticalAlignment="Center"
+                                                                 LostFocus="OnExprTextBox_LostFocus"
+                                                                 AcceptsReturn="False"
+                                                                 materialDesign:HintAssist.Hint="@Output:xxx > 10 or @GV:varName == 0"
+                                                                 BorderThickness="0"
+                                                                 Background="Transparent" />
+                                                        <ComboBox Grid.Column="1"
+                                                                  ItemsSource="{Binding DataContext.PreviousStepOutputNames, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                  SelectedIndex="-1"
+                                                                  SelectionChanged="OnVariableSelected"
+                                                                  ToolTip="{lang:Lang BranchDetail_InsertVar}"
+                                                                  Width="28" Height="24"
+                                                                  BorderThickness="0"
+                                                                  Background="Transparent"
+                                                                  Padding="0">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding}" FontSize="10" />
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                    </Grid>
+                                                    <!-- 表达式求值检测 -->
+                                                    <StackPanel Margin="0,4,0,0">
+                                                        <Button Command="{Binding DataContext.CheckConditionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                                HorizontalAlignment="Left"
+                                                                Padding="4,2">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <materialDesign:PackIcon Kind="PlayCircleOutline" Width="14" Height="14"
+                                                                                         VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                                <TextBlock Text="{lang:Lang BranchDetail_CheckExpression}"
+                                                                           FontSize="11" VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                                                    Visibility="{Binding HasCheckResult, Converter={StaticResource BoolToVis}}">
+                                                            <materialDesign:PackIcon Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                                <materialDesign:PackIcon.Style>
+                                                                    <Style TargetType="materialDesign:PackIcon">
+                                                                        <Setter Property="Kind" Value="CloseCircleOutline" />
+                                                                        <Setter Property="Foreground" Value="#C62828" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding CheckResultIsTrue}" Value="True">
+                                                                                <Setter Property="Kind" Value="CheckCircleOutline" />
+                                                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </materialDesign:PackIcon.Style>
+                                                            </materialDesign:PackIcon>
+                                                            <TextBlock Text="{Binding CheckResultMessage}" FontSize="11"
+                                                                       VerticalAlignment="Center" TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>

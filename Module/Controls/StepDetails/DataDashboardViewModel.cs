@@ -27,7 +27,6 @@ namespace Module.ViewModels
         private readonly IFormulaEvaluator _formulaEvaluator;
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILocalizationService _localizationService;
-        private SubscriptionToken _showToken;
 
         private const string DialogIdentifier = "MainDialogHost";
 
@@ -199,33 +198,45 @@ namespace Module.ViewModels
             SelectedField = null;
             (DeleteFieldCommand as DelegateCommand)?.RaiseCanExecuteChanged();
 
-            _showToken = _ea.GetEvent<ShowDashboardEvent>().Subscribe(OnShowDashboard);
-
             LoadGlobalVariables();
         }
 
-        // ========== 数据加载 ==========
-
-        private void OnShowDashboard(ShowDashboardPayload payload)
+        /// <summary>
+        /// 从执行器/编辑器传入载荷，在 UI 线程填充看板数据（禁止通过跨线程事件修改 ObservableCollection）
+        /// </summary>
+        public void ApplyPayload(ShowDashboardPayload payload)
         {
-            _currentStep = payload.Step;
+            if (payload == null) return;
 
-            Fields.Clear();
-            foreach (var f in payload.Fields) Fields.Add(f);
+            void ApplyCore()
+            {
+                _currentStep = payload.Step;
 
-            Annotations.Clear();
-            foreach (var a in payload.Annotations) Annotations.Add(a);
+                Fields.Clear();
+                foreach (var f in payload.Fields)
+                    Fields.Add(f);
 
-            ImagePath = payload.ImagePath;
-            LoadDiagramImage(ImagePath);
+                Annotations.Clear();
+                foreach (var a in payload.Annotations)
+                    Annotations.Add(a);
 
-            RequireManualConfirm = _currentStep?.DashboardDetail?.RequireManualConfirm ?? true;
-            IsExecutionMode = payload.IsExecutionMode;
+                ImagePath = payload.ImagePath;
+                LoadDiagramImage(ImagePath);
 
-            LoadGlobalVariables();
-            RefreshFieldValues();
+                RequireManualConfirm = _currentStep?.DashboardDetail?.RequireManualConfirm ?? true;
+                IsExecutionMode = payload.IsExecutionMode;
 
-            _logger.Info(string.Format(L("DataDetail_Log_DataLoaded"), Fields.Count, RequireManualConfirm));
+                LoadGlobalVariables();
+                RefreshFieldValues();
+
+                _logger.Info(string.Format(L("DataDetail_Log_DataLoaded"), Fields.Count, RequireManualConfirm));
+            }
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+                dispatcher.Invoke(ApplyCore);
+            else
+                ApplyCore();
         }
 
         /// <summary>
@@ -234,10 +245,11 @@ namespace Module.ViewModels
         /// </summary>
         private async void LoadGlobalVariables()
         {
-            GlobalVariables.Clear();
             try
             {
-                var poolId = _recipePoolService?.CurrentPoolId;
+                var poolId = !string.IsNullOrEmpty(_recipePoolService?.CurrentPoolName)
+                    ? _recipePoolService.CurrentPoolName
+                    : _recipePoolService?.CurrentPoolId;
                 if (string.IsNullOrEmpty(poolId))
                 {
                     _logger.Warn(L("DataDetail_Log_PoolIdEmpty"));
@@ -245,14 +257,25 @@ namespace Module.ViewModels
                 }
 
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
-                if (variables != null)
+
+                void ApplyToUi()
                 {
-                    foreach (var v in variables.OrderBy(v => v.Name))
+                    GlobalVariables.Clear();
+                    if (variables != null)
                     {
-                        GlobalVariables.Add(new GlobalVariable { Name = v.Name, Type = v.Type, Value = v.Value });
+                        foreach (var v in variables.OrderBy(v => v.Name))
+                        {
+                            GlobalVariables.Add(new GlobalVariable { Name = v.Name, Type = v.Type, Value = v.Value });
+                        }
                     }
+                    _logger.Info(string.Format(L("DataDetail_Log_VarLoaded"), GlobalVariables.Count));
                 }
-                _logger.Info(string.Format(L("DataDetail_Log_VarLoaded"), GlobalVariables.Count));
+
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher != null && !dispatcher.CheckAccess())
+                    dispatcher.Invoke(ApplyToUi);
+                else
+                    ApplyToUi();
             }
             catch (Exception ex)
             {

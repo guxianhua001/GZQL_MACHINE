@@ -137,6 +137,8 @@ namespace Module
             containerRegistry.Register<Module.Services.IDispenseExecuteService, Module.Services.DispenseExecuteService>();
             containerRegistry.Register<Module.Services.IDotDispenseService, Module.Services.DotDispenseService>();
             containerRegistry.Register<Module.Services.INeedleAlignerMotionService, Module.Services.NeedleAlignerMotionService>();
+            // 针头相机标定偏移提供者（旋转后坐标→针头坐标的相机-针头固定距离来源）
+            containerRegistry.RegisterSingleton<Core.Abstraction.INeedleCameraCalibrationProvider, Module.Services.NeedleCameraCalibrationProvider>();
 
             // 看板弹窗服务：订阅 ShowDashboardEvent 并显示 DialogHost
             containerRegistry.RegisterSingleton<Module.Services.DashboardDialogService>();

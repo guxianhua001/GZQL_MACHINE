@@ -778,9 +778,8 @@ namespace Module.ViewModels
                 var view = new DataDashboardView();
                 view.DataContext = vm;
 
-                // 发布事件加载数据（复用运行时的事件机制，编辑模式）
-                _logger.Info($"[OnOpenDashboard] 发布 ShowDashboardEvent, Fields数量={step.DashboardDetail.Fields?.Count ?? 0}");
-                _ea.GetEvent<StationTasks.Events.ShowDashboardEvent>().Publish(new StationTasks.Events.ShowDashboardPayload
+                _logger.Info($"[OnOpenDashboard] 加载看板数据, Fields数量={step.DashboardDetail.Fields?.Count ?? 0}");
+                vm.ApplyPayload(new StationTasks.Events.ShowDashboardPayload
                 {
                     Step = step,
                     Fields = new System.Collections.ObjectModel.ObservableCollection<Core.Models.DashboardField>(step.DashboardDetail.Fields),

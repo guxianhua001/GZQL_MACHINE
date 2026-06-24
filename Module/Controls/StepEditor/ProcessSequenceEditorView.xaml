@@ -156,7 +156,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>
-                                    <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource SafeSwitchToggleButton}" VerticalAlignment="Center"/>
                                 </Grid>
                                 <!-- 方法数 -->
                                 <Grid Margin="0,0,0,8">
@@ -674,7 +674,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{lang:Lang PSE_Enabled}" VerticalAlignment="Center" Foreground="#616161"/>
-                                    <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource SafeSwitchToggleButton}" VerticalAlignment="Center"/>
                                 </Grid>
                                 <!-- 打开详细配置按钮 -->
                                 <Button Click="OpenStepDetailButton_Click"

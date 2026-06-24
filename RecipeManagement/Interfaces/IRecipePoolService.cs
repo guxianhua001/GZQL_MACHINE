@@ -22,11 +22,12 @@ namespace Recipe.Interfaces
         Task<List<GlobalVariable>> LoadGlobalVariablesAsync(string poolId);
         Task SaveGlobalVariablesAsync(string poolId, IEnumerable<GlobalVariable> variables);
 
-        void StageStationParameters(string stationIdentifier, object parameters);
+        /// <param name="replacePositions">为 true 时完整替换 Positions（位置编辑器保存/删除位置）</param>
+        void StageStationParameters(string stationIdentifier, object parameters, bool replacePositions = false);
         Task<bool> CommitStagedParametersAsync(string poolId, string recipeName);
         bool HasStagedChanges(string stationIdentifier = null);
 
-        Task<bool> SaveStationParametersAsync(string poolId, string recipeName, string stationIdentifier, object internalParameters);
+        Task<bool> SaveStationParametersAsync(string poolId, string recipeName, string stationIdentifier, object internalParameters, bool replacePositions = false);
         Task<bool> SaveAllStationParametersAsync(string poolId, string recipeName);
 
         Task SwitchAllStationsAsync(string poolName, string poolId, string newRecipeName, bool showAlert = true);

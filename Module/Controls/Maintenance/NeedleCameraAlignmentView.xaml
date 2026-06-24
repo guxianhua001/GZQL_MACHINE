@@ -557,7 +557,7 @@
                                     UnlinkCommand="{Binding UnlinkCompXCommand}"
                                     LinkedVariableName="{Binding CompXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                     LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                    ComboBoxWidth="120" />
+                                    ComboBoxWidth="200" />
                             </Grid>
 
                             <!-- CompensationY -->
@@ -588,7 +588,7 @@
                                     UnlinkCommand="{Binding UnlinkCompYCommand}"
                                     LinkedVariableName="{Binding CompYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                     LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                    ComboBoxWidth="120" />
+                                    ComboBoxWidth="200" />
                             </Grid>
 
                             <!-- Yellow info note -->

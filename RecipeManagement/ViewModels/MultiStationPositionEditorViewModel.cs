@@ -821,7 +821,8 @@ namespace Recipe.ViewModels
                 _recipePoolService.CurrentPoolName,
                 currentRecipeName,
                 _currentStationIdentifier,
-                stationNodeToSave
+                stationNodeToSave,
+                replacePositions: true
             );
 
             _currentStationNode = stationNodeToSave;
@@ -902,8 +903,8 @@ namespace Recipe.ViewModels
             var stationNodeToSave = BuildStationNodeToSave();
             if (stationNodeToSave == null) return;
 
-            // 仅暂存到暂存区，由 SaveRecipePoolAsync 统一提交到文件
-            _recipePoolService.StageStationParameters(_currentStationIdentifier, stationNodeToSave);
+            // 仅暂存到暂存区，由 SaveRecipePoolAsync 统一提交到文件（完整替换 Positions，支持删除）
+            _recipePoolService.StageStationParameters(_currentStationIdentifier, stationNodeToSave, replacePositions: true);
             _currentStationNode = stationNodeToSave;
             _logger.Info($"[{_currentStationIdentifier}] 位置参数已暂存（由 Save Pool 触发）");
         }

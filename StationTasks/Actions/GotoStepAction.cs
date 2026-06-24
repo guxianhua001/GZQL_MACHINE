@@ -47,24 +47,30 @@ namespace StationTasks.Actions
                 return;
             }
 
-            // 预加载全局变量（用于偏移量解析）
-            List<GlobalVariable> globalVars = null;
-            try
-            {
-                var poolId = _recipePoolService.CurrentPoolName;
-                if (!string.IsNullOrEmpty(poolId))
-                    globalVars = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"加载全局变量失败: {ex.Message}，偏移变量名将无法解析");
-            }
-
             bool isHome = step.GotoMode == StationTasks.Models.GotoModeEnum.Home;
+
+            // 配方池键：优先 Name，与持久化层一致
+            string poolKey = !string.IsNullOrEmpty(_recipePoolService.CurrentPoolName)
+                ? _recipePoolService.CurrentPoolName
+                : _recipePoolService.CurrentPoolId;
 
             foreach (var subMove in step.SubMoves)
             {
                 token.ThrowIfCancellationRequested();
+
+                // 每个 SubMove 前刷新全局变量（方法4 IF/ELSE 循环中 VISION 可能已更新偏移量）
+                List<GlobalVariable> globalVars = null;
+                if (!string.IsNullOrEmpty(poolKey))
+                {
+                    try
+                    {
+                        globalVars = await _recipePoolService.LoadGlobalVariablesAsync(poolKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn($"SubMove [{subMove.SubSeq}] 刷新全局变量失败: {ex.Message}");
+                    }
+                }
 
                 StationTaskBase targetTask = ResolveTargetTask(subMove.StationId, task);
                 int axisId = ResolveAxisId(subMove, targetTask);

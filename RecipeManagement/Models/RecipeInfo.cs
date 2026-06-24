@@ -73,8 +73,9 @@ namespace Recipe.Models
         /// <summary>
         /// 合并工站参数：以文件已有数据为基准，叠加 incoming 的字段变更。
         /// 当 incoming 的 Positions 条目数少于文件中已有数据时，视为陈旧内存数据，保留文件 Positions。
+        /// replacePositions 为 true 时（位置编辑器保存），完整替换 Positions，支持删除位置。
         /// </summary>
-        public void MergeStationParameter(string stationKey, object incoming)
+        public void MergeStationParameter(string stationKey, object incoming, bool replacePositions = false)
         {
             if (string.IsNullOrEmpty(stationKey) || incoming == null)
                 return;
@@ -100,13 +101,16 @@ namespace Recipe.Models
                     return;
 
                 // 位置参数保护：避免内存中仅有少量默认位置的对象覆盖位置编辑器已保存的大量位置
-                if (TryGetPositionsCount(existingNode, out int existingPosCount) &&
+                // 位置编辑器显式 replacePositions 时跳过保护，允许删除位置后持久化
+                if (!replacePositions &&
+                    TryGetPositionsCount(existingNode, out int existingPosCount) &&
                     TryGetPositionsCount(incomingNode, out int incomingPosCount) &&
                     incomingPosCount < existingPosCount)
                 {
                     incomingNode.Remove("Positions");
                 }
-                else if (existingNode.ContainsKey("Positions") && !incomingNode.ContainsKey("Positions"))
+                else if (!replacePositions &&
+                    existingNode.ContainsKey("Positions") && !incomingNode.ContainsKey("Positions"))
                 {
                     incomingNode["Positions"] = JsonNode.Parse(existingNode["Positions"]!.ToJsonString());
                 }

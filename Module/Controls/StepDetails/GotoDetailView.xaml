@@ -31,6 +31,14 @@
                              VerticalAlignment="Center"/>
             </StackPanel>
 
+            <!-- 方案A：Ofs 链接与 VISION 映射同一全局变量，运行时显示视觉写入值 -->
+            <TextBlock Text="{lang:Lang GotoDetail_SchemeA_Hint}"
+                       TextWrapping="Wrap"
+                       FontSize="10"
+                       Foreground="{DynamicResource DialogTextSecondaryBrush}"
+                       Margin="0,0,0,6"
+                       Visibility="{Binding IsAbsoluteMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
             <!-- 绝对定位模式表格 -->
             <DataGrid ItemsSource="{Binding SubMoveRows}"
                       AutoGenerateColumns="False"

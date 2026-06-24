@@ -20,10 +20,36 @@ namespace Core.Models
         /// <summary>CAD 原始 Y 坐标</summary>
         public double CadY { get; set; }
 
-        /// <summary>旋转后机械 X 坐标</summary>
-        public double RotatedX { get; set; }
+        private double _rotatedX;
+        /// <summary>旋转后机械 X 坐标（相机中心坐标）</summary>
+        public double RotatedX
+        {
+            get => _rotatedX;
+            set => SetProperty(ref _rotatedX, value);
+        }
 
-        /// <summary>旋转后机械 Y 坐标</summary>
-        public double RotatedY { get; set; }
+        private double _rotatedY;
+        /// <summary>旋转后机械 Y 坐标（相机中心坐标）</summary>
+        public double RotatedY
+        {
+            get => _rotatedY;
+            set => SetProperty(ref _rotatedY, value);
+        }
+
+        private double _finalX;
+        /// <summary>最终点胶针头 X 坐标 = RotatedX + 针头偏移补偿X</summary>
+        public double FinalX
+        {
+            get => _finalX;
+            set => SetProperty(ref _finalX, value);
+        }
+
+        private double _finalY;
+        /// <summary>最终点胶针头 Y 坐标 = RotatedY + 针头偏移补偿Y</summary>
+        public double FinalY
+        {
+            get => _finalY;
+            set => SetProperty(ref _finalY, value);
+        }
     }
 }

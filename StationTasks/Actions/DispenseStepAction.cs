@@ -26,6 +26,7 @@ namespace StationTasks.Actions
         private readonly IMotionService _motionService;
         private readonly IDispenseSegmentSourceService _segmentSourceService;
         private readonly ICadAlignTransformService _cadAlignTransformService;
+        private readonly INeedleCameraCalibrationProvider _needleCameraCalibrationProvider;
 
         /// <summary>直线插补坐标系 ID（MoveLineAbsAsync）</summary>
         private const int CoordIdLinear = 0;
@@ -49,6 +50,20 @@ namespace StationTasks.Actions
         private double _xCompensation;
         private double _yCompensation;
 
+        /// <summary>当前步骤是否启用针头偏移补偿（相机中心坐标→实际针头坐标）</summary>
+        private bool _enableNeedleOffsetComp;
+
+        /// <summary>当前步骤解析后的针头偏移补偿量（mm）：相机与针头固定距离 + 对针补偿</summary>
+        private double _needleOffsetX;
+        private double _needleOffsetY;
+
+        /// <summary>当前步骤 X/Y Comp（校准器）补偿量（mm）</summary>
+        private double _xCompCalibrator;
+        private double _yCompCalibrator;
+
+        /// <summary>当前步骤是否启用校准（X/Y/Z Comp 校准器 + Z Comp 3D Camera）</summary>
+        private bool _enableCalibration;
+
         /// <summary>当前步骤是否启用旋转补偿（产品旋转后按 Coord Transform 换算坐标）</summary>
         private bool _enableRotationComp;
 
@@ -69,7 +84,8 @@ namespace StationTasks.Actions
             IStationRegistry stationRegistry,
             IMotionService motionService,
             IDispenseSegmentSourceService segmentSourceService,
-            ICadAlignTransformService cadAlignTransformService)
+            ICadAlignTransformService cadAlignTransformService,
+            INeedleCameraCalibrationProvider needleCameraCalibrationProvider)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
@@ -77,6 +93,7 @@ namespace StationTasks.Actions
             _motionService = motionService;
             _segmentSourceService = segmentSourceService;
             _cadAlignTransformService = cadAlignTransformService;
+            _needleCameraCalibrationProvider = needleCameraCalibrationProvider;
         }
 
         /// <summary>
@@ -90,6 +107,9 @@ namespace StationTasks.Actions
                 _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 没有 DispenseDetail，跳过执行");
                 return;
             }
+
+            // 运动/工艺等待须合并暂停信号，避免暂停后 WaitForDone 误报运动超时
+            var motionToken = task.MotionCancellationToken;
 
             var sourceSegments = _segmentSourceService.GetSourceSegments();
             var segDict = sourceSegments.Where(s => !string.IsNullOrEmpty(s.SegmentId))
@@ -120,6 +140,33 @@ namespace StationTasks.Actions
                 _yCompensation = 0;
             }
 
+            // 解析针头偏移补偿（启用时叠加：相机与针头固定距离 + 对针补偿）
+            _enableNeedleOffsetComp = detail.EnableNeedleOffsetComp;
+            if (_enableNeedleOffsetComp)
+            {
+                (_needleOffsetX, _needleOffsetY) = ResolveNeedleOffset(detail, needleIndex);
+                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 针头偏移补偿已启用: dX={_needleOffsetX:F4}mm, dY={_needleOffsetY:F4}mm");
+            }
+            else
+            {
+                _needleOffsetX = 0;
+                _needleOffsetY = 0;
+            }
+
+            // 解析校准补偿（Enable Calibration 启用时叠加 X/Y Comp 校准器）
+            _enableCalibration = detail.EnableZCalibration;
+            if (_enableCalibration)
+            {
+                _xCompCalibrator = ResolveLinkedValue(detail.XCompensationCalibrator, detail.XCompensationCalibratorLinkedVar);
+                _yCompCalibrator = ResolveLinkedValue(detail.YCompensationCalibrator, detail.YCompensationCalibratorLinkedVar);
+                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 校准补偿已启用: X Comp={_xCompCalibrator:F4}mm, Y Comp={_yCompCalibrator:F4}mm");
+            }
+            else
+            {
+                _xCompCalibrator = 0;
+                _yCompCalibrator = 0;
+            }
+
             // 解析旋转补偿（启用时按 CAD 对齐 Coord Transform 换算旋转后坐标）
             _enableRotationComp = detail.EnableRotationComp;
             if (_enableRotationComp)
@@ -147,17 +194,17 @@ namespace StationTasks.Actions
             try
             {
                 if (detail.IsDryRunMode)
-                    await ExecuteDryRunAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, token);
+                    await ExecuteDryRunAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, motionToken);
 
                 if (detail.IsRealDispenseMode)
                 {
                     switch (detail.DispenseMode)
                     {
                         case DispenseStepMode.Dot:
-                            await ExecuteDotModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, token);
+                            await ExecuteDotModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
                             break;
                         case DispenseStepMode.Arc:
-                            await ExecuteArcModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, token);
+                            await ExecuteArcModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
                             break;
                         default:
                             _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未知点胶模式: {detail.DispenseMode}");
@@ -186,7 +233,7 @@ namespace StationTasks.Actions
             DispenseDetail detail,
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
-            CancellationToken token)
+            CancellationToken motionToken)
         {
             _logger.Info("DISPENSE 开始空跑");
 
@@ -195,7 +242,7 @@ namespace StationTasks.Actions
 
             foreach (var segRef in enabledRefs)
             {
-                token.ThrowIfCancellationRequested();
+                motionToken.ThrowIfCancellationRequested();
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
@@ -210,29 +257,29 @@ namespace StationTasks.Actions
                 double moveSpeed = seg.MoveSpeed;
                 double safeHeight = seg.SafeHeight;
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt, seg);
 
                 await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                    new[] { startX, startY }, moveSpeed, token);
+                    new[] { startX, startY }, moveSpeed, motionToken);
 
                 foreach (var pt in seg.Points.Skip(1))
                 {
-                    token.ThrowIfCancellationRequested();
+                    motionToken.ThrowIfCancellationRequested();
                     var (px, py) = GetMachineXY(pt, seg);
                     await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                        new[] { px, py }, moveSpeed, token);
+                        new[] { px, py }, moveSpeed, motionToken);
                 }
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
             }
 
             if (lastSeg != null)
-                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, motionToken);
             else
-                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
 
             _logger.Info("DISPENSE 空跑完成");
         }
@@ -246,7 +293,7 @@ namespace StationTasks.Actions
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
             int needleIndex,
-            CancellationToken token)
+            CancellationToken motionToken)
         {
             _logger.Info($"DISPENSE 单点模式开始");
 
@@ -257,7 +304,7 @@ namespace StationTasks.Actions
 
             foreach (var segRef in enabledRefs)
             {
-                token.ThrowIfCancellationRequested();
+                motionToken.ThrowIfCancellationRequested();
                 currentRef++;
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
@@ -284,47 +331,47 @@ namespace StationTasks.Actions
 
                 foreach (var (point, ptIndex) in seg.Points.Select((p, i) => (p, i)))
                 {
-                    token.ThrowIfCancellationRequested();
+                    motionToken.ThrowIfCancellationRequested();
 
                     var (px, py) = GetMachineXY(point, seg);
 
-                    await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
 
                     await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                        new[] { px, py }, moveSpeed, token);
+                        new[] { px, py }, moveSpeed, motionToken);
 
                     double approachZ = targetZ + approachOffset;
-                    await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, motionToken);
 
                     // 位置触发开胶：计算触发点Z，慢速移到触发位开胶，再继续到目标位
                     double triggerDistance = Math.Abs(glueTriggerOffset);
                     int motionDir = Math.Sign(approachZ - targetZ);
                     double triggerZ = targetZ + motionDir * triggerDistance;
 
-                    await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, token);
+                    await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, motionToken);
                     WriteGlueIo(true, needleIndex);
                     _logger.Debug($"DISPENSE 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
-                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
+                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
 
                     if (seg.PreDelay > 0)
-                        await Task.Delay((int)seg.PreDelay, token);
+                        await Task.Delay((int)seg.PreDelay, motionToken);
 
-                    await Task.Delay((int)seg.DispenseTime, token);
+                    await Task.Delay((int)seg.DispenseTime, motionToken);
 
                     WriteGlueIo(false, needleIndex);
 
                     if (seg.PostDelay > 0)
-                        await Task.Delay((int)seg.PostDelay, token);
+                        await Task.Delay((int)seg.PostDelay, motionToken);
 
-                    await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
                 }
             }
 
             if (lastSeg != null)
-                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, motionToken);
             else
-                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
 
             _logger.Info("DISPENSE 单点模式完成");
         }
@@ -338,7 +385,7 @@ namespace StationTasks.Actions
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
             int needleIndex,
-            CancellationToken token)
+            CancellationToken motionToken)
         {
             _logger.Info($"DISPENSE 弧线模式开始");
 
@@ -359,7 +406,7 @@ namespace StationTasks.Actions
 
             foreach (var segRef in enabledRefs)
             {
-                token.ThrowIfCancellationRequested();
+                motionToken.ThrowIfCancellationRequested();
                 currentRef++;
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
@@ -384,35 +431,35 @@ namespace StationTasks.Actions
                 _logger.Info($"DISPENSE 弧线: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
                              $"MoveSpeed={moveSpeed:F1}, InterpSpeed={seg.InterpSpeed:F1}, SafeHeight={safeHeight:F1}");
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt, seg);
                 await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                    new[] { startX, startY }, moveSpeed, token);
+                    new[] { startX, startY }, moveSpeed, motionToken);
 
                 double approachZ = targetZ + approachOffset;
-                await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, motionToken);
 
                 // 位置触发开胶：计算触发点Z，慢速移到触发位开胶，再继续到目标位
                 double triggerDistance = Math.Abs(glueTriggerOffset);
                 int motionDir = Math.Sign(approachZ - targetZ);
                 double triggerZ = targetZ + motionDir * triggerDistance;
 
-                await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, token);
+                await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, motionToken);
                 WriteGlueIo(true, needleIndex);
                 _logger.Debug($"DISPENSE 弧线: 段[{seg.SegmentId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
-                await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
+                await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
 
                 if (seg.PreDelay > 0)
-                    await Task.Delay((int)seg.PreDelay, token);
+                    await Task.Delay((int)seg.PreDelay, motionToken);
 
                 double currentZPos = _motionService.GetAxisPosition(dzAxisId);
                 if (Math.Abs(currentZPos - targetZ) > 0.5)
                 {
                     _logger.Warn($"DISPENSE 弧线: 段[{seg.SegmentId}] Z轴未到位: 当前={currentZPos:F3}, 目标={targetZ:F3}，重新下降");
-                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, token);
+                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
                 }
 
                 _motionService.InitializeContinuousInterpolation(
@@ -428,7 +475,7 @@ namespace StationTasks.Actions
                 _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
 
                 bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
-                    CoordIdContinuous, TimeSpan.FromMinutes(5), token);
+                    CoordIdContinuous, TimeSpan.FromMinutes(5), motionToken);
 
                 if (!completed)
                     throw new TimeoutException($"DISPENSE 弧线: 段[{seg.SegmentId}] 运动超时");
@@ -436,15 +483,15 @@ namespace StationTasks.Actions
                 WriteGlueIo(false, needleIndex);
 
                 if (seg.PostDelay > 0)
-                    await Task.Delay((int)seg.PostDelay, token);
+                    await Task.Delay((int)seg.PostDelay, motionToken);
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
             }
 
             if (lastSeg != null)
-                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, motionToken);
             else
-                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, token);
+                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
 
             _logger.Info("DISPENSE 弧线模式完成");
         }
@@ -499,7 +546,8 @@ namespace StationTasks.Actions
                 seg.HeightCompensation = segRef.OverrideHeightCompensation;
             }
 
-            seg.HeightCompensation += ResolveZCompensation(detail);
+            if (detail.EnableZCalibration)
+                seg.HeightCompensation += ResolveZCompensation(detail);
 
             return seg;
         }
@@ -531,7 +579,30 @@ namespace StationTasks.Actions
         }
 
         /// <summary>
-        /// 解析Z向补偿总值（3D相机 + 校准器 + 手动，三来源叠加）
+        /// 解析针头偏移补偿（X/Y）：相机与针头固定距离 + 对针补偿，两来源叠加。
+        /// 相机与针头固定距离：Link 勾选时取链接全局变量值，否则为 0。对针补偿支持链接全局变量。
+        /// X/Y Comp（校准器）由 XCompensationCalibrator/YCompensationCalibrator 单独叠加，见 GetMachineXY。
+        /// </summary>
+        private (double X, double Y) ResolveNeedleOffset(DispenseDetail detail, int needleIndex)
+        {
+            // 相机与针头固定距离：Link 勾选时取全局变量，否则为 0
+            double cameraNeedleX = 0;
+            double cameraNeedleY = 0;
+            if (detail.LinkCameraNeedleOffsetToCalibration)
+            {
+                cameraNeedleX = ResolveLinkedValue(detail.CameraNeedleOffsetX, detail.CameraNeedleOffsetXLinkedVar);
+                cameraNeedleY = ResolveLinkedValue(detail.CameraNeedleOffsetY, detail.CameraNeedleOffsetYLinkedVar);
+            }
+
+            // 对针补偿
+            double alignX = ResolveLinkedValue(detail.NeedleAlignCompX, detail.NeedleAlignCompXLinkedVar);
+            double alignY = ResolveLinkedValue(detail.NeedleAlignCompY, detail.NeedleAlignCompYLinkedVar);
+
+            return (cameraNeedleX + alignX, cameraNeedleY + alignY);
+        }
+
+        /// <summary>
+        /// 解析 Z 向校准补偿总值（Z Comp 3D Camera + Z Comp 校准器）
         /// </summary>
         private double ResolveZCompensation(DispenseDetail detail)
         {
@@ -539,7 +610,6 @@ namespace StationTasks.Actions
 
             compensation += ResolveLinkedValue(detail.ZCompensation3D, detail.ZCompensation3DLinkedVar);
             compensation += ResolveLinkedValue(detail.ZCompensationCalibrator, detail.ZCompensationCalibratorLinkedVar);
-            compensation += detail.ManualZCompensation;
 
             return compensation;
         }
@@ -629,7 +699,8 @@ namespace StationTasks.Actions
 
         /// <summary>
         /// 安全获取点的机器坐标——优先按当前针头仿射矩阵从 CAD 坐标实时换算；
-        /// 无仿射时回退点内 MachineX/MachineY。EnableComp 启用时叠加 XY 补偿。
+        /// 无仿射时回退点内 MachineX/MachineY。
+        /// 最终坐标 = 变换后坐标 + 针头偏移(可选) + 校准补偿(可选) + X/Y Compensation(可选)。
         /// EnableRotationComp 启用时使用 CAD 对齐 Coord Transform 换算旋转后坐标。
         /// </summary>
         private (double X, double Y) GetMachineXY(CadPoint pt, DispenseSegment seg = null)
@@ -665,6 +736,20 @@ namespace StationTasks.Actions
             {
                 throw new InvalidOperationException(
                     $"DISPENSE 致命错误: 点[Id={pt.Id}] 无仿射矩阵且 MachineX/MachineY 为空，禁止运动");
+            }
+
+            // 针头偏移补偿：将相机中心坐标换算为实际点胶针头坐标
+            if (_enableNeedleOffsetComp)
+            {
+                x += _needleOffsetX;
+                y += _needleOffsetY;
+            }
+
+            // 校准补偿：X/Y Comp（校准器）
+            if (_enableCalibration)
+            {
+                x += _xCompCalibrator;
+                y += _yCompCalibrator;
             }
 
             if (_enableComp)

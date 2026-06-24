@@ -766,6 +766,8 @@ namespace Module.Services
                         };
                     }
 
+                    WireExecutorStepSync(executor);
+
                     await executor.ExecuteAsync(steps, ct);
                 }, token);
             }
@@ -940,6 +942,8 @@ namespace Module.Services
                         };
                     }
 
+                    WireExecutorStepSync(executor);
+
                     await executor.ExecuteAsync(steps, ct);
                 }, token);
             }
@@ -1038,8 +1042,10 @@ namespace Module.Services
             var steps = FlattenMethodSteps(method);
             if (steps.Count > 0)
             {
-                foreach (var step in steps)
-                    step.IsCurrent = false;
+                ClearStepHighlightsRecursive(steps);
+                // 含 IF 嵌套子步骤的完整清除
+                if (method.Steps != null)
+                    ClearStepHighlightsRecursive(method.Steps);
                 steps[0].IsCurrent = true;
             }
             if (CurrentTask != null && !_isExecuting && !_isMethodExecuting)
@@ -1072,19 +1078,75 @@ namespace Module.Services
             }
         }
 
+        /// <summary>
+        /// 绑定执行器步骤变更回调：同步 SelectedMethod/SelectedStep，确保方法4 IF/ELSE 子步骤执行时 UI 上下文正确。
+        /// </summary>
+        private void WireExecutorStepSync(ProcessStepExecutor executor)
+        {
+            executor.ExecutingStepChanged = step =>
+            {
+                if (step == null) return;
+                System.Windows.Application.Current?.Dispatcher?.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        SelectedStep = step;
+                        var loc = LocateStep(step);
+                        if (loc.HasValue)
+                        {
+                            SelectedMethod = loc.Value.Method;
+                            if (CurrentTask != loc.Value.Task)
+                                CurrentTask = loc.Value.Task;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn($"[ProcessSequence] 同步执行步骤 UI 失败: {ex.Message}");
+                    }
+                }));
+            };
+        }
+
+        /// <summary> 递归清除步骤及 IF 嵌套子步骤的 IsCurrent 高亮 </summary>
+        private static void ClearStepHighlightsRecursive(IEnumerable<ProcessStep> steps)
+        {
+            if (steps == null) return;
+            foreach (var step in steps)
+            {
+                step.IsCurrent = false;
+                if (step.IfBranches == null) continue;
+                foreach (var branch in step.IfBranches)
+                {
+                    if (branch.Steps != null)
+                        ClearStepHighlightsRecursive(branch.Steps);
+                }
+            }
+        }
+
         /// <summary> 重置步骤高亮到执行列表的第一步（不清除 HasActiveAlarm，报警标记在下次启动时清除） </summary>
         private void ResetStepHighlight(ObservableCollection<ProcessStep> executedSteps = null)
         {
             _logger.Info("[ProcessSequenceService] ResetStepHighlight 被调用");
-            // 优先使用实际执行的步骤列表，其次使用 CurrentTask 的扁平步骤
-            var stepsToReset = executedSteps ?? CurrentTask?.Steps;
-            if (stepsToReset == null) return;
-            foreach (var step in stepsToReset)
+
+            if (CurrentTask?.Methods != null)
             {
-                step.IsCurrent = false;
+                foreach (var method in CurrentTask.Methods)
+                {
+                    if (method.Steps != null)
+                        ClearStepHighlightsRecursive(method.Steps);
+                }
             }
-            if (stepsToReset.Count > 0)
-                stepsToReset[0].IsCurrent = true;
+            else if (CurrentTask?.Steps != null)
+            {
+                ClearStepHighlightsRecursive(CurrentTask.Steps);
+            }
+
+            var first = executedSteps?.FirstOrDefault()
+                        ?? CurrentTask?.Methods?.FirstOrDefault(m => m.Steps?.Count > 0)?.Steps?.FirstOrDefault()
+                        ?? CurrentTask?.Steps?.FirstOrDefault();
+            if (first != null)
+                first.IsCurrent = true;
+
             _logger.Info("[ProcessSequenceService] ResetStepHighlight 完成");
         }
 

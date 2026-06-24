@@ -41,8 +41,9 @@ namespace Module.Services
             {
                 _logger.Info($"[DashboardDialog] 收到看板请求, IsExecutionMode={payload.IsExecutionMode}");
 
-                // 创建 ViewModel 和 View
+                // 创建 ViewModel 和 View，在 UI 线程直接注入载荷（IF/ELSE 子步骤从后台线程发布事件）
                 var vm = _containerProvider.Resolve<DataDashboardViewModel>();
+                vm.ApplyPayload(payload);
                 var view = new DataDashboardView { DataContext = vm };
 
                 // 通过 DialogHost 显示弹窗（等待用户操作）

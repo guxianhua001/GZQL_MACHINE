@@ -421,6 +421,13 @@ namespace StationTasks.Tasks
                     LastFaultStepName = null;
                     break;
                 }
+                catch (OperationCanceledException) when (_isPaused && !CurrentToken.IsCancellationRequested)
+                {
+                    // 步骤 Action 直接调用 IMotionService 且使用 MotionCancellationToken 时，
+                    // 暂停导致 WaitForDone 抛出 OCE（非 MotionPausedException），与暂停中断同等处理
+                    await WaitForResumeAfterPauseAsync(stepName, token);
+                    continue;
+                }
                 catch (OperationCanceledException)
                 {
                     throw;
@@ -430,30 +437,8 @@ namespace StationTasks.Tasks
                     // MotionPausedException 是暂停导致的运动中断，不需要弹窗和报警
                     if (rex is MotionPausedException)
                     {
-                        Logger.Info($"步骤 [{stepName}] 运动因暂停中断，等待恢复后重试");
-                        LastFaultStepName = stepName;
-                        _systemState.RequestPause();
-                        // 已经在 PauseAsync 中暂停，但为确保状态一致再次确认
-                        if (State != TaskState.Paused)
-                            await PauseAsync();
-                        PublishTaskStatusChanged(stepName, State);
-                        try
-                        {
-                            await CheckPauseAsync(token);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            Logger.Info($"步骤 [{stepName}] 操作员选择停止任务");
-                            throw;
-                        }
-                        if (State != TaskState.Running)
-                        {
-                            Logger.Info($"步骤 [{stepName}] 任务未恢复运行，取消当前步骤");
-                            throw new OperationCanceledException(token);
-                        }
-                        PublishTaskStatusChanged(stepName, State);
-                        Logger.Info($"步骤 [{stepName}] 已恢复运行，将重新执行当前步骤...");
-                        continue;  // 重试当前步骤
+                        await WaitForResumeAfterPauseAsync(stepName, token);
+                        continue;
                     }
 
                     // 其他 RecoverableException
@@ -545,6 +530,37 @@ namespace StationTasks.Tasks
                 _stepTcs = new TaskCompletionSource<bool>();
             }
         }
+
+        /// <summary>
+        /// 暂停中断后等待操作员恢复；恢复后由 RunStep 重试当前步骤。
+        /// </summary>
+        private async Task WaitForResumeAfterPauseAsync(string stepName, CancellationToken token)
+        {
+            Logger.Info($"步骤 [{stepName}] 因暂停中断，等待恢复后重试");
+            LastFaultStepName = stepName;
+            _systemState.RequestPause();
+            // 已在 CancelMotionPause 中暂停，但为确保状态一致再次确认
+            if (State != TaskState.Paused)
+                await PauseAsync();
+            PublishTaskStatusChanged(stepName, State);
+            try
+            {
+                await CheckPauseAsync(token);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Info($"步骤 [{stepName}] 操作员选择停止任务");
+                throw;
+            }
+            if (State != TaskState.Running)
+            {
+                Logger.Info($"步骤 [{stepName}] 任务未恢复运行，取消当前步骤");
+                throw new OperationCanceledException(token);
+            }
+            PublishTaskStatusChanged(stepName, State);
+            Logger.Info($"步骤 [{stepName}] 已恢复运行，将重新执行当前步骤...");
+        }
+
         /// <summary>
         /// 辅助方法：等待 Tasks中的任意一个完成
         /// </summary>

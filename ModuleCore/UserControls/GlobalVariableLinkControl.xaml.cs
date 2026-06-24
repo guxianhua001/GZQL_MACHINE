@@ -18,7 +18,7 @@ namespace ModuleCore.UserControls
 
         public static readonly DependencyProperty DisplayValueProperty =
             DependencyProperty.Register(nameof(DisplayValue), typeof(double), typeof(GlobalVariableLinkControl),
-                new FrameworkPropertyMetadata(0.0));
+                new FrameworkPropertyMetadata(0.0, OnDisplayValueOrFormatChanged));
 
         public static readonly DependencyProperty DisplayForegroundProperty =
             DependencyProperty.Register(nameof(DisplayForeground), typeof(Brush), typeof(GlobalVariableLinkControl),
@@ -43,6 +43,15 @@ namespace ModuleCore.UserControls
         public static readonly DependencyProperty ComboBoxWidthProperty =
             DependencyProperty.Register(nameof(ComboBoxWidth), typeof(double), typeof(GlobalVariableLinkControl),
                 new FrameworkPropertyMetadata(100.0));
+
+        /// <summary>数值显示格式（默认 F3；对针补偿等可设为 +0.000;-0.000;0.000）</summary>
+        public static readonly DependencyProperty DisplayStringFormatProperty =
+            DependencyProperty.Register(nameof(DisplayStringFormat), typeof(string), typeof(GlobalVariableLinkControl),
+                new FrameworkPropertyMetadata("F3", OnDisplayValueOrFormatChanged));
+
+        public static readonly DependencyProperty FormattedDisplayTextProperty =
+            DependencyProperty.Register(nameof(FormattedDisplayText), typeof(string), typeof(GlobalVariableLinkControl),
+                new FrameworkPropertyMetadata("0.000"));
 
         #endregion
 
@@ -90,13 +99,79 @@ namespace ModuleCore.UserControls
             set => SetValue(ComboBoxWidthProperty, value);
         }
 
+        public string DisplayStringFormat
+        {
+            get => (string)GetValue(DisplayStringFormatProperty);
+            set => SetValue(DisplayStringFormatProperty, value);
+        }
+
+        public string FormattedDisplayText
+        {
+            get => (string)GetValue(FormattedDisplayTextProperty);
+            private set => SetValue(FormattedDisplayTextProperty, value);
+        }
+
         #endregion
 
-        private bool _isSynchronizingComboBox;
+        private static void OnDisplayValueOrFormatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is GlobalVariableLinkControl control)
+                control.UpdateFormattedDisplayText();
+        }
+
+        /// <summary>按 DisplayStringFormat 刷新显示文本</summary>
+        private void UpdateFormattedDisplayText()
+        {
+            var format = string.IsNullOrWhiteSpace(DisplayStringFormat) ? "F3" : DisplayStringFormat;
+            try
+            {
+                FormattedDisplayText = DisplayValue.ToString(format);
+            }
+            catch
+            {
+                FormattedDisplayText = DisplayValue.ToString("F3");
+            }
+        }
 
         public GlobalVariableLinkControl()
         {
             InitializeComponent();
+            UpdateFormattedDisplayText();
+        }
+
+        private bool _isSynchronizingComboBox;
+
+        /// <summary>取消链接按钮按下后，忽略 ComboBox LostFocus 将旧变量名写回绑定源</summary>
+        private bool _suppressComboBoxLostFocusWriteback;
+
+        /// <summary>
+        /// 取消链接按钮 PreviewMouseDown：抢在 ComboBox LostFocus 之前清空链接，
+        /// 避免 LostFocus/SelectedValue 绑定把旧变量名写回导致「取消链接无效」。
+        /// </summary>
+        private void OnUnlinkButtonPreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            _suppressComboBoxLostFocusWriteback = true;
+            ClearLinkedVariableSelection();
+            UnlinkCommand?.Execute(null);
+        }
+
+        /// <summary>清空链接变量名与 ComboBox 选中/文本状态</summary>
+        private void ClearLinkedVariableSelection()
+        {
+            _isSynchronizingComboBox = true;
+            try
+            {
+                LinkedVariableName = null;
+                if (PART_ComboBox != null)
+                {
+                    PART_ComboBox.SelectedItem = null;
+                    PART_ComboBox.Text = string.Empty;
+                }
+            }
+            finally
+            {
+                _isSynchronizingComboBox = false;
+            }
         }
 
         /// <summary>
@@ -175,11 +250,17 @@ namespace ModuleCore.UserControls
             if (_isSynchronizingComboBox || PART_ComboBox == null)
                 return;
 
+            // 取消链接按钮已抢先清空，跳过 LostFocus 写回
+            if (_suppressComboBoxLostFocusWriteback)
+            {
+                _suppressComboBoxLostFocusWriteback = false;
+                return;
+            }
+
             // 用户手动清空了可编辑框文本，视为解除链接
             if (string.IsNullOrWhiteSpace(PART_ComboBox.Text))
             {
-                LinkedVariableName = null;
-                PART_ComboBox.SelectedItem = null;
+                ClearLinkedVariableSelection();
             }
         }
     }

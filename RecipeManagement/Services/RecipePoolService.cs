@@ -129,10 +129,10 @@ namespace Recipe
             }
             return true;
         }
-        public void StageStationParameters(string stationIdentifier, object parameters)
+        public void StageStationParameters(string stationIdentifier, object parameters, bool replacePositions = false)
         {
-            _stagingArea.Stage(stationIdentifier, parameters);
-            _logger.Info($"[{stationIdentifier}] 参数已暂存");
+            _stagingArea.Stage(stationIdentifier, parameters, replacePositions);
+            _logger.Info($"[{stationIdentifier}] 参数已暂存{(replacePositions ? "（完整替换 Positions）" : "")}");
         }
         public bool HasStagedChanges(string stationIdentifier = null)
         {
@@ -154,7 +154,7 @@ namespace Recipe
                 var context = new RecipePoolSaveContext(_recipeStorage, poolId, recipeName);
                 foreach (var kv in dirtyParams)
                 {
-                    context.AddStation(kv.Key, kv.Value);
+                    context.AddStation(kv.Key, kv.Value, _stagingArea.ShouldReplacePositions(kv.Key));
                 }
                 var success = await context.CommitAsync().ConfigureAwait(false);
                 if (success)
@@ -175,9 +175,9 @@ namespace Recipe
                 _semaphore.Release();
             }
         }
-        public async Task<bool> SaveStationParametersAsync(string poolId, string recipeName, string stationIdentifier, object parameters)
+        public async Task<bool> SaveStationParametersAsync(string poolId, string recipeName, string stationIdentifier, object parameters, bool replacePositions = false)
         {
-            StageStationParameters(stationIdentifier, parameters);
+            StageStationParameters(stationIdentifier, parameters, replacePositions);
             return await CommitStagedParametersAsync(poolId, recipeName).ConfigureAwait(false);
         }
         public async Task<bool> SaveAllStationParametersAsync(string poolId, string recipeName)
@@ -531,7 +531,7 @@ namespace Recipe
                     var context = new RecipePoolSaveContext(_recipeStorage, pool.Name, recipeName);
                     foreach (var kv in dirtyParams)
                     {
-                        context.AddStation(kv.Key, kv.Value);
+                        context.AddStation(kv.Key, kv.Value, _stagingArea.ShouldReplacePositions(kv.Key));
                     }
                     var commitSuccess = await context.CommitAsync().ConfigureAwait(false);
                     if (commitSuccess)
@@ -564,13 +564,34 @@ namespace Recipe
                 _semaphore.Release();
             }
         }
+        /// <summary>
+        /// 解析配方池持久化键：存储层使用 pool.Name（recipe_pool_{Name}），
+        /// 调用方传入 CurrentPoolId（GUID）时需映射到 CurrentPoolName，避免全局变量读写失败。
+        /// </summary>
+        private string ResolvePoolStorageKey(string poolIdOrName)
+        {
+            if (string.IsNullOrEmpty(poolIdOrName))
+                return !string.IsNullOrEmpty(_currentPoolName) ? _currentPoolName : _currentPoolId;
+
+            if (!string.IsNullOrEmpty(_currentPoolId)
+                && string.Equals(poolIdOrName, _currentPoolId, StringComparison.Ordinal)
+                && !string.IsNullOrEmpty(_currentPoolName)
+                && !string.Equals(_currentPoolId, _currentPoolName, StringComparison.Ordinal))
+            {
+                return _currentPoolName;
+            }
+
+            return poolIdOrName;
+        }
+
         public async Task UpdateRecipePoolAsync(string poolId, Action<RecipePool> updateAction)
         {
             await _semaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                var pool = await _recipeStorage.LoadRecipePoolAsync(poolId).ConfigureAwait(false)
-                         ?? new RecipePool { Id = poolId, Name = poolId, CreatedTime = DateTime.Now };
+                var storageKey = ResolvePoolStorageKey(poolId);
+                var pool = await _recipeStorage.LoadRecipePoolAsync(storageKey).ConfigureAwait(false)
+                         ?? new RecipePool { Id = poolId, Name = storageKey, CreatedTime = DateTime.Now };
                 updateAction(pool);
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
             }
@@ -581,7 +602,8 @@ namespace Recipe
         }
         public async Task<List<GlobalVariable>> LoadGlobalVariablesAsync(string poolId)
         {
-            var pool = await _recipeStorage.LoadRecipePoolAsync(poolId).ConfigureAwait(false);
+            var storageKey = ResolvePoolStorageKey(poolId);
+            var pool = await _recipeStorage.LoadRecipePoolAsync(storageKey).ConfigureAwait(false);
             return pool?.GlobalVariables?.ToList() ?? new List<GlobalVariable>();
         }
         public async Task SaveGlobalVariablesAsync(string poolId, IEnumerable<GlobalVariable> variables)
@@ -593,7 +615,8 @@ namespace Recipe
         }
         public async Task<T> GetExtensionDataAsync<T>(string poolId, string key) where T : class, new()
         {
-            var pool = await _recipeStorage.LoadRecipePoolAsync(poolId).ConfigureAwait(false);
+            var storageKey = ResolvePoolStorageKey(poolId);
+            var pool = await _recipeStorage.LoadRecipePoolAsync(storageKey).ConfigureAwait(false);
             if (pool == null) return null;
             if (pool.ExtensionData.TryGetValue(key, out var jsonElement)
                 && jsonElement.HasValue
@@ -611,6 +634,7 @@ namespace Recipe
         public async Task SetExtensionDataAsync<T>(string poolId, string key, T data) where T : class
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
+            // UpdateRecipePoolAsync 内部已解析 storageKey
             await UpdateRecipePoolAsync(poolId, pool =>
             {
                 pool.ExtensionData[key] = JsonSerializer.SerializeToElement(data);

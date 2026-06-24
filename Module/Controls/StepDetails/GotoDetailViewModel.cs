@@ -15,6 +15,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace Module.ViewModels
 {
@@ -37,6 +38,9 @@ namespace Module.ViewModels
         private readonly IRecipePoolService _recipePoolService;
         private readonly IStationRegistry _stationRegistry;
         private readonly IEventAggregator _eventAggregator;
+
+        /// <summary> 全局变量变更防抖：方法4 IF/ELSE 循环中 VISION 频繁写 GV，避免 Ofs 列闪烁/丢失 </summary>
+        private DispatcherTimer _globalVarReloadTimer;
 
         private ProcessStep _step;
 
@@ -247,28 +251,54 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 从 IRecipePoolService 加载全局变量，筛选 Double 类型供 Ofs 链接使用
-        /// 加载完成后统一刷新所有行的链接显示值，覆盖首次加载和事件触发两种场景
+        /// 从 IRecipePoolService 加载全局变量，筛选 Double 类型供 Ofs 链接使用。
+        /// 已加载时就地更新 Value，避免 Clear 导致链接偏移量短暂丢失（方法4 循环场景）。
         /// </summary>
         private async Task LoadGlobalVariablesAsync()
         {
             try
             {
-                var poolId = _recipePoolService.CurrentPoolName;
+                var poolId = !string.IsNullOrEmpty(_recipePoolService.CurrentPoolName)
+                    ? _recipePoolService.CurrentPoolName
+                    : _recipePoolService.CurrentPoolId;
                 if (string.IsNullOrEmpty(poolId)) return;
 
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
+
+                // 就地刷新已有变量值，保持对象引用稳定，防止 Ofs 链接控件显示丢失
+                if (GlobalVariables != null && GlobalVariables.Count > 0)
+                {
+                    foreach (var loaded in variables)
+                    {
+                        var existing = GlobalVariables.FirstOrDefault(v =>
+                            string.Equals(v.Name, loaded.Name, StringComparison.OrdinalIgnoreCase));
+                        if (existing != null)
+                            existing.Value = loaded.Value;
+                    }
+
+                    if (LinkableOffsetVariables != null)
+                    {
+                        foreach (var loaded in variables.Where(v => v.Type == GlobalVariableType.Double))
+                        {
+                            var existing = LinkableOffsetVariables.FirstOrDefault(v =>
+                                string.Equals(v.Name, loaded.Name, StringComparison.OrdinalIgnoreCase));
+                            if (existing != null)
+                                existing.Value = loaded.Value;
+                        }
+                    }
+
+                    RefreshAllOffsetDisplayValues();
+                    return;
+                }
+
                 GlobalVariables = new ObservableCollection<GlobalVariable>(variables);
 
-                // 筛选 Double 类型变量，供 Ofs(mm) 列的 GlobalVariableLinkControl 使用
                 var doubleVars = variables
                     .Where(v => v.Type == GlobalVariableType.Double)
                     .ToList();
 
-                // 取消旧变量的值变更订阅
                 UnsubscribeVariableValueChanges();
 
-                // 就地更新集合而非替换引用，避免行的 _linkedVariables 引用失效
                 if (LinkableOffsetVariables == null)
                     LinkableOffsetVariables = new ObservableCollection<GlobalVariable>(doubleVars);
                 else
@@ -291,8 +321,6 @@ namespace Module.ViewModels
                 OffsetVariableOptions = new ObservableCollection<string> { "Manual" };
             }
 
-            // 无论首次加载还是事件触发，均刷新所有行的链接显示值
-            // 解决构造函数竞态：InitializeFromStep 可能先于变量加载完成，此时行引用的 _linkedVariables 为 null
             RefreshAllOffsetDisplayValues();
         }
 
@@ -346,11 +374,22 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 全局变量变更回调：重新加载变量并刷新各行链接显示值（已在 UI 线程执行）
+        /// 全局变量变更回调：防抖后刷新，避免方法4 循环执行时 Ofs 列频繁 Clear 导致显示丢失
         /// </summary>
-        private async void OnGlobalVariablesChanged(string poolId)
+        private void OnGlobalVariablesChanged(string poolId)
         {
-            await LoadGlobalVariablesAsync();
+            if (_globalVarReloadTimer == null)
+            {
+                _globalVarReloadTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+                _globalVarReloadTimer.Tick += async (_, _) =>
+                {
+                    _globalVarReloadTimer.Stop();
+                    await LoadGlobalVariablesAsync();
+                };
+            }
+
+            _globalVarReloadTimer.Stop();
+            _globalVarReloadTimer.Start();
         }
 
         /// <summary>
