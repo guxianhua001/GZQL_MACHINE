@@ -67,6 +67,32 @@ namespace Core.Models
 
         /// <summary>上次使用的配置文件名（仅文件名，不含路径）</summary>
         public string LastFileName { get; set; } = string.Empty;
+
+        // === 新增字段（产品对齐校准扩展） ===
+
+        /// <summary>相机屏蔽（true=禁用相机，手动输入特征点）</summary>
+        public bool CameraShielded { get; set; }
+
+        /// <summary>数据接收模式：ManualTrigger / AutoReceive</summary>
+        public string DataReceiveMode { get; set; } = "ManualTrigger";
+
+        /// <summary>基准特征点中心X</summary>
+        public double ReferenceCenterX { get; set; }
+
+        /// <summary>基准特征点中心Y</summary>
+        public double ReferenceCenterY { get; set; }
+
+        /// <summary>基准角度（度，归一化[-180,180]）</summary>
+        public double ReferenceAngle { get; set; }
+
+        /// <summary>ΔX取反开关</summary>
+        public bool InvertDeltaX { get; set; }
+
+        /// <summary>ΔY取反开关</summary>
+        public bool InvertDeltaY { get; set; }
+
+        /// <summary>ΔAngle取反开关</summary>
+        public bool InvertDeltaAngle { get; set; }
     }
 
     // 保留旧模型以兼容现有代码
@@ -89,5 +115,32 @@ namespace Core.Models
     {
         public StageCalibrationFiducialData Fiducial1 { get; set; } = new StageCalibrationFiducialData();
         public StageCalibrationFiducialData Fiducial2 { get; set; } = new StageCalibrationFiducialData();
+    }
+
+    /// <summary>
+    /// Halcon计算结果：两个特征点的中心点、角度、距离
+    /// </summary>
+    public class ProductAlignResult
+    {
+        /// <summary>中心点X（机械坐标）</summary>
+        public double CenterX { get; set; }
+
+        /// <summary>中心点Y（机械坐标）</summary>
+        public double CenterY { get; set; }
+
+        /// <summary>归一化角度[-180,180]度</summary>
+        public double AngleDeg { get; set; }
+
+        /// <summary>两点间距离</summary>
+        public double Distance { get; set; }
+    }
+
+    /// <summary>数据接收模式</summary>
+    public enum DataReceiveMode
+    {
+        /// <summary>手动触发拍照</summary>
+        ManualTrigger,
+        /// <summary>自动接收TCP推送</summary>
+        AutoReceive
     }
 }

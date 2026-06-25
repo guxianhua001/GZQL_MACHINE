@@ -91,7 +91,8 @@
         </materialDesign:Card>
 
         <!-- 轨迹段 DataGrid（启用虚拟化防止大量数据卡死UI，支持多选） -->
-        <DataGrid ItemsSource="{Binding Segments}"
+        <DataGrid x:Name="SegmentsDataGrid"
+                  ItemsSource="{Binding Segments}"
                   SelectedItem="{Binding SelectedSegment}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"

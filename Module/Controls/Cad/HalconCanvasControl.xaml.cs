@@ -337,6 +337,9 @@ namespace Module.Controls
         // 折线模式的顶点列表（图像坐标）
         private List<System.Windows.Point> _polylineVertices;
 
+        // 折线模式双击检测——记录上次左键按下时间（毫秒）
+        private long _lastPolylineClickTicks;
+
         // 涂抹/擦除模式的累积区域
         private HRegion _paintMaskRegion;
 
@@ -1057,6 +1060,11 @@ namespace Module.Controls
                         case RoiDrawMode.Eraser:
                             HandleEraserMove(row, col);
                             break;
+                        case RoiDrawMode.Polyline:
+                            // 折线模式：实时显示从上一顶点到鼠标位置的预览线段，
+                            // 避免 HWndCtrl.MouseMoved 的 Repaint 清除临时绘制的折线预览
+                            HandlePolylineMove(row, col);
+                            break;
                     }
                 }
             }
@@ -1099,6 +1107,19 @@ namespace Module.Controls
 
                 if (buttonState == 1)
                 {
+                    // Polyline 模式双击检测：两次左键按下间隔 < 300ms 视为双击，结束折线
+                    if (DrawMode == RoiDrawMode.Polyline)
+                    {
+                        long nowTicks = System.DateTime.Now.Ticks;
+                        double elapsedMs = (nowTicks - _lastPolylineClickTicks) / 10000.0;
+                        _lastPolylineClickTicks = nowTicks;
+                        if (elapsedMs < 300 && _polylineVertices != null && _polylineVertices.Count >= 2)
+                        {
+                            FinishPolyline();
+                            return;
+                        }
+                    }
+
                     _mouseDownRow = row;
                     _mouseDownCol = col;
                     _mousePressed = true;
@@ -1241,6 +1262,8 @@ namespace Module.Controls
                     FinishCurrentShape();
                     break;
                 case RoiDrawMode.Polyline:
+                    // 鼠标松开后重绘折线预览，防止 HWndCtrl.MouseUp 的重绘清除已添加的顶点
+                    RenderPolylinePreview();
                     break;
             }
         }
@@ -1497,9 +1520,15 @@ namespace Module.Controls
             {
                 CancelRoiDrawing();
             }
-            // ROI 绘制模式：不设置 DrawModel=true
-            // ROIController 的鼠标交互需要 HWndCtrl 的鼠标事件正常工作
-            // ViewWindow 的缩放/平移与 ROI 交互共存（先检查 ROI 命中，再走平移）
+
+            // Polyline 模式自管理顶点，不依赖 ROIController，
+            // 设置 drawModel=true 阻止 HWndCtrl 的 MouseMoved/MouseDown 调用 Repaint，
+            // 避免与折线预览重绘冲突导致闪烁
+            if (_halconControl?.WindowH != null)
+            {
+                _halconControl.WindowH.setDrawModel(newMode == RoiDrawMode.Polyline);
+            }
+
             if (newMode == RoiDrawMode.Paint || newMode == RoiDrawMode.Eraser)
             {
                 InitPaintEraserState();
@@ -1722,6 +1751,11 @@ namespace Module.Controls
             {
                 IsDrawing = false;
                 _polylineVertices?.Clear();
+                // 重置双击计时器，避免下次画折线时误判
+                _lastPolylineClickTicks = 0;
+                // 重置 DrawMode 为 None——触发 OnDrawModeChangedInternal 恢复 drawModel=false，
+                // 解除 HWndCtrl 鼠标事件阻止，避免画布卡死
+                DrawMode = RoiDrawMode.None;
             }
         }
 
@@ -1730,7 +1764,8 @@ namespace Module.Controls
         /// </summary>
         private void RenderPolylinePreview()
         {
-            if (_polylineVertices == null || _polylineVertices.Count < 2) return;
+            // 至少 1 个顶点即需渲染（显示顶点标记），折线部分在 count>=2 时才绘制
+            if (_polylineVertices == null || _polylineVertices.Count < 1) return;
             RenderPolylinePreviewInternal(null, null);
         }
 
@@ -1788,9 +1823,10 @@ namespace Module.Controls
                     hWindow.DispLine(lastPt.Y, lastPt.X, previewRow.Value, previewCol.Value);
                 }
 
-                // 绘制所有顶点标记（根据缩放因子自适应大小，避免过大）
+                // 绘制所有顶点标记——放大时方块在屏幕上变小（保持屏幕视觉大小恒定）
+                // 使用与 ROI 手柄相同的自适应策略：图像坐标大小 = 屏幕基准 / 缩放因子
                 double zoomFactor = GetCurrentZoomFactor();
-                double vertexSize = Math.Clamp(3.0 / zoomFactor, 1.0, 5.0);
+                double vertexSize = Math.Max(4.0 / zoomFactor, 0.5);
                 hWindow.SetDraw("fill");
                 hWindow.SetColor("#00FF00");
                 for (int i = 0; i < count; i++)

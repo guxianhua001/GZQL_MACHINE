@@ -23,6 +23,9 @@ namespace Framework.ViewModels
         private bool _isTreePanelExpanded = true;
         private double _treePanelWidth = 280;
 
+        // 导航加载状态相关字段
+        private bool _isNavigating;
+
         public string Title
         {
             get => _title;
@@ -59,6 +62,26 @@ namespace Framework.ViewModels
         {
             get => _treePanelWidth;
             set => SetProperty(ref _treePanelWidth, value);
+        }
+
+        /// <summary>
+        /// 是否正在加载导航页面（控制加载遮罩显示）
+        /// </summary>
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
+
+        /// <summary>
+        /// 加载提示文本（支持多语言）
+        /// </summary>
+        private string _loadingMessage;
+        public string LoadingMessage
+        {
+            get => _loadingMessage;
+            set => SetProperty(ref _loadingMessage, value);
         }
 
         public DelegateCommand LoadTreeCommand { get; }
@@ -158,6 +181,13 @@ namespace Framework.ViewModels
         {
             // 1. 更新所有节点的 DisplayName 值
             UpdateAllNodesDisplayName();
+
+            // 2. 若加载遮罩正在显示，同步刷新加载提示文本
+            if (IsLoading)
+            {
+                LoadingMessage = _localizationService.GetResourceOrDefault(
+                    "TreeView_LoadingData", "数据正在加载，请稍候...");
+            }
         }
 
         private void UpdateAllNodesDisplayName()
@@ -209,9 +239,24 @@ namespace Framework.ViewModels
         /// 导航到指定视图，含动画异常容错重试机制。
         /// MaterialDesign 转场动画在复杂视图卸载时可能抛出 NaN 异常，
         /// 捕获后清空区域内容并重试一次，避免导航被彻底阻塞。
+        /// 导航前先显示加载遮罩并让 UI 渲染，避免导航阻塞 UI 线程时遮罩无法显示。
         /// </summary>
-        private void NavigateToView(string viewName)
+        private async void NavigateToView(string viewName)
         {
+            // 防止并发导航：上一次导航未完成时忽略新请求
+            if (_isNavigating) return;
+            _isNavigating = true;
+
+            // 立即显示加载遮罩（必须在导航前设置，导航可能同步阻塞 UI 线程）
+            LoadingMessage = _localizationService.GetResourceOrDefault(
+                "TreeView_LoadingData", "数据正在加载，请稍候...");
+            IsLoading = true;
+
+            // 让 UI 线程先渲染遮罩，再执行可能耗时的导航操作。
+            // RequestNavigate 构造视图时会同步阻塞 UI 线程，若不先 yield，
+            // 遮罩的 Visibility 绑定虽已更新但来不及渲染就被阻塞。
+            await Task.Delay(50);
+
             _regionManager.RequestNavigate("TreeRegion", viewName, result =>
             {
                 if ((bool)!result.Result)
@@ -231,22 +276,40 @@ namespace Framework.ViewModels
                         }
                         catch { /* 清空区域失败不影响后续重试 */ }
 
+                        // 重试导航，保持加载状态
                         _regionManager.RequestNavigate("TreeRegion", viewName, retryResult =>
                         {
+                            FinishNavigation();
                             if ((bool)!retryResult.Result)
                             {
                                 MessageBox.Show($"导航失败: {retryResult.Error?.Message}", "错误",
                                     MessageBoxButton.OK, MessageBoxImage.Error);
                             }
                         });
+                        return;
                     }
                     else
                     {
+                        FinishNavigation();
                         MessageBox.Show($"导航失败: {errMsg}", "错误",
                             MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
+                else
+                {
+                    // 导航成功，隐藏遮罩
+                    FinishNavigation();
+                }
             });
+        }
+
+        /// <summary>
+        /// 结束导航：隐藏加载遮罩并释放导航锁
+        /// </summary>
+        private void FinishNavigation()
+        {
+            IsLoading = false;
+            _isNavigating = false;
         }
 
         private void OnNodeDoubleClick(TreeNode node)

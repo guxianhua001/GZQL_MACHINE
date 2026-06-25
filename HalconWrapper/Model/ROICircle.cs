@@ -80,11 +80,13 @@ namespace HalconWrapper.Model
         /// <param name="window">HALCON window</param>
         public override void Draw(HalconDotNet.HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             window.SetDraw("margin");
             window.DispCircle(CenterY, CenterX, Radius);
             window.SetDraw("fill");
-            window.DispRectangle2(StartPhi, EndPhi, 0, 4, 4);
-            window.DispRectangle2(CenterY, CenterX, 0, 4, 4);
+            window.DispRectangle2(StartPhi, EndPhi, 0, handleSize, handleSize);
+            window.DispRectangle2(CenterY, CenterX, 0, handleSize, handleSize);
         }
         /// <summary> 
         /// Returns the distance of the ROI handle being
@@ -113,14 +115,15 @@ namespace HalconWrapper.Model
         /// </summary>
         public override void DisplayActive(HalconDotNet.HWindow window)
         {
-
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             switch (ActiveHandleId)
             {
                 case 0:
-                    window.DispRectangle2(StartPhi, EndPhi, 0, 4, 4);
+                    window.DispRectangle2(StartPhi, EndPhi, 0, handleSize, handleSize);
                     break;
                 case 1:
-                    window.DispRectangle2(CenterY, CenterX, 0, 4, 4);
+                    window.DispRectangle2(CenterY, CenterX, 0, handleSize, handleSize);
                     break;
             }
         }

@@ -142,7 +142,7 @@ namespace Core.Models
             set => SetProperty(ref _jumpSpeed, Math.Clamp(value, 1.0, 160.0));
         }
 
-        private double _interpSpeed = 0;
+        private double _interpSpeed = 1.0;
         /// <summary>连续插补速度 mm/s（范围 0.1~160，走胶轨迹插补使用）</summary>
         public double InterpSpeed
         {

@@ -1,6 +1,7 @@
 using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
+using HalconDotNet;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
@@ -25,6 +26,15 @@ namespace Module.Services
         private readonly JsonSerializerSettings _serializerSettings;
 
         private StageCalibrationData _currentData = new StageCalibrationData();
+
+        /// <summary>当前订阅的TCP连接名</summary>
+        private string _subscribedTcpConnectionName = string.Empty;
+
+        /// <summary>当前数据接收回调</summary>
+        private Action<int, double, double> _dataReceivedCallback;
+
+        /// <summary>当前自动接收的目标特征点索引（1或2），由调用方在订阅时指定</summary>
+        private int _autoReceiveFeatureIndex = 1;
 
         /// <summary>工站标识</summary>
         private const string StationIdentifier = "DispenserStation";
@@ -321,6 +331,111 @@ namespace Module.Services
             }
 
             throw new FormatException($"无法解析视觉数据: {message}");
+        }
+
+        // ===== 新增：产品对齐校准扩展实现 =====
+
+        /// <summary>
+        /// 使用 Halcon 算子计算两个特征点的中心点、角度（归一化[-180,180]）、距离
+        /// 算子：distance_pp 计算距离，angle_ll 计算角度（P1→P2 与 X轴正方向夹角）
+        /// 注意：Halcon 坐标系 Row=Y, Col=X
+        /// </summary>
+        public ProductAlignResult CalculateCenterAndAngleWithHalcon(double p1X, double p1Y, double p2X, double p2Y)
+        {
+            _logger?.Info($"StageCalibration: Halcon计算 中心点/角度 P1({p1X:F3},{p1Y:F3}) P2({p2X:F3},{p2Y:F3})");
+
+            // 1. 中心点：两点的中点
+            double centerX = (p1X + p2X) / 2.0;
+            double centerY = (p1Y + p2Y) / 2.0;
+
+            // 2. 距离：Halcon distance_pp 算子（注意 Halcon 坐标系 Row=Y, Col=X）
+            HOperatorSet.DistancePp(p1Y, p1X, p2Y, p2X, out HTuple distance);
+
+            // 3. 角度：Halcon angle_ll 算子
+            //    第一条线：P1→P2，第二条线：X轴正方向 (Row=0,Col=0)→(Row=0,Col=1)
+            //    返回弧度，范围 [-pi, pi]
+            HOperatorSet.AngleLl(p1Y, p1X, p2Y, p2X, 0, 0, 0, 1, out HTuple angle);
+            double angleDeg = angle.D * 180.0 / Math.PI;
+
+            var result = new ProductAlignResult
+            {
+                CenterX = centerX,
+                CenterY = centerY,
+                AngleDeg = NormalizeAngle(angleDeg),
+                Distance = distance.D
+            };
+
+            _logger?.Info($"StageCalibration: Halcon计算完成 中心({result.CenterX:F3},{result.CenterY:F3}) 角度:{result.AngleDeg:F3}° 距离:{result.Distance:F3}");
+            return result;
+        }
+
+        /// <summary>角度归一化到 [-180, 180]</summary>
+        private static double NormalizeAngle(double angleDeg)
+        {
+            while (angleDeg > 180) angleDeg -= 360;
+            while (angleDeg <= -180) angleDeg += 360;
+            return angleDeg;
+        }
+
+        /// <summary>
+        /// 订阅相机数据自动接收
+        /// 通过订阅 ITCPEventService.CameraMessageReceived 事件，解析 TCP 推送的视觉坐标
+        /// </summary>
+        public void SubscribeCameraData(string tcpConnectionName, Action<int, double, double> onDataReceived)
+        {
+            // 先取消已有订阅，避免重复
+            if (!string.IsNullOrEmpty(_subscribedTcpConnectionName))
+                UnsubscribeCameraData();
+
+            _subscribedTcpConnectionName = tcpConnectionName ?? string.Empty;
+            _dataReceivedCallback = onDataReceived;
+
+            _tcpEventService.CameraMessageReceived += OnCameraMessageReceived;
+            _logger?.Info($"StageCalibration: 已订阅相机数据自动接收，连接:{tcpConnectionName}");
+        }
+
+        /// <summary>取消订阅相机数据</summary>
+        public void UnsubscribeCameraData()
+        {
+            if (!string.IsNullOrEmpty(_subscribedTcpConnectionName))
+            {
+                _tcpEventService.CameraMessageReceived -= OnCameraMessageReceived;
+                _logger?.Info("StageCalibration: 已取消订阅相机数据");
+            }
+            _subscribedTcpConnectionName = string.Empty;
+            _dataReceivedCallback = null;
+        }
+
+        /// <summary>设置自动接收的目标特征点索引（1或2）</summary>
+        public void SetAutoReceiveFeatureIndex(int index)
+        {
+            _autoReceiveFeatureIndex = (index == 1 || index == 2) ? index : 1;
+        }
+
+        /// <summary>
+        /// 相机消息接收事件处理
+        /// 仅处理来自订阅连接的消息，解析后回调
+        /// </summary>
+        private void OnCameraMessageReceived(string cameraName, string message)
+        {
+            if (_dataReceivedCallback == null) return;
+
+            // 仅处理匹配订阅连接名的消息（cameraName 为空时也接受，兼容广播模式）
+            if (!string.IsNullOrEmpty(_subscribedTcpConnectionName) &&
+                !string.IsNullOrEmpty(cameraName) &&
+                !string.Equals(cameraName, _subscribedTcpConnectionName, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            try
+            {
+                var (x, y) = ParseVisionData(message);
+                _logger?.Info($"StageCalibration: 自动接收数据 特征点{_autoReceiveFeatureIndex} X:{x:F3} Y:{y:F3}");
+                _dataReceivedCallback?.Invoke(_autoReceiveFeatureIndex, x, y);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"StageCalibration: 解析自动接收数据失败 - {ex.Message}, 原始消息:{message}");
+            }
         }
     }
 }

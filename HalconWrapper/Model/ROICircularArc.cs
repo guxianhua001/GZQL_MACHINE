@@ -86,12 +86,14 @@ namespace HalconWrapper.Model
             if (contour == null)
                 contour = new HXLDCont();
             contour.Dispose();
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             window.SetDraw("margin");
             contour.GenCircleContourXld(midR, midC, radius, startPhi, startPhi + extentPhi, circDir, 1.0);
             window.SetDraw("fill");
             window.DispObj(contour);
-            window.DispRectangle2(sizeR, sizeC, 0, 4, 4);
-            window.DispRectangle2(midR, midC, 0, 4, 4);
+            window.DispRectangle2(sizeR, sizeC, 0, handleSize, handleSize);
+            window.DispRectangle2(midR, midC, 0, handleSize, handleSize);
             window.DispObj(startRect2XLD);
             window.DispObj(arrowHandleXLD);
         }
@@ -126,13 +128,15 @@ namespace HalconWrapper.Model
         /// </summary>
         public override void DisplayActive(HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             switch (ActiveHandleId)
             {
                 case 0:
-                    window.DispRectangle2(midR, midC, 0, 4, 4);
+                    window.DispRectangle2(midR, midC, 0, handleSize, handleSize);
                     break;
                 case 1:
-                    window.DispRectangle2(sizeR, sizeC, 0, 4, 4);
+                    window.DispRectangle2(sizeR, sizeC, 0, handleSize, handleSize);
                     break;
                 case 2:
                     //window.DispRectangle2(startR, startC, startPhi, 10, 2);

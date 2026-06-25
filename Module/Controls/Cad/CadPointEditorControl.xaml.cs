@@ -319,6 +319,28 @@ namespace Module.Controls
 
             try
             {
+                // Polyline 模式不使用 ROIController，_roiDict 为空，
+                // 直接从 roiObj (XLD) 提取顶点，无需查询 roiDict
+                if (halconCanvas.DrawMode == RoiDrawMode.Polyline)
+                {
+                    if (roiObj == null || !roiObj.IsInitialized()) return;
+
+                    HOperatorSet.GetContourXld(roiObj, out HTuple rows, out HTuple cols);
+                    var vertices = new List<Core.Models.PointF>();
+                    for (int i = 0; i < rows.Length; i++)
+                    {
+                        var cadPt = ImageToCad(rows[i].D, cols[i].D);
+                        vertices.Add(new Core.Models.PointF((float)cadPt.cadX, (float)cadPt.cadY));
+                    }
+
+                    _viewModel.CurrentRoiPreview = new RoiRegion(RoiType.Polyline)
+                    {
+                        PolylineVertices = vertices
+                    };
+                    return;
+                }
+
+                // Line / CircularArc 模式从 ROIController 提取几何参数
                 var roiDict = halconCanvas.GetRoiDict();
                 var roi = roiDict.Values.LastOrDefault();
                 if (roi == null) return;
@@ -347,21 +369,6 @@ namespace Module.Controls
                             roiRegion.ArcRadius = arcRoi.radius;
                             roiRegion.ArcStartAngle = arcRoi.startPhi * 180.0 / Math.PI;
                             roiRegion.ArcEndAngle = (arcRoi.startPhi + arcRoi.extentPhi) * 180.0 / Math.PI;
-                        }
-                        break;
-
-                    case RoiDrawMode.Polyline:
-                        roiRegion = new RoiRegion(RoiType.Polyline);
-                        if (roiObj != null && roiObj.IsInitialized())
-                        {
-                            HOperatorSet.GetContourXld(roiObj, out HTuple rows, out HTuple cols);
-                            var vertices = new List<Core.Models.PointF>();
-                            for (int i = 0; i < rows.Length; i++)
-                            {
-                                var cadPt = ImageToCad(rows[i].D, cols[i].D);
-                                vertices.Add(new Core.Models.PointF((float)cadPt.cadX, (float)cadPt.cadY));
-                            }
-                            roiRegion.PolylineVertices = vertices;
                         }
                         break;
                 }

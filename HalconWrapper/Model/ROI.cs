@@ -36,8 +36,36 @@ namespace HalconWrapper.Model
                 imageWidth = value;
             }
         }
-        /// <summary>ROI��ɫ </summary>
+        /// <summary>获取ROI颜色的方法</summary>
         public string Color = "cyan";
+
+        /// <summary>
+        /// 当前窗口缩放因子（屏幕像素 / 图像坐标视口宽度）
+        /// 由 ROIController.PaintData 在绘制前设置，用于手柄自适应大小计算
+        /// 默认 1.0 表示未缩放
+        /// </summary>
+        public double CurrentZoomFactor { get; set; } = 1.0;
+
+        /// <summary>
+        /// 根据当前缩放因子计算自适应手柄大小（图像坐标系）
+        /// 放大时手柄在图像坐标系中变小，保持屏幕上视觉大小恒定，
+        /// 避免放大时手柄方块遮挡图像内容。
+        /// </summary>
+        /// <param name="window">HALCON 窗口对象（保留参数，当前未使用）</param>
+        /// <param name="baseScreenSize">手柄在屏幕上的基准半边长（像素），默认 4.0</param>
+        /// <returns>图像坐标系中的手柄半边长，放大时变小，缩小时变大</returns>
+        protected double GetZoomAwareHandleSize(HWindow window, double baseScreenSize = 4.0)
+        {
+            double zoomFactor = CurrentZoomFactor;
+            if (zoomFactor <= 0) zoomFactor = 1.0;
+
+            // 图像坐标系手柄大小 = 屏幕基准大小 / 缩放因子
+            // 这样屏幕上手柄大小恒定为 baseScreenSize 像素
+            double handleSize = baseScreenSize / zoomFactor;
+
+            // 限制最小值，避免手柄过小不可见
+            return Math.Max(handleSize, 0.5);
+        }
         /// <summary> ROI����</summary>
         public ROIType Type;
         /// <summary>�̳�ROI������Ա </summary>

@@ -414,7 +414,7 @@ namespace Module.ViewModels
                 PositionName = IsHomeMode ? "Home" : "",
                 Description = "",
                 Offset = 0,
-                OffsetVariableName = "Manual",
+                OffsetVariableName = "",
                 Speed = 10,
                 HomeMode = 0,  // 默认使用卡内配置回零
                 HomeMinVel = 5,

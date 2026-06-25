@@ -4322,6 +4322,9 @@ namespace Module.ViewModels
                 (seg, val) => seg.PreDelay = val));
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_PostDelay"), "ms", referenceSegment.PostDelay,
                 (seg, val) => seg.PostDelay = val));
+            // 点胶时间（单点模式控制胶点大小，连续模式也可批量统一）
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_DispenseTime"), "ms", referenceSegment.DispenseTime,
+                (seg, val) => seg.DispenseTime = val));
             // 高度参数（示教高度 + 补偿，可按 Type 筛选）
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_TeachHeight"), "mm", referenceSegment.TeachHeight,
                 (seg, val) => { seg.TeachHeight = val; seg.ZHeight = val; }));

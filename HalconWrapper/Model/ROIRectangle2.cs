@@ -129,11 +129,13 @@ namespace HalconWrapper.Model
         /// <param name="window">HALCON window</param>
         public override void Draw(HalconDotNet.HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             window.SetDraw("margin");
             window.DispRectangle2(MidR, MidC, -Phi, Length1, Length2);
             window.SetDraw("fill");
             for (int i = 0; i < NumHandles; i++)
-                window.DispRectangle2(rows[i].D, cols[i].D, -Phi, 4, 4);
+                window.DispRectangle2(rows[i].D, cols[i].D, -Phi, handleSize, handleSize);
             window.DispArrow(MidR, MidC, MidR + (Math.Sin(Phi) * Length1 * 1.1),
                 MidC + (Math.Cos(Phi) * Length1 * 1.1), 2);
 
@@ -174,9 +176,11 @@ namespace HalconWrapper.Model
         /// <param name="window">HALCON window</param>
         public override void DisplayActive(HalconDotNet.HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             window.DispRectangle2(rows[ActiveHandleId].D,
                                   cols[ActiveHandleId].D,
-                                  -Phi, 4, 4);
+                                  -Phi, handleSize, handleSize);
 
             if (ActiveHandleId == 5)
                 window.DispArrow(MidR, MidC,

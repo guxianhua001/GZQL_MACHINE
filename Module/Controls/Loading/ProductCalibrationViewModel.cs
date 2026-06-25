@@ -5,6 +5,7 @@ using Framework.Dialogs;
 using Newtonsoft.Json;
 using Prism.Commands;
 using Prism.Events;
+using Prism.Ioc;
 using Prism.Mvvm;
 using Recipe.Interfaces;
 using Recipe.Models;
@@ -23,8 +24,9 @@ namespace Module.ViewModels
     /// <summary>
     /// 载台校准ViewModel——管理基准位移动、两次拍照位、偏差计算、全局变量链接、旋转校正、参数加载保存
     /// 流程：1.载台Rx/Rz移到基准位 → 2.相机移到拍照位1拍照 → 3.相机移到拍照位2拍照 → 4.计算deltaX/deltaY/角度 → 5.旋转校正
+    /// 实现 IDialogCloseable 以支持 BaseDialogService 统一弹窗关闭机制（跟随主题切换）
     /// </summary>
-    public class ProductCalibrationViewModel : BindableBase
+    public class ProductCalibrationViewModel : BindableBase, IDialogCloseable
     {
         private readonly IStageCalibrationService _calibService;
         private readonly ITCPEventService _tcpEventService;
@@ -39,6 +41,16 @@ namespace Module.ViewModels
         /// <summary>默认配置文件路径</summary>
         private static readonly string ConfigDirectory = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory, "Config", "StageCalibration");
+
+        /// <summary>保留变量名集合：偏差值名 + _LinkedVar 后缀名，这些变量不出现在链接下拉框中</summary>
+        private static readonly HashSet<string> ReservedVarNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "DeltaX", "DeltaY", "DeltaAngle",
+            "DeltaX_LinkedVar", "DeltaY_LinkedVar", "DeltaAngle_LinkedVar"
+        };
+
+        /// <summary>当前自动接收目标特征点索引（1或2），由用户选择拍照位决定</summary>
+        private int _currentAutoReceiveIndex = 1;
 
         #region 属性 — 基准位
 
@@ -99,6 +111,26 @@ namespace Module.ViewModels
 
         #endregion
 
+        #region 属性 — 特征点计算结果（Halcon）
+
+        private double _centerX;
+        /// <summary>中心点X（机械坐标）</summary>
+        public double CenterX { get => _centerX; set => SetProperty(ref _centerX, value); }
+
+        private double _centerY;
+        /// <summary>中心点Y（机械坐标）</summary>
+        public double CenterY { get => _centerY; set => SetProperty(ref _centerY, value); }
+
+        private double _resultAngle;
+        /// <summary>归一化角度[-180,180]度</summary>
+        public double ResultAngle { get => _resultAngle; set => SetProperty(ref _resultAngle, value); }
+
+        private double _pointDistance;
+        /// <summary>两点间距离</summary>
+        public double PointDistance { get => _pointDistance; set => SetProperty(ref _pointDistance, value); }
+
+        #endregion
+
         #region 属性 — 偏差结果
 
         private double _deltaX;
@@ -120,6 +152,96 @@ namespace Module.ViewModels
         private double _offsetY;
         /// <summary>相机与基准点的Y偏差</summary>
         public double OffsetY { get => _offsetY; set => SetProperty(ref _offsetY, value); }
+
+        // === 基准特征点 ===
+        private double _referenceCenterX;
+        /// <summary>基准特征点中心X</summary>
+        public double ReferenceCenterX { get => _referenceCenterX; set => SetProperty(ref _referenceCenterX, value); }
+
+        private double _referenceCenterY;
+        /// <summary>基准特征点中心Y</summary>
+        public double ReferenceCenterY { get => _referenceCenterY; set => SetProperty(ref _referenceCenterY, value); }
+
+        private double _referenceAngle;
+        /// <summary>基准角度（度，归一化[-180,180]）</summary>
+        public double ReferenceAngle { get => _referenceAngle; set => SetProperty(ref _referenceAngle, value); }
+
+        // === 取反开关（每项独立） ===
+        private bool _invertDeltaX;
+        /// <summary>ΔX取反开关</summary>
+        public bool InvertDeltaX
+        {
+            get => _invertDeltaX;
+            set
+            {
+                if (SetProperty(ref _invertDeltaX, value))
+                    CalculateDeviationFromReference();
+            }
+        }
+
+        private bool _invertDeltaY;
+        /// <summary>ΔY取反开关</summary>
+        public bool InvertDeltaY
+        {
+            get => _invertDeltaY;
+            set
+            {
+                if (SetProperty(ref _invertDeltaY, value))
+                    CalculateDeviationFromReference();
+            }
+        }
+
+        private bool _invertDeltaAngle;
+        /// <summary>ΔAngle取反开关</summary>
+        public bool InvertDeltaAngle
+        {
+            get => _invertDeltaAngle;
+            set
+            {
+                if (SetProperty(ref _invertDeltaAngle, value))
+                    CalculateDeviationFromReference();
+            }
+        }
+
+        #endregion
+
+        #region 属性 — 相机屏蔽与数据接收模式
+
+        private bool _cameraShielded;
+        /// <summary>相机屏蔽（true=禁用相机，手动输入特征点）</summary>
+        public bool CameraShielded
+        {
+            get => _cameraShielded;
+            set
+            {
+                if (SetProperty(ref _cameraShielded, value))
+                {
+                    RaisePropertyChanged(nameof(IsCameraActive));
+                    // 屏蔽开启时取消自动接收订阅
+                    if (value && DataReceiveMode == DataReceiveMode.AutoReceive)
+                        UnsubscribeAutoReceive();
+                }
+            }
+        }
+
+        /// <summary>相机是否可用（屏蔽时为false）</summary>
+        public bool IsCameraActive => !CameraShielded;
+
+        private DataReceiveMode _dataReceiveMode = DataReceiveMode.ManualTrigger;
+        /// <summary>数据接收模式</summary>
+        public DataReceiveMode DataReceiveMode
+        {
+            get => _dataReceiveMode;
+            set
+            {
+                if (SetProperty(ref _dataReceiveMode, value))
+                {
+                    // 切换到手动模式时取消订阅
+                    if (value == DataReceiveMode.ManualTrigger)
+                        UnsubscribeAutoReceive();
+                }
+            }
+        }
 
         #endregion
 
@@ -207,6 +329,14 @@ namespace Module.ViewModels
         public DelegateCommand UnlinkDeltaYCommand { get; }
         public DelegateCommand UnlinkDeltaAngleCommand { get; }
 
+        // === 新增命令（产品对齐校准扩展） ===
+        public DelegateCommand SetAsReferenceCommand { get; }
+        public DelegateCommand CalculateCommand { get; }
+        public DelegateCommand ToggleDataReceiveModeCommand { get; }
+
+        /// <summary>关闭弹窗命令（触发 RequestClose）</summary>
+        public DelegateCommand CloseCommand { get; }
+
         #endregion
 
         public ProductCalibrationViewModel(
@@ -245,6 +375,12 @@ namespace Module.ViewModels
             UnlinkDeltaXCommand = new DelegateCommand(() => DeltaXLinkedVar = null);
             UnlinkDeltaYCommand = new DelegateCommand(() => DeltaYLinkedVar = null);
             UnlinkDeltaAngleCommand = new DelegateCommand(() => DeltaAngleLinkedVar = null);
+
+            // 新增命令初始化
+            SetAsReferenceCommand = new DelegateCommand(ExecuteSetAsReference, () => Photo1Captured && Photo2Captured);
+            CalculateCommand = new DelegateCommand(ExecuteRecalculate, () => Photo1Captured && Photo2Captured);
+            ToggleDataReceiveModeCommand = new DelegateCommand(ExecuteToggleDataReceiveMode);
+            CloseCommand = new DelegateCommand(ExecuteClose);
 
             // 初始化
             _ = InitializeAsync();
@@ -340,7 +476,12 @@ namespace Module.ViewModels
                     Photo1VisionX = result.X;
                     Photo1VisionY = result.Y;
                     Photo1Captured = true;
-                    RotateCommand.RaiseCanExecuteChanged();
+                    // 通知命令可用性
+                    SetAsReferenceCommand.RaiseCanExecuteChanged();
+                    CalculateCommand.RaiseCanExecuteChanged();
+                    // 两次都拍照完成则自动计算
+                    if (Photo2Captured)
+                        ExecuteRecalculate();
                     UpdateStatus(L("ProductCalib_Capture1Done", "拍照位1拍照完成"), Brushes.LightGreen);
                 }
                 else
@@ -402,13 +543,14 @@ namespace Module.ViewModels
                     Photo2VisionX = result.X;
                     Photo2VisionY = result.Y;
                     Photo2Captured = true;
+                    // 通知命令可用性
+                    SetAsReferenceCommand.RaiseCanExecuteChanged();
+                    CalculateCommand.RaiseCanExecuteChanged();
                     RotateCommand.RaiseCanExecuteChanged();
 
-                    // 计算偏差
-                    CalculateDeviations();
-
-                    // 写入全局变量
-                    await WriteToGlobalVariablesAsync();
+                    // 两次都拍照完成则自动计算（使用Halcon）
+                    if (Photo1Captured)
+                        ExecuteRecalculate();
 
                     UpdateStatus(L("ProductCalib_Capture2Done", "拍照位2拍照完成，偏差已计算"), Brushes.LightGreen);
                 }
@@ -428,23 +570,182 @@ namespace Module.ViewModels
 
         #region 偏差计算
 
-        /// <summary>计算两次拍照的机械偏差和角度偏差</summary>
-        private void CalculateDeviations()
+        /// <summary>设为基准：将当前Halcon计算结果填入基准特征点</summary>
+        private void ExecuteSetAsReference()
         {
-            // 机械偏差：拍照位2 - 拍照位1
-            DeltaX = Photo2Dx - Photo1Dx;
-            DeltaY = Photo2Dy - Photo1Dy;
+            ReferenceCenterX = CenterX;
+            ReferenceCenterY = CenterY;
+            ReferenceAngle = ResultAngle;
+            // 重新计算偏差（基准变更后）
+            CalculateDeviationFromReference();
+            UpdateStatus(L("ProductCalib_SetRefDone", "基准设置完成"), Brushes.LightGreen);
+        }
 
-            // 视觉偏差：用于计算角度偏差
-            var visionDx = Photo2VisionX - Photo1VisionX;
-            var visionDy = Photo2VisionY - Photo1VisionY;
+        /// <summary>使用Halcon算子重新计算中心点、角度、距离，并计算与基准的偏差</summary>
+        private void ExecuteRecalculate()
+        {
+            if (!Photo1Captured || !Photo2Captured) return;
 
-            // 计算角度偏差（atan2）
-            DeltaAngle = Math.Atan2(visionDy, visionDx) * 180.0 / Math.PI;
+            UpdateStatus(L("ProductCalib_Calculating", "计算中..."), Brushes.Orange);
+            try
+            {
+                var result = _calibService.CalculateCenterAndAngleWithHalcon(
+                    Photo1VisionX, Photo1VisionY, Photo2VisionX, Photo2VisionY);
 
-            // 相机与基准点的偏差
-            OffsetX = Photo1VisionX;
-            OffsetY = Photo1VisionY;
+                CenterX = result.CenterX;
+                CenterY = result.CenterY;
+                ResultAngle = result.AngleDeg;
+                PointDistance = result.Distance;
+
+                // 计算与基准的偏差
+                CalculateDeviationFromReference();
+
+                // 写入链接的全局变量
+                _ = WriteToGlobalVariablesAsync();
+
+                UpdateStatus(L("ProductCalib_CalcDone", "计算完成"), Brushes.LightGreen);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "载台校准: Halcon计算失败");
+                UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
+            }
+        }
+
+        /// <summary>计算当前特征点与基准点的偏差（应用取反开关）</summary>
+        private void CalculateDeviationFromReference()
+        {
+            // 原始偏差 = 当前 - 基准
+            double rawDeltaX = CenterX - ReferenceCenterX;
+            double rawDeltaY = CenterY - ReferenceCenterY;
+            double rawDeltaAngle = NormalizeAngle(ResultAngle - ReferenceAngle);
+
+            // 应用取反开关
+            DeltaX = InvertDeltaX ? -rawDeltaX : rawDeltaX;
+            DeltaY = InvertDeltaY ? -rawDeltaY : rawDeltaY;
+            DeltaAngle = InvertDeltaAngle ? -rawDeltaAngle : rawDeltaAngle;
+        }
+
+        /// <summary>角度归一化到 [-180, 180]</summary>
+        private static double NormalizeAngle(double angleDeg)
+        {
+            while (angleDeg > 180) angleDeg -= 360;
+            while (angleDeg <= -180) angleDeg += 360;
+            return angleDeg;
+        }
+
+        #endregion
+
+        #region 数据接收模式
+
+        /// <summary>切换数据接收模式：手动触发 ↔ 自动接收</summary>
+        private void ExecuteToggleDataReceiveMode()
+        {
+            if (CameraShielded)
+            {
+                UpdateStatus(L("ProductCalib_CameraShieldedOn", "相机已屏蔽，可手动输入"), Brushes.Orange);
+                return;
+            }
+
+            if (DataReceiveMode == DataReceiveMode.ManualTrigger)
+            {
+                DataReceiveMode = DataReceiveMode.AutoReceive;
+                SubscribeAutoReceive();
+                UpdateStatus(L("ProductCalib_AutoReceiveOn", "自动接收已开启"), Brushes.LightGreen);
+            }
+            else
+            {
+                DataReceiveMode = DataReceiveMode.ManualTrigger;
+                UnsubscribeAutoReceive();
+                UpdateStatus(L("ProductCalib_AutoReceiveOff", "自动接收已关闭"), Brushes.LightGray);
+            }
+        }
+
+        /// <summary>订阅相机自动接收数据</summary>
+        private void SubscribeAutoReceive()
+        {
+            if (string.IsNullOrEmpty(SelectedTcpConnection))
+            {
+                UpdateStatus(L("ProductCalib_Error", "请先选择TCP连接"), Brushes.Red);
+                return;
+            }
+
+            // 取消已有订阅
+            UnsubscribeAutoReceive();
+
+            // 设置当前自动接收目标为拍照位1
+            _currentAutoReceiveIndex = 1;
+            _calibService.SetAutoReceiveFeatureIndex(_currentAutoReceiveIndex);
+
+            // 订阅相机消息事件
+            _calibService.SubscribeCameraData(SelectedTcpConnection, OnAutoDataReceived);
+            _logger?.Info($"载台校准: 已订阅相机自动接收，连接={SelectedTcpConnection}，目标=拍照位{_currentAutoReceiveIndex}");
+        }
+
+        /// <summary>取消相机自动接收订阅</summary>
+        private void UnsubscribeAutoReceive()
+        {
+            try
+            {
+                _calibService?.UnsubscribeCameraData();
+                _logger?.Info("载台校准: 已取消相机自动接收订阅");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"载台校准: 取消自动接收订阅失败 - {ex.Message}");
+            }
+        }
+
+        /// <summary>自动数据接收回调（来自TCP事件线程，需切回UI线程）</summary>
+        /// <param name="featureIndex">特征点索引（1或2）</param>
+        /// <param name="x">视觉返回X（已转机械坐标）</param>
+        /// <param name="y">视觉返回Y（已转机械坐标）</param>
+        private void OnAutoDataReceived(int featureIndex, double x, double y)
+        {
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                if (featureIndex == 1)
+                {
+                    Photo1VisionX = x;
+                    Photo1VisionY = y;
+                    Photo1Captured = true;
+                    UpdateStatus(L("ProductCalib_Photo1AutoReceived", "拍照位1自动接收完成"), Brushes.LightGreen);
+
+                    // 自动切换到拍照位2作为下一个接收目标
+                    _currentAutoReceiveIndex = 2;
+                    _calibService.SetAutoReceiveFeatureIndex(2);
+                }
+                else if (featureIndex == 2)
+                {
+                    Photo2VisionX = x;
+                    Photo2VisionY = y;
+                    Photo2Captured = true;
+                    UpdateStatus(L("ProductCalib_Photo2AutoReceived", "拍照位2自动接收完成"), Brushes.LightGreen);
+
+                    // 两次都接收完成则自动计算
+                    if (Photo1Captured)
+                        ExecuteRecalculate();
+
+                    // 接收完成后回到拍照位1，等待下一轮
+                    _currentAutoReceiveIndex = 1;
+                    _calibService.SetAutoReceiveFeatureIndex(1);
+                }
+
+                // 通知命令可用性
+                SetAsReferenceCommand.RaiseCanExecuteChanged();
+                CalculateCommand.RaiseCanExecuteChanged();
+                RotateCommand.RaiseCanExecuteChanged();
+            });
+        }
+
+        /// <summary>手动设置下一个自动接收目标的特征点索引</summary>
+        /// <param name="index">1=拍照位1，2=拍照位2</param>
+        public void SetAutoReceiveTarget(int index)
+        {
+            if (index != 1 && index != 2) return;
+            _currentAutoReceiveIndex = index;
+            _calibService?.SetAutoReceiveFeatureIndex(index);
+            _logger?.Info($"载台校准: 自动接收目标已设置为拍照位{index}");
         }
 
         #endregion
@@ -635,6 +936,17 @@ namespace Module.ViewModels
             DeltaYLinkedVar = config.DeltaYLinkedVar;
             DeltaAngleLinkedVar = config.DeltaAngleLinkedVar;
 
+            // === 产品对齐校准扩展字段 ===
+            CameraShielded = config.CameraShielded;
+            if (Enum.TryParse<DataReceiveMode>(config.DataReceiveMode, true, out var parsedMode))
+                DataReceiveMode = parsedMode;
+            ReferenceCenterX = config.ReferenceCenterX;
+            ReferenceCenterY = config.ReferenceCenterY;
+            ReferenceAngle = config.ReferenceAngle;
+            InvertDeltaX = config.InvertDeltaX;
+            InvertDeltaY = config.InvertDeltaY;
+            InvertDeltaAngle = config.InvertDeltaAngle;
+
             CurrentFileName = Path.GetFileName(filePath);
             UpdateStatus($"{L("ProductCalib_LoadSuccess", "加载成功")}: {CurrentFileName}", Brushes.LightGreen);
         }
@@ -652,7 +964,17 @@ namespace Module.ViewModels
                 DeltaXLinkedVar = DeltaXLinkedVar,
                 DeltaYLinkedVar = DeltaYLinkedVar,
                 DeltaAngleLinkedVar = DeltaAngleLinkedVar,
-                LastFileName = CurrentFileName
+                LastFileName = CurrentFileName,
+
+                // === 产品对齐校准扩展字段 ===
+                CameraShielded = CameraShielded,
+                DataReceiveMode = DataReceiveMode.ToString(),
+                ReferenceCenterX = ReferenceCenterX,
+                ReferenceCenterY = ReferenceCenterY,
+                ReferenceAngle = ReferenceAngle,
+                InvertDeltaX = InvertDeltaX,
+                InvertDeltaY = InvertDeltaY,
+                InvertDeltaAngle = InvertDeltaAngle
             };
         }
 
@@ -751,6 +1073,42 @@ namespace Module.ViewModels
         private string L(string key, string defaultValue = "")
         {
             return _localization?.GetResourceOrDefault(key, defaultValue) ?? defaultValue;
+        }
+
+        #endregion
+
+        #region 对话框生命周期（IDialogCloseable）
+
+        /// <summary>请求关闭对话框事件（BaseDialogService 订阅）</summary>
+        public event Action<object> RequestClose;
+
+        /// <summary>是否允许关闭对话框</summary>
+        public bool CanCloseDialog() => true;
+
+        /// <summary>执行关闭弹窗（触发 RequestClose 事件，传入非null结果表示确认关闭）</summary>
+        private void ExecuteClose()
+        {
+            // 关闭前取消TCP订阅，避免内存泄漏
+            UnsubscribeAutoReceive();
+            RequestClose?.Invoke(true);
+        }
+
+        #endregion
+
+        #region 资源释放
+
+        /// <summary>销毁ViewModel：取消所有TCP事件订阅，避免内存泄漏</summary>
+        public void Destroy()
+        {
+            try
+            {
+                UnsubscribeAutoReceive();
+                _logger?.Info("载台校准: ViewModel已销毁，资源已释放");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn($"载台校准: Destroy失败 - {ex.Message}");
+            }
         }
 
         #endregion

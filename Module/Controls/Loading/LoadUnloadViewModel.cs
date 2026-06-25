@@ -4,10 +4,12 @@ using Core.Utilities;
 using Framework.Mvvm;
 using MaterialDesignThemes.Wpf;
 using Module.Services;
+using Module.Views;
 using ModuleCore.Common.Authority;
 using ModuleCore.Models;
 using Prism.Commands;
 using Prism.Events;
+using Prism.Ioc;
 using Prism.Mvvm;
 using Prism.Services.Dialogs;
 using System;
@@ -32,6 +34,8 @@ namespace Module.ViewModels
         private readonly ILoadUnloadController _controller;
         private readonly ILocalizationService _localization;
         private readonly ILoggerService _logger;
+        private readonly IBaseDialogService _baseDialogService;
+        private readonly IContainerProvider _containerProvider;
         private LoginModel _loginModel { get; set; }
 
         /// <summary> 实时状态刷新定时器，页面销毁时停止 </summary>
@@ -210,7 +214,9 @@ namespace Module.ViewModels
             LoginModel loginModel,
             ILoadUnloadController controller,
             ILocalizationService localization,
-            ILoggerService logger)
+            ILoggerService logger,
+            IBaseDialogService baseDialogService,
+            IContainerProvider containerProvider)
         {
             _dialogService = dialogService;
             _eventAggregator = eventAggregator;
@@ -219,6 +225,8 @@ namespace Module.ViewModels
             _controller = controller;
             _localization = localization;
             _logger = logger;
+            _baseDialogService = baseDialogService;
+            _containerProvider = containerProvider;
 
             _loginModel.PropertyChanged += LoginModel_PropertyChanged;
 
@@ -580,16 +588,19 @@ namespace Module.ViewModels
             UpdateStepStatus(stepDesc, false);
         }
 
-        private void OnOpenStageAlign()
+        private async void OnOpenStageAlign()
         {
-            _dialogService.ShowDialog("ProductCalibrationView", null, result =>
-            {
-                if (result.Result == ButtonResult.OK)
-                {
-                    UpdateRealTimeStatus();
-                    UpdateStepStatus("Stage alignment completed.");
-                }
-            });
+            // 通过容器解析 ViewModel，创建 View 并绑定（使用 BaseDialogWindow 跟随主题切换）
+            var viewModel = _containerProvider.Resolve<ProductCalibrationViewModel>();
+            var view = new ProductCalibrationView { DataContext = viewModel };
+
+            // 使用 BaseDialogService 弹出，风格统一跟随主题
+            var title = _localization.GetResourceOrDefault("ProductCalib_Title", "Product Align");
+            await _baseDialogService.ShowDialog(view, title, "CameraBurst");
+
+            // 关闭后更新状态
+            UpdateRealTimeStatus();
+            UpdateStepStatus(_localization.GetResourceOrDefault("LoadUnload_Step_StageAlignDone", "Stage alignment completed."));
         }
 
         private void OnEmergencyStop()

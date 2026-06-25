@@ -293,7 +293,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultJumpSpeed, value); }
         }
 
-        private double _defaultInterpSpeed = 10.0;
+        private double _defaultInterpSpeed = 1.0;
         /// <summary>默认连续插补速度 mm/s</summary>
         public double DefaultInterpSpeed
         {

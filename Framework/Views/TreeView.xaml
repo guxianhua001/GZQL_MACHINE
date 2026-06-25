@@ -221,20 +221,62 @@
         </Grid>
 
         <!-- 内容区域：使用纯 ContentPresenter 模板，彻底移除 MaterialDesign 默认 ContentControl 样式
-             中的转场动画，避免导航切换时 DoubleAnimation 遇到 NaN 起始值导致崩溃 -->
-        <ContentControl Grid.Column="2"
-                        Margin="10"
-                        Name="TreeRegion"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch"
-                        prism:RegionManager.RegionName="TreeRegion">
-            <ContentControl.Template>
-                <ControlTemplate TargetType="ContentControl">
-                    <ContentPresenter
-                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                </ControlTemplate>
-            </ContentControl.Template>
-        </ContentControl>
+             中的转场动画，避免导航切换时 DoubleAnimation 遇到 NaN 起始值导致崩溃。
+             外层 Grid 用于承载加载遮罩 overlay，提升导航时的界面友好性 -->
+        <Grid Grid.Column="2"
+              Margin="10">
+            <ContentControl Name="TreeRegion"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"
+                            prism:RegionManager.RegionName="TreeRegion">
+                <ContentControl.Template>
+                    <ControlTemplate TargetType="ContentControl">
+                        <ContentPresenter
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </ControlTemplate>
+                </ContentControl.Template>
+            </ContentControl>
+
+            <!-- 导航加载遮罩：延迟200ms显示，导航完成时隐藏。
+                 遮罩仅覆盖内容区，不阻塞左侧树面板操作。 -->
+            <Grid Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                  IsHitTestVisible="True">
+                <!-- 半透明背景遮罩，阻止用户与正在加载的内容交互 -->
+                <Border Background="#80000000" />
+                <!-- 加载卡片：居中显示进度条与提示文本 -->
+                <Border HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Background="{DynamicResource MaterialDesignPaper}"
+                        CornerRadius="8"
+                        Padding="32,24"
+                        MinWidth="280"
+                        Effect="{DynamicResource MaterialDesignShadowDepth3}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <!-- 不确定进度条，表示加载中 -->
+                        <ProgressBar IsIndeterminate="True"
+                                     Width="220"
+                                     Height="6"
+                                     Margin="0,0,0,16"
+                                     Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                        <!-- 提示文本与图标 -->
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <materialDesign:PackIcon Kind="CloudDownload"
+                                                     Width="20"
+                                                     Height="20"
+                                                     Margin="0,0,8,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                            <TextBlock Text="{Binding LoadingMessage}"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesignBody}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </UserControl>

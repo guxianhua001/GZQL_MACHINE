@@ -240,20 +240,51 @@ namespace HalconWrapper.Model
         /****************************************************************************/
         /*                          graphical element                               */
         /****************************************************************************/
+        /// <summary>
+        /// 从 HalconWindow 读取实际视口并同步内部字段
+        /// FitToAll 等外部调用使用 hWindow.SetPart 直接设置视口，
+        /// 导致 ImgCol1/ImgCol2 等内部字段未更新，ZoomImage 会除以零产生 NaN。
+        /// 在缩放/平移前调用此方法确保内部字段与实际视口一致。
+        /// </summary>
+        private void SyncViewportFromWindow()
+        {
+            try
+            {
+                if (ViewPort == null) return;
+                var hWindow = ViewPort.HalconWindow;
+                if (hWindow == null) return;
+                HOperatorSet.GetPart(hWindow, out HTuple row1, out HTuple col1, out HTuple row2, out HTuple col2);
+                ImgRow1 = row1.D;
+                ImgCol1 = col1.D;
+                ImgRow2 = row2.D;
+                ImgCol2 = col2.D;
+            }
+            catch { }
+        }
+
         private void ZoomImage(double x, double y, double scale)
         {
-            //�ر������¼�
+            //关闭鼠标事件
             if (drawModel)
             {
                 return;
             }
+            // 同步内部视口字段，避免除以零产生 NaN
+            if (ImgCol2 - ImgCol1 <= 0 || ImgRow2 - ImgRow1 <= 0)
+            {
+                SyncViewportFromWindow();
+            }
             double lengthC, lengthR, percentC, percentR;
             int lenC, lenR;
-            percentC = (x - ImgCol1) / (ImgCol2 - ImgCol1);
-            percentR = (y - ImgRow1) / (ImgRow2 - ImgRow1);
+            double viewportW = ImgCol2 - ImgCol1;
+            double viewportH = ImgRow2 - ImgRow1;
+            if (viewportW <= 0 || viewportH <= 0) return;
 
-            lengthC = (ImgCol2 - ImgCol1) * scale;
-            lengthR = (ImgRow2 - ImgRow1) * scale;
+            percentC = (x - ImgCol1) / viewportW;
+            percentR = (y - ImgRow1) / viewportH;
+
+            lengthC = viewportW * scale;
+            lengthR = viewportH * scale;
 
             ImgCol1 = x - lengthC * percentC;
             ImgCol2 = x + lengthC * (1 - percentC);
@@ -351,9 +382,45 @@ namespace HalconWrapper.Model
         {
             ZoomWndFactor = zoomF;
         }
+
+        /// <summary>
+        /// 获取当前窗口的缩放因子（屏幕像素 / 图像坐标视口宽度）
+        /// 放大时值变大，缩小时值变小，用于 ROI 手柄自适应大小计算
+        /// 注意：直接从 HalconWindow 读取 GetPart，避免依赖可能未同步的内部字段
+        /// </summary>
+        /// <returns>缩放因子，正常范围 ≥ 0</returns>
+        public double GetZoomFactor()
+        {
+            try
+            {
+                if (ViewPort == null) return 1.0;
+                var hWindow = ViewPort.HalconWindow;
+                if (hWindow == null) return 1.0;
+
+                // 直接从 HalconWindow 读取当前视口范围（图像坐标）
+                HOperatorSet.GetPart(hWindow, out HTuple row1, out HTuple col1, out HTuple row2, out HTuple col2);
+                double viewportWidth = col2.D - col1.D;
+                if (viewportWidth <= 0) return 1.0;
+
+                // 使用控件的屏幕像素宽度
+                double windowWidth = ViewPort.Width;
+                if (windowWidth <= 0) return 1.0;
+
+                return windowWidth / viewportWidth;
+            }
+            catch
+            {
+                return 1.0;
+            }
+        }
         /*******************************************************************/
         private void MoveImage(double MotionX, double MotionY)
         {
+            // 同步内部视口字段，避免基于未初始化的值平移
+            if (ImgCol2 - ImgCol1 <= 0 || ImgRow2 - ImgRow1 <= 0)
+            {
+                SyncViewportFromWindow();
+            }
             ImgRow1 += -MotionY;
             ImgRow2 += -MotionY;
 

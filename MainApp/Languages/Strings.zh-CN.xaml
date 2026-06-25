@@ -1413,6 +1413,7 @@
     <sys:String x:Key="TreeView_ResizePanels">拖动调整左右区域宽度</sys:String>
     <sys:String x:Key="TreeView_CollapsePanel">收起树面板</sys:String>
     <sys:String x:Key="TreeView_ExpandPanel">展开树面板</sys:String>
+    <sys:String x:Key="TreeView_LoadingData">数据正在加载，请稍候...</sys:String>
     <sys:String x:Key="Tree_Equipment">设备配置</sys:String>
     <sys:String x:Key="Tree_Equipment_Assembly">装配单元</sys:String>
     <sys:String x:Key="Tree_Equipment_AssemblyStation">装配模组</sys:String>
@@ -1720,7 +1721,7 @@
     <sys:String x:Key="MainWindow_CurrentRecipePrefix">当前配方: </sys:String>
     <sys:String x:Key="MainWindow_SecsOffline">离线</sys:String>
     <sys:String x:Key="MainWindow_InitConfirmTitle">初始化确认</sys:String>
-    <sys:String x:Key="ProductCalib_Title">载台校准</sys:String>
+    <sys:String x:Key="ProductCalib_Title">产品对位校准</sys:String>
     <sys:String x:Key="ProductCalib_MotionControl">运动控制</sys:String>
     <sys:String x:Key="ProductCalib_ReferencePosition">拍照基准位</sys:String>
     <sys:String x:Key="ProductCalib_PhotoPosition1">拍照位1</sys:String>
@@ -1771,6 +1772,33 @@
     <sys:String x:Key="ProductCalib_RotateDone">旋转校正完成</sys:String>
     <sys:String x:Key="ProductCalib_SaveSuccess">保存成功</sys:String>
     <sys:String x:Key="ProductCalib_LoadSuccess">加载成功</sys:String>
+    <!-- 产品对齐校准扩展 -->
+    <sys:String x:Key="ProductCalib_CameraShielded">相机屏蔽</sys:String>
+    <sys:String x:Key="ProductCalib_DataReceiveMode">数据接收模式</sys:String>
+    <sys:String x:Key="ProductCalib_ManualTrigger">手动触发</sys:String>
+    <sys:String x:Key="ProductCalib_AutoReceive">自动接收</sys:String>
+    <sys:String x:Key="ProductCalib_FeatureResult">特征点计算结果</sys:String>
+    <sys:String x:Key="ProductCalib_CenterPoint">中心点</sys:String>
+    <sys:String x:Key="ProductCalib_Angle">角度</sys:String>
+    <sys:String x:Key="ProductCalib_Distance">距离</sys:String>
+    <sys:String x:Key="ProductCalib_Recalculate">重新计算</sys:String>
+    <sys:String x:Key="ProductCalib_ReferenceFeature">基准特征点</sys:String>
+    <sys:String x:Key="ProductCalib_ReferenceCenter">基准中心</sys:String>
+    <sys:String x:Key="ProductCalib_ReferenceAngle">基准角度</sys:String>
+    <sys:String x:Key="ProductCalib_SetAsReference">设为基准</sys:String>
+    <sys:String x:Key="ProductCalib_ManualInput">手动输入</sys:String>
+    <sys:String x:Key="ProductCalib_Deviation">偏差</sys:String>
+    <sys:String x:Key="ProductCalib_Invert">取反</sys:String>
+    <sys:String x:Key="ProductCalib_Calculating">计算中...</sys:String>
+    <sys:String x:Key="ProductCalib_CalcDone">计算完成</sys:String>
+    <sys:String x:Key="ProductCalib_SetRefDone">基准设置完成</sys:String>
+    <sys:String x:Key="ProductCalib_AutoReceiveOn">自动接收已开启</sys:String>
+    <sys:String x:Key="ProductCalib_AutoReceiveOff">自动接收已关闭</sys:String>
+    <sys:String x:Key="ProductCalib_CameraShieldedOn">相机已屏蔽，可手动输入</sys:String>
+    <sys:String x:Key="ProductCalib_Photo1AutoReceived">拍照位1自动接收数据</sys:String>
+    <sys:String x:Key="ProductCalib_Photo2AutoReceived">拍照位2自动接收数据</sys:String>
+    <sys:String x:Key="ProductCalib_Close">关闭</sys:String>
+    <sys:String x:Key="LoadUnload_Step_StageAlignDone">载台对位已完成</sys:String>
     <sys:String x:Key="NPointCalib_Title">N点标定</sys:String>
     <sys:String x:Key="NPointCalib_AxisConfig">轴配置</sys:String>
     <sys:String x:Key="NPointCalib_Station">工站</sys:String>
@@ -2334,6 +2362,9 @@
     <sys:String x:Key="DispenseDetail_Group_MotionParams">运动参数</sys:String>
     <sys:String x:Key="DispenseDetail_Group_DispenseControl">出胶控制</sys:String>
     <sys:String x:Key="DispenseDetail_Group_HeightParams">高度参数</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_Calibration">校准组</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_MotionComp">运动方向补偿组</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_RotationComp">旋转补偿组</sys:String>
     <sys:String x:Key="DispenseDetail_DefaultParams">全局默认参数</sys:String>
     <sys:String x:Key="DispenseDetail_OverrideParams">选中段覆盖参数</sys:String>
     <sys:String x:Key="DispenseDetail_JumpSpeed">空移速度</sys:String>
@@ -2704,6 +2735,7 @@
     <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">开胶距离</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PreDelay">起点延时</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PostDelay">终点延时</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_DispenseTime">点胶时间</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_TeachHeight">示教高度</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">高度补偿</sys:String>
 

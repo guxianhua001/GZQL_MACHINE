@@ -125,13 +125,15 @@ namespace HalconWrapper.Model
         /// <summary>Paints the ROI into the supplied window.</summary>
         public override void Draw(HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             window.SetDraw("margin");
             //window.DispArrow(StartY, StartX, EndY, EndX,3);
             window.DispLine(StartY, StartX, EndY, EndX);
             window.SetDraw("fill");
-            window.DispRectangle2(StartY, StartX, 0, 4, 4);
+            window.DispRectangle2(StartY, StartX, 0, handleSize, handleSize);
             window.DispObj(arrowHandleXLD);  //window.DispRectangle2( EndY, EndX, 0, 25, 25);
-            window.DispRectangle2(MidX, MidY, 0, 4, 4);
+            window.DispRectangle2(MidX, MidY, 0, handleSize, handleSize);
             Phi = HMisc.AngleLx(StartY, StartX, EndY, EndX);
         }
 
@@ -166,17 +168,18 @@ namespace HalconWrapper.Model
         /// </summary>
         public override void DisplayActive(HWindow window)
         {
-
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window);
             switch (ActiveHandleId)
             {
                 case 0:
-                    window.DispRectangle2(StartY, StartX, 0, 4, 4);
+                    window.DispRectangle2(StartY, StartX, 0, handleSize, handleSize);
                     break;
                 case 1:
                     window.DispObj(arrowHandleXLD); //window.DispRectangle2(EndY, EndX, 0, 25, 25);
                     break;
                 case 2:
-                    window.DispRectangle2(MidX, MidY, 0, 4, 4);
+                    window.DispRectangle2(MidX, MidY, 0, handleSize, handleSize);
                     break;
             }
         }

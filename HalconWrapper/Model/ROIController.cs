@@ -228,7 +228,7 @@ namespace HalconWrapper.Model
             if (inaColor != "")
                 ActiveMousCol = inaColor;
         }
-        /// <summary>��ROIList�е����ж�����Ƶ�HALCON������ </summary>
+        /// <summary>将ROIList中的所有对象绘制到HALCON窗口 </summary>
         /// <param name="window">HALCON window</param>
         public void PaintData(HWindow window, int imageWidth)
         {
@@ -236,10 +236,18 @@ namespace HalconWrapper.Model
             window.SetLineWidth(1);
             if (ROIList.Count > 0)
             {
+                // 计算当前缩放因子，用于 ROI 手柄自适应大小
+                double zoomFactor = 1.0;
+                if (viewController != null)
+                {
+                    zoomFactor = viewController.GetZoomFactor();
+                }
+
                 window.SetDraw("margin");
                 foreach (KeyValuePair<string, ROI> kvp in ROIList)
                 {
                     kvp.Value.ImageWidth = imageWidth;
+                    kvp.Value.CurrentZoomFactor = zoomFactor;
                     window.SetColor(kvp.Value.Color);
                     window.SetLineStyle(kvp.Value.FlagLineStyle);
                     kvp.Value.Draw(window);
@@ -249,6 +257,7 @@ namespace HalconWrapper.Model
                 {
                     window.SetColor(ActiveCol);
                     window.SetLineStyle(ROIList[ActiveROIId].FlagLineStyle);
+                    ROIList[ActiveROIId].CurrentZoomFactor = zoomFactor;
                     ROIList[ActiveROIId].Draw(window);
 
                     window.SetColor(ActiveROICol);

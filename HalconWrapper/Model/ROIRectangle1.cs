@@ -69,14 +69,16 @@ namespace HalconWrapper.Model
         /// <param name="window">HALCON window</param>
         public override void Draw(HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window, 6.0);
             window.SetDraw("margin");
             window.DispRectangle1(row1, col1, row2, col2);
             window.SetDraw("fill");
-            window.DispRectangle2(row1, col1, 0, 6, 6);
-            window.DispRectangle2(row1, col2, 0, 6, 6);
-            window.DispRectangle2(row2, col2, 0, 6, 6);
-            window.DispRectangle2(row2, col1, 0, 6, 6);
-            window.DispRectangle2(midR, midC, 0, 6, 6);
+            window.DispRectangle2(row1, col1, 0, handleSize, handleSize);
+            window.DispRectangle2(row1, col2, 0, handleSize, handleSize);
+            window.DispRectangle2(row2, col2, 0, handleSize, handleSize);
+            window.DispRectangle2(row2, col1, 0, handleSize, handleSize);
+            window.DispRectangle2(midR, midC, 0, handleSize, handleSize);
         }
 
         /// <summary> 
@@ -121,22 +123,24 @@ namespace HalconWrapper.Model
         /// <param name="window">HALCON window</param>
         public override void DisplayActive(HalconDotNet.HWindow window)
         {
+            // 根据当前缩放计算自适应手柄大小，放大时变小
+            double handleSize = GetZoomAwareHandleSize(window, 6.0);
             switch (ActiveHandleId)
             {
                 case 0:
-                    window.DispRectangle2(row1, col1, 0, 6, 6);
+                    window.DispRectangle2(row1, col1, 0, handleSize, handleSize);
                     break;
                 case 1:
-                    window.DispRectangle2(row1, col2, 0, 6, 6);
+                    window.DispRectangle2(row1, col2, 0, handleSize, handleSize);
                     break;
                 case 2:
-                    window.DispRectangle2(row2, col2, 0, 6, 6);
+                    window.DispRectangle2(row2, col2, 0, handleSize, handleSize);
                     break;
                 case 3:
-                    window.DispRectangle2(row2, col1, 0, 6, 6);
+                    window.DispRectangle2(row2, col1, 0, handleSize, handleSize);
                     break;
                 case 4:
-                    window.DispRectangle2(midR, midC, 0, 6, 6);
+                    window.DispRectangle2(midR, midC, 0, handleSize, handleSize);
                     break;
             }
         }

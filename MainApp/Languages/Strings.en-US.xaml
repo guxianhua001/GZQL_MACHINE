@@ -1428,6 +1428,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="TreeView_ResizePanels">Drag to resize left and right panels</sys:String>
     <sys:String x:Key="TreeView_CollapsePanel">Collapse Tree Panel</sys:String>
     <sys:String x:Key="TreeView_ExpandPanel">Expand Tree Panel</sys:String>
+    <sys:String x:Key="TreeView_LoadingData">Loading data, please wait...</sys:String>
     <sys:String x:Key="Tree_Equipment">Equipment Configuration</sys:String>
     <sys:String x:Key="Tree_Equipment_Assembly">Assembly Unit</sys:String>
     <sys:String x:Key="Tree_Equipment_AssemblyStation">Assembly Station</sys:String>
@@ -1735,7 +1736,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="MainWindow_CurrentRecipePrefix">Current Recipe: </sys:String>
     <sys:String x:Key="MainWindow_SecsOffline">Offline</sys:String>
     <sys:String x:Key="MainWindow_InitConfirmTitle">Initialize Confirmation</sys:String>
-    <sys:String x:Key="ProductCalib_Title">Stage Calibration</sys:String>
+    <sys:String x:Key="ProductCalib_Title">Product Align</sys:String>
     <sys:String x:Key="ProductCalib_MotionControl">Motion Control</sys:String>
     <sys:String x:Key="ProductCalib_ReferencePosition">Reference Position</sys:String>
     <sys:String x:Key="ProductCalib_PhotoPosition1">Photo Position 1</sys:String>
@@ -1786,6 +1787,33 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ProductCalib_RotateDone">Rotation correction completed</sys:String>
     <sys:String x:Key="ProductCalib_SaveSuccess">Saved successfully</sys:String>
     <sys:String x:Key="ProductCalib_LoadSuccess">Loaded successfully</sys:String>
+    <!-- Product Align extensions -->
+    <sys:String x:Key="ProductCalib_CameraShielded">Camera Shielded</sys:String>
+    <sys:String x:Key="ProductCalib_DataReceiveMode">Data Receive Mode</sys:String>
+    <sys:String x:Key="ProductCalib_ManualTrigger">Manual Trigger</sys:String>
+    <sys:String x:Key="ProductCalib_AutoReceive">Auto Receive</sys:String>
+    <sys:String x:Key="ProductCalib_FeatureResult">Feature Calculation Result</sys:String>
+    <sys:String x:Key="ProductCalib_CenterPoint">Center Point</sys:String>
+    <sys:String x:Key="ProductCalib_Angle">Angle</sys:String>
+    <sys:String x:Key="ProductCalib_Distance">Distance</sys:String>
+    <sys:String x:Key="ProductCalib_Recalculate">Recalculate</sys:String>
+    <sys:String x:Key="ProductCalib_ReferenceFeature">Reference Feature</sys:String>
+    <sys:String x:Key="ProductCalib_ReferenceCenter">Reference Center</sys:String>
+    <sys:String x:Key="ProductCalib_ReferenceAngle">Reference Angle</sys:String>
+    <sys:String x:Key="ProductCalib_SetAsReference">Set As Reference</sys:String>
+    <sys:String x:Key="ProductCalib_ManualInput">Manual Input</sys:String>
+    <sys:String x:Key="ProductCalib_Deviation">Deviation</sys:String>
+    <sys:String x:Key="ProductCalib_Invert">Invert</sys:String>
+    <sys:String x:Key="ProductCalib_Calculating">Calculating...</sys:String>
+    <sys:String x:Key="ProductCalib_CalcDone">Calculation Done</sys:String>
+    <sys:String x:Key="ProductCalib_SetRefDone">Reference Set</sys:String>
+    <sys:String x:Key="ProductCalib_AutoReceiveOn">Auto Receive Enabled</sys:String>
+    <sys:String x:Key="ProductCalib_AutoReceiveOff">Auto Receive Disabled</sys:String>
+    <sys:String x:Key="ProductCalib_CameraShieldedOn">Camera Shielded, Manual Input</sys:String>
+    <sys:String x:Key="ProductCalib_Photo1AutoReceived">Photo1 Auto Received</sys:String>
+    <sys:String x:Key="ProductCalib_Photo2AutoReceived">Photo2 Auto Received</sys:String>
+    <sys:String x:Key="ProductCalib_Close">Close</sys:String>
+    <sys:String x:Key="LoadUnload_Step_StageAlignDone">Stage alignment completed</sys:String>
     <sys:String x:Key="NPointCalib_Title">N-Point Calibration</sys:String>
     <sys:String x:Key="NPointCalib_AxisConfig">Axis Config</sys:String>
     <sys:String x:Key="NPointCalib_Station">Station</sys:String>
@@ -2334,6 +2362,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_Group_MotionParams">Motion Params</sys:String>
     <sys:String x:Key="DispenseDetail_Group_DispenseControl">Dispense Control</sys:String>
     <sys:String x:Key="DispenseDetail_Group_HeightParams">Height Params</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_Calibration">Calibration</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_MotionComp">Motion Direction Comp</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_RotationComp">Rotation Comp</sys:String>
     <sys:String x:Key="DispenseDetail_DefaultParams">Global Default Parameters</sys:String>
     <sys:String x:Key="DispenseDetail_OverrideParams">Segment Override Parameters</sys:String>
     <sys:String x:Key="DispenseDetail_JumpSpeed">Jump Speed</sys:String>
@@ -2704,6 +2735,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">Glue Trigger Offset</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PreDelay">Pre Delay</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PostDelay">Post Delay</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_DispenseTime">Dispense Time</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_TeachHeight">Teach Height</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">Height Compensation</sys:String>
 

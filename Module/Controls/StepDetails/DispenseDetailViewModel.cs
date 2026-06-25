@@ -514,7 +514,7 @@ namespace Module.ViewModels
 
         public double DefaultInterpSpeed
         {
-            get => _step?.DispenseDetail?.DefaultInterpSpeed ?? 10.0;
+            get => _step?.DispenseDetail?.DefaultInterpSpeed ?? 1.0;
             set
             {
                 if (_step?.DispenseDetail == null) return;
@@ -742,7 +742,7 @@ namespace Module.ViewModels
 
         public double EffectiveInterpSpeed
         {
-            get => _selectedSegmentRef?.OverrideInterpSpeed ?? _step?.DispenseDetail?.DefaultInterpSpeed ?? 10.0;
+            get => _selectedSegmentRef?.OverrideInterpSpeed ?? _step?.DispenseDetail?.DefaultInterpSpeed ?? 1.0;
             set
             {
                 if (_selectedSegmentRef != null)
@@ -1049,7 +1049,7 @@ namespace Module.ViewModels
 
         public double OverrideInterpSpeed
         {
-            get => _selectedSegmentRef?.OverrideInterpSpeed ?? 10.0;
+            get => _selectedSegmentRef?.OverrideInterpSpeed ?? 1.0;
             set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideInterpSpeed = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.InterpSpeed), value); } }
         }
 

@@ -1,6 +1,39 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.25 — 产品Align页面（载台校准）重构 + BaseDialogWindow主题适配
+-------------------------------------------
+1. 需求：上相机(Dx/Dy/Dz)移动两个拍照位，下平台(Rx/Rz)旋转，拍两次照得两特征点；计算中心点+角度(归一化)，与基准偏差带独立取反开关，偏差可链接全局变量。弹窗使用 BaseDialogWindow 跟随主题切换。
+2. 新增能力
+   - Halcon算子计算：distance_pp + angle_ll，角度归一化到[-180,180]。
+   - 相机屏蔽开关：屏蔽后可手动输入特征点。
+   - 数据接收模式：手动触发 ↔ 自动接收（订阅 ITCPEventService.CameraMessageReceived，按连接名过滤）。
+   - 基准特征点：手动输入或「设为基准」按钮一键复制当前计算结果。
+   - 偏差结果：ΔX/ΔY/ΔAngle 各自独立取反开关，切换即重算。
+   - 配置持久化：新增8个字段（CameraShielded/DataReceiveMode/ReferenceCenterX/Y/ReferenceAngle/InvertDeltaX/Y/Angle）。
+   - Destroy方法：取消TCP订阅避免内存泄漏。
+
+3. UI 重构（左右分栏，参考双龙门标定布局）
+   - 左栏：运动控制(基准位Rx/Rz + 拍照位1/2 Dx/Dy/Dz) + TCP通讯 + 相机屏蔽 + 数据接收模式 + 文件操作。
+   - 右栏：Halcon计算结果(中心点/角度/距离) + 基准特征点输入 + 偏差结果(带取反开关) + 全局变量链接 + 旋转校正。
+   - 拍照按钮在相机屏蔽时禁用。
+
+4. 弹窗机制改造（BaseDialogWindow 主题适配）
+   - LoadUnloadViewModel 注入 IBaseDialogService + IContainerProvider。
+   - OnOpenStageAlign 改为：容器解析 ViewModel → new View → _baseDialogService.ShowDialog(view, title, icon)。
+   - ProductCalibrationViewModel 从 IDialogAware 改为实现 IDialogCloseable（Core.Abstraction）。
+   - ProductCalibrationView.xaml 移除 prism:ViewModelLocator.AutoWireViewModel（手动设置 DataContext）。
+   - BaseDialogWindow 提供标题栏、主题切换按钮、关闭按钮，自动跟随全局主题。
+
+5. 修改文件
+   - Core/Models/StageCalibrationData.cs（新增8字段 + ProductAlignResult + DataReceiveMode枚举）
+   - Core/Abstraction/IStageCalibrationService.cs（新增4方法签名）
+   - Module/Services/StageCalibrationService.cs（Halcon计算 + TCP订阅实现）
+   - Module/Controls/Loading/ProductCalibrationViewModel.cs（属性/命令/序列化/IDialogCloseable/Destroy）
+   - Module/Controls/Loading/ProductCalibrationView.xaml（左右分栏新布局，移除ViewModelLocator）
+   - Module/Controls/Loading/LoadUnloadViewModel.cs（注入IBaseDialogService+IContainerProvider，OnOpenStageAlign改造）
+   - MainApp/Languages/Strings.zh-CN.xaml / Strings.en-US.xaml（新增25个多语言键）
+
 v2026.06.24 — Rotation Coordinates 对针补偿递增按钮修复
 -------------------------------------------
 1. 问题：对针补偿旁独立「+」TextBlock 挤占宽度，DecimalUpDown 递增按钮被裁切无法点击。
