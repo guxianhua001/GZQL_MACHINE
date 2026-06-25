@@ -63,6 +63,14 @@ namespace ModuleCore.ViewModels
             set => SetProperty(ref _enableSafetyEventLog, value);
         }
 
+        private bool _requireInitOnRestart = true;
+        /// <summary>重开软件后是否要求整机初始化（调试用可关闭）</summary>
+        public bool RequireInitOnRestart
+        {
+            get => _requireInitOnRestart;
+            set => SetProperty(ref _requireInitOnRestart, value);
+        }
+
         private bool _isDirty;
         /// <summary>配置是否有未保存的更改</summary>
         public bool IsDirty
@@ -254,6 +262,7 @@ namespace ModuleCore.ViewModels
             EnableBuzzer = settings.EnableBuzzer;
             EnableGrating = settings.EnableGrating;
             EnableSafetyEventLog = settings.EnableSafetyEventLog;
+            RequireInitOnRestart = settings.RequireInitOnRestart;
 
             // 扩展属性：通过 ExtensionData 读取 AppSettings 中未显式定义的属性
             EnableSnCode = GetExtensionBool(nameof(EnableSnCode), true);
@@ -298,6 +307,7 @@ namespace ModuleCore.ViewModels
                 settings.EnableBuzzer = EnableBuzzer;
                 settings.EnableGrating = EnableGrating;
                 settings.EnableSafetyEventLog = EnableSafetyEventLog;
+                settings.RequireInitOnRestart = RequireInitOnRestart;
 
                 // 写入扩展属性至 ExtensionData
                 SetExtensionValue(nameof(EnableSnCode), EnableSnCode);
@@ -347,6 +357,7 @@ namespace ModuleCore.ViewModels
             EnableSnCode = true;
             EnableGrating = true;
             EnableSafetyEventLog = true;
+            RequireInitOnRestart = true;
             EnableSecsGem = false;
             SecsGemIP = "127.0.0.1";
             SecsGemPort = "5000";

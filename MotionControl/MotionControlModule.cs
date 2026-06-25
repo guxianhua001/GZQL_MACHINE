@@ -58,6 +58,7 @@ namespace MotionControl
             // 注册工厂
             containerRegistry.RegisterSingleton<IMotionCardFactory, MotionCardFactory>();
             containerRegistry.RegisterSingleton<IAxisOperationPanelState, AxisOperationPanelState>();
+            containerRegistry.RegisterSingleton<IMotionInterlockService, MotionInterlockService>();
             containerRegistry.RegisterSingleton<IMotionService, MotionService>();
             // 配置解析
             containerRegistry.RegisterSingleton<IHardwareConfigLoader, HardwareConfigParser>();

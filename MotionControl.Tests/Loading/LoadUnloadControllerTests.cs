@@ -27,8 +27,10 @@ namespace MotionControl.Tests
             systemState = new Mock<ISystemStateService>();
             axisConfig = new Mock<IAxisConfigurationService>();
             logger = new Mock<ILoggerService>();
+            var motionInterlock = new Mock<IMotionInterlockService>();
+            motionInterlock.Setup(m => m.CanExecuteManualMotion).Returns(true);
 
-            systemState.Setup(s => s.CurrentState).Returns(StationState.STOP);
+            systemState.Setup(s => s.CurrentState).Returns(StationState.WAITRUN);
             stationRegistry.Setup(s => s.GetAllStations())
                 .Returns(new List<IStationParameterProvider>().AsReadOnly());
 
@@ -38,7 +40,8 @@ namespace MotionControl.Tests
                 gripper.Object,
                 systemState.Object,
                 axisConfig.Object,
-                logger.Object);
+                logger.Object,
+                motionInterlock.Object);
         }
 
         [Fact]
@@ -72,22 +75,22 @@ namespace MotionControl.Tests
         public async Task ClampAsync_CallsGripperServiceClamp()
         {
             var controller = CreateController(out _, out _, out var gripper, out _, out _, out _);
-            gripper.Setup(g => g.ClampAsync(100, default)).Returns(Task.CompletedTask);
+            gripper.Setup(g => g.ClampAsync(100, default, null)).Returns(Task.CompletedTask);
 
             await controller.ClampAsync();
 
-            gripper.Verify(g => g.ClampAsync(100, default), Times.Once);
+            gripper.Verify(g => g.ClampAsync(100, default, null), Times.Once);
         }
 
         [Fact]
         public async Task ReleaseAsync_CallsGripperServiceRelease()
         {
             var controller = CreateController(out _, out _, out var gripper, out _, out _, out _);
-            gripper.Setup(g => g.ReleaseAsync(0, default)).Returns(Task.CompletedTask);
+            gripper.Setup(g => g.ReleaseAsync(0, default, null)).Returns(Task.CompletedTask);
 
             await controller.ReleaseAsync();
 
-            gripper.Verify(g => g.ReleaseAsync(0, default), Times.Once);
+            gripper.Verify(g => g.ReleaseAsync(0, default, null), Times.Once);
         }
 
         [Fact]

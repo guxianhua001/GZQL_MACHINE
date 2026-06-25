@@ -3,6 +3,7 @@ using Core.Models;
 using Core.Services;
 using Core.Utilities;
 using Moq;
+using MotionControl.Events;
 using MotionControl.Interfaces;
 using MotionControl.Models;
 using Prism.Events;
@@ -28,6 +29,7 @@ namespace MotionControl.Tests.PositionMotionController
         private readonly Mock<IMotionService> _motionServiceMock;
         private readonly Mock<IStationParameterProvider> _stationMock;
         private readonly Mock<Core.Abstraction.ILocalizationService> _localizationMock;
+        private readonly Mock<IMotionInterlockService> _motionInterlockMock;
 
         public MultiStationPositionEditorViewModelTests()
         {
@@ -41,6 +43,8 @@ namespace MotionControl.Tests.PositionMotionController
 
             _stationMock = new Mock<IStationParameterProvider>();
             _localizationMock = new Mock<Core.Abstraction.ILocalizationService>();
+            _motionInterlockMock = new Mock<IMotionInterlockService>();
+            _motionInterlockMock.Setup(m => m.CanExecuteManualMotion).Returns(true);
             _localizationMock.Setup(l => l.GetResource(It.IsAny<string>(), It.IsAny<object[]>()))
                 .Returns((string key, object[] args) => string.Format(key, args));
             _localizationMock.Setup(l => l.GetResourceOrDefault(It.IsAny<string>(), It.IsAny<string>()))
@@ -93,6 +97,7 @@ namespace MotionControl.Tests.PositionMotionController
             var poolChangedEvent = new Recipe.Events.RecipePoolChangedEvent();
             var stationRegisteredEvent = new Core.Events.StationRegisteredEvent();
             var savePositionEditorEvent = new Recipe.Events.SavePositionEditorEvent();
+            var stationStateChangedEvent = new StationStateChangedEvent();
 
             _eaMock.Setup(e => e.GetEvent<Recipe.Events.RecipeChangedEvent>())
                 .Returns(recipeChangedEvent);
@@ -102,6 +107,8 @@ namespace MotionControl.Tests.PositionMotionController
                 .Returns(stationRegisteredEvent);
             _eaMock.Setup(e => e.GetEvent<Recipe.Events.SavePositionEditorEvent>())
                 .Returns(savePositionEditorEvent);
+            _eaMock.Setup(e => e.GetEvent<StationStateChangedEvent>())
+                .Returns(stationStateChangedEvent);
         }
 
         private MultiStationPositionEditorViewModel CreateViewModel()
@@ -114,7 +121,8 @@ namespace MotionControl.Tests.PositionMotionController
                 _dialogServiceMock.Object,
                 _eaMock.Object,
                 _motionServiceMock.Object,
-                _localizationMock.Object);
+                _localizationMock.Object,
+                _motionInterlockMock.Object);
         }
 
         #region T11-T12: TeachCommand Tests

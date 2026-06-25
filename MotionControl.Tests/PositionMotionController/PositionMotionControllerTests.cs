@@ -20,6 +20,7 @@ namespace MotionControl.Tests.PositionMotionController
         private readonly Mock<ISystemStateService> _systemStateMock;
         private readonly Mock<IAxisConfigurationService> _axisConfigMock;
         private readonly Mock<ILoggerService> _loggerMock;
+        private readonly Mock<IMotionInterlockService> _motionInterlockMock;
 
         public PositionMotionControllerTests()
         {
@@ -28,6 +29,8 @@ namespace MotionControl.Tests.PositionMotionController
             _systemStateMock = new Mock<ISystemStateService>();
             _axisConfigMock = new Mock<IAxisConfigurationService>();
             _loggerMock = new Mock<ILoggerService>();
+            _motionInterlockMock = new Mock<IMotionInterlockService>();
+            _motionInterlockMock.Setup(m => m.CanExecuteManualMotion).Returns(true);
         }
 
         private PositionMotionControllerImpl CreateController()
@@ -37,7 +40,8 @@ namespace MotionControl.Tests.PositionMotionController
                 _motionServiceMock.Object,
                 _systemStateMock.Object,
                 _axisConfigMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _motionInterlockMock.Object);
         }
 
         #region T1-T3: TeachAsync Tests

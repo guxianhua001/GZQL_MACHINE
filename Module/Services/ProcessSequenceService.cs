@@ -34,6 +34,7 @@ namespace Module.Services
         private readonly ILocalizationService _localization;
         private readonly IConfigFileRetentionService _configRetentionService;
         private readonly IGripperService _gripperService;
+        private readonly IMotionInterlockService _motionInterlock;
         private CancellationTokenSource _executionCts;
         private bool _isExecuting;
         private StationTaskBase _activeStationTask;
@@ -69,7 +70,8 @@ namespace Module.Services
             Prism.Ioc.IContainerProvider containerProvider,
             ILocalizationService localization,
             IConfigFileRetentionService configRetentionService,
-            IGripperService gripperService)
+            IGripperService gripperService,
+            IMotionInterlockService motionInterlock)
         {
             _recipePoolService = recipePoolService;
             _parameterStorage = parameterStorage;
@@ -81,6 +83,7 @@ namespace Module.Services
             _localization = localization;
             _configRetentionService = configRetentionService;
             _gripperService = gripperService;
+            _motionInterlock = motionInterlock;
             Tasks = new ObservableCollection<TaskItem>();
             RecentFiles = new ObservableCollection<string>();
             CameraOptions = new ObservableCollection<string>();
@@ -630,6 +633,15 @@ namespace Module.Services
         }
 
         // ========== 任务控制 ==========
+        /// <summary> 校验整机处于 WAITRUN，否则记录日志并拒绝序列执行 </summary>
+        private bool EnsureMachineReadyForSequence(string operationName)
+        {
+            if (_motionInterlock.CanExecuteManualMotion)
+                return true;
+            _logger.Warn($"[ProcessSequence] {operationName} 被拒绝: {_motionInterlock.GetBlockedMessage()}");
+            return false;
+        }
+
         /// <summary> 指示是否有任务正在执行 </summary>
         public bool IsExecuting => _isExecuting;
 
@@ -651,6 +663,8 @@ namespace Module.Services
         public void StartTask()
         {
             if (CurrentTask == null) return;
+            if (!EnsureMachineReadyForSequence("启动任务"))
+                return;
             // 被动任务不可直接启动
             if (CurrentTask.RunMode == TaskRunMode.Passive)
             {
@@ -872,6 +886,8 @@ namespace Module.Services
                 _logger.Warn("[ProcessSequence] 启动方法失败：方法为空");
                 return;
             }
+            if (!EnsureMachineReadyForSequence($"启动方法 [{method.Name}]"))
+                return;
             // 互斥检查：任务级或方法级执行正在进行时拒绝启动
             if (_isExecuting)
             {
@@ -1158,6 +1174,8 @@ namespace Module.Services
         public async Task RunSingleStepAsync(ProcessStep step)
         {
             if (step == null || _isExecuting) return;
+            if (!EnsureMachineReadyForSequence("单步执行"))
+                return;
 
             var stationTask = _activeStationTask ?? FindStationTask();
             if (stationTask == null)

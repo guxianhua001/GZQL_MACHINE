@@ -22,6 +22,7 @@ namespace MotionControl.Tests.LoadUnloadController
         private readonly Mock<ISystemStateService> _systemStateMock;
         private readonly Mock<IAxisConfigurationService> _axisConfigMock;
         private readonly Mock<ILoggerService> _loggerMock;
+        private readonly Mock<IMotionInterlockService> _motionInterlockMock;
         private readonly TestLoadingStation _testStation;
 
         public LoadUnloadControllerTests()
@@ -32,6 +33,8 @@ namespace MotionControl.Tests.LoadUnloadController
             _systemStateMock = new Mock<ISystemStateService>();
             _axisConfigMock = new Mock<IAxisConfigurationService>();
             _loggerMock = new Mock<ILoggerService>();
+            _motionInterlockMock = new Mock<IMotionInterlockService>();
+            _motionInterlockMock.Setup(m => m.CanExecuteManualMotion).Returns(true);
 
             _testStation = new TestLoadingStation();
 
@@ -55,7 +58,8 @@ namespace MotionControl.Tests.LoadUnloadController
                 _gripperMock.Object,
                 _systemStateMock.Object,
                 _axisConfigMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _motionInterlockMock.Object);
         }
 
         #region T1: ChuckVacuumOnAsync
@@ -115,7 +119,7 @@ namespace MotionControl.Tests.LoadUnloadController
         {
             var ctrl = CreateController();
             await ctrl.ClampAsync();
-            _gripperMock.Verify(g => g.ClampAsync(100, It.IsAny<CancellationToken>()), Times.Once());
+            _gripperMock.Verify(g => g.ClampAsync(100, It.IsAny<CancellationToken>(), It.IsAny<double?>()), Times.Once());
         }
 
         #endregion
@@ -145,7 +149,8 @@ namespace MotionControl.Tests.LoadUnloadController
         [Fact]
         public void T7b_CanExecuteMotion_系统空闲时返回true()
         {
-            _systemStateMock.Setup(s => s.CurrentState).Returns(StationState.STOP);
+            _systemStateMock.Setup(s => s.CurrentState).Returns(StationState.WAITRUN);
+            _motionInterlockMock.Setup(m => m.CanExecuteManualMotion).Returns(true);
             var ctrl = CreateController();
             Assert.True(ctrl.CanExecuteMotion());
         }
