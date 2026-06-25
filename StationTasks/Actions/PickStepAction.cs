@@ -171,7 +171,7 @@ namespace StationTasks.Actions
                             "夹爪服务未初始化，无法执行夹紧动作",
                             "请先执行系统复位操作");
                     }
-                    _logger.Info($"PICK 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 执行夹紧动作, 目标位置: {clampPos}");
+                    _logger.Info($"PICK 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 执行夹紧动作, 目标位置: {clampPos}, 速度: {_gripperService.ManualOperationSpeed}%");
                     await _gripperService.ClampAsync(clampPos, token);
                     _logger.Info($"PICK 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 夹紧完成");
                     break;
@@ -185,7 +185,7 @@ namespace StationTasks.Actions
                             "夹爪服务未初始化，无法执行释放动作",
                             "请先执行系统复位操作");
                     }
-                    _logger.Info($"PICK 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 执行释放动作, 目标位置: {releasePos}");
+                    _logger.Info($"PICK 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 执行释放动作, 目标位置: {releasePos}, 速度: {_gripperService.ManualOperationSpeed}%");
                     await _gripperService.ReleaseAsync(releasePos, token);
                     _logger.Info($"PICK 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 释放完成");
                     break;

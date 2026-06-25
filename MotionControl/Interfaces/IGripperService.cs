@@ -14,8 +14,10 @@ namespace MotionControl.Interfaces
         #endregion
 
         #region 快速操作（用于 Pick 流程）
-        Task ClampAsync(double position, CancellationToken token = default);
-        Task ReleaseAsync(double position, CancellationToken token = default);
+        /// <param name="speed">运动速度（1-100%）；为 null 时使用 ManualOperationSpeed</param>
+        Task ClampAsync(double position, CancellationToken token = default, double? speed = null);
+        /// <param name="speed">运动速度（1-100%）；为 null 时使用 ManualOperationSpeed</param>
+        Task ReleaseAsync(double position, CancellationToken token = default, double? speed = null);
         #endregion
 
         #region 运动控制
@@ -39,6 +41,9 @@ namespace MotionControl.Interfaces
         double GetCurrentPosition();
         bool IsMoving { get; }
         bool IsInitialized { get; }
+
+        /// <summary>电爪手动操作速度（1-100%），面板与快捷夹紧/释放按钮共享</summary>
+        double ManualOperationSpeed { get; set; }
         #endregion
 
     }

@@ -2614,6 +2614,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CAD_Move_CalibPoint_Done">Moved to calibration point {0}: ({1}, {2})</sys:String>
     <sys:String x:Key="CAD_Move_AxisNotFound_DxDy">Dx/Dy axis config not found, please check hardware config</sys:String>
     <sys:String x:Key="CAD_Move_ZAxisNotFound">Dz₃ axis config not found, skipping Z raise</sys:String>
+    <sys:String x:Key="CAD_Move_ZSafeHeightNotFound">Safe height for axis {1} not found in position editor '{0}'. Please configure it in the position editor first.</sys:String>
     <sys:String x:Key="CAD_Move_RaiseZ_Done">Z-axis raised to safe height: {0:F3}</sys:String>
 
     <!-- CadPointEditorControl -->

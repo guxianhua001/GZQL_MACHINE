@@ -1899,20 +1899,25 @@ namespace Module.ViewModels
                 var poolId = _recipePoolService.CurrentPoolName ?? "Default";
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
 
-                AvailableGlobalVariables.Clear();
-                foreach (var v in variables)
-                    AvailableGlobalVariables.Add(v);
-
-                RefreshCalibrationDisplayValues();
-                RaisePropertyChanged(nameof(IsZCompensation3DLinked));
-                RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-                RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
-                RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
+                ReplaceAvailableGlobalVariables(variables);
             }
             catch (Exception ex)
             {
                 _logger.Warn($"[DispenseDetail] 加载全局变量失败: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 整体替换可链接全局变量集合，避免原地 Clear 导致 GlobalVariableLinkControl 误清空链接名。
+        /// </summary>
+        private void ReplaceAvailableGlobalVariables(IEnumerable<GlobalVariable> variables)
+        {
+            AvailableGlobalVariables = new ObservableCollection<GlobalVariable>(variables ?? Enumerable.Empty<GlobalVariable>());
+            RefreshCalibrationDisplayValues();
+            RaisePropertyChanged(nameof(IsZCompensation3DLinked));
+            RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
+            RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
+            RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
         }
 
         /// <summary>
@@ -1927,11 +1932,7 @@ namespace Module.ViewModels
                 if (string.IsNullOrEmpty(currentPool) || poolName != currentPool) return;
 
                 var variables = await _recipePoolService.LoadGlobalVariablesAsync(currentPool);
-                AvailableGlobalVariables.Clear();
-                foreach (var v in variables)
-                    AvailableGlobalVariables.Add(v);
-
-                RefreshCalibrationDisplayValues();
+                ReplaceAvailableGlobalVariables(variables);
             }
             catch (Exception ex)
             {

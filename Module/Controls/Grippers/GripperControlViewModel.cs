@@ -38,11 +38,16 @@ namespace Module.UserControls.Grippers
             set => SetProperty(ref _targetPosition, value);
         }
 
-        private double _moveSpeed = 50;
-        public double MoveSpeed
+        /// <summary>电爪运动速度（1-100%），用于移动、寸动、夹紧、释放</summary>
+        private double _speed;
+        public double Speed
         {
-            get => _moveSpeed;
-            set => SetProperty(ref _moveSpeed, value);
+            get => _speed;
+            set
+            {
+                if (SetProperty(ref _speed, value))
+                    _gripperService.ManualOperationSpeed = value;
+            }
         }
 
         private double _jogStep = 5;
@@ -50,13 +55,6 @@ namespace Module.UserControls.Grippers
         {
             get => _jogStep;
             set => SetProperty(ref _jogStep, value);
-        }
-
-        private double _jogSpeed = 30;
-        public double JogSpeed
-        {
-            get => _jogSpeed;
-            set => SetProperty(ref _jogSpeed, value);
         }
 
         private string _torquePercentage = "50";
@@ -205,7 +203,7 @@ namespace Module.UserControls.Grippers
             try
             {
                 StatusMessage = string.Format(L("Gripper_Moving_To"), TargetPosition);
-                await _gripperService.MoveToPositionAsync(TargetPosition, MoveSpeed);
+                await _gripperService.MoveToPositionAsync(TargetPosition, Speed);
                 StatusMessage = L("Gripper_Move_Done");
             }
             catch (Exception ex)
@@ -219,7 +217,7 @@ namespace Module.UserControls.Grippers
             if (!CheckSafety()) return;
             try
             {
-                await _gripperService.JogLeftAsync(JogStep, JogSpeed);
+                await _gripperService.JogLeftAsync(JogStep, Speed);
             }
             catch (Exception ex)
             {
@@ -232,7 +230,7 @@ namespace Module.UserControls.Grippers
             if (!CheckSafety()) return;
             try
             {
-                await _gripperService.JogRightAsync(JogStep, JogSpeed);
+                await _gripperService.JogRightAsync(JogStep, Speed);
             }
             catch (Exception ex)
             {
@@ -360,6 +358,10 @@ namespace Module.UserControls.Grippers
             if (releasePos.HasValue)
                 ExternalReleasePosition = releasePos;
 
+            // 从服务读取上次面板设置的速度，供本面板及外部快捷按钮共用
+            _speed = _gripperService.ManualOperationSpeed;
+            RaisePropertyChanged(nameof(Speed));
+
             _uiUpdateTimer = new System.Windows.Threading.DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(200)
@@ -391,6 +393,8 @@ namespace Module.UserControls.Grippers
 
         public void Dispose()
         {
+            // 关闭面板时持久化速度，供 Pick 详情页快捷夹紧/释放使用
+            _gripperService.ManualOperationSpeed = Speed;
             _uiUpdateTimer?.Stop();
             _uiUpdateTimer = null;
             _gripperService?.StopMonitoring();

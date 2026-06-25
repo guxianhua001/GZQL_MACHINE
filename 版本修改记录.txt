@@ -1,6 +1,133 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.25 — UV Cure 流程 Hold 动作按固化时间延时
+-------------------------------------------
+1. 问题
+   - UV Cure 工具运动序列中选择 Hold 动作时未执行延时，日志提示未知动作类型。
+
+2. 修复
+   - CureStepAction 增加 SubMoveAction.Hold 处理，与 UvDelay 一致：
+     行内 ActionParameter > 0 时使用行参数，否则使用 CureDetail.CureTimeMs。
+
+修改文件:
+  - StationTasks/Actions/CureStepAction.cs
+
+v2026.06.25 — CadAlignment Z轴安全高度从位置编辑器读取
+-------------------------------------------
+1. 问题
+   - CadAlignmentViewModel 的 Z 轴抬升安全高度硬编码为 -20mm，与位置编辑器
+     SafePosition 配置不一致。
+
+2. 修复
+   - 注入 IPositionProvider，从 DispenserStation 的 SafePosition 读取 Dz₃（兼容 Dz3）。
+   - 未配置时提示用户在位置编辑器中设置，不再使用硬编码默认值。
+
+修改文件:
+  - Module/Controls/Cad/CadAlignmentViewModel.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
+v2026.06.25 — 电爪速度持久化到 ProcessSequences JSON
+-------------------------------------------
+1. 需求
+   - 夹爪手动操作速度需随工序序列文件保存/加载，重启后仍与当前序列一致。
+
+2. 实现
+   - SequenceData 新增 GripperManualOperationSpeed（1-100%，默认 30）。
+   - 保存工序序列时写入当前 IGripperService.ManualOperationSpeed。
+   - 加载工序序列时恢复到 IGripperService，供面板、Pick 快捷按钮及自动流程共用。
+   - 旧版 JSON 无该字段时保持默认 30%。
+
+修改文件:
+  - Module/Services/ProcessSequenceService.cs
+
+v2026.06.25 — 电爪速度统一由操作面板 ManualOperationSpeed 控制
+-------------------------------------------
+1. 需求
+   - PickStepAction 自动流程中的夹紧/释放速度需与电爪手动操作面板一致，
+     所有夹爪动作统一由面板速度控制。
+
+2. 实现
+   - ClampAsync/ReleaseAsync 未指定 speed 时默认使用 ManualOperationSpeed（替代原固定 50%）。
+   - PickStepAction、ReleaseStepAction 日志记录当前面板速度。
+   - 面板、Pick 快捷按钮、上下料、自动 PICK/RELEASE 子步骤均走同一速度源。
+
+修改文件:
+  - MotionControl/Interfaces/IGripperService.cs
+  - MotionControl/Services/GripperService.cs
+  - StationTasks/Actions/PickStepAction.cs
+  - StationTasks/Actions/ReleaseStepAction.cs
+  - Module/Controls/Grippers/GripperControlViewModel.cs
+  - Module/Controls/StepDetails/PickDetailViewModel.cs
+
+v2026.06.25 — Pick 详情页快捷夹紧/释放使用面板速度
+-------------------------------------------
+1. 需求
+   - Pick 详情页快捷夹紧/释放按钮与电爪手动操作面板共用同一速度设置。
+
+2. 实现
+   - IGripperService 新增 ManualOperationSpeed（1-100%，默认 30%）。
+   - 面板打开时从服务读取，滑块变更时实时写回，关闭时再次持久化。
+   - PickDetailViewModel 快捷夹紧/释放使用 ManualOperationSpeed。
+
+修改文件:
+  - MotionControl/Interfaces/IGripperService.cs
+  - MotionControl/Services/GripperService.cs
+  - Module/Controls/Grippers/GripperControlViewModel.cs
+  - Module/Controls/StepDetails/PickDetailViewModel.cs
+
+v2026.06.25 — 电爪手动操作统一速度设置
+-------------------------------------------
+1. 问题
+   - 电爪手动操作面板存在「速度」与「寸动速度」两个滑块，移动速度设置无效；
+     寸动速度（JogSpeed）写入 PDO 有效。夹紧/释放硬编码速度 50，不受 UI 控制。
+
+2. 修复
+   - 合并为单一 Speed 属性（1-100%），删除 JogSpeed 及对应 UI。
+   - 移动、寸动、夹紧、释放均通过 Speed 写入 PDO（与寸动相同方式）。
+   - IGripperService.ClampAsync/ReleaseAsync 增加 speed 参数（默认 50），
+     自动流程调用保持兼容。
+
+修改文件:
+  - Module/Controls/Grippers/GripperControlViewModel.cs
+  - Module/Controls/Grippers/GripperControlView.xaml
+  - MotionControl/Interfaces/IGripperService.cs
+  - MotionControl/Services/GripperService.cs
+
+v2026.06.25 — DISPENSE 弧线模式起始点坐标与校准补偿日志
+-------------------------------------------
+1. 需求
+   - 弧线模式执行时记录起始点 CAD 原始坐标、X/Y/Z 校准补偿分量及最终运动目标坐标，
+     便于工艺追溯与现场核对。
+
+2. 实现
+   - DispenseStepAction：解析并缓存 Z Comp(校准器)、Z Comp(3D Camera)；
+     校准补偿启用日志输出四项补偿值。
+   - ExecuteArcModeAsync 定位起始点后调用 LogArcSegmentStartCoordinates，
+     记录原始 CAD 坐标、校准补偿与最终 XY/Z 起始点。
+
+v2026.06.25 — Apply TCP 后 DISPENSE 对针补偿链接消失修复
+-------------------------------------------
+1. 问题
+   - Needle Alignment 执行 Apply TCP 写入全局变量后，DISPENSE 工具（旋转坐标弹窗）
+     中已链接的对针补偿变量（如 NeedleAligner_CompX_LinkedVar）从 ComboBox 消失，
+     绑定源 NeedleAlignCompXLinkedVar 被误清空。
+
+2. 根因
+   - GlobalVariablesChangedEvent 触发后 DispenseDetailViewModel 对 AvailableGlobalVariables
+     原地 Clear()+Add()，ComboBox SelectedValue 双向绑定在列表清空瞬间将 null 写回
+     LinkedVariableName；LostFocus 空文本逻辑进一步误触发解链。
+   - 同一 ObservableCollection 原地变更不会触发 OnLinkableGlobalVariablesChanged，
+     控件无法在刷新后恢复选中项。
+
+3. 修复
+   - GlobalVariableLinkControl：SelectedValue 改为 OneWay（仅 source→target）；
+     订阅 INotifyCollectionChanged 在批量刷新后延迟恢复选中项；
+     LostFocus 在绑定源仍有链接名时不因空文本解链。
+   - DispenseDetailViewModel：ReplaceAvailableGlobalVariables 整体替换集合，
+     避免原地 Clear 破坏链接状态。
+
 v2026.06.25 — 产品Align页面（载台校准）重构 + BaseDialogWindow主题适配
 -------------------------------------------
 1. 需求：上相机(Dx/Dy/Dz)移动两个拍照位，下平台(Rx/Rz)旋转，拍两次照得两特征点；计算中心点+角度(归一化)，与基准偏差带独立取反开关，偏差可链接全局变量。弹窗使用 BaseDialogWindow 跟随主题切换。

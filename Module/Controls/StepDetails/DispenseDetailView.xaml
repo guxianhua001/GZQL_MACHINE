@@ -97,7 +97,7 @@
                                                     LinkedVariableName="{Binding XCompensationCalibratorLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                     UnlinkCommand="{Binding UnlinkXCompensationCalibratorCommand}"
-                                                    ComboBoxWidth="140" />
+                                                    ComboBoxWidth="180" />
                                             </Grid>
                                             <Grid Grid.Row="0" Grid.Column="1" Margin="0,0,0,6">
                                                 <Grid.ColumnDefinitions>
@@ -113,7 +113,7 @@
                                                     LinkedVariableName="{Binding YCompensationCalibratorLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                     UnlinkCommand="{Binding UnlinkYCompensationCalibratorCommand}"
-                                                    ComboBoxWidth="140" />
+                                                    ComboBoxWidth="180" />
                                             </Grid>
                                             <Grid Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
                                                 <Grid.ColumnDefinitions>
@@ -129,7 +129,7 @@
                                                     LinkedVariableName="{Binding ZCompensationCalibratorLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                     UnlinkCommand="{Binding UnlinkZCompensationCalibratorCommand}"
-                                                    ComboBoxWidth="140" />
+                                                    ComboBoxWidth="180" />
                                             </Grid>
                                             <Grid Grid.Row="1" Grid.Column="1">
                                                 <Grid.ColumnDefinitions>
@@ -145,7 +145,7 @@
                                                     LinkedVariableName="{Binding ZCompensation3DLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                     UnlinkCommand="{Binding UnlinkZCompensation3DCommand}"
-                                                    ComboBoxWidth="140" />
+                                                    ComboBoxWidth="180" />
                                             </Grid>
                                         </Grid>
                                     </StackPanel>
@@ -191,7 +191,7 @@
                                                         LinkedVariableName="{Binding XCompensationLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                         LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                         UnlinkCommand="{Binding UnlinkXCompensationCommand}"
-                                                        ComboBoxWidth="120" />
+                                                        ComboBoxWidth="180" />
                                                 </Grid>
                                                 <Grid Grid.Column="1">
                                                     <Grid.ColumnDefinitions>
@@ -207,7 +207,7 @@
                                                         LinkedVariableName="{Binding YCompensationLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                         LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                         UnlinkCommand="{Binding UnlinkYCompensationCommand}"
-                                                        ComboBoxWidth="120" />
+                                                        ComboBoxWidth="180" />
                                                 </Grid>
                                             </Grid>
                                         </StackPanel>

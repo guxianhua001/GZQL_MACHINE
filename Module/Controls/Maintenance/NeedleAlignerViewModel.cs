@@ -326,11 +326,11 @@ namespace Module.ViewModels
 
         /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaX =>
-            (Parameters?.ReferenceXYZ.X ?? 0) - (Parameters?.CurrentXYZ.X ?? 0);
+            (Parameters?.CurrentXYZ.X ?? 0) - (Parameters?.ReferenceXYZ.X ?? 0);
 
         /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaY =>
-            (Parameters?.ReferenceXYZ.Y ?? 0) - (Parameters?.CurrentXYZ.Y ?? 0);
+            (Parameters?.CurrentXYZ.Y ?? 0) - (Parameters?.ReferenceXYZ.Y ?? 0);
 
         /// <summary>相对固定基准的实时偏差（只读参考）</summary>
         public double CalibrationDeltaZ =>

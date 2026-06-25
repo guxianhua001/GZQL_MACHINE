@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Core.Models;
 using ObservableCollection = System.Collections.ObjectModel.ObservableCollection<Core.Models.GlobalVariable>;
 
@@ -141,6 +143,9 @@ namespace ModuleCore.UserControls
 
         private bool _isSynchronizingComboBox;
 
+        /// <summary>已订阅 CollectionChanged 的全局变量列表，用于 ItemsSource 原地刷新时恢复选中项</summary>
+        private INotifyCollectionChanged _subscribedLinkableCollection;
+
         /// <summary>取消链接按钮按下后，忽略 ComboBox LostFocus 将旧变量名写回绑定源</summary>
         private bool _suppressComboBoxLostFocusWriteback;
 
@@ -190,13 +195,40 @@ namespace ModuleCore.UserControls
         }
 
         /// <summary>
-        /// 全局变量列表替换后，WPF 可能丢失 ComboBox 选中状态，
-        /// 此处按 LinkedVariableName 在新列表中重新定位选中项（仅设置 SelectedItem，不碰 Text）。
+        /// 全局变量列表引用变更：订阅 CollectionChanged，并按 LinkedVariableName 恢复 ComboBox 选中项。
         /// </summary>
         private static void OnLinkableGlobalVariablesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var control = (GlobalVariableLinkControl)d;
-            control.SyncComboBoxSelectionAfterItemsSourceChanged();
+            if (control._subscribedLinkableCollection != null)
+                control._subscribedLinkableCollection.CollectionChanged -= control.OnLinkableCollectionChanged;
+
+            control._subscribedLinkableCollection = e.NewValue as INotifyCollectionChanged;
+            if (control._subscribedLinkableCollection != null)
+                control._subscribedLinkableCollection.CollectionChanged += control.OnLinkableCollectionChanged;
+
+            control.ScheduleSyncComboBoxSelection();
+        }
+
+        /// <summary>
+        /// 同一 ObservableCollection 原地 Clear/Add 时（如 GlobalVariablesChangedEvent 刷新），
+        /// ComboBox 会短暂失选；延迟恢复选中项，避免误清空 LinkedVariableName。
+        /// </summary>
+        private void OnLinkableCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            ScheduleSyncComboBoxSelection();
+        }
+
+        /// <summary>在 UI 消息队列末尾恢复 ComboBox 选中项，确保批量 Add 完成后再同步</summary>
+        private void ScheduleSyncComboBoxSelection()
+        {
+            if (!IsLoaded)
+            {
+                SyncComboBoxSelectionAfterItemsSourceChanged();
+                return;
+            }
+
+            Dispatcher.BeginInvoke(new Action(SyncComboBoxSelectionAfterItemsSourceChanged), DispatcherPriority.Loaded);
         }
 
         /// <summary>
@@ -241,9 +273,8 @@ namespace ModuleCore.UserControls
         }
 
         /// <summary>
-        /// LostFocus 时仅处理用户手动清空文本的场景：
-        /// Text 为空 → 解除链接（清空 LinkedVariableName）。
-        /// 其余情况由 SelectedValue 绑定（UpdateSourceTrigger=LostFocus）自动处理。
+        /// LostFocus：处理用户手动输入变量名；空文本时仅在绑定源已无链接名的情况下忽略。
+        /// 列表刷新导致 Text 暂时为空但 LinkedVariableName 仍有效时，不解链。
         /// </summary>
         private void OnComboBoxLostFocus(object sender, RoutedEventArgs e)
         {
@@ -257,11 +288,15 @@ namespace ModuleCore.UserControls
                 return;
             }
 
-            // 用户手动清空了可编辑框文本，视为解除链接
-            if (string.IsNullOrWhiteSpace(PART_ComboBox.Text))
-            {
-                ClearLinkedVariableSelection();
-            }
+            var text = PART_ComboBox.Text?.Trim() ?? string.Empty;
+
+            // 列表刷新暂态或空文本：绑定源仍有有效链接名时不解链（请使用取消链接按钮）
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            // 用户手动输入变量名
+            if (!string.Equals(LinkedVariableName, text, StringComparison.OrdinalIgnoreCase))
+                LinkedVariableName = text;
         }
     }
 }

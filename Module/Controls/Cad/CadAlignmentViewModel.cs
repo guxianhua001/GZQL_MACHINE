@@ -147,13 +147,25 @@ namespace Module.ViewModels
         private readonly IContainerProvider _containerProvider;
         private readonly IEventAggregator _eventAggregator;
         private readonly ICadAlignTransformService _cadAlignTransformService;
+        private readonly IPositionProvider _positionProvider;
 
-        public CadAlignmentViewModel(IRecipePoolService recipePoolService, IContainerProvider containerProvider, IEventAggregator eventAggregator, ICadAlignTransformService cadAlignTransformService)
+        /// <summary>点胶工站标识（与位置编辑器一致）</summary>
+        private const string DispenserStationId = "DispenserStation";
+        /// <summary>位置编辑器内置安全位置名</summary>
+        private const string SafePositionName = "SafePosition";
+
+        public CadAlignmentViewModel(
+            IRecipePoolService recipePoolService,
+            IContainerProvider containerProvider,
+            IEventAggregator eventAggregator,
+            ICadAlignTransformService cadAlignTransformService,
+            IPositionProvider positionProvider)
         {
             _recipePoolService = recipePoolService;
             _containerProvider = containerProvider;
             _eventAggregator = eventAggregator;
             _cadAlignTransformService = cadAlignTransformService;
+            _positionProvider = positionProvider;
 
             // 订阅全局变量变更事件，其他模块写入 GV 时同步刷新本地下拉列表
             _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
@@ -2970,9 +2982,6 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             }
         }
 
-        /// <summary>Z轴抬升安全高度默认值(mm)</summary>
-        private const double ZSafeHeightDefault = 30.0;
-
         /// <summary>
         /// 移动轴到拟合点坐标：弹出Z轴抬升确认后，Dx/Dy插补运动到 FitX/FitY
         /// </summary>
@@ -2991,6 +3000,23 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
             if (pt == null) return;
             await MoveToTargetWithZPromptAsync(pt.MachineX, pt.MachineY,
                 string.Format(L("CAD_Move_CalibPoint_Done"), pt.Name, pt.MachineX.ToString("F3"), pt.MachineY.ToString("F3")));
+        }
+
+        /// <summary>
+        /// 从位置编辑器 SafePosition 读取 Dz₃ 安全高度（兼容 Dz3 轴名）
+        /// </summary>
+        private async Task<double?> TryGetZSafeHeightFromPositionEditorAsync()
+        {
+            await _positionProvider.PreloadAsync();
+            var positions = await _positionProvider.GetPositionsAsync(DispenserStationId);
+            foreach (var axisName in new[] { "Dz₃", "Dz3" })
+            {
+                var key = $"{SafePositionName}.{axisName}";
+                if (positions.TryGetValue(key, out var value))
+                    return value;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -3022,19 +3048,25 @@ public string CurrentFileName { get => _currentFileName; set => SetProperty(ref 
                     return;
                 }
 
-                // 用户选择"是"：先抬升Z轴到安全高度
+                // 用户选择"是"：先抬升Z轴到位置编辑器 SafePosition 中的安全高度
                 if (result == System.Windows.MessageBoxResult.Yes)
                 {
-                    var zConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dz₃");
-                    if (zConfig != null)
-                    {
-                        await motionService.MoveAbsAsync(zConfig.LogicalId, ZSafeHeightDefault, 10.0);
-                        StatusMessage = string.Format(L("CAD_Move_RaiseZ_Done"), ZSafeHeightDefault);
-                    }
-                    else
+                    var zConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dz₃" || a.Name == "Dz3");
+                    if (zConfig == null)
                     {
                         StatusMessage = L("CAD_Move_ZAxisNotFound");
+                        return;
                     }
+
+                    var zSafeHeight = await TryGetZSafeHeightFromPositionEditorAsync();
+                    if (!zSafeHeight.HasValue)
+                    {
+                        StatusMessage = string.Format(L("CAD_Move_ZSafeHeightNotFound"), SafePositionName, "Dz₃");
+                        return;
+                    }
+
+                    await motionService.MoveAbsAsync(zConfig.LogicalId, zSafeHeight.Value, 10.0);
+                    StatusMessage = string.Format(L("CAD_Move_RaiseZ_Done"), zSafeHeight.Value);
                 }
 
                 // Dx/Dy 插补运动（使用直线插补保证两轴同步）

@@ -28,6 +28,9 @@ namespace MotionControl.Services
                                _state.Status == GripperStatus.Releasing;
         public bool IsInitialized { get; private set; }
 
+        /// <summary>电爪手动操作速度（1-100%），面板与快捷夹紧/释放按钮共享</summary>
+        public double ManualOperationSpeed { get; set; } = 30;
+
         public GripperService(
             ILoggerService logger,
             IEventAggregator eventAggregator)
@@ -75,24 +78,25 @@ namespace MotionControl.Services
 
         #region 快速操作实现
 
-        public async Task ClampAsync(double position, CancellationToken token = default)
+        public async Task ClampAsync(double position, CancellationToken token = default, double? speed = null)
         {
             token.ThrowIfCancellationRequested();
             ValidateInitialized();
 
-            _logger.Info($"Clamping to position: {position}");
+            var effectiveSpeed = speed ?? ManualOperationSpeed;
+            _logger.Info($"Clamping to position: {position}, speed: {effectiveSpeed}");
             _state.Status = GripperStatus.Clamping;
             _state.TargetPosition = position;
             PublishStateChange();
 
             try
             {
-                LTDMC.nmc_write_rxpdo_extra_uint(CardNo, NodeId, 4, 1, (uint)50); // 设置速度
+                LTDMC.nmc_write_rxpdo_extra_uint(CardNo, NodeId, 4, 1, (uint)effectiveSpeed); // 设置速度
                 LTDMC.nmc_write_rxpdo_extra_uint(CardNo, NodeId, 3, 1, (uint)position); // 设置夹紧位置
 
                 _state.Status = GripperStatus.Clamped;
                 _state.CurrentPosition = position;
-                _logger.Info($"Clamp completed, position: {position}");
+                _logger.Info($"Clamp completed, position: {position}, speed: {effectiveSpeed}");
             }
             catch (Exception ex)
             {
@@ -109,24 +113,25 @@ namespace MotionControl.Services
             }
         }
 
-        public async Task ReleaseAsync(double position, CancellationToken token = default)
+        public async Task ReleaseAsync(double position, CancellationToken token = default, double? speed = null)
         {
             token.ThrowIfCancellationRequested();
             ValidateInitialized();
 
-            _logger.Info($"Releasing to position: {position}");
+            var effectiveSpeed = speed ?? ManualOperationSpeed;
+            _logger.Info($"Releasing to position: {position}, speed: {effectiveSpeed}");
             _state.Status = GripperStatus.Releasing;
             _state.TargetPosition = position;
             PublishStateChange();
 
             try
             {
-                LTDMC.nmc_write_rxpdo_extra_uint(CardNo, NodeId, 4, 1, (uint)50); // 设置速度
+                LTDMC.nmc_write_rxpdo_extra_uint(CardNo, NodeId, 4, 1, (uint)effectiveSpeed); // 设置速度
                 LTDMC.nmc_write_rxpdo_extra_uint(CardNo, NodeId, 3, 1, (uint)position); // 设置松开位置
 
                 _state.Status = GripperStatus.Idle;
                 _state.CurrentPosition = position;
-                _logger.Info($"Release completed, position: {position}");
+                _logger.Info($"Release completed, position: {position}, speed: {effectiveSpeed}");
             }
             catch (Exception ex)
             {

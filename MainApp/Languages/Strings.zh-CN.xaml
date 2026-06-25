@@ -2614,6 +2614,7 @@
     <sys:String x:Key="CAD_Move_CalibPoint_Done">已移动到标定点 {0}: ({1}, {2})</sys:String>
     <sys:String x:Key="CAD_Move_AxisNotFound_DxDy">未找到 Dx/Dy 轴配置，请检查硬件配置文件</sys:String>
     <sys:String x:Key="CAD_Move_ZAxisNotFound">未找到 Dz₃ 轴配置，跳过Z轴抬升</sys:String>
+    <sys:String x:Key="CAD_Move_ZSafeHeightNotFound">位置编辑器「{0}」中未配置 {1} 轴安全高度，请先在位置编辑器中设置</sys:String>
     <sys:String x:Key="CAD_Move_RaiseZ_Done">Z轴已抬升至安全高度: {0:F3}</sys:String>
 
     <!-- CadPointEditorControl -->

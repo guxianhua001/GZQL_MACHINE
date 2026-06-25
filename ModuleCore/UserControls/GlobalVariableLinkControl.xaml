@@ -28,7 +28,7 @@
         </Button>
         <ComboBox x:Name="PART_ComboBox" ItemsSource="{Binding LinkableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
                   SelectedValuePath="Name" DisplayMemberPath="Name"
-                  SelectedValue="{Binding LinkedVariableName, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                  SelectedValue="{Binding LinkedVariableName, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                   IsEditable="True" IsTextSearchEnabled="True"
                   Width="{Binding ComboBoxWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"
                   FontSize="9" Margin="2,0,0,0" VerticalAlignment="Center"

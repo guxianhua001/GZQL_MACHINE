@@ -176,12 +176,13 @@ namespace StationTasks.Actions
                     _motionService.WriteDo(uvDoPortOff, false);
                     break;
 
+                case SubMoveAction.Hold:
                 case SubMoveAction.UvDelay:
-                    // UV固化延时：优先使用行内参数，若无则使用CureDetail配置的固化时间
-                    int uvDelayMs = subMove.ActionParameter > 0 ? (int)subMove.ActionParameter : cureDetail.CureTimeMs;
-                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] UV固化延时: {uvDelayMs}ms");
-                    await Task.Delay(uvDelayMs, token);
-                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] UV固化延时完成");
+                    // 延时等待：优先使用行内参数，若无则使用 CureDetail.CureTimeMs（固化时间）
+                    int holdMs = subMove.ActionParameter > 0 ? (int)subMove.ActionParameter : cureDetail.CureTimeMs;
+                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 固化延时: {holdMs}ms");
+                    await Task.Delay(holdMs, token);
+                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 固化延时完成");
                     break;
 
                 default:

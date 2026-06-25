@@ -61,6 +61,10 @@ namespace StationTasks.Actions
         private double _xCompCalibrator;
         private double _yCompCalibrator;
 
+        /// <summary>当前步骤 Z Comp（校准器 / 3D Camera）补偿量（mm）</summary>
+        private double _zCompCalibrator;
+        private double _zComp3D;
+
         /// <summary>当前步骤是否启用校准（X/Y/Z Comp 校准器 + Z Comp 3D Camera）</summary>
         private bool _enableCalibration;
 
@@ -153,18 +157,24 @@ namespace StationTasks.Actions
                 _needleOffsetY = 0;
             }
 
-            // 解析校准补偿（Enable Calibration 启用时叠加 X/Y Comp 校准器）
+            // 解析校准补偿（Enable Calibration 启用时叠加 X/Y/Z Comp 校准器 + Z Comp 3D Camera）
             _enableCalibration = detail.EnableZCalibration;
             if (_enableCalibration)
             {
                 _xCompCalibrator = ResolveLinkedValue(detail.XCompensationCalibrator, detail.XCompensationCalibratorLinkedVar);
                 _yCompCalibrator = ResolveLinkedValue(detail.YCompensationCalibrator, detail.YCompensationCalibratorLinkedVar);
-                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 校准补偿已启用: X Comp={_xCompCalibrator:F4}mm, Y Comp={_yCompCalibrator:F4}mm");
+                _zCompCalibrator = ResolveLinkedValue(detail.ZCompensationCalibrator, detail.ZCompensationCalibratorLinkedVar);
+                _zComp3D = ResolveLinkedValue(detail.ZCompensation3D, detail.ZCompensation3DLinkedVar);
+                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 校准补偿已启用: " +
+                             $"X Comp(校准器)={_xCompCalibrator:F4}mm, Y Comp(校准器)={_yCompCalibrator:F4}mm, " +
+                             $"Z Comp(校准器)={_zCompCalibrator:F4}mm, Z Comp(3D Camera)={_zComp3D:F4}mm");
             }
             else
             {
                 _xCompCalibrator = 0;
                 _yCompCalibrator = 0;
+                _zCompCalibrator = 0;
+                _zComp3D = 0;
             }
 
             // 解析旋转补偿（启用时按 CAD 对齐 Coord Transform 换算旋转后坐标）
@@ -204,7 +214,7 @@ namespace StationTasks.Actions
                             await ExecuteDotModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
                             break;
                         case DispenseStepMode.Arc:
-                            await ExecuteArcModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
+                            await ExecuteArcModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
                             break;
                         default:
                             _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未知点胶模式: {detail.DispenseMode}");
@@ -381,6 +391,7 @@ namespace StationTasks.Actions
         /// 流程：Z抬升→XY定位→Z两段式下降→位置触发开胶→连续插补走轨迹→关胶→抬升
         /// </summary>
         private async Task ExecuteArcModeAsync(
+            int stepSeq,
             DispenseDetail detail,
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
@@ -435,6 +446,7 @@ namespace StationTasks.Actions
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt, seg);
+                LogArcSegmentStartCoordinates(stepSeq, seg, startPt, startX, startY, targetZ);
                 await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
                     new[] { startX, startY }, moveSpeed, motionToken);
 
@@ -759,6 +771,28 @@ namespace StationTasks.Actions
             }
 
             return (x, y);
+        }
+
+        /// <summary>
+        /// 记录弧线段起始点坐标变换与校准补偿明细，便于工艺追溯与现场核对。
+        /// 原始坐标 = CAD 点坐标；最终起始点 = 仿射/旋转 + 各类补偿后的运动目标。
+        /// </summary>
+        private void LogArcSegmentStartCoordinates(
+            int stepSeq,
+            DispenseSegment seg,
+            CadPoint startPt,
+            double finalStartX,
+            double finalStartY,
+            double finalTargetZ)
+        {
+            double cadX = startPt.X;
+            double cadY = startPt.Y;
+
+            _logger.Info(
+                $"DISPENSE 步骤 [{stepSeq}] 弧线: 段[{seg.SegmentId}] 起始点原始坐标 CAD=({cadX:F4}, {cadY:F4}), " +
+                $"X Comp(校准器)={_xCompCalibrator:F4}mm, Y Comp(校准器)={_yCompCalibrator:F4}mm, " +
+                $"Z Comp(校准器)={_zCompCalibrator:F4}mm, Z Comp(3D Camera)={_zComp3D:F4}mm, " +
+                $"最终起始点 XY=({finalStartX:F4}, {finalStartY:F4}), Z={finalTargetZ:F4}");
         }
     }
 }

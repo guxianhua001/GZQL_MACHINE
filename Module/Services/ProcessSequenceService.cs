@@ -3,6 +3,7 @@ using AlarmModule.Models;
 using Core.Abstraction;
 using Core.Utilities;
 using Module.Models;
+using MotionControl.Interfaces;
 using Newtonsoft.Json;
 using Prism.Events;
 using Prism.Mvvm;
@@ -32,6 +33,7 @@ namespace Module.Services
         private readonly Prism.Ioc.IContainerProvider _containerProvider;
         private readonly ILocalizationService _localization;
         private readonly IConfigFileRetentionService _configRetentionService;
+        private readonly IGripperService _gripperService;
         private CancellationTokenSource _executionCts;
         private bool _isExecuting;
         private StationTaskBase _activeStationTask;
@@ -66,7 +68,8 @@ namespace Module.Services
             IStationRegistry stationRegistry,
             Prism.Ioc.IContainerProvider containerProvider,
             ILocalizationService localization,
-            IConfigFileRetentionService configRetentionService)
+            IConfigFileRetentionService configRetentionService,
+            IGripperService gripperService)
         {
             _recipePoolService = recipePoolService;
             _parameterStorage = parameterStorage;
@@ -77,6 +80,7 @@ namespace Module.Services
             _containerProvider = containerProvider;
             _localization = localization;
             _configRetentionService = configRetentionService;
+            _gripperService = gripperService;
             Tasks = new ObservableCollection<TaskItem>();
             RecentFiles = new ObservableCollection<string>();
             CameraOptions = new ObservableCollection<string>();
@@ -1283,7 +1287,11 @@ namespace Module.Services
                 Methods = t.Methods?.ToList(),
                 Steps = null  // 新格式不序列化 Steps
             }).ToList();
-            var data = new SequenceData { Tasks = allTasks };
+            var data = new SequenceData
+            {
+                Tasks = allTasks,
+                GripperManualOperationSpeed = _gripperService.ManualOperationSpeed
+            };
             var dir = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
@@ -1363,8 +1371,13 @@ namespace Module.Services
             var dir = Path.GetDirectoryName(filePath);
             var identifier = Path.GetFileNameWithoutExtension(filePath);
             var data = _parameterStorage.Load<SequenceData>(identifier, dir);
-            if (data != null && data.Tasks != null && data.Tasks.Any())
+            if (data != null)
             {
+                // 从工序序列 JSON 恢复电爪速度，与操作面板及自动流程共用
+                ApplyGripperSpeedFromSequence(data.GripperManualOperationSpeed);
+
+                if (data.Tasks != null && data.Tasks.Any())
+                {
                 Tasks.Clear();
                 foreach (var taskData in data.Tasks)
                 {
@@ -1409,8 +1422,21 @@ namespace Module.Services
                 SelectedStep = null;
                 CurrentFilePath = filePath;
                 RecordRecentFile(filePath);
+                }
             }
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 将工序序列文件中的电爪速度应用到 IGripperService（无效值时保持默认 30%）
+        /// </summary>
+        private void ApplyGripperSpeedFromSequence(double speed)
+        {
+            if (speed >= 1 && speed <= 100)
+            {
+                _gripperService.ManualOperationSpeed = speed;
+                _logger.Info($"[ProcessSequence] 已加载电爪速度: {speed}%");
+            }
         }
 
         // ========== 配方池数据加载 ==========
@@ -1609,6 +1635,9 @@ namespace Module.Services
     public class SequenceData
     {
         public List<SequenceTaskData> Tasks { get; set; }
+
+        /// <summary>电爪手动操作速度（1-100%），与 IGripperService.ManualOperationSpeed 同步持久化</summary>
+        public double GripperManualOperationSpeed { get; set; } = 30;
     }
 
     public class SequenceTaskData
