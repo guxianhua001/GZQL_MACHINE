@@ -19,6 +19,7 @@ namespace Module.Services
         private readonly ISystemStateService _systemState;
         private readonly IAxisConfigurationService _axisConfig;
         private readonly ILoggerService _logger;
+        private readonly IMotionInterlockService _motionInterlock;
 
         private const string StationIdentifier = "LoadingStation";
         private const double DefaultVelocity = 50.0;
@@ -32,7 +33,8 @@ namespace Module.Services
             IGripperService gripperService,
             ISystemStateService systemState,
             IAxisConfigurationService axisConfig,
-            ILoggerService logger)
+            ILoggerService logger,
+            IMotionInterlockService motionInterlock)
         {
             _stationRegistry = stationRegistry;
             _motion = motion;
@@ -40,6 +42,7 @@ namespace Module.Services
             _systemState = systemState;
             _axisConfig = axisConfig;
             _logger = logger;
+            _motionInterlock = motionInterlock;
         }
 
         #region 平台真空控制（转发给 LoadingTask）
@@ -94,6 +97,7 @@ namespace Module.Services
 
         public async Task MoveToPickPositionAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             var axisY = ops.FindAxisIdByName("Y");
             await ops.ExecuteManualProcess("移动到取料位", async () =>
@@ -104,6 +108,7 @@ namespace Module.Services
 
         public async Task MoveToScanPositionAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             var axisY = ops.FindAxisIdByName("Y");
             await ops.ExecuteManualProcess("移动到3D扫描位", async () =>
@@ -114,6 +119,7 @@ namespace Module.Services
 
         public async Task MoveToUnloadPositionAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             var axisY = ops.FindAxisIdByName("Y");
             await ops.ExecuteManualProcess("移动到出料位", async () =>
@@ -124,6 +130,7 @@ namespace Module.Services
 
         public async Task MoveToAssemblyPositionAsync(int siteIndex)
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             var axisU = ops.FindAxisIdByName("Rx");
             var axisR = ops.FindAxisIdByName("Rz");
@@ -137,6 +144,7 @@ namespace Module.Services
 
         public async Task HomeAllAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             var axisY = ops.FindAxisIdByName("Y");
             var axisRx = ops.FindAxisIdByName("Rx");
@@ -177,6 +185,7 @@ namespace Module.Services
         /// </summary>
         public async Task AutoPickUpAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             await ops.AutoPickUpFlowAsync(CancellationToken.None);
             _chuckVacuumStatus = VacuumStatus.On;
@@ -187,6 +196,7 @@ namespace Module.Services
         /// </summary>
         public async Task AutoScanAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             await ops.AutoScanFlowAsync(CancellationToken.None);
         }
@@ -196,6 +206,7 @@ namespace Module.Services
         /// </summary>
         public async Task AutoUnloadAsync()
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var ops = ResolveOps();
             await ops.AutoUnloadFlowAsync(CancellationToken.None);
             _chuckVacuumStatus = VacuumStatus.Off;
@@ -280,6 +291,9 @@ namespace Module.Services
 
         public bool CanExecuteMotion()
         {
+            if (!_motionInterlock.CanExecuteManualMotion)
+                return false;
+
             var runningStates = new[]
             {
                 StationState.RUNNING,

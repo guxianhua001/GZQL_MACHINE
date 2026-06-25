@@ -6,6 +6,7 @@ using Core.Utilities;
 using Framework.Dialogs;
 using MaterialDesignThemes.Wpf;
 using Framework.Models;
+using MotionControl.Events;
 using MotionControl.Interfaces;
 using Prism.Commands;
 using Prism.Events;
@@ -20,6 +21,7 @@ using System.Data;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -37,6 +39,7 @@ namespace Recipe.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private readonly IMotionService _motionService;
         private readonly Core.Abstraction.ILocalizationService _localization;
+        private readonly IMotionInterlockService _motionInterlock;
 
         private const double DefaultVelocity = 10.0;
 
@@ -55,6 +58,7 @@ namespace Recipe.ViewModels
         private SubscriptionToken _poolChangedToken;
         private SubscriptionToken _stationRegisteredToken;
         private SubscriptionToken _savePositionEditorToken;
+        private SubscriptionToken _stationStateToken;
         #endregion
 
         #region Public Properties
@@ -137,7 +141,8 @@ namespace Recipe.ViewModels
             IDialogService dialogService,
             IEventAggregator eventAggregator,
             IMotionService motionService,
-            Core.Abstraction.ILocalizationService localization)
+            Core.Abstraction.ILocalizationService localization,
+            IMotionInterlockService motionInterlock)
         {
             _recipePoolService = recipePoolService;
             _axisConfig = axisConfig;
@@ -147,6 +152,7 @@ namespace Recipe.ViewModels
             _eventAggregator = eventAggregator;
             _motionService = motionService;
             _localization = localization;
+            _motionInterlock = motionInterlock;
 
             Stations = new ObservableCollection<StationItem>();
             PositionsTable = new DataTable();
@@ -165,6 +171,10 @@ namespace Recipe.ViewModels
             // 订阅保存池事件：保存池前将当前编辑的位置数据暂存到 RecipePoolService，
             // 由 SaveRecipePoolAsync 统一提交到文件，避免位置编辑器参数丢失
             _savePositionEditorToken = _eventAggregator.GetEvent<SavePositionEditorEvent>().Subscribe(OnSavePositionEditorRequested);
+
+            // 整机状态变化时刷新示教/移动按钮使能（后台订阅，UI 刷新前校验 Dispatcher）
+            _stationStateToken = _eventAggregator.GetEvent<StationStateChangedEvent>()
+                .Subscribe(OnStationStateChangedForHardwareCommands, ThreadOption.PublisherThread, false);
 
             SaveCommand = new DelegateCommand(Save);
             AddPositionCommand = new DelegateCommand(AddPosition);
@@ -405,12 +415,29 @@ namespace Recipe.ViewModels
         /// 示教/Goto 需选中行且已选择工站；选中行或工站变化时需刷新按钮使能
         /// </summary>
         private bool CanExecuteHardwareOperation()
-            => SelectedRow != null && !string.IsNullOrEmpty(_currentStationIdentifier);
+            => SelectedRow != null
+               && !string.IsNullOrEmpty(_currentStationIdentifier)
+               && _motionInterlock.CanExecuteManualMotion;
 
         private void RaiseHardwareCommandCanExecuteChanged()
         {
             (TeachCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             (ReplayCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>整机状态变更：安全切回 UI 线程刷新示教/移动按钮</summary>
+        private void OnStationStateChangedForHardwareCommands(StationStatePayload _)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.HasShutdownStarted)
+                return;
+
+            try
+            {
+                dispatcher.Invoke(RaiseHardwareCommandCanExecuteChanged);
+            }
+            catch (TaskCanceledException) { }
+            catch (OperationCanceledException) { }
         }
 
         /// <summary>
@@ -957,6 +984,7 @@ namespace Recipe.ViewModels
             _poolChangedToken?.Dispose();
             _stationRegisteredToken?.Dispose();
             _savePositionEditorToken?.Dispose();
+            _stationStateToken?.Dispose();
             if (_isMoving)
             {
                 Stop();

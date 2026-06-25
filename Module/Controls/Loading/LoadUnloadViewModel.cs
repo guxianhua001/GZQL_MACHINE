@@ -3,6 +3,7 @@ using Core.Models;
 using Core.Utilities;
 using Framework.Mvvm;
 using MaterialDesignThemes.Wpf;
+using MotionControl.Interfaces;
 using Module.Services;
 using Module.Views;
 using ModuleCore.Common.Authority;
@@ -36,6 +37,7 @@ namespace Module.ViewModels
         private readonly ILoggerService _logger;
         private readonly IBaseDialogService _baseDialogService;
         private readonly IContainerProvider _containerProvider;
+        private readonly IMotionInterlockService _motionInterlock;
         private LoginModel _loginModel { get; set; }
 
         /// <summary> 实时状态刷新定时器，页面销毁时停止 </summary>
@@ -216,7 +218,8 @@ namespace Module.ViewModels
             ILocalizationService localization,
             ILoggerService logger,
             IBaseDialogService baseDialogService,
-            IContainerProvider containerProvider)
+            IContainerProvider containerProvider,
+            IMotionInterlockService motionInterlock)
         {
             _dialogService = dialogService;
             _eventAggregator = eventAggregator;
@@ -227,6 +230,7 @@ namespace Module.ViewModels
             _logger = logger;
             _baseDialogService = baseDialogService;
             _containerProvider = containerProvider;
+            _motionInterlock = motionInterlock;
 
             _loginModel.PropertyChanged += LoginModel_PropertyChanged;
 
@@ -371,7 +375,7 @@ namespace Module.ViewModels
                     if (!_controller.CanExecuteMotion())
                     {
                         ShowMessage(
-                            _localization.GetResourceOrDefault("LoadUnload_Msg_MotionProhibited", "Manual operation is prohibited while the equipment is in operation!"),
+                            _motionInterlock.GetBlockedMessage(),
                             PackIconKind.AlertCircle);
                         return;
                     }

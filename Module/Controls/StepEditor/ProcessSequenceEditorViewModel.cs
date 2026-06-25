@@ -5,7 +5,11 @@ using StationTasks.Models;
 using Module.Services;
 using Module.Views;
 using Module.Editor;
+using MotionControl.Events;
+using MotionControl.Interfaces;
+using MaterialDesignThemes.Wpf;
 using Prism.Commands;
+using Prism.Events;
 using Prism.Ioc;
 using Prism.Mvvm;
 using Prism.Regions;
@@ -16,8 +20,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
 using Core.Models;
+using System.Threading;
 using System.Threading.Tasks;
 using Core.Utilities;
 
@@ -35,6 +41,8 @@ namespace Module.ViewModels
         private readonly Prism.Events.IEventAggregator _ea;
         private readonly ILocalizationService _localization;
         private readonly IBaseDialogService _baseDialogService;
+        private readonly IMotionInterlockService _motionInterlock;
+        private SubscriptionToken _stationStateToken;
         private PropertyChangedEventHandler _propertyChangedHandler;
         /// <summary> 当前订阅 PropertyChanged 的方法（用于方法级控制命令的 CanExecute 刷新） </summary>
         private ProcessMethod _subscribedMethod;
@@ -49,7 +57,8 @@ namespace Module.ViewModels
             IContainerProvider containerProvider,
             Prism.Events.IEventAggregator eventAggregator,
             ILocalizationService localization,
-            IBaseDialogService baseDialogService)
+            IBaseDialogService baseDialogService,
+            IMotionInterlockService motionInterlock)
         {
             _logger = logger;
             _sequenceService = sequenceService;
@@ -61,6 +70,11 @@ namespace Module.ViewModels
             _ea = eventAggregator;
             _localization = localization;
             _baseDialogService = baseDialogService;
+            _motionInterlock = motionInterlock;
+
+            // 后台线程订阅，UI 刷新前校验 Dispatcher（避免关闭/急停时 TaskCanceledException）
+            _stationStateToken = _ea.GetEvent<StationStateChangedEvent>()
+                .Subscribe(OnStationStateChangedForCommands, ThreadOption.PublisherThread, false);
 
             Tasks = _sequenceService.Tasks;
             CameraOptions = _sequenceService.CameraOptions;
@@ -96,7 +110,11 @@ namespace Module.ViewModels
             LoadFromJsonCommand = new DelegateCommand(OnLoadFromJson);
 
             // 任务控制命令
-            StartTaskCommand = new DelegateCommand(() => _sequenceService.StartTask(), () => CurrentTask != null && CurrentTask.Status != TaskItem.TaskStatusEnum.Running)
+            StartTaskCommand = new DelegateCommand(() =>
+                {
+                    if (!TryEnsureManualMotionAllowed()) return;
+                    _sequenceService.StartTask();
+                }, () => CurrentTask != null && CurrentTask.Status != TaskItem.TaskStatusEnum.Running)
                 .ObservesProperty(() => CurrentTask.Status);
             StopTaskCommand = new DelegateCommand(() => _sequenceService.StopTask(), () => CurrentTask != null && CurrentTask.Status != TaskItem.TaskStatusEnum.Stopped)
                 .ObservesProperty(() => CurrentTask.Status);
@@ -109,6 +127,7 @@ namespace Module.ViewModels
             // 命令参数为 ProcessMethod，允许从方法详情面板对指定方法发起控制
             StartMethodCommand = new DelegateCommand<ProcessMethod>(method =>
                 {
+                    if (!TryEnsureManualMotionAllowed()) return;
                     _sequenceService.StartMethod(method);
                 },
                 // Idle/Stopped 均可启动；Stopped 为停止后或重启遗留状态
@@ -846,6 +865,46 @@ namespace Module.ViewModels
             (StopMethodCommand as DelegateCommand<ProcessMethod>)?.RaiseCanExecuteChanged();
         }
 
+        /// <summary> 刷新任务级与单步控制命令（整机状态变化时） </summary>
+        private void RefreshSequenceControlCommands()
+        {
+            (StartTaskCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (RunSingleStepCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            RefreshMethodCommands();
+        }
+
+        /// <summary>
+        /// 整机状态变更回调：切回 UI 线程刷新命令使能。
+        /// 关闭/急停期间 Dispatcher 可能已取消，需安全忽略。
+        /// </summary>
+        private void OnStationStateChangedForCommands(StationStatePayload _)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.HasShutdownStarted)
+                return;
+
+            try
+            {
+                dispatcher.Invoke(RefreshSequenceControlCommands);
+            }
+            catch (TaskCanceledException) { }
+            catch (OperationCanceledException) { }
+        }
+
+        /// <summary> 校验 WAITRUN 状态，不满足时弹窗提示 </summary>
+        private bool TryEnsureManualMotionAllowed()
+        {
+            if (_motionInterlock.CanExecuteManualMotion)
+                return true;
+            _dialogService.ShowDialog("NotificationDialog", new DialogParameters
+            {
+                { "title", _localization.GetResourceOrDefault("OverView_Dialog_Note", "Note") },
+                { "message", _motionInterlock.GetBlockedMessage() },
+                { "icon", PackIconKind.AlertCircle }
+            }, _ => { });
+            return false;
+        }
+
         /// <summary> 单独运行选中的步骤 </summary>
         /// <summary> 切换单步模式开关，触发属性变更以刷新UI状态 </summary>
         private void OnToggleSingleStep()
@@ -857,6 +916,7 @@ namespace Module.ViewModels
         private async Task OnRunSingleStepAsync()
         {
             if (SelectedStep == null) return;
+            if (!TryEnsureManualMotionAllowed()) return;
             var targetStep = SelectedStep;
             try
             {

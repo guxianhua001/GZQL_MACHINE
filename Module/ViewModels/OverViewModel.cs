@@ -1,3 +1,4 @@
+using MaterialDesignThemes.Wpf;
 using StationTasks.Events;
 using MotionControl.Events;
 using MotionControl.Interfaces;
@@ -210,12 +211,32 @@ namespace Module.ViewModels
         }
         private void OnStart()
         {
-            // 启动时：状态机必须先通过条件，然后 TaskManager 才真正调度 Task
-            if (_systemState.CanStart)
+            if (!_systemState.CanStart)
             {
-                _systemState.RequestStart();
-                _taskManager.StartAllAsync();
+                ShowStartBlockedMessage();
+                return;
             }
+            _systemState.RequestStart();
+            _taskManager.StartAllAsync();
+        }
+
+        /// <summary>启动条件不满足时提示用户（如需整机初始化或当前为急停等）</summary>
+        private void ShowStartBlockedMessage()
+        {
+            string message = _systemState.CurrentState switch
+            {
+                StationState.WAITRESET or StationState.ESTOP or StationState.STOP or StationState.ALARM
+                    => _localization.GetResourceOrDefault("StartBlocked_RequireInit",
+                        "Device initialization is required before start. Please run machine initialization first."),
+                _ => _localization.GetResourceOrDefault("StartBlocked_NotReady",
+                    "Device is not ready to start in the current state.")
+            };
+            _dialogService.ShowDialog("NotificationDialog", new DialogParameters
+            {
+                { "title", _localization.GetResourceOrDefault("OverView_Dialog_Note", "Note") },
+                { "message", message },
+                { "icon", MaterialDesignThemes.Wpf.PackIconKind.AlertCircle }
+            }, _ => { });
         }
         private void OnPause() 
         {
@@ -234,8 +255,8 @@ namespace Module.ViewModels
         }
         private void OnEStop() 
         {
+            // 与硬件急停同等：状态机 ESTOP + 广播 EmergencyStopAllEvent（TaskManager 订阅后停任务）
             _systemState.RequestEmergencyStop();
-            _taskManager.EmergencyStopAllAsync();
         }
         private void OnToggleSingleStep()
         {

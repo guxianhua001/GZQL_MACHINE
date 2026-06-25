@@ -27,7 +27,12 @@ namespace MotionControl.Services
             _stationRegistry = stationRegistry;
             _ea = ea;
             _logger = logger;
+            // 与硬件急停、UI 急停统一：EmergencyStopAllEvent 触发所有工站任务急停
+            _ea.GetEvent<EmergencyStopAllEvent>().Subscribe(OnEmergencyStopAll, ThreadOption.BackgroundThread, false);
         }
+
+        /// <summary>全局急停事件回调：停止所有工站任务（硬件/UI 急停均经 RequestEmergencyStop 发布此事件）</summary>
+        private void OnEmergencyStopAll() => EmergencyStopAllAsync();
 
         public async Task StartAllAsync()
         {

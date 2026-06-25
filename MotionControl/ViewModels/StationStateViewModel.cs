@@ -15,6 +15,7 @@ namespace MotionControl.ViewModels
         private readonly IEventAggregator _ea;
         private readonly ILocalizationService _localization;
         private SubscriptionToken _stateToken;
+        private StationState _lastState = StationState.WAITRESET;
 
         private string _stateText;
         private Brush _statusColor = Brushes.Orange;
@@ -70,6 +71,7 @@ namespace MotionControl.ViewModels
             {
                 Application.Current?.Dispatcher.Invoke(() =>
                 {
+                    _lastState = payload.State;
                     StateText = payload.Description;
 
                     _isBlinkingRed = payload.State == StationState.STOP
@@ -111,6 +113,24 @@ namespace MotionControl.ViewModels
 
         private void OnLanguageChanged(object sender, Core.Abstraction.LanguageChangedEventArgs e)
         {
+            // 语言切换时刷新当前状态描述文本
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                StateText = _lastState switch
+                {
+                    StationState.ESTOP => _localization.GetResource("StateDesc_EStop"),
+                    StationState.ALARM => _localization.GetResource("StateDesc_Alarm"),
+                    StationState.PAUSE => _localization.GetResource("StateDesc_Paused"),
+                    StationState.RESETING => _localization.GetResource("StateDesc_Resetting"),
+                    StationState.RUNNING => _localization.GetResource("StateDesc_Running"),
+                    StationState.STOP => _localization.GetResource("StateDesc_Stopped"),
+                    StationState.WAITRESET => _localization.GetResource("StateDesc_WaitReset"),
+                    StationState.CLEAR => _localization.GetResource("StateDesc_Clearing"),
+                    StationState.TIP => _localization.GetResource("StateDesc_TipAlarm"),
+                    StationState.WAITRUN => _localization.GetResource("StateDesc_WaitRun"),
+                    _ => _localization.GetResource("StateDesc_Unknown")
+                };
+            });
         }
 
         public void Dispose()

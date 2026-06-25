@@ -18,6 +18,7 @@ namespace MotionControl.Services
         private readonly ISystemStateService _systemState;
         private readonly IAxisConfigurationService _axisConfig;
         private readonly ILoggerService _logger;
+        private readonly IMotionInterlockService _motionInterlock;
 
         private const double DefaultVelocity = 10.0;
 
@@ -26,13 +27,15 @@ namespace MotionControl.Services
             IMotionService motion,
             ISystemStateService systemState,
             IAxisConfigurationService axisConfig,
-            ILoggerService logger)
+            ILoggerService logger,
+            IMotionInterlockService motionInterlock)
         {
             _stationRegistry = stationRegistry;
             _motion = motion;
             _systemState = systemState;
             _axisConfig = axisConfig;
             _logger = logger;
+            _motionInterlock = motionInterlock;
         }
 
         public async Task<Dictionary<string, double>> TeachAsync(string stationIdentifier)
@@ -63,6 +66,7 @@ namespace MotionControl.Services
 
         public async Task GotoAsync(string stationIdentifier, Dictionary<string, double> targetPositions, double velocity)
         {
+            _motionInterlock.EnsureManualMotionAllowed();
             var motionOps = ResolveMotionOps(stationIdentifier);
             var effectiveVelocity = velocity > 0 ? velocity : DefaultVelocity;
 
@@ -103,6 +107,9 @@ namespace MotionControl.Services
 
         public bool CanExecuteMotion(string stationIdentifier)
         {
+            if (!_motionInterlock.CanExecuteManualMotion)
+                return false;
+
             var runningStates = new[]
             {
                 StationState.RUNNING,

@@ -85,6 +85,19 @@ namespace MotionControl.Services
             _blinkTimer = new Timer(OnBlinkTick, null, Timeout.Infinite, Timeout.Infinite);
             _buzzerPulseTimer = new Timer(OnBuzzerPulseTick, null, Timeout.Infinite, Timeout.Infinite);
             UpdateLightsAndBuzzer();
+            ApplyStartupInitPolicy();
+        }
+
+        /// <summary>
+        /// 应用启动初始化策略：默认 WAITRESET 需整机初始化；调试关闭 RequireInitOnRestart 时直接进入 WAITRUN。
+        /// </summary>
+        private void ApplyStartupInitPolicy()
+        {
+            if (!_appSettings.Settings.RequireInitOnRestart && _currentState == StationState.WAITRESET)
+            {
+                _logger.Info("调试模式：已关闭「重开需初始化」，设备状态直接进入 WAITRUN。");
+                TransitionTo(StationState.WAITRUN);
+            }
         }
         /// <summary>
         /// 从 AppSettings 读取安全功能开关
@@ -392,7 +405,8 @@ namespace MotionControl.Services
         {
             if (_currentState == StationState.ESTOP) return;
             TransitionTo(StationState.ESTOP);
-            //_ea.GetEvent<EmergencyStopAllEvent>().Publish();
+            // 广播急停：停止所有工站任务（与 UI 急停按钮行为一致）
+            _ea.GetEvent<EmergencyStopAllEvent>().Publish();
         }
         private void TransitionTo(StationState newState)
         {

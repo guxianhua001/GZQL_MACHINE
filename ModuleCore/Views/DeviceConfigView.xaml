@@ -100,6 +100,24 @@
                                                     ScaleY="1.2" />
                                 </CheckBox.LayoutTransform>
                             </CheckBox>
+
+                            <!-- 重开需整机初始化（调试用） -->
+                            <CheckBox IsChecked="{Binding RequireInitOnRestart}"
+                                      Style="{StaticResource MaterialDesignCheckBox}"
+                                      Margin="0,8"
+                                      ToolTip="{lang:Lang DeviceConfig_RequireInitOnRestartToolTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Restart"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,8,0" />
+                                    <TextBlock Text="{lang:Lang DeviceConfig_RequireInitOnRestart}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <CheckBox.LayoutTransform>
+                                    <ScaleTransform ScaleX="1.2"
+                                                    ScaleY="1.2" />
+                                </CheckBox.LayoutTransform>
+                            </CheckBox>
                         </StackPanel>
                     </Expander>
                 </materialDesign:Card>

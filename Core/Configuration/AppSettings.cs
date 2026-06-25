@@ -29,6 +29,12 @@ namespace Core.Configuration
         public bool EnableSafetyEventLog { get; set; } = true;
 
         /// <summary>
+        /// 重开软件后是否要求执行整机初始化（WAITRESET）。
+        /// 设为 false 时调试用：启动后直接进入 WAITRUN，跳过初始化流程。
+        /// </summary>
+        public bool RequireInitOnRestart { get; set; } = true;
+
+        /// <summary>
         /// 配置文件保留策略：按文件夹最大文件数量清理旧文件。
         /// 默认根目录为 &lt;应用基目录&gt;\Config，可通过 ConfigFileRetention.BasePath 自定义。
         /// </summary>
