@@ -3096,6 +3096,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="GotoDetail_SchemeA_Hint">Scheme A (recommended): link Ofs to the same global variable as VISION mapping. Runtime shows the vision-written value; recipe default is only a pre-first-shot placeholder. Put fixed mechanical offset in SubMove.Offset.</sys:String>
     <sys:String x:Key="GotoDetail_HomeTypeCardConfig">Card Config</sys:String>
     <sys:String x:Key="GotoDetail_HomeTypeCustom">Custom Params</sys:String>
+    <sys:String x:Key="GotoDetail_PositionInvalidTip">Position name is invalid (renamed or deleted), please reselect</sys:String>
+    <sys:String x:Key="Exception_PositionNotFound">Position [{0}] axis [{1}] not found in station [{2}], please check recipe config</sys:String>
     <sys:String x:Key="PickDetail_Add">Add</sys:String>
     <sys:String x:Key="PickDetail_Clamp">Clamp</sys:String>
     <sys:String x:Key="PickDetail_ClampPosition">Clamp Position</sys:String>
@@ -3856,6 +3858,13 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <!-- Node comment -->
     <sys:String x:Key="PSE_EditComment">Add/Edit Comment</sys:String>
     <sys:String x:Key="PSE_ColumnComment">Comment</sys:String>
+
+    <!-- Method node: sub-tools total elapsed time and expand/collapse nodes -->
+    <sys:String x:Key="PSE_SubStepsTotalElapsedTip">Total elapsed time of all sub-tools (including nested IF sub-steps) for the last execution</sys:String>
+    <sys:String x:Key="PSE_ExpandNodes">Expand Nodes</sys:String>
+    <sys:String x:Key="PSE_ExpandNodesTip">Expand the current method and all its child nodes (including nested IF branches and sub-steps)</sys:String>
+    <sys:String x:Key="PSE_CollapseNodes">Collapse Nodes</sys:String>
+    <sys:String x:Key="PSE_CollapseNodesTip">Collapse the current method and all its child nodes (including nested IF branches and sub-steps)</sys:String>
     <sys:String x:Key="AxisSetting_SaveParams">Save Params</sys:String>
     <sys:String x:Key="AxisSetting_SaveParamsToolTip">Save all parameters to file</sys:String>
     <sys:String x:Key="AxisSetting_LoadParams">Load Params</sys:String>

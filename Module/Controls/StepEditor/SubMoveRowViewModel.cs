@@ -42,7 +42,19 @@ namespace Module.ViewModels
         }
         public string Axis { get => _subMove.Axis; set => _subMove.Axis = value; }
         public int AxisId { get => _subMove.AxisId; set => _subMove.AxisId = value; }
-        public string PositionName { get => _subMove.PositionName; set => _subMove.PositionName = value; }
+        public string PositionName
+        {
+            get => _subMove.PositionName;
+            set
+            {
+                if (_subMove.PositionName != value)
+                {
+                    _subMove.PositionName = value;
+                    RaisePropertyChanged(nameof(PositionName));
+                    RaisePropertyChanged(nameof(IsPositionInvalid));
+                }
+            }
+        }
         public string Description { get => _subMove.Description; set => _subMove.Description = value; }
         public double Offset { get => _subMove.Offset; set => _subMove.Offset = value; }
         /// <summary> 链接变量时显示的实时数值（从全局变量的 Value 解析而来） </summary>
@@ -180,8 +192,19 @@ namespace Module.ViewModels
         public ObservableCollection<string> AvailablePositions
         {
             get => _availablePositions;
-            set => SetProperty(ref _availablePositions, value);
+            set
+            {
+                if (SetProperty(ref _availablePositions, value))
+                    RaisePropertyChanged(nameof(IsPositionInvalid));
+            }
         }
+
+        /// <summary> 位置名在当前 AvailablePositions 中不存在（被重命名/删除）时为 true，UI 显示警告图标 </summary>
+        public bool IsPositionInvalid =>
+            !string.IsNullOrEmpty(PositionName) &&
+            AvailablePositions != null &&
+            AvailablePositions.Count > 0 &&
+            !AvailablePositions.Contains(PositionName);
 
         public SubMoveRowViewModel(SubMove subMove, IPositionProvider positionProvider)
         {

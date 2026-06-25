@@ -188,6 +188,9 @@ namespace Module.ViewModels
             // 添加注释命令：弹出输入对话框，对当前选中节点（Task/Method/Step）设置注释
             EditCommentCommand = new DelegateCommand(OnEditComment, () => SelectedNode != null)
                 .ObservesProperty(() => SelectedNode);
+            // 方法节点右键"展开节点/缩回节点"：递归设置方法及其所有子节点（含 IF 嵌套分支）的 IsExpanded
+            ExpandMethodNodesCommand = new DelegateCommand<ProcessMethod>(OnExpandMethodNodes);
+            CollapseMethodNodesCommand = new DelegateCommand<ProcessMethod>(OnCollapseMethodNodes);
             SetTaskRunModeCommand = new DelegateCommand<TaskRunMode?>(mode =>
                 {
                     if (mode.HasValue) _sequenceService.SetTaskRunMode(mode.Value);
@@ -500,6 +503,12 @@ namespace Module.ViewModels
         public ICommand ToggleNodeEnabledCommand { get; }
         /// <summary> 添加/编辑注释命令（对当前选中节点设置注释） </summary>
         public ICommand EditCommentCommand { get; }
+
+        /// <summary> 展开方法节点及其所有子节点（含 IF 嵌套分支） </summary>
+        public ICommand ExpandMethodNodesCommand { get; }
+
+        /// <summary> 缩回方法节点及其所有子节点（含 IF 嵌套分支） </summary>
+        public ICommand CollapseMethodNodesCommand { get; }
 
         /// <summary> 设置当前任务的运行模式（Active/Passive） </summary>
         public ICommand SetTaskRunModeCommand { get; }
@@ -1175,6 +1184,57 @@ namespace Module.ViewModels
                     _ = AutoSaveSequenceAsync();
                 }
             });
+        }
+
+        /// <summary>
+        /// 右键"展开节点"：递归展开方法节点及其所有子节点（含 IF 嵌套分支与子步骤）。
+        /// </summary>
+        /// <param name="method">右键作用于的方法节点（由 CommandParameter 传入）</param>
+        private void OnExpandMethodNodes(ProcessMethod method)
+        {
+            SetMethodNodesExpanded(method, true);
+        }
+
+        /// <summary>
+        /// 右键"缩回节点"：递归缩回方法节点及其所有子节点（含 IF 嵌套分支与子步骤）。
+        /// </summary>
+        /// <param name="method">右键作用于的方法节点（由 CommandParameter 传入）</param>
+        private void OnCollapseMethodNodes(ProcessMethod method)
+        {
+            SetMethodNodesExpanded(method, false);
+        }
+
+        /// <summary>
+        /// 递归设置方法节点及其所有子节点的展开状态。
+        /// 遍历顺序：方法自身 → 顶层步骤 → IF 步骤的分支组 → 分支内子步骤（递归）。
+        /// </summary>
+        /// <param name="method">方法节点</param>
+        /// <param name="expanded">目标展开状态：true=展开，false=缩回</param>
+        private static void SetMethodNodesExpanded(ProcessMethod method, bool expanded)
+        {
+            if (method == null) return;
+            method.IsExpanded = expanded;
+            if (method.Steps == null) return;
+            foreach (var step in method.Steps)
+                SetStepNodesExpanded(step, expanded);
+        }
+
+        /// <summary>
+        /// 递归设置步骤节点及其 IF 嵌套分支的展开状态。
+        /// </summary>
+        private static void SetStepNodesExpanded(ProcessStep step, bool expanded)
+        {
+            if (step == null) return;
+            step.IsExpanded = expanded;
+            if (step.IfBranches == null) return;
+            foreach (var branch in step.IfBranches)
+            {
+                if (branch == null) continue;
+                branch.IsExpanded = expanded;
+                if (branch.Steps == null) continue;
+                foreach (var sub in branch.Steps)
+                    SetStepNodesExpanded(sub, expanded);
+            }
         }
 
         /// <summary>

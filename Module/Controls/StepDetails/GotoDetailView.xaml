@@ -91,7 +91,16 @@
                     <DataGridTemplateColumn Header="Position" Width="Auto">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding PositionName}" VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="AlertCircle"
+                                                             Width="14" Height="14"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="#F44336"
+                                                             Margin="0,0,2,0"
+                                                             ToolTip="{lang:Lang GotoDetail_PositionInvalidTip}"
+                                                             Visibility="{Binding IsPositionInvalid, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                    <TextBlock Text="{Binding PositionName}" VerticalAlignment="Center" />
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>

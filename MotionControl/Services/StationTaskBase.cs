@@ -238,12 +238,27 @@ namespace StationTasks.Tasks
             return await _positionProvider.GetPositionsAsync(_stationId);
         }
 
-        /// <summary> 根据位置名和轴名获取指定位置值 </summary>
+        /// <summary>
+        /// 根据位置名和轴名获取指定位置值；未找到时抛 PositionNotFoundException 中止运动（防撞机）。
+        /// 异常会被 RunStep 的 catch(Exception) 致命分支捕获，触发 STEP_FATAL_ERROR + Serious 报警并中止流程。
+        /// </summary>
         protected async Task<double> GetPositionAsync(string positionName, string axisName)
+        {
+            var (found, value) = await TryGetPositionAsync(positionName, axisName);
+            if (!found)
+                throw new PositionNotFoundException(positionName, axisName, _stationId);
+            return value;
+        }
+
+        /// <summary>
+        /// 尝试获取位置值（可选轴场景）：未找到返回 false 且 value=0，不抛异常。
+        /// 用于工站内某些轴位置可选的场景（如 DispensingTask 的 Dz₂ 轴）。
+        /// </summary>
+        protected async Task<(bool found, double value)> TryGetPositionAsync(string positionName, string axisName)
         {
             var all = await LoadPositionsAsync();
             var key = $"{positionName}.{axisName}";
-            return all.TryGetValue(key, out var v) ? v : 0;
+            return all.TryGetValue(key, out var v) ? (true, v) : (false, 0);
         }
 
         /// <summary>

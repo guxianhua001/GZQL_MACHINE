@@ -322,11 +322,12 @@ namespace Module.ViewModels
                     : _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
                 VacuumStatusColor = vacStatus == VacuumStatus.On ? Brushes.Green : Brushes.Red;
 
-                var gripVacStatus = _controller.GetGripperVacuumStatus();
-                GripperVacuumStatusText = gripVacStatus == VacuumStatus.On
-                    ? _localization.GetResourceOrDefault("LoadUnload_Status_Active", "Active")
-                    : _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
-                GripperVacuumStatusColor = gripVacStatus == VacuumStatus.On ? Brushes.Green : Brushes.Red;
+                // 夹爪真空状态 (暂时没用)
+                //var gripVacStatus = _controller.GetGripperVacuumStatus();
+                //GripperVacuumStatusText = gripVacStatus == VacuumStatus.On
+                //    ? _localization.GetResourceOrDefault("LoadUnload_Status_Active", "Active")
+                //    : _localization.GetResourceOrDefault("LoadUnload_Vacuum_Off", "Off");
+                //GripperVacuumStatusColor = gripVacStatus == VacuumStatus.On ? Brushes.Green : Brushes.Red;
 
                 // 实时夹爪位置（从 IGripperService 硬件读取）
                 var gripperPos = _controller.GetGripperPosition();

@@ -994,6 +994,21 @@
                                                       Visibility="{Binding IsEnabled, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
                                                 <MenuItem.Icon><materialDesign:PackIcon Kind="PlayCircleOutline" Width="16" Height="16"/></MenuItem.Icon>
                                             </MenuItem>
+                                            <Separator/>
+                                            <!-- 展开节点：递归展开方法自身及其所有子节点（含 IF 嵌套分支与子步骤） -->
+                                            <MenuItem Header="{lang:Lang PSE_ExpandNodes}"
+                                                      Command="{Binding PlacementTarget.Tag.ExpandMethodNodesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"
+                                                      ToolTip="{lang:Lang PSE_ExpandNodesTip}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ExpandAllOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <!-- 缩回节点：递归缩回方法自身及其所有子节点（含 IF 嵌套分支与子步骤） -->
+                                            <MenuItem Header="{lang:Lang PSE_CollapseNodes}"
+                                                      Command="{Binding PlacementTarget.Tag.CollapseMethodNodesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"
+                                                      ToolTip="{lang:Lang PSE_CollapseNodesTip}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="CollapseAllOutline" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
                                     <materialDesign:PackIcon Kind="FunctionVariant" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#00838F"/>
@@ -1027,14 +1042,16 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <!-- 运行时间显示（>0 时显示） -->
-                                    <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#FB8C00" FontSize="11">
-                                        <Run Text="["/><Run Text="{Binding LastElapsedMs}"/><Run Text=" ms]"/>
+                                    <!-- 子工具总运行时间显示（>0 时显示，聚合所有步骤含 IF 嵌套子步骤的 LastElapsedMs 之和） -->
+                                    <!-- Run.Text 默认 TwoWay 绑定，SubStepsTotalElapsedMs 仅有私有 setter，需显式 Mode=OneWay -->
+                                    <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#FB8C00" FontSize="11"
+                                               ToolTip="{lang:Lang PSE_SubStepsTotalElapsedTip}">
+                                        <Run Text="[Σ "/><Run Text="{Binding SubStepsTotalElapsedMs, Mode=OneWay}"/><Run Text=" ms]"/>
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding LastElapsedMs}" Value="0">
+                                                    <DataTrigger Binding="{Binding SubStepsTotalElapsedMs, Mode=OneWay}" Value="0">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>

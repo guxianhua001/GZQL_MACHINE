@@ -3096,6 +3096,8 @@
     <sys:String x:Key="GotoDetail_SchemeA_Hint">方案A（推荐）：Ofs 链接与 VISION 映射同一全局变量；运行时显示视觉写入值，配方默认值仅作首拍前占位。固定机械补偿填 SubMove.Offset，勿与视觉增量混用。</sys:String>
     <sys:String x:Key="GotoDetail_HomeTypeCardConfig">卡内配置</sys:String>
     <sys:String x:Key="GotoDetail_HomeTypeCustom">自定义参数</sys:String>
+    <sys:String x:Key="GotoDetail_PositionInvalidTip">位置名已失效（被重命名或删除），请重新选择</sys:String>
+    <sys:String x:Key="Exception_PositionNotFound">位置 [{0}] 的轴 [{1}] 在工站 [{2}] 中未找到，请检查配方配置</sys:String>
     <sys:String x:Key="PickDetail_Add">添加</sys:String>
     <sys:String x:Key="PickDetail_Clamp">夹紧</sys:String>
     <sys:String x:Key="PickDetail_ClampPosition">夹紧位置</sys:String>
@@ -3856,6 +3858,13 @@
     <!-- 节点注释 -->
     <sys:String x:Key="PSE_EditComment">添加/编辑注释</sys:String>
     <sys:String x:Key="PSE_ColumnComment">注释</sys:String>
+
+    <!-- 方法节点：子工具总耗时与展开/缩回节点 -->
+    <sys:String x:Key="PSE_SubStepsTotalElapsedTip">所有子工具（含 IF 嵌套子步骤）最近一次执行的总耗时</sys:String>
+    <sys:String x:Key="PSE_ExpandNodes">展开节点</sys:String>
+    <sys:String x:Key="PSE_ExpandNodesTip">展开当前方法及其所有子节点（含 IF 嵌套分支与子步骤）</sys:String>
+    <sys:String x:Key="PSE_CollapseNodes">缩回节点</sys:String>
+    <sys:String x:Key="PSE_CollapseNodesTip">缩回当前方法及其所有子节点（含 IF 嵌套分支与子步骤）</sys:String>
     <sys:String x:Key="AxisSetting_SaveParams">保存参数</sys:String>
     <sys:String x:Key="AxisSetting_SaveParamsToolTip">保存所有参数到文件</sys:String>
     <sys:String x:Key="AxisSetting_LoadParams">载入参数</sys:String>

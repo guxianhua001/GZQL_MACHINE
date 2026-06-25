@@ -1,6 +1,36 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.26 — 工序序列编辑器方法节点显示子工具总耗时并支持展开/缩回
+-------------------------------------------
+1. 需求
+   - 任务树中的方法节点需显示该方法下所有子工具（步骤）最近一次执行的总耗时，
+     便于在不展开方法的情况下快速掌握方法整体执行时长。
+   - 方法节点右键菜单新增"展开节点/缩回节点"功能，一键展开或缩回方法自身
+     及其所有子节点（含 IF 嵌套分支与子步骤），方便长列表的快速浏览与折叠。
+
+2. 实现
+   - ProcessMethod 新增 SubStepsTotalElapsedMs 计算属性：聚合 Steps 集合中
+     每个步骤的 LastElapsedMs（递归包含 IF 嵌套分支子步骤）。
+   - 自动订阅 Steps 集合变化、嵌套 IF 分支集合变化与各步骤 PropertyChanged
+     事件，步骤执行耗时更新时实时刷新总和。
+   - ProcessSequenceEditorView 方法节点模板的耗时显示由 LastElapsedMs 改为
+     SubStepsTotalElapsedMs，格式 "[Σ xxx ms]"，悬浮提示说明含义。
+   - ViewModel 新增 ExpandMethodNodesCommand / CollapseMethodNodesCommand，
+     递归设置方法及其所有子节点（含 IF 分支组、嵌套子步骤）的 IsExpanded。
+   - 方法节点右键菜单新增"展开节点/缩回节点"两项，CommandParameter 直接
+     绑定当前方法实例，无需预选即可生效。
+   - 新增多语言资源键：PSE_SubStepsTotalElapsedTip、PSE_ExpandNodes、
+     PSE_ExpandNodesTip、PSE_CollapseNodes、PSE_CollapseNodesTip
+     （zh-CN / en-US 同步）。
+
+修改文件:
+  - Module/Models/ProcessMethod.cs
+  - Module/Controls/StepEditor/ProcessSequenceEditorViewModel.cs
+  - Module/Controls/StepEditor/ProcessSequenceEditorView.xaml
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.25 — UV Cure 流程 Hold 动作按固化时间延时
 -------------------------------------------
 1. 问题
