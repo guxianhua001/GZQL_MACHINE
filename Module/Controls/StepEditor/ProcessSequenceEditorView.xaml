@@ -1213,6 +1213,11 @@
                                                       CommandParameter="{Binding}">
                                                 <MenuItem.Icon><materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/></MenuItem.Icon>
                                             </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="{lang:Lang PSE_Paste}"
+                                                      Command="{Binding PlacementTarget.Tag.PasteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Icon><materialDesign:PackIcon Kind="ContentPaste" Width="16" Height="16"/></MenuItem.Icon>
+                                            </MenuItem>
                                         </ContextMenu>
                                     </StackPanel.ContextMenu>
                                     <materialDesign:PackIcon Kind="CallSplit" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0">

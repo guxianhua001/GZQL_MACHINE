@@ -1,6 +1,30 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.27 — DISPENSE 工具暂停/停止后恢复运行与断点续胶修复
+-------------------------------------------
+1. 问题
+   - DISPENSE 步骤暂停或停止后，方法 Run 按钮仍不可用，无法重新运行。
+   - 暂停后恢复时 RunStep 整步重试，点胶从第一个点重新开始，同一位置重复出胶。
+
+2. 根因
+   - ProcessSequenceService 变更 _isExecuting 未 RaisePropertyChanged，UI 命令未刷新。
+   - 停止后工站可能遗留 Running/Paused 状态，RunCustomSequenceAsync 拒绝再次启动。
+   - 暂停导致 OCE 后 RunStep 重试整个 DispenseStepAction.ExecuteAsync，无断点续执行。
+
+3. 修复
+   - DispenseStepAction 新增 RunPausableAsync：暂停时在步骤内部等待恢复并重试当前动作，
+     开胶后暂停则关胶并跳过当前点/弧线段，避免重复点胶。
+   - DispenseDetail 增加运行时 ExecutionCheckpoint（不序列化），弧线连续插补中断后跳过当前段。
+   - ProcessSequenceService：SetExecutingFlag 通知 UI；Stop/Start 清除 DISPENSE 检查点；
+     EnsureStationReadyForSequence 复位遗留 Running 工站；Stop 后 ResetMotionPause。
+
+修改文件:
+  - Core/Models/DispenseExecutionCheckpoint.cs（新增）
+  - Core/Models/DispenseDetail.cs
+  - StationTasks/Actions/DispenseStepAction.cs
+  - Module/Services/ProcessSequenceService.cs
+
 v2026.06.26d — DISPENSE 段级 HeightComp 修改未生效修复
 -------------------------------------------
 1. 问题

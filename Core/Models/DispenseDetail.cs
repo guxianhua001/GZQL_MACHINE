@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using Prism.Mvvm;
 using System.Collections.ObjectModel;
 
@@ -454,6 +455,16 @@ namespace Core.Models
         }
 
         #endregion
+
+        /// <summary>运行时检查点（暂停/恢复用，不写入工艺 JSON）</summary>
+        [JsonIgnore]
+        public DispenseExecutionCheckpoint ExecutionCheckpoint { get; set; }
+
+        /// <summary>清除运行时检查点（新一次 Run 或 Stop 后调用）</summary>
+        public void ClearExecutionCheckpoint()
+        {
+            ExecutionCheckpoint = null;
+        }
 
         public DispenseDetail()
         {

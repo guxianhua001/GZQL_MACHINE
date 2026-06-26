@@ -236,6 +236,50 @@ namespace Module.Services
             return false;
         }
 
+        private StepLocation? LocateIfBranch(IfBranchGroup targetBranch)
+        {
+            if (targetBranch == null) return null;
+            foreach (var task in Tasks)
+            {
+                if (task.Methods == null) continue;
+                foreach (var method in task.Methods)
+                {
+                    if (TryLocateIfBranch(targetBranch, method.Steps, out var branch))
+                        return new StepLocation(task, method, branch);
+                }
+            }
+
+            return null;
+        }
+
+        private static bool TryLocateIfBranch(
+            IfBranchGroup targetBranch,
+            ObservableCollection<ProcessStep> steps,
+            out IfBranchGroup foundBranch)
+        {
+            foundBranch = null;
+            if (steps == null) return false;
+
+            foreach (var step in steps)
+            {
+                if (step.Step != StepType.IF || step.IfBranches == null) continue;
+
+                foreach (var branch in step.IfBranches)
+                {
+                    if (ReferenceEquals(branch, targetBranch))
+                    {
+                        foundBranch = branch;
+                        return true;
+                    }
+
+                    if (TryLocateIfBranch(targetBranch, branch.Steps, out foundBranch))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary> 剪贴板：缓存复制的节点 </summary>
         private object _clipboard;
 
@@ -557,20 +601,63 @@ namespace Module.Services
             if (copy is ProcessMethod methodCopy && SelectedNode is TaskItem task)
             {
                 methodCopy.Name = methodCopy.Name + "_Copy";
+                ResetRuntimeState(methodCopy);
                 task.Methods.Add(methodCopy);
                 RenumberSteps();
             }
             else if (copy is ProcessStep stepCopy && SelectedNode is ProcessMethod method)
             {
+                ResetRuntimeState(stepCopy);
                 stepCopy.Seq = method.Steps.Count + 1;
-                // 重置运行时状态
-                stepCopy.IsCurrent = false;
-                stepCopy.IsSingleExecuting = false;
-                stepCopy.HasActiveAlarm = false;
-                stepCopy.ErrorMessage = null;
                 method.Steps.Add(stepCopy);
                 RenumberSteps();
                 CurrentTask.SyncStepsFromMethods();
+                SelectedStep = stepCopy;
+                SelectedNode = stepCopy;
+            }
+            else if (copy is ProcessStep branchStepCopy && SelectedNode is IfBranchGroup branch)
+            {
+                ResetRuntimeState(branchStepCopy);
+                branch.Steps.Add(branchStepCopy);
+                RenumberIfBranchSteps(branch);
+
+                var loc = LocateIfBranch(branch);
+                if (loc.HasValue)
+                {
+                    CurrentTask = loc.Value.Task;
+                    SelectedMethod = loc.Value.Method;
+                    loc.Value.Task.SyncStepsFromMethods();
+                }
+
+                SelectedStep = branchStepCopy;
+                SelectedNode = branchStepCopy;
+            }
+            else if (copy is ProcessStep siblingStepCopy && SelectedNode is ProcessStep targetStep)
+            {
+                var loc = LocateStep(targetStep);
+                if (!loc.HasValue) return;
+
+                ResetRuntimeState(siblingStepCopy);
+                if (loc.Value.IfBranch != null)
+                {
+                    var targetBranch = loc.Value.IfBranch;
+                    var targetIndex = targetBranch.Steps.IndexOf(targetStep);
+                    targetBranch.Steps.Insert(targetIndex < 0 ? targetBranch.Steps.Count : targetIndex + 1, siblingStepCopy);
+                    RenumberIfBranchSteps(targetBranch);
+                }
+                else
+                {
+                    var targetMethod = loc.Value.Method;
+                    var targetIndex = targetMethod.Steps.IndexOf(targetStep);
+                    targetMethod.Steps.Insert(targetIndex < 0 ? targetMethod.Steps.Count : targetIndex + 1, siblingStepCopy);
+                    RenumberSteps(loc.Value.Task);
+                }
+
+                CurrentTask = loc.Value.Task;
+                SelectedMethod = loc.Value.Method;
+                loc.Value.Task.SyncStepsFromMethods();
+                SelectedStep = siblingStepCopy;
+                SelectedNode = siblingStepCopy;
             }
         }
 
@@ -624,12 +711,34 @@ namespace Module.Services
             // 重置运行时状态
             if (copy is ProcessStep step)
             {
-                step.IsCurrent = false;
-                step.IsSingleExecuting = false;
-                step.HasActiveAlarm = false;
-                step.ErrorMessage = null;
+                ResetRuntimeState(step);
             }
             return copy;
+        }
+
+        private static void ResetRuntimeState(ProcessMethod method)
+        {
+            if (method?.Steps == null) return;
+            foreach (var step in method.Steps)
+                ResetRuntimeState(step);
+        }
+
+        private static void ResetRuntimeState(ProcessStep step)
+        {
+            if (step == null) return;
+
+            step.IsCurrent = false;
+            step.IsSingleExecuting = false;
+            step.HasActiveAlarm = false;
+            step.ErrorMessage = null;
+
+            if (step.IfBranches == null) return;
+            foreach (var branch in step.IfBranches)
+            {
+                if (branch?.Steps == null) continue;
+                foreach (var subStep in branch.Steps)
+                    ResetRuntimeState(subStep);
+            }
         }
 
         // ========== 任务控制 ==========
@@ -654,6 +763,46 @@ namespace Module.Services
             else
                 _logger.Info($"[ProcessSequence] 使用执行宿主: {firstStation.TaskName}");
             return firstStation;
+        }
+
+        /// <summary> 更新执行锁并通知 UI（方法级 Run 按钮依赖 IsExecuting） </summary>
+        private void SetExecutingFlag(bool executing)
+        {
+            if (_isExecuting == executing) return;
+            _isExecuting = executing;
+            RaisePropertyChanged(nameof(IsExecuting));
+        }
+
+        /// <summary> 启动前确保工站未处于遗留 Running 状态，避免 RunCustomSequenceAsync 拒绝启动 </summary>
+        private void EnsureStationReadyForSequence(StationTaskBase stationTask)
+        {
+            if (stationTask == null) return;
+            if (stationTask.State == TaskState.Running)
+            {
+                _logger.Warn($"[ProcessSequence] 工站 [{stationTask.TaskName}] 状态遗留 Running，强制复位后启动");
+                stationTask.StopAsync();
+                stationTask.ResetMotionPause();
+            }
+        }
+
+        /// <summary> 递归清除 DISPENSE 步骤运行时检查点（Stop / 新 Run 时调用） </summary>
+        private static void ClearDispenseCheckpoints(IEnumerable<ProcessStep> steps)
+        {
+            if (steps == null) return;
+            foreach (var step in steps)
+            {
+                step.DispenseDetail?.ClearExecutionCheckpoint();
+                if (step.IfBranches == null) continue;
+                foreach (var branch in step.IfBranches)
+                    ClearDispenseCheckpoints(branch.Steps);
+            }
+        }
+
+        /// <summary> 清除方法及其 IF 嵌套步骤中的 DISPENSE 检查点 </summary>
+        private static void ClearDispenseCheckpoints(ProcessMethod method)
+        {
+            if (method?.Steps == null) return;
+            ClearDispenseCheckpoints(method.Steps);
         }
 
         /// <summary>
@@ -704,16 +853,18 @@ namespace Module.Services
                 return;
             }
             _executionCts = new CancellationTokenSource();
-            _isExecuting = true;
+            EnsureStationReadyForSequence(stationTask);
+            SetExecutingFlag(true);
             _activeStationTask = stationTask;
             CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
             // 启动时重置所有工站的暂停信号：StopTask 会取消所有工站的 _pauseCts，
             // 跨工站执行时目标工站的 PauseAwareToken 也需要处于未取消状态
             foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
                 station.ResetMotionPause();
-            // 启动时清除上次运行遗留的报警标记
+            // 启动时清除上次运行遗留的报警标记与 DISPENSE 检查点
             foreach (var step in steps)
                 step.HasActiveAlarm = false;
+            ClearDispenseCheckpoints(steps);
             _logger.Info($"[ProcessSequence] 启动: {executionLabel}，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
 
             // 异步执行步骤序列
@@ -795,7 +946,7 @@ namespace Module.Services
             }
             finally
             {
-                _isExecuting = false;
+                SetExecutingFlag(false);
                 _activeStationTask = null;
                 _stepNextTcs = null;
                 _executionCts?.Dispose();
@@ -904,6 +1055,7 @@ namespace Module.Services
                 method.Status = TaskItem.TaskStatusEnum.Idle;
             var stationTask = FindStationTask();
             if (stationTask == null) return;
+            EnsureStationReadyForSequence(stationTask);
 
             var steps = FlattenMethodSteps(method);
             if (steps == null || steps.Count == 0)
@@ -913,7 +1065,8 @@ namespace Module.Services
             }
 
             _executionCts = new CancellationTokenSource();
-            _isExecuting = true;
+            EnsureStationReadyForSequence(stationTask);
+            SetExecutingFlag(true);
             _isMethodExecuting = true;
             _executingMethod = method;
             _methodExecutionSteps = steps;
@@ -925,9 +1078,10 @@ namespace Module.Services
             // 启动时重置所有工站的暂停信号
             foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
                 station.ResetMotionPause();
-            // 清除上次运行遗留的报警标记
+            // 清除上次运行遗留的报警标记与 DISPENSE 检查点
             foreach (var step in steps)
                 step.HasActiveAlarm = false;
+            ClearDispenseCheckpoints(method);
             _logger.Info($"[ProcessSequence] 启动方法: [{method.Name}]，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
 
             // 异步执行方法步骤序列
@@ -973,7 +1127,7 @@ namespace Module.Services
             }
             finally
             {
-                _isExecuting = false;
+                SetExecutingFlag(false);
                 _isMethodExecuting = false;
                 _executingMethod = null;
                 _activeStationTask = null;
@@ -1039,7 +1193,11 @@ namespace Module.Services
                 _stepNextTcs?.TrySetCanceled();
                 // 遍历所有工站调用 StopAsync（无State守卫）：停止所有轴 + 取消 _cts/_pauseCts
                 foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
+                {
                     station.StopAsync();
+                    station.ResetMotionPause();
+                }
+                ClearDispenseCheckpoints(method);
                 ResetStepHighlight(_methodExecutionSteps);
                 _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 已停止");
                 return;
@@ -1059,6 +1217,7 @@ namespace Module.Services
             if (method == null) return;
             method.Status = TaskItem.TaskStatusEnum.Idle;
             method.LastElapsedMs = 0;
+            ClearDispenseCheckpoints(method);
             var steps = FlattenMethodSteps(method);
             if (steps.Count > 0)
             {
@@ -1191,7 +1350,7 @@ namespace Module.Services
 
             try
             {
-                _isExecuting = true;
+                SetExecutingFlag(true);
                 CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
                 await executor.ExecuteSingleStepAsync(step, CancellationToken.None);
             }
@@ -1202,7 +1361,7 @@ namespace Module.Services
             }
             finally
             {
-                _isExecuting = false;
+                SetExecutingFlag(false);
                 CurrentTask.Status = TaskItem.TaskStatusEnum.Idle;
             }
         }

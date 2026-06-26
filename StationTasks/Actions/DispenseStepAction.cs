@@ -113,7 +113,7 @@ namespace StationTasks.Actions
             }
 
             // 运动/工艺等待须合并暂停信号，避免暂停后 WaitForDone 误报运动超时
-            var motionToken = task.MotionCancellationToken;
+            var stopToken = token;
 
             var sourceSegments = _segmentSourceService.GetSourceSegments();
             var segDict = sourceSegments.Where(s => !string.IsNullOrEmpty(s.SegmentId))
@@ -204,23 +204,25 @@ namespace StationTasks.Actions
             try
             {
                 if (detail.IsDryRunMode)
-                    await ExecuteDryRunAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, motionToken);
+                    await ExecuteDryRunAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, task, stopToken);
 
                 if (detail.IsRealDispenseMode)
                 {
                     switch (detail.DispenseMode)
                     {
                         case DispenseStepMode.Dot:
-                            await ExecuteDotModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
+                            await ExecuteDotModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, task, stopToken);
                             break;
                         case DispenseStepMode.Arc:
-                            await ExecuteArcModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
+                            await ExecuteArcModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, task, stopToken);
                             break;
                         default:
                             _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未知点胶模式: {detail.DispenseMode}");
                             break;
                     }
                 }
+
+                detail.ClearExecutionCheckpoint();
             }
             catch (OperationCanceledException)
             {
@@ -243,7 +245,8 @@ namespace StationTasks.Actions
             DispenseDetail detail,
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
-            CancellationToken motionToken)
+            StationTaskBase task,
+            CancellationToken stopToken)
         {
             _logger.Info("DISPENSE 开始空跑");
 
@@ -252,7 +255,7 @@ namespace StationTasks.Actions
 
             foreach (var segRef in enabledRefs)
             {
-                motionToken.ThrowIfCancellationRequested();
+                stopToken.ThrowIfCancellationRequested();
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
@@ -267,29 +270,35 @@ namespace StationTasks.Actions
                 double moveSpeed = seg.MoveSpeed;
                 double safeHeight = seg.SafeHeight;
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, 0, "空跑Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt, seg);
 
-                await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                    new[] { startX, startY }, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, 0, "空跑XY定位", t =>
+                    _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
+                        new[] { startX, startY }, moveSpeed, t));
 
                 foreach (var pt in seg.Points.Skip(1))
                 {
-                    motionToken.ThrowIfCancellationRequested();
+                    stopToken.ThrowIfCancellationRequested();
                     var (px, py) = GetMachineXY(pt, seg);
-                    await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                        new[] { px, py }, moveSpeed, motionToken);
+                    await RunPausableAsync(task, stopToken, 0, "空跑XY走点", t =>
+                        _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
+                            new[] { px, py }, moveSpeed, t));
                 }
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, 0, "空跑Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
             }
 
             if (lastSeg != null)
-                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, 0, "空跑结束Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, t));
             else
-                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, 0, "空跑结束Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
             _logger.Info("DISPENSE 空跑完成");
         }
@@ -297,6 +306,7 @@ namespace StationTasks.Actions
         /// <summary>
         /// 单点模式：逐点点胶，遵循行业标准工艺流程
         /// 流程：Z抬升→XY定位→Z两段式下降→位置触发开胶→出胶→关胶→抬升
+        /// 暂停时在步骤内部等待恢复并继续当前动作，避免 RunStep 整步重试导致重复点胶
         /// </summary>
         private async Task ExecuteDotModeAsync(
             int stepSeq,
@@ -304,7 +314,8 @@ namespace StationTasks.Actions
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
             int needleIndex,
-            CancellationToken motionToken)
+            StationTaskBase task,
+            CancellationToken stopToken)
         {
             _logger.Info($"DISPENSE 步骤 [{stepSeq}] 单点模式开始");
 
@@ -312,10 +323,11 @@ namespace StationTasks.Actions
             int totalRefs = enabledRefs.Count;
             int currentRef = 0;
             DispenseSegment lastSeg = null;
+            bool abandonCurrentPoint = false;
 
             foreach (var segRef in enabledRefs)
             {
-                motionToken.ThrowIfCancellationRequested();
+                stopToken.ThrowIfCancellationRequested();
                 currentRef++;
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
@@ -329,7 +341,6 @@ namespace StationTasks.Actions
                 var seg = CreateSegmentWithParams(source, segRef, detail);
                 lastSeg = seg;
 
-                // 与 DISPENSE 工具页面 Effective* 一致：使用段级工艺参数
                 double moveSpeed = seg.MoveSpeed;
                 double safeHeight = seg.SafeHeight;
                 double targetZ = seg.EffectiveZHeight;
@@ -342,7 +353,14 @@ namespace StationTasks.Actions
                 int pointTotal = seg.Points.Count;
                 foreach (var (point, ptIndex) in seg.Points.Select((p, i) => (p, i)))
                 {
-                    motionToken.ThrowIfCancellationRequested();
+                    stopToken.ThrowIfCancellationRequested();
+
+                    if (abandonCurrentPoint)
+                    {
+                        abandonCurrentPoint = false;
+                        _logger.Warn($"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 暂停时已出胶，恢复后跳过该点");
+                        continue;
+                    }
 
                     var xyBreakdown = ResolveMachineXYBreakdown(point, seg);
                     LogDotPointDetail(stepSeq, seg, point, ptIndex, pointTotal, xyBreakdown, targetZ);
@@ -350,43 +368,70 @@ namespace StationTasks.Actions
                     double px = xyBreakdown.FinalX;
                     double py = xyBreakdown.FinalY;
 
-                    await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点Z抬升", t =>
+                        _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
 
-                    await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                        new[] { px, py }, moveSpeed, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点XY定位", t =>
+                        _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
+                            new[] { px, py }, moveSpeed, t));
 
                     double approachZ = targetZ + approachOffset;
-                    await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点Z接近", t =>
+                        _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, t));
 
-                    // 位置触发开胶：计算触发点Z，慢速移到触发位开胶，再继续到目标位
                     double triggerDistance = Math.Abs(glueTriggerOffset);
                     int motionDir = Math.Sign(approachZ - targetZ);
                     double triggerZ = targetZ + motionDir * triggerDistance;
 
-                    await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点Z触发位", t =>
+                        _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, t));
+
                     WriteGlueIo(true, needleIndex);
                     _logger.Debug($"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
-                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点Z目标位", t =>
+                        _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, t),
+                        safeGlueOffOnPause: true,
+                        onGluePauseAbandon: () => abandonCurrentPoint = true);
+                    if (abandonCurrentPoint)
+                        continue;
 
                     if (seg.PreDelay > 0)
-                        await Task.Delay((int)seg.PreDelay, motionToken);
+                    {
+                        await RunPausableAsync(task, stopToken, needleIndex, "单点PreDelay", t =>
+                            Task.Delay((int)seg.PreDelay, t),
+                            safeGlueOffOnPause: true,
+                            onGluePauseAbandon: () => abandonCurrentPoint = true);
+                        if (abandonCurrentPoint)
+                            continue;
+                    }
 
-                    await Task.Delay((int)seg.DispenseTime, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点出胶延时", t =>
+                        Task.Delay((int)seg.DispenseTime, t),
+                        safeGlueOffOnPause: true,
+                        onGluePauseAbandon: () => abandonCurrentPoint = true);
+                    if (abandonCurrentPoint)
+                        continue;
 
                     WriteGlueIo(false, needleIndex);
 
                     if (seg.PostDelay > 0)
-                        await Task.Delay((int)seg.PostDelay, motionToken);
+                    {
+                        await RunPausableAsync(task, stopToken, needleIndex, "单点PostDelay", t =>
+                            Task.Delay((int)seg.PostDelay, t));
+                    }
 
-                    await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "单点Z抬升", t =>
+                        _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
                 }
             }
 
             if (lastSeg != null)
-                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "单点结束Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, t));
             else
-                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "单点结束Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
             _logger.Info($"DISPENSE 步骤 [{stepSeq}] 单点模式完成");
         }
@@ -394,6 +439,7 @@ namespace StationTasks.Actions
         /// <summary>
         /// 弧线模式：连续插补走胶，遵循行业标准工艺流程
         /// 流程：Z抬升→XY定位→Z两段式下降→位置触发开胶→连续插补走轨迹→关胶→抬升
+        /// 暂停时在步骤内部恢复当前动作；连续插补中断后跳过当前段，避免重复走胶
         /// </summary>
         private async Task ExecuteArcModeAsync(
             int stepSeq,
@@ -401,7 +447,8 @@ namespace StationTasks.Actions
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
             int needleIndex,
-            CancellationToken motionToken)
+            StationTaskBase task,
+            CancellationToken stopToken)
         {
             _logger.Info($"DISPENSE 弧线模式开始");
 
@@ -416,14 +463,25 @@ namespace StationTasks.Actions
                 _logger.Warn("DISPENSE 弧线模式: 无已启用的圆弧类分段（请导入 Arc/Circle/Ellipse 或含弧段的多段线）");
                 return;
             }
+
+            detail.ExecutionCheckpoint ??= new DispenseExecutionCheckpoint();
             int totalRefs = enabledRefs.Count;
             int currentRef = 0;
             DispenseSegment lastSeg = null;
+            bool abandonCurrentSegment = detail.ExecutionCheckpoint.SkipCurrentArcSegment;
 
             foreach (var segRef in enabledRefs)
             {
-                motionToken.ThrowIfCancellationRequested();
+                stopToken.ThrowIfCancellationRequested();
                 currentRef++;
+
+                if (abandonCurrentSegment)
+                {
+                    abandonCurrentSegment = false;
+                    detail.ExecutionCheckpoint.SkipCurrentArcSegment = false;
+                    _logger.Warn($"DISPENSE 弧线: 段 '{segRef.SourceSegmentId}' 暂停时走胶中断，恢复后跳过该段");
+                    continue;
+                }
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
@@ -436,7 +494,6 @@ namespace StationTasks.Actions
                 var seg = CreateSegmentWithParams(source, segRef, detail);
                 lastSeg = seg;
 
-                // 与 DISPENSE 工具页面 Effective* 一致：使用段级工艺参数
                 double moveSpeed = seg.MoveSpeed;
                 double safeHeight = seg.SafeHeight;
                 double targetZ = seg.EffectiveZHeight;
@@ -447,69 +504,108 @@ namespace StationTasks.Actions
                 _logger.Info($"DISPENSE 弧线: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
                              $"MoveSpeed={moveSpeed:F1}, InterpSpeed={seg.InterpSpeed:F1}, SafeHeight={safeHeight:F1}");
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
 
                 var startPt = seg.Points.First();
                 var (startX, startY) = GetMachineXY(startPt, seg);
                 LogArcSegmentStartCoordinates(stepSeq, seg, startPt, startX, startY, targetZ);
-                await _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
-                    new[] { startX, startY }, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线XY定位", t =>
+                    _motionService.MoveLineAbsAsync(CoordIdLinear, new[] { dxAxisId, dyAxisId },
+                        new[] { startX, startY }, moveSpeed, t));
 
                 double approachZ = targetZ + approachOffset;
-                await _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线Z接近", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, approachZ, moveSpeed, t));
 
-                // 位置触发开胶：计算触发点Z，慢速移到触发位开胶，再继续到目标位
                 double triggerDistance = Math.Abs(glueTriggerOffset);
                 int motionDir = Math.Sign(approachZ - targetZ);
                 double triggerZ = targetZ + motionDir * triggerDistance;
 
-                await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线Z触发位", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, t));
+
                 WriteGlueIo(true, needleIndex);
                 _logger.Debug($"DISPENSE 弧线: 段[{seg.SegmentId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
-                await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线Z目标位", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, t),
+                    safeGlueOffOnPause: true,
+                    onGluePauseAbandon: () => abandonCurrentSegment = true);
+                if (abandonCurrentSegment)
+                    continue;
 
                 if (seg.PreDelay > 0)
-                    await Task.Delay((int)seg.PreDelay, motionToken);
+                {
+                    await RunPausableAsync(task, stopToken, needleIndex, "弧线PreDelay", t =>
+                        Task.Delay((int)seg.PreDelay, t),
+                        safeGlueOffOnPause: true,
+                        onGluePauseAbandon: () => abandonCurrentSegment = true);
+                    if (abandonCurrentSegment)
+                        continue;
+                }
 
                 double currentZPos = _motionService.GetAxisPosition(dzAxisId);
                 if (Math.Abs(currentZPos - targetZ) > 0.5)
                 {
                     _logger.Warn($"DISPENSE 弧线: 段[{seg.SegmentId}] Z轴未到位: 当前={currentZPos:F3}, 目标={targetZ:F3}，重新下降");
-                    await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
+                    await RunPausableAsync(task, stopToken, needleIndex, "弧线Z补下降", t =>
+                        _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, t),
+                        safeGlueOffOnPause: true,
+                        onGluePauseAbandon: () => abandonCurrentSegment = true);
+                    if (abandonCurrentSegment)
+                        continue;
                 }
 
-                _motionService.InitializeContinuousInterpolation(
-                    CoordIdContinuous, new[] { dxAxisId, dyAxisId },
-                    startVel: 5, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
-
-                foreach (var pt in seg.Points)
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线连续插补", async t =>
                 {
-                    var (px, py) = GetMachineXY(pt, seg);
-                    _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
-                }
+                    _motionService.InitializeContinuousInterpolation(
+                        CoordIdContinuous, new[] { dxAxisId, dyAxisId },
+                        startVel: 5, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
 
-                _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
+                    foreach (var pt in seg.Points)
+                    {
+                        var (px, py) = GetMachineXY(pt, seg);
+                        _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
+                    }
 
-                bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
-                    CoordIdContinuous, TimeSpan.FromMinutes(5), motionToken);
+                    _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
 
-                if (!completed)
-                    throw new TimeoutException($"DISPENSE 弧线: 段[{seg.SegmentId}] 运动超时");
+                    bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
+                        CoordIdContinuous, TimeSpan.FromMinutes(5), t);
+
+                    if (!completed)
+                        throw new TimeoutException($"DISPENSE 弧线: 段[{seg.SegmentId}] 运动超时");
+                },
+                safeGlueOffOnPause: true,
+                onGluePauseAbandon: () =>
+                {
+                    abandonCurrentSegment = true;
+                    detail.ExecutionCheckpoint.SkipCurrentArcSegment = true;
+                });
+                if (abandonCurrentSegment)
+                    continue;
 
                 WriteGlueIo(false, needleIndex);
 
                 if (seg.PostDelay > 0)
-                    await Task.Delay((int)seg.PostDelay, motionToken);
+                {
+                    await RunPausableAsync(task, stopToken, needleIndex, "弧线PostDelay", t =>
+                        Task.Delay((int)seg.PostDelay, t));
+                }
 
-                await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
             }
 
             if (lastSeg != null)
-                await _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线结束Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, t));
             else
-                await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
+                await RunPausableAsync(task, stopToken, needleIndex, "弧线结束Z抬升", t =>
+                    _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
+            detail.ClearExecutionCheckpoint();
             _logger.Info("DISPENSE 弧线模式完成");
         }
 
@@ -689,6 +785,64 @@ namespace StationTasks.Actions
         {
             try { _motionService.WriteDo(GetGlueIoPort(needleIndex), false); }
             catch { }
+        }
+
+        /// <summary>
+        /// 可暂停的异步操作：暂停时在 DISPENSE 步骤内部等待恢复并重试当前动作，
+        /// 避免 RunStep 整步重试导致从头点胶。
+        /// </summary>
+        /// <param name="safeGlueOffOnPause">开胶后暂停时安全关胶；恢复后由 onGluePauseAbandon 决定是否跳过当前点/段</param>
+        /// <param name="onGluePauseAbandon">开胶后暂停时回调，通知调用方跳过当前点或弧线段</param>
+        private async Task RunPausableAsync(
+            StationTaskBase task,
+            CancellationToken stopToken,
+            int needleIndex,
+            string operationName,
+            Func<CancellationToken, Task> operation,
+            bool safeGlueOffOnPause = false,
+            Action onGluePauseAbandon = null)
+        {
+            while (true)
+            {
+                stopToken.ThrowIfCancellationRequested();
+                try
+                {
+                    await operation(task.MotionCancellationToken);
+                    return;
+                }
+                catch (OperationCanceledException)
+                {
+                    stopToken.ThrowIfCancellationRequested();
+                    if (task.State != TaskState.Paused)
+                        throw;
+
+                    if (safeGlueOffOnPause)
+                    {
+                        SafeGlueOff(needleIndex);
+                        onGluePauseAbandon?.Invoke();
+                        _logger.Warn($"DISPENSE {operationName} 暂停时已关胶，恢复后将跳过当前点/段");
+                        await WaitForDispenseResumeAsync(task, stopToken);
+                        return;
+                    }
+
+                    _logger.Info($"DISPENSE {operationName} 已暂停，等待恢复后继续当前动作");
+                    await WaitForDispenseResumeAsync(task, stopToken);
+                }
+            }
+        }
+
+        /// <summary>等待工站从 Paused 恢复为 Running（停止令牌取消时抛出 OCE）</summary>
+        private static async Task WaitForDispenseResumeAsync(StationTaskBase task, CancellationToken stopToken)
+        {
+            while (task.State == TaskState.Paused)
+            {
+                await Task.Delay(50, stopToken);
+            }
+
+            stopToken.ThrowIfCancellationRequested();
+
+            if (task.State != TaskState.Running)
+                throw new OperationCanceledException(stopToken);
         }
 
         /// <summary>从轨迹 JSON 对齐数据加载指定针头的仿射矩阵</summary>
