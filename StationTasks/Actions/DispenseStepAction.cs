@@ -35,10 +35,10 @@ namespace StationTasks.Actions
         private const int CoordIdContinuous = 1;
 
         /// <summary>针头1（Dz₂）出胶 IO 端口编号——与 DispenseExecuteService 一致</summary>
-        private const int GlueIoPort1 = 12;
+        private const int GlueIoPort1 = 13;
 
         /// <summary>针头2（Dz₃）出胶 IO 端口编号——与 DispenseExecuteService 一致</summary>
-        private const int GlueIoPort2 = 13;
+        private const int GlueIoPort2 = 12;
 
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
@@ -211,7 +211,7 @@ namespace StationTasks.Actions
                     switch (detail.DispenseMode)
                     {
                         case DispenseStepMode.Dot:
-                            await ExecuteDotModeAsync(detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
+                            await ExecuteDotModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
                             break;
                         case DispenseStepMode.Arc:
                             await ExecuteArcModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, motionToken);
@@ -299,13 +299,14 @@ namespace StationTasks.Actions
         /// 流程：Z抬升→XY定位→Z两段式下降→位置触发开胶→出胶→关胶→抬升
         /// </summary>
         private async Task ExecuteDotModeAsync(
+            int stepSeq,
             DispenseDetail detail,
             Dictionary<string, DispenseSegment> segDict,
             int dxAxisId, int dyAxisId, int dzAxisId,
             int needleIndex,
             CancellationToken motionToken)
         {
-            _logger.Info($"DISPENSE 单点模式开始");
+            _logger.Info($"DISPENSE 步骤 [{stepSeq}] 单点模式开始");
 
             var enabledRefs = detail.SegmentRefs.Where(r => r.IsEnabled).ToList();
             int totalRefs = enabledRefs.Count;
@@ -319,7 +320,7 @@ namespace StationTasks.Actions
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
-                    _logger.Warn($"DISPENSE 单点: 源段 '{segRef.SourceSegmentId}' 未找到，跳过");
+                    _logger.Warn($"DISPENSE 步骤 [{stepSeq}] 单点: 源段 '{segRef.SourceSegmentId}' 未找到，跳过");
                     continue;
                 }
 
@@ -336,14 +337,18 @@ namespace StationTasks.Actions
                 double slowVel = seg.MoveSpeed * seg.CornerDecel;
                 double glueTriggerOffset = seg.GlueTriggerOffsetMm;
 
-                _logger.Info($"DISPENSE 单点: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
-                             $"MoveSpeed={moveSpeed:F1}, SafeHeight={safeHeight:F1}, DispenseTime={seg.DispenseTime:F0}ms");
+                LogDotSegmentProcessParams(stepSeq, seg, segRef, detail, currentRef, totalRefs);
 
+                int pointTotal = seg.Points.Count;
                 foreach (var (point, ptIndex) in seg.Points.Select((p, i) => (p, i)))
                 {
                     motionToken.ThrowIfCancellationRequested();
 
-                    var (px, py) = GetMachineXY(point, seg);
+                    var xyBreakdown = ResolveMachineXYBreakdown(point, seg);
+                    LogDotPointDetail(stepSeq, seg, point, ptIndex, pointTotal, xyBreakdown, targetZ);
+
+                    double px = xyBreakdown.FinalX;
+                    double py = xyBreakdown.FinalY;
 
                     await _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, motionToken);
 
@@ -360,7 +365,7 @@ namespace StationTasks.Actions
 
                     await _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, motionToken);
                     WriteGlueIo(true, needleIndex);
-                    _logger.Debug($"DISPENSE 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
+                    _logger.Debug($"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
 
                     await _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, motionToken);
 
@@ -383,7 +388,7 @@ namespace StationTasks.Actions
             else
                 await _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, motionToken);
 
-            _logger.Info("DISPENSE 单点模式完成");
+            _logger.Info($"DISPENSE 步骤 [{stepSeq}] 单点模式完成");
         }
 
         /// <summary>
@@ -538,6 +543,8 @@ namespace StationTasks.Actions
                 seg.CornerDecel = detail.DefaultCornerDecel;
                 seg.TeachHeight = detail.DefaultTeachHeight;
                 seg.HeightCompensation = detail.DefaultHeightCompensation;
+                seg.XyCompensationX = detail.DefaultXyCompensationX;
+                seg.XyCompensationY = detail.DefaultXyCompensationY;
             }
             else
             {
@@ -556,6 +563,8 @@ namespace StationTasks.Actions
                 seg.CornerDecel = segRef.OverrideCornerDecel;
                 seg.TeachHeight = segRef.OverrideTeachHeight;
                 seg.HeightCompensation = segRef.OverrideHeightCompensation;
+                seg.XyCompensationX = segRef.OverrideXyCompensationX;
+                seg.XyCompensationY = segRef.OverrideXyCompensationY;
             }
 
             if (detail.EnableZCalibration)
@@ -709,6 +718,32 @@ namespace StationTasks.Actions
             };
         }
 
+        /// <summary>机械坐标换算明细——用于单点模式日志追溯</summary>
+        private readonly struct MachineXYBreakdown
+        {
+            public double CadX { get; init; }
+            public double CadY { get; init; }
+            /// <summary>仿射/旋转变换后坐标（不含人工XY及后续补偿）</summary>
+            public double TransformedX { get; init; }
+            public double TransformedY { get; init; }
+            /// <summary>段级人工 XY 补偿（mm）</summary>
+            public double ManualXyCompX { get; init; }
+            public double ManualXyCompY { get; init; }
+            /// <summary>变换+人工补偿后的基准坐标</summary>
+            public double BaseX { get; init; }
+            public double BaseY { get; init; }
+            public double NeedleOffsetX { get; init; }
+            public double NeedleOffsetY { get; init; }
+            public double CalibratorCompX { get; init; }
+            public double CalibratorCompY { get; init; }
+            public double GlobalCompX { get; init; }
+            public double GlobalCompY { get; init; }
+            public double FinalX { get; init; }
+            public double FinalY { get; init; }
+            /// <summary>坐标来源：Rotation / Affine / MachineXY</summary>
+            public string TransformSource { get; init; }
+        }
+
         /// <summary>
         /// 安全获取点的机器坐标——优先按当前针头仿射矩阵从 CAD 坐标实时换算；
         /// 无仿射时回退点内 MachineX/MachineY。
@@ -717,32 +752,36 @@ namespace StationTasks.Actions
         /// </summary>
         private (double X, double Y) GetMachineXY(CadPoint pt, DispenseSegment seg = null)
         {
-            double x;
-            double y;
+            var breakdown = ResolveMachineXYBreakdown(pt, seg);
+            return (breakdown.FinalX, breakdown.FinalY);
+        }
+
+        /// <summary>
+        /// 解析点机械坐标及各阶段补偿量——供单点模式详细日志与运动目标计算共用
+        /// </summary>
+        private MachineXYBreakdown ResolveMachineXYBreakdown(CadPoint pt, DispenseSegment seg = null)
+        {
+            double cadX = pt.X;
+            double cadY = pt.Y;
+            double tx, ty;
+            string transformSource;
 
             // 旋转补偿优先：使用 CAD 对齐变换快照按旋转角度换算坐标
             if (_enableRotationComp && _cadAlignSnapshot != null && _cadAlignSnapshot.IsValid)
             {
-                (x, y) = _cadAlignSnapshot.Transform(pt.X, pt.Y, _rotationAngle);
-                if (seg != null)
-                {
-                    x += seg.XyCompensationX;
-                    y += seg.XyCompensationY;
-                }
+                (tx, ty) = _cadAlignSnapshot.Transform(cadX, cadY, _rotationAngle);
+                transformSource = "Rotation";
             }
             else if (_runtimeAffine != null)
             {
-                (x, y) = AffineCalibrationService.Transform(_runtimeAffine, pt.X, pt.Y);
-                if (seg != null)
-                {
-                    x += seg.XyCompensationX;
-                    y += seg.XyCompensationY;
-                }
+                (tx, ty) = AffineCalibrationService.Transform(_runtimeAffine, cadX, cadY);
+                transformSource = "Affine";
             }
             else if (pt.MachineX != null && pt.MachineY != null)
             {
-                x = pt.MachineX.Value;
-                y = pt.MachineY.Value;
+                tx = pt.MachineX.Value;
+                ty = pt.MachineY.Value;
+                transformSource = "MachineXY";
             }
             else
             {
@@ -750,27 +789,103 @@ namespace StationTasks.Actions
                     $"DISPENSE 致命错误: 点[Id={pt.Id}] 无仿射矩阵且 MachineX/MachineY 为空，禁止运动");
             }
 
-            // 针头偏移补偿：将相机中心坐标换算为实际点胶针头坐标
-            if (_enableNeedleOffsetComp)
+            double manualX = seg?.XyCompensationX ?? 0;
+            double manualY = seg?.XyCompensationY ?? 0;
+            double baseX, baseY;
+
+            if (transformSource == "MachineXY")
             {
-                x += _needleOffsetX;
-                y += _needleOffsetY;
+                // MachineXY 已由 Step3「应用XY补偿」写入，不再叠加段级人工补偿
+                baseX = tx;
+                baseY = ty;
+                manualX = 0;
+                manualY = 0;
+            }
+            else
+            {
+                baseX = tx + manualX;
+                baseY = ty + manualY;
             }
 
-            // 校准补偿：X/Y Comp（校准器）
-            if (_enableCalibration)
-            {
-                x += _xCompCalibrator;
-                y += _yCompCalibrator;
-            }
+            double needleX = _enableNeedleOffsetComp ? _needleOffsetX : 0;
+            double needleY = _enableNeedleOffsetComp ? _needleOffsetY : 0;
+            double calX = _enableCalibration ? _xCompCalibrator : 0;
+            double calY = _enableCalibration ? _yCompCalibrator : 0;
+            double globalX = _enableComp ? _xCompensation : 0;
+            double globalY = _enableComp ? _yCompensation : 0;
 
-            if (_enableComp)
+            return new MachineXYBreakdown
             {
-                x += _xCompensation;
-                y += _yCompensation;
-            }
+                CadX = cadX,
+                CadY = cadY,
+                TransformedX = tx,
+                TransformedY = ty,
+                ManualXyCompX = manualX,
+                ManualXyCompY = manualY,
+                BaseX = baseX,
+                BaseY = baseY,
+                NeedleOffsetX = needleX,
+                NeedleOffsetY = needleY,
+                CalibratorCompX = calX,
+                CalibratorCompY = calY,
+                GlobalCompX = globalX,
+                GlobalCompY = globalY,
+                FinalX = baseX + needleX + calX + globalX,
+                FinalY = baseY + needleY + calY + globalY,
+                TransformSource = transformSource
+            };
+        }
 
-            return (x, y);
+        /// <summary>记录单点模式段级工艺参数，便于工艺追溯</summary>
+        private void LogDotSegmentProcessParams(
+            int stepSeq,
+            DispenseSegment seg,
+            DispenseSegmentRef segRef,
+            DispenseDetail detail,
+            int currentRef,
+            int totalRefs)
+        {
+            bool useDefault = segRef.UseDefaultParams;
+            double manualHeightComp = useDefault
+                ? detail.DefaultHeightCompensation
+                : segRef.OverrideHeightCompensation;
+            double zCalAddon = detail.EnableZCalibration ? ResolveZCompensation(detail) : 0;
+            string paramSource = useDefault ? "Default" : "Override";
+
+            _logger.Info(
+                $"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，共 {seg.Points.Count} 点 | " +
+                $"参数来源={paramSource}, UseDefaultParams={useDefault} | " +
+                $"工艺参数: MoveSpeed={seg.MoveSpeed:F1}mm/s, SafeHeight={seg.SafeHeight:F3}mm, ApproachHeight={seg.ApproachHeight:F3}mm, " +
+                $"CornerDecel={seg.CornerDecel:F2}, GlueTriggerOffset={seg.GlueTriggerOffsetMm:F3}mm, " +
+                $"PreDelay={seg.PreDelay:F0}ms, DispenseTime={seg.DispenseTime:F0}ms, PostDelay={seg.PostDelay:F0}ms, " +
+                $"TeachHeight={seg.TeachHeight:F3}mm, HeightComp(manual)={manualHeightComp:F3}mm, ZCalAddon={zCalAddon:F3}mm, " +
+                $"HeightComp(total)={seg.HeightCompensation:F3}mm, EffectiveZ={seg.EffectiveZHeight:F3}mm, " +
+                $"DispensingPressure={seg.DispensingPressure:F3}MPa, SuckBackTime={seg.SuckBackTime:F0}ms, " +
+                $"人工XY补偿=({seg.XyCompensationX:F4}, {seg.XyCompensationY:F4})mm");
+        }
+
+        /// <summary>
+        /// 记录单点模式逐点坐标变换与补偿明细。
+        /// 原始坐标 = CAD 点坐标；最终坐标 = 变换 + 各类补偿后的运动目标。
+        /// </summary>
+        private void LogDotPointDetail(
+            int stepSeq,
+            DispenseSegment seg,
+            CadPoint point,
+            int ptIndex,
+            int pointTotal,
+            MachineXYBreakdown xy,
+            double targetZ)
+        {
+            _logger.Info(
+                $"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}] 点{ptIndex + 1}/{pointTotal} [Id={point.Id}] | " +
+                $"原始CAD=({xy.CadX:F4}, {xy.CadY:F4}, Z={point.Z:F4}) | " +
+                $"变换来源={xy.TransformSource}, 变换后=({xy.TransformedX:F4}, {xy.TransformedY:F4}) | " +
+                $"人工XY补偿=({xy.ManualXyCompX:F4}, {xy.ManualXyCompY:F4})mm | " +
+                $"针头偏移=({xy.NeedleOffsetX:F4}, {xy.NeedleOffsetY:F4})mm | " +
+                $"校准XY=({xy.CalibratorCompX:F4}, {xy.CalibratorCompY:F4})mm | " +
+                $"全局XY=({xy.GlobalCompX:F4}, {xy.GlobalCompY:F4})mm | " +
+                $"最终XY=({xy.FinalX:F4}, {xy.FinalY:F4}), Z={targetZ:F4}mm");
         }
 
         /// <summary>

@@ -86,6 +86,17 @@ namespace Core.Services
             CalibrationChanged?.Invoke();
         }
 
+        /// <summary> 从持久化配置恢复当前针头的标定状态 </summary>
+        public void RestoreState(double cameraZOffset, double needleZOffset, double baseZ, double measuredMZ)
+        {
+            var state = Current;
+            state.CameraZOffset = cameraZOffset;
+            state.NeedleZOffset = needleZOffset;
+            state.BaseZ = baseZ;
+            state.MeasuredMZ = measuredMZ;
+            CalibrationChanged?.Invoke();
+        }
+
         /// <summary>计算点胶高度：基准点胶高度 + Z高度差 + 针头补偿</summary>
         public double CalculateDispenseHeight(double baseZ, double baseDispenseHeight, double currentZHeight, double needleCompensation)
         {

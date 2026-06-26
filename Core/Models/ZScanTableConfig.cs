@@ -91,17 +91,25 @@ namespace Core.Models
     }
 
     /// <summary>
-    /// Z-SCAN 配置文件模型，支持双针头（Dz1/Dz2）各自独立的表格集合
+    /// Z-SCAN 配置文件模型：测量表格全局共享；Z 标定参数按针头（Dz1/Dz2）独立
     /// </summary>
     public class ZScanConfigFile
     {
-        /// <summary> 针头1（Dz1）的表格集合 </summary>
-        public List<ZScanTableConfig> Needle1Tables { get; set; } = new List<ZScanTableConfig>();
-        /// <summary> 针头2（Dz2）的表格集合 </summary>
-        public List<ZScanTableConfig> Needle2Tables { get; set; } = new List<ZScanTableConfig>();
-        /// <summary> 向后兼容旧格式（单针头时代的表格集合） </summary>
-        public List<ZScanTableConfig> Tables { get; set; }
+        /// <summary> 针头1（Dz1）的 Z 标定参数 </summary>
+        public ZScanCalibrationConfig Needle1Calibration { get; set; } = new ZScanCalibrationConfig();
+        /// <summary> 针头2（Dz2）的 Z 标定参数 </summary>
+        public ZScanCalibrationConfig Needle2Calibration { get; set; } = new ZScanCalibrationConfig();
+        /// <summary> 测量数据表格（双针头共享，不随针头切换） </summary>
+        public List<ZScanTableConfig> Tables { get; set; } = new List<ZScanTableConfig>();
         public string DefaultTableName { get; set; } = string.Empty;
+        /// <summary> 已废弃：旧版分针头表格，加载时仅作向后兼容 </summary>
+        public List<ZScanTableConfig> Needle1Tables { get; set; } = new List<ZScanTableConfig>();
+        /// <summary> 已废弃：旧版分针头表格，加载时仅作向后兼容 </summary>
+        public List<ZScanTableConfig> Needle2Tables { get; set; } = new List<ZScanTableConfig>();
+        /// <summary> 已废弃：旧版针头1选中表名 </summary>
+        public string Needle1SelectedTableName { get; set; } = string.Empty;
+        /// <summary> 已废弃：旧版针头2选中表名 </summary>
+        public string Needle2SelectedTableName { get; set; } = string.Empty;
 
         /// <summary> 通讯类型：TCPIP 或 Serial </summary>
         public string CommunicationType { get; set; } = "TCPIP";

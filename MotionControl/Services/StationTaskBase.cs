@@ -257,8 +257,9 @@ namespace StationTasks.Tasks
         protected async Task<(bool found, double value)> TryGetPositionAsync(string positionName, string axisName)
         {
             var all = await LoadPositionsAsync();
-            var key = $"{positionName}.{axisName}";
-            return all.TryGetValue(key, out var v) ? (true, v) : (false, 0);
+            if (Core.Utilities.PositionLookupHelper.TryGetPositionValue(all, positionName, axisName, out var v))
+                return (true, v);
+            return (false, 0);
         }
 
         /// <summary>

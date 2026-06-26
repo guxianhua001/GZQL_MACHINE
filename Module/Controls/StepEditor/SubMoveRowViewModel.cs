@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using Core.Models;
+using Core.Utilities;
 using MotionControl.Interfaces;
 using Prism.Mvvm;
 using StationTasks.Models;
@@ -20,6 +21,11 @@ namespace Module.ViewModels
         private readonly SubMove _subMove;
         private readonly IPositionProvider _positionProvider;
         private ObservableCollection<GlobalVariable> _linkedVariables;
+        private Dictionary<string, double> _stationPositions = new Dictionary<string, double>();
+
+        /// <summary>位置缓存刷新防抖，打开 GOTO/PICK 等多行时只刷新一次</summary>
+        private static DateTime _lastPositionCacheRefreshUtc = DateTime.MinValue;
+        private static readonly TimeSpan PositionCacheRefreshDebounce = TimeSpan.FromMilliseconds(300);
 
         /// <summary> 底层 SubMove 模型，保存时回写 </summary>
         public SubMove SubMove => _subMove;
@@ -40,7 +46,19 @@ namespace Module.ViewModels
                 }
             }
         }
-        public string Axis { get => _subMove.Axis; set => _subMove.Axis = value; }
+        public string Axis
+        {
+            get => _subMove.Axis;
+            set
+            {
+                if (_subMove.Axis != value)
+                {
+                    _subMove.Axis = value;
+                    RaisePropertyChanged(nameof(Axis));
+                    RefreshAvailablePositionsForAxis();
+                }
+            }
+        }
         public int AxisId { get => _subMove.AxisId; set => _subMove.AxisId = value; }
         public string PositionName
         {
@@ -199,12 +217,57 @@ namespace Module.ViewModels
             }
         }
 
-        /// <summary> 位置名在当前 AvailablePositions 中不存在（被重命名/删除）时为 true，UI 显示警告图标 </summary>
+        /// <summary>
+        /// 当前轴在指定位置名下无坐标（含位置名不存在、或该轴未示教）时为 true，UI 显示警告图标
+        /// </summary>
         public bool IsPositionInvalid =>
             !string.IsNullOrEmpty(PositionName) &&
-            AvailablePositions != null &&
-            AvailablePositions.Count > 0 &&
-            !AvailablePositions.Contains(PositionName);
+            !string.IsNullOrEmpty(Axis) &&
+            _stationPositions != null &&
+            _stationPositions.Count > 0 &&
+            !PositionLookupHelper.HasPositionAxisKey(_stationPositions, PositionName, Axis);
+
+        /// <summary>按当前所选轴过滤位置名下拉（仅显示该轴已示教的位置）</summary>
+        private void RefreshAvailablePositionsForAxis()
+        {
+            if (_stationPositions == null || _stationPositions.Count == 0)
+            {
+                AvailablePositions = new ObservableCollection<string>();
+                RaisePropertyChanged(nameof(IsPositionInvalid));
+                return;
+            }
+
+            var positionNames = new HashSet<string>();
+            foreach (var key in _stationPositions.Keys)
+            {
+                var dotIndex = key.IndexOf('.');
+                if (dotIndex <= 0 || dotIndex >= key.Length - 1)
+                    continue;
+
+                var posName = key.Substring(0, dotIndex);
+                var axisName = key.Substring(dotIndex + 1);
+
+                if (!string.IsNullOrEmpty(Axis))
+                {
+                    bool axisMatch = false;
+                    foreach (var candidate in PositionLookupHelper.GetAxisNameCandidates(Axis))
+                    {
+                        if (string.Equals(axisName, candidate, StringComparison.Ordinal))
+                        {
+                            axisMatch = true;
+                            break;
+                        }
+                    }
+                    if (!axisMatch)
+                        continue;
+                }
+
+                positionNames.Add(posName);
+            }
+
+            AvailablePositions = new ObservableCollection<string>(positionNames.OrderBy(p => p));
+            RaisePropertyChanged(nameof(IsPositionInvalid));
+        }
 
         public SubMoveRowViewModel(SubMove subMove, IPositionProvider positionProvider)
         {
@@ -242,25 +305,32 @@ namespace Module.ViewModels
             if (string.IsNullOrEmpty(stationId)) return;
             try
             {
+                // 打开步骤编辑器时强制与配方文件对齐，避免下拉可选但运行时读到旧缓存
+                var now = DateTime.UtcNow;
+                if (now - _lastPositionCacheRefreshUtc > PositionCacheRefreshDebounce)
+                {
+                    await _positionProvider.RefreshCacheAsync();
+                    _lastPositionCacheRefreshUtc = now;
+                }
+
                 var positions = await _positionProvider.GetPositionsAsync(stationId);
+                _stationPositions = new Dictionary<string, double>(positions);
                 var axes = new HashSet<string>();
-                var positionNames = new HashSet<string>();
                 foreach (var key in positions.Keys)
                 {
                     var parts = key.Split('.');
                     if (parts.Length >= 2)
-                    {
-                        positionNames.Add(parts[0]);
                         axes.Add(parts[1]);
-                    }
                 }
                 AvailableAxes = new ObservableCollection<string>(axes.OrderBy(a => a));
-                AvailablePositions = new ObservableCollection<string>(positionNames.OrderBy(p => p));
+                RefreshAvailablePositionsForAxis();
             }
             catch
             {
+                _stationPositions = new Dictionary<string, double>();
                 AvailableAxes = new ObservableCollection<string>();
                 AvailablePositions = new ObservableCollection<string>();
+                RaisePropertyChanged(nameof(IsPositionInvalid));
             }
         }
     }

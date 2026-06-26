@@ -89,6 +89,41 @@ namespace MotionControl.Tests
         }
 
         [Fact]
+        public void RestoreState_RestoresAllOffsetsForCurrentNeedle()
+        {
+            var service = CreateService();
+            service.CalibrateCameraZ(10.0, 12.5);
+            service.ApplyNeedleCompensation(0.05);
+            service.SetBaseZ(5.2);
+            service.TeachNeedleMZ(5.15);
+
+            service.SetCurrentNeedle(1);
+            service.RestoreState(1.1, 0.02, 4.8, 4.75);
+
+            Assert.Equal(1.1, service.CameraZOffset, 3);
+            Assert.Equal(0.02, service.NeedleZOffset, 3);
+            Assert.Equal(4.8, service.BaseZ, 3);
+            Assert.Equal(4.75, service.MeasuredMZ, 3);
+        }
+
+        [Fact]
+        public void DualNeedle_RestoreState_IsolatedPerNeedle()
+        {
+            var service = CreateService();
+            service.RestoreState(1.0, 0.1, 5.0, 5.1);
+            service.SetCurrentNeedle(1);
+            service.RestoreState(2.0, 0.2, 6.0, 6.1);
+
+            service.SetCurrentNeedle(0);
+            Assert.Equal(1.0, service.CameraZOffset, 3);
+            Assert.Equal(0.1, service.NeedleZOffset, 3);
+
+            service.SetCurrentNeedle(1);
+            Assert.Equal(2.0, service.CameraZOffset, 3);
+            Assert.Equal(0.2, service.NeedleZOffset, 3);
+        }
+
+        [Fact]
         public async Task NeedleTeachService_MoveToBaseZ_CallsMotionService()
         {
             var motionMock = new Mock<IMotionService>();

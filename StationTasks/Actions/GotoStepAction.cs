@@ -22,17 +22,20 @@ namespace StationTasks.Actions
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILoggerService _logger;
         private readonly IStationRegistry _stationRegistry;
+        private readonly IPositionProvider _positionProvider;
 
         public StepType SupportedStepType => StepType.GOTO;
 
         public GotoStepAction(
             IRecipePoolService recipePoolService,
             ILoggerService logger,
-            IStationRegistry stationRegistry)
+            IStationRegistry stationRegistry,
+            IPositionProvider positionProvider)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _stationRegistry = stationRegistry;
+            _positionProvider = positionProvider;
         }
 
         /// <summary>
@@ -48,6 +51,12 @@ namespace StationTasks.Actions
             }
 
             bool isHome = step.GotoMode == StationTasks.Models.GotoModeEnum.Home;
+
+            // 绝对定位前强制刷新位置缓存，避免位置编辑器已保存但 GOTO 仍读到旧快照
+            if (!isHome)
+            {
+                await _positionProvider.RefreshCacheAsync();
+            }
 
             // 配方池键：优先 Name，与持久化层一致
             string poolKey = !string.IsNullOrEmpty(_recipePoolService.CurrentPoolName)

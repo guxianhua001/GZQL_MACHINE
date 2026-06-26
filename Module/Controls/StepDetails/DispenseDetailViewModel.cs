@@ -476,6 +476,8 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(EffectiveGlueTriggerOffsetMm));
                     RaisePropertyChanged(nameof(EffectiveTeachHeight));
                     RaisePropertyChanged(nameof(EffectiveHeightCompensation));
+                    RaisePropertyChanged(nameof(EffectiveXyCompensationX));
+                    RaisePropertyChanged(nameof(EffectiveXyCompensationY));
                     RaisePropertyChanged(nameof(OverrideJumpSpeed));
                     RaisePropertyChanged(nameof(OverrideInterpSpeed));
                     RaisePropertyChanged(nameof(OverrideSafeHeight));
@@ -490,6 +492,8 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(OverrideCornerDecel));
                     RaisePropertyChanged(nameof(OverrideTeachHeight));
                     RaisePropertyChanged(nameof(OverrideHeightCompensation));
+                    RaisePropertyChanged(nameof(OverrideXyCompensationX));
+                    RaisePropertyChanged(nameof(OverrideXyCompensationY));
                 }
             }
         }
@@ -693,6 +697,30 @@ namespace Module.ViewModels
                 if (_step.DispenseDetail.DefaultHeightCompensation == value) return;
                 _step.DispenseDetail.DefaultHeightCompensation = value;
                 PublishParamToSelectedSegment(nameof(DispenseSegment.HeightCompensation), value);
+            }
+        }
+
+        public double DefaultXyCompensationX
+        {
+            get => _step?.DispenseDetail?.DefaultXyCompensationX ?? 0.0;
+            set
+            {
+                if (_step?.DispenseDetail == null) return;
+                if (_step.DispenseDetail.DefaultXyCompensationX == value) return;
+                _step.DispenseDetail.DefaultXyCompensationX = value;
+                PublishParamToSelectedSegment(nameof(DispenseSegment.XyCompensationX), value);
+            }
+        }
+
+        public double DefaultXyCompensationY
+        {
+            get => _step?.DispenseDetail?.DefaultXyCompensationY ?? 0.0;
+            set
+            {
+                if (_step?.DispenseDetail == null) return;
+                if (_step.DispenseDetail.DefaultXyCompensationY == value) return;
+                _step.DispenseDetail.DefaultXyCompensationY = value;
+                PublishParamToSelectedSegment(nameof(DispenseSegment.XyCompensationY), value);
             }
         }
 
@@ -1023,6 +1051,48 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>有效人工 XY 补偿 X（优先段覆盖，否则默认）</summary>
+        public double EffectiveXyCompensationX
+        {
+            get => _selectedSegmentRef?.OverrideXyCompensationX ?? _step?.DispenseDetail?.DefaultXyCompensationX ?? 0.0;
+            set
+            {
+                if (_selectedSegmentRef != null)
+                {
+                    _selectedSegmentRef.OverrideXyCompensationX = value;
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.XyCompensationX), value);
+                }
+                else
+                {
+                    if (_step?.DispenseDetail == null) return;
+                    if (_step.DispenseDetail.DefaultXyCompensationX == value) return;
+                    _step.DispenseDetail.DefaultXyCompensationX = value;
+                    PublishParamToSelectedSegment(nameof(DispenseSegment.XyCompensationX), value);
+                }
+            }
+        }
+
+        /// <summary>有效人工 XY 补偿 Y（优先段覆盖，否则默认）</summary>
+        public double EffectiveXyCompensationY
+        {
+            get => _selectedSegmentRef?.OverrideXyCompensationY ?? _step?.DispenseDetail?.DefaultXyCompensationY ?? 0.0;
+            set
+            {
+                if (_selectedSegmentRef != null)
+                {
+                    _selectedSegmentRef.OverrideXyCompensationY = value;
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.XyCompensationY), value);
+                }
+                else
+                {
+                    if (_step?.DispenseDetail == null) return;
+                    if (_step.DispenseDetail.DefaultXyCompensationY == value) return;
+                    _step.DispenseDetail.DefaultXyCompensationY = value;
+                    PublishParamToSelectedSegment(nameof(DispenseSegment.XyCompensationY), value);
+                }
+            }
+        }
+
         #endregion
 
         #region 覆盖参数属性（委托到 SelectedSegmentRef）
@@ -1125,12 +1195,28 @@ namespace Module.ViewModels
             set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideHeightCompensation = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.HeightCompensation), value); } }
         }
 
+        public double OverrideXyCompensationX
+        {
+            get => _selectedSegmentRef?.OverrideXyCompensationX ?? 0.0;
+            set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideXyCompensationX = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.XyCompensationX), value); } }
+        }
+
+        public double OverrideXyCompensationY
+        {
+            get => _selectedSegmentRef?.OverrideXyCompensationY ?? 0.0;
+            set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideXyCompensationY = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.XyCompensationY), value); } }
+        }
+
         /// <summary>
         /// 将 Override 参数变更同步回源段（DispenseSegment）
         /// </summary>
         private void SyncOverrideToSourceSegment(string propertyName, double value)
         {
             if (_selectedSegmentRef == null) return;
+
+            // 用户在 DISPENSE 工具修改段参数后，执行层必须使用 Override 而非 Default
+            EnsureSegmentUsesOverrideParams();
+
             var seg = _dispenseSegmentStore?.CurrentSegments?
                 .FirstOrDefault(s => s.SegmentId == _selectedSegmentRef.SourceSegmentId);
             if (seg == null) return;
@@ -1152,7 +1238,18 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.GlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
                 case nameof(DispenseSegment.TeachHeight): seg.TeachHeight = value; break;
                 case nameof(DispenseSegment.HeightCompensation): seg.HeightCompensation = value; break;
+                case nameof(DispenseSegment.XyCompensationX): seg.XyCompensationX = value; break;
+                case nameof(DispenseSegment.XyCompensationY): seg.XyCompensationY = value; break;
             }
+        }
+
+        /// <summary>
+        /// 选中段在 DISPENSE 工具中被用户编辑后，强制使用 Override 参数执行（与 Effective* 显示一致）
+        /// </summary>
+        private void EnsureSegmentUsesOverrideParams()
+        {
+            if (_selectedSegmentRef != null && _selectedSegmentRef.UseDefaultParams)
+                _selectedSegmentRef.UseDefaultParams = false;
         }
 
         #endregion
@@ -1320,6 +1417,14 @@ namespace Module.ViewModels
                     _step.DispenseDetail.DefaultHeightCompensation = payload.Segment.HeightCompensation;
                     RaisePropertyChanged(nameof(DefaultHeightCompensation));
                     break;
+                case nameof(DispenseSegment.XyCompensationX):
+                    _step.DispenseDetail.DefaultXyCompensationX = payload.Segment.XyCompensationX;
+                    RaisePropertyChanged(nameof(DefaultXyCompensationX));
+                    break;
+                case nameof(DispenseSegment.XyCompensationY):
+                    _step.DispenseDetail.DefaultXyCompensationY = payload.Segment.XyCompensationY;
+                    RaisePropertyChanged(nameof(DefaultXyCompensationY));
+                    break;
             }
 
             // UI 绑定 Effective* 属性，段参数变更后必须刷新显示
@@ -1354,6 +1459,8 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.GlueTriggerOffsetMm): segRef.OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm; break;
                 case nameof(DispenseSegment.TeachHeight): segRef.OverrideTeachHeight = seg.TeachHeight; break;
                 case nameof(DispenseSegment.HeightCompensation): segRef.OverrideHeightCompensation = seg.HeightCompensation; break;
+                case nameof(DispenseSegment.XyCompensationX): segRef.OverrideXyCompensationX = seg.XyCompensationX; break;
+                case nameof(DispenseSegment.XyCompensationY): segRef.OverrideXyCompensationY = seg.XyCompensationY; break;
             }
 
             if (segRef.UseDefaultParams)
@@ -1404,6 +1511,8 @@ namespace Module.ViewModels
                 _step.DispenseDetail.DefaultPreDispenseDelay = seg.PreDelay;
                 _step.DispenseDetail.DefaultTeachHeight = seg.TeachHeight;
                 _step.DispenseDetail.DefaultHeightCompensation = seg.HeightCompensation;
+                _step.DispenseDetail.DefaultXyCompensationX = seg.XyCompensationX;
+                _step.DispenseDetail.DefaultXyCompensationY = seg.XyCompensationY;
             }
             finally
             {
@@ -1426,6 +1535,8 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
             RaisePropertyChanged(nameof(DefaultTeachHeight));
             RaisePropertyChanged(nameof(DefaultHeightCompensation));
+            RaisePropertyChanged(nameof(DefaultXyCompensationX));
+            RaisePropertyChanged(nameof(DefaultXyCompensationY));
         }
 
         /// <summary>
@@ -1444,6 +1555,8 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(EffectiveGlueTriggerOffsetMm));
             RaisePropertyChanged(nameof(EffectiveTeachHeight));
             RaisePropertyChanged(nameof(EffectiveHeightCompensation));
+            RaisePropertyChanged(nameof(EffectiveXyCompensationX));
+            RaisePropertyChanged(nameof(EffectiveXyCompensationY));
         }
 
         /// <summary>
@@ -1471,6 +1584,8 @@ namespace Module.ViewModels
             _selectedSegmentRef.OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
             _selectedSegmentRef.OverrideTeachHeight = seg.TeachHeight;
             _selectedSegmentRef.OverrideHeightCompensation = seg.HeightCompensation;
+            _selectedSegmentRef.OverrideXyCompensationX = seg.XyCompensationX;
+            _selectedSegmentRef.OverrideXyCompensationY = seg.XyCompensationY;
             _selectedSegmentRef.UseDefaultParams = false;
         }
 
@@ -1566,6 +1681,8 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.GlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
                 case nameof(DispenseSegment.TeachHeight): seg.TeachHeight = value; break;
                 case nameof(DispenseSegment.HeightCompensation): seg.HeightCompensation = value; break;
+                case nameof(DispenseSegment.XyCompensationX): seg.XyCompensationX = value; break;
+                case nameof(DispenseSegment.XyCompensationY): seg.XyCompensationY = value; break;
             }
         }
 
@@ -1690,7 +1807,9 @@ namespace Module.ViewModels
                 OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm,
                 OverrideCornerDecel = seg.CornerDecel,
                 OverrideTeachHeight = seg.TeachHeight,
-                OverrideHeightCompensation = seg.HeightCompensation
+                OverrideHeightCompensation = seg.HeightCompensation,
+                OverrideXyCompensationX = seg.XyCompensationX,
+                OverrideXyCompensationY = seg.XyCompensationY
             };
         }
 
@@ -1761,6 +1880,7 @@ namespace Module.ViewModels
 
         private void OnClose()
         {
+            CommitPendingUiEdits();
             _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
             _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Unsubscribe(OnNeedleIndexSyncedFromEditor);
             DetachDispenseDetailListener();
@@ -1806,7 +1926,26 @@ namespace Module.ViewModels
 
         private void OnSave()
         {
+            CommitPendingUiEdits();
             OnClose();
+        }
+
+        /// <summary>提交 LostFocus 绑定的参数编辑（关闭/保存前强制失焦，避免未写入 Override）</summary>
+        private static void CommitPendingUiEdits()
+        {
+            try
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.UIElement focused)
+                        focused.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.UIElement.LostFocusEvent));
+                    System.Windows.Input.Keyboard.ClearFocus();
+                });
+            }
+            catch
+            {
+                // 非 UI 线程或设计时忽略
+            }
         }
 
         #endregion
@@ -1877,6 +2016,8 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultCornerDecel));
             RaisePropertyChanged(nameof(DefaultTeachHeight));
             RaisePropertyChanged(nameof(DefaultHeightCompensation));
+            RaisePropertyChanged(nameof(DefaultXyCompensationX));
+            RaisePropertyChanged(nameof(DefaultXyCompensationY));
             RaisePropertyChanged(nameof(IsDryRunMode));
             RaisePropertyChanged(nameof(IsRealDispenseMode));
             RaisePropertyChanged(nameof(StepDescription));

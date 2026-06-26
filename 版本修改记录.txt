@@ -1,6 +1,69 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.26d — DISPENSE 段级 HeightComp 修改未生效修复
+-------------------------------------------
+1. 问题
+   - DISPENSE 工具选中线段修改 HeightComp 后，执行日志仍显示旧值（如 0.917 而非 1.2）。
+   - 根因一：UseDefaultParams=true 时执行层读 Default* 忽略 Override*，与 UI Effective* 显示不一致。
+   - 根因二：参数 TextBox 为 LostFocus 绑定，未失焦即保存/运行时值未提交。
+
+2. 修复
+   - DispenseDetailViewModel：修改段 Override 时自动 EnsureSegmentUsesOverrideParams() 置 UseDefaultParams=false。
+   - OnSave/OnClose 前 CommitPendingUiEdits() 强制失焦，提交未完成的参数编辑。
+   - 单点模式日志拆分 HeightComp(manual) / ZCalAddon / HeightComp(total)，并输出参数来源 Default|Override。
+
+修改文件:
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - StationTasks/Actions/DispenseStepAction.cs
+
+v2026.06.26c — DISPENSE 单点模式执行日志增强
+-------------------------------------------
+1. 需求
+   - DISPENSE 工具单点（Dot）模式执行时日志不够详细，需追溯每点原始坐标、
+     各阶段补偿值、最终运动坐标及段级点胶工艺参数。
+
+2. 实现
+   - DispenseStepAction 新增 MachineXYBreakdown 与 ResolveMachineXYBreakdown，
+     统一解析 CAD→变换→人工XY→针头偏移→校准XY→全局XY 各阶段坐标。
+   - 单点模式每段开始时 LogDotSegmentProcessParams 输出完整工艺参数
+     （MoveSpeed/SafeHeight/ApproachHeight/CornerDecel/GlueTrigger/延时/高度/气压等）。
+   - 单点模式每点运动前 LogDotPointDetail 输出：原始CAD、变换来源与结果、
+     人工XY/针头/校准/全局补偿、最终XY与Z。
+   - GetMachineXY 改为调用 ResolveMachineXYBreakdown，逻辑与日志一致。
+
+修改文件:
+  - StationTasks/Actions/DispenseStepAction.cs
+
+v2026.06.26b — Step3/DISPENSE 单点模式 XY 人工补偿贯通
+-------------------------------------------
+1. 需求
+   - Step3EditParamsPanel 单点模式需支持 XY Offset 补偿与显示（与连续插补一致）。
+   - DISPENSE 工具导入线段参数时同步导入 XY 补偿，在高度参数组下方显示「人工补偿」。
+   - 点胶最终机械坐标需叠加段级 XY Offset。
+
+2. 实现
+   - Step3 单点模式高度参数组下方新增 XY补偿X/Y 输入框及「应用XY补偿」按钮，
+     绑定 SelectedSegment.XyCompensationX/Y，复用 ApplyXyCompensationCommand。
+   - DispenseDetail 新增 DefaultXyCompensationX/Y；DispenseSegmentRef 新增
+     OverrideXyCompensationX/Y；导入线段时从源段同步 XY 补偿。
+   - DispenseDetailView 高度参数组下方新增「人工补偿」分组，绑定 EffectiveXyCompensationX/Y。
+   - DispenseDetailViewModel 完成双向同步（段参数变更、选中段切换、导入、Override 回写）。
+   - DispenseStepAction.CreateSegmentWithParams 将人工 XY 补偿写入执行段，
+     GetMachineXY 仿射换算路径叠加 seg.XyCompensationX/Y。
+   - 多语言：DispenseDetail_Group_ManualCompensation、DispenseDetail_XyCompensationX/Y、
+     DispenseDetail_Tip_XyCompensation（zh-CN / en-US）。
+
+修改文件:
+  - Module/Controls/Cad/Step3EditParamsPanel.xaml
+  - Core/Models/DispenseDetail.cs
+  - Core/Models/DispenseSegmentRef.cs
+  - Module/Controls/StepDetails/DispenseDetailView.xaml
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - StationTasks/Actions/DispenseStepAction.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.26 — 工序序列编辑器方法节点显示子工具总耗时并支持展开/缩回
 -------------------------------------------
 1. 需求
@@ -3143,3 +3206,46 @@ v2026.05.30d �� ArcԲ���㽺���㹫ʽ����������
   - Module/Controls/Dispense/VisionCaptureViewModel.cs
     * ExecuteArcDispenseAsync ���ô��Ƴ� 0,0 targetOffset ����
     * ���¹�ʽע��˵����Dotģʽ�Ĳ���
+
+【2026-06-26】ZSCAN链接全局变量后回写修复
+问题：行链接全局变量后 ΔZ 未写入全局变量存储，仅 3D 扫描完成时才同步。
+修复：LinkedGlobalVarName / DeltaZ 变更时触发 SyncLinkedGlobalVariablesAsync；批量更新时抑制逐行回写。
+修改文件：Module/Controls/ZScan/ZScanDetailViewModel.cs
+
+【2026-06-26】ZSCAN测量数据表改为双针头共享
+问题：切换 Dz1/Dz2 时测量数据表格随之切换，与需求不符。
+修正：测量表格全局共享、统一保存到 Tables；仅 Z 标定向标定区随针头切换。
+修改文件：Core/Models/ZScanTableConfig.cs、Module/Controls/ZScan/ZScanDetailViewModel.cs、Strings.zh-CN/en-US.xaml
+
+【2026-06-26】ZSCAN页面同步全局变量列表
+问题：全局变量页新建/保存变量后，ZSCAN 行链接下拉框未刷新。
+原因：ZScanDetailViewModel 仅在构造时加载一次 AvailableGlobalVariables，未订阅 GlobalVariablesChangedEvent。
+修复：订阅 GlobalVariablesChangedEvent、RecipePoolChangedEvent，变更后重新加载可链接全局变量列表。
+修改文件：Module/Controls/ZScan/ZScanDetailViewModel.cs
+
+【2026-06-26】ZSCAN页面：Z Calibration双针头独立参数与表格分针头保存
+需求：Z Calibration 标定参数按 Dz1/Dz2 独立维护；测量数据表格按针头分别保存，切换表格不再覆盖标定。
+实现：
+  - ZScanConfigFile 新增 Needle1Calibration / Needle2Calibration、Needle1SelectedTableName / Needle2SelectedTableName
+  - 标定参数从 ZScanTableConfig.Calibration 解耦，仅存于针头级状态与配置文件
+  - 切换针头时先 SetCurrentNeedle 再恢复 UI，修复标定写入错误针头的问题
+  - IZScanCalibrationService.RestoreState 支持从配置恢复完整标定状态
+  - UI 标定区显示当前针头提示（多语言）
+修改文件：
+  - Core/Models/ZScanTableConfig.cs
+  - Core/Abstraction/IZScanCalibrationService.cs
+  - Core/Services/ZScanCalibrationService.cs
+  - Module/Controls/ZScan/ZScanDetailViewModel.cs
+  - Module/Controls/ZScan/ZScanDetailView.xaml
+  - MainApp/Languages/Strings.zh-CN.xaml、Strings.en-US.xaml
+  - MotionControl.Tests/ZScan/ZScanNeedleCalibrationTests.cs
+  - MotionControl.Tests/ZScan/ZScanTableConfigTests.cs
+
+问题：位置编辑器已示教 AssyPhotoPosition1_3 的 Dz₃，但 GOTO 运行时仍报 PositionNotFound；
+      日志 Dy=144.394 与编辑器 Dy=189.975 不一致，说明运行时读到旧配方快照。
+根因：RecipePositionProvider 按 pool+recipe 名缓存位置字典，GOTO 执行前未 RefreshCache。
+修复：
+  - GotoStepAction：绝对定位执行前 RefreshCacheAsync
+  - SubMoveRowViewModel：打开编辑器时刷新缓存；位置下拉按当前轴过滤；按轴+位置名校验
+  - PositionLookupHelper：统一位置键查找，支持 Dz₂/Dz2、Dz₃/Dz3 别名
+修改文件：Core/Utilities/PositionLookupHelper.cs、GotoStepAction.cs、StationTaskBase.cs、SubMoveRowViewModel.cs、Strings.zh-CN/en-US.xaml

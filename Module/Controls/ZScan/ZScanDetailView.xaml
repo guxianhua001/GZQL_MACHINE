@@ -182,7 +182,7 @@
             </StackPanel>
         </Border>
 
-        <!-- ═══ Row 3: 标定区域（独立） ═══ -->
+        <!-- ═══ Row 3: 标定区域（针头级独立参数） ═══ -->
         <GroupBox Grid.Row="3" Header="{lang:Lang ZScanDetail_CalibrationSection}"
                   Margin="0,0,0,8">
             <GroupBox.HeaderTemplate>
@@ -194,6 +194,11 @@
                 </DataTemplate>
             </GroupBox.HeaderTemplate>
             <StackPanel>
+                <TextBlock Margin="0,0,0,6" FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}">
+                    <Run Text="{lang:Lang ZScanDetail_CalibrationNeedleLabel}" />
+                    <Run Text="{Binding CurrentNeedleDisplayName, Mode=OneWay}" FontWeight="SemiBold" Foreground="#1565C0" />
+                    <Run Text="{lang:Lang ZScanDetail_CalibrationNeedleHint}" />
+                </TextBlock>
                 <WrapPanel Margin="0,0,0,6">
                     <materialDesign:PackIcon Kind="Numeric1Circle" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#1565C0" />
                     <TextBlock Text="{lang:Lang ZScanDetail_Step1_BaseZ}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Medium" FontSize="12" />
@@ -354,7 +359,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="GV Link" Width="180">
+                <DataGridTemplateColumn Header="GV Link" Width="240">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <uc:GlobalVariableLinkControl
@@ -364,7 +369,7 @@
                                 LinkedVariableName="{Binding LinkedGlobalVarName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 LinkableGlobalVariables="{Binding DataContext.AvailableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 UnlinkCommand="{Binding DataContext.UnlinkRowGlobalVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                ComboBoxWidth="160" />
+                                ComboBoxWidth="180" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

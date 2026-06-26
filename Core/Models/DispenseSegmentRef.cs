@@ -178,6 +178,22 @@ namespace Core.Models
             set => SetProperty(ref _overrideHeightCompensation, value);
         }
 
+        private double _overrideXyCompensationX;
+        /// <summary>覆盖人工 XY 补偿 X（mm）</summary>
+        public double OverrideXyCompensationX
+        {
+            get => _overrideXyCompensationX;
+            set => SetProperty(ref _overrideXyCompensationX, value);
+        }
+
+        private double _overrideXyCompensationY;
+        /// <summary>覆盖人工 XY 补偿 Y（mm）</summary>
+        public double OverrideXyCompensationY
+        {
+            get => _overrideXyCompensationY;
+            set => SetProperty(ref _overrideXyCompensationY, value);
+        }
+
         #endregion
 
         #region 只读显示属性

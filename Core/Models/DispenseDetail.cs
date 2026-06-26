@@ -413,6 +413,22 @@ namespace Core.Models
             set { SetProperty(ref _defaultHeightCompensation, value); }
         }
 
+        private double _defaultXyCompensationX;
+        /// <summary>默认人工 XY 补偿 X（mm，来自 Step3 段级 XY Offset）</summary>
+        public double DefaultXyCompensationX
+        {
+            get => _defaultXyCompensationX;
+            set => SetProperty(ref _defaultXyCompensationX, value);
+        }
+
+        private double _defaultXyCompensationY;
+        /// <summary>默认人工 XY 补偿 Y（mm，来自 Step3 段级 XY Offset）</summary>
+        public double DefaultXyCompensationY
+        {
+            get => _defaultXyCompensationY;
+            set => SetProperty(ref _defaultXyCompensationY, value);
+        }
+
         #endregion
 
         #region 执行控制

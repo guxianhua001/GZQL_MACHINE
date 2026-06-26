@@ -1631,6 +1631,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZScanDetail_DispenseHeight">Dispense Z:</sys:String>
     <sys:String x:Key="ZScanDetail_ResetCalibrationBtn">Reset</sys:String>
     <sys:String x:Key="ZScanDetail_CalibrationSection">Z Calibration</sys:String>
+    <sys:String x:Key="ZScanDetail_CalibrationNeedleLabel">Current Needle: </sys:String>
+    <sys:String x:Key="ZScanDetail_CalibrationNeedleHint"> (Z calibration per needle; measurement table shared)</sys:String>
     <sys:String x:Key="ZScanDetail_DataTimeout_Title">Data Timeout</sys:String>
     <sys:String x:Key="ZScanDetail_DataTimeout_Msg">3D camera data receive timeout ({0}ms). Please check camera connection and trigger signal.</sys:String>
     <sys:String x:Key="ZScanDetail_AutoSavedMsg">Configuration auto-saved: {0}</sys:String>
@@ -2397,6 +2399,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_CornerDecel">Corner Decel</sys:String>
     <sys:String x:Key="DispenseDetail_TeachHeight">Teach Height</sys:String>
     <sys:String x:Key="DispenseDetail_HeightCompensation">Height Comp</sys:String>
+    <sys:String x:Key="DispenseDetail_Group_ManualCompensation">Manual Compensation</sys:String>
+    <sys:String x:Key="DispenseDetail_XyCompensationX">XY Offset X</sys:String>
+    <sys:String x:Key="DispenseDetail_XyCompensationY">XY Offset Y</sys:String>
+    <sys:String x:Key="DispenseDetail_Tip_XyCompensation">Segment-level manual XY offset (mm); added to final dispense coordinates</sys:String>
     <sys:String x:Key="DispenseDetail_ExecutionControl">Execution Control</sys:String>
     <sys:String x:Key="DispenseDetail_DryRunMode">Dry Run</sys:String>
     <sys:String x:Key="DispenseDetail_RealDispenseMode">Real Dispense</sys:String>
@@ -3111,7 +3117,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="GotoDetail_SchemeA_Hint">Scheme A (recommended): link Ofs to the same global variable as VISION mapping. Runtime shows the vision-written value; recipe default is only a pre-first-shot placeholder. Put fixed mechanical offset in SubMove.Offset.</sys:String>
     <sys:String x:Key="GotoDetail_HomeTypeCardConfig">Card Config</sys:String>
     <sys:String x:Key="GotoDetail_HomeTypeCustom">Custom Params</sys:String>
-    <sys:String x:Key="GotoDetail_PositionInvalidTip">Position name is invalid (renamed or deleted), please reselect</sys:String>
+    <sys:String x:Key="GotoDetail_PositionInvalidTip">No coordinate for the current axis at this position (not taught, removed, or stale recipe cache). Teach and save in Position Editor, or reselect.</sys:String>
     <sys:String x:Key="Exception_PositionNotFound">Position [{0}] axis [{1}] not found in station [{2}], please check recipe config</sys:String>
     <sys:String x:Key="PickDetail_Add">Add</sys:String>
     <sys:String x:Key="PickDetail_Clamp">Clamp</sys:String>

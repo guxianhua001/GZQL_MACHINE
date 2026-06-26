@@ -103,6 +103,30 @@ namespace MotionControl.Tests
         }
 
         [Fact]
+        public void ZScanConfigFile_SharedTablesAndDualNeedleCalibration_Serialization()
+        {
+            var configFile = new ZScanConfigFile
+            {
+                Needle1Calibration = new ZScanCalibrationConfig { BaseZ = 5.1, CameraZOffset = 0.01 },
+                Needle2Calibration = new ZScanCalibrationConfig { BaseZ = 6.2, CameraZOffset = 0.02 },
+                Tables = new List<ZScanTableConfig>
+                {
+                    new ZScanTableConfig { TableName = "SharedTable1" }
+                },
+                DefaultTableName = "SharedTable1"
+            };
+
+            var json = JsonConvert.SerializeObject(configFile);
+            var deserialized = JsonConvert.DeserializeObject<ZScanConfigFile>(json);
+
+            Assert.NotNull(deserialized);
+            Assert.Equal(5.1, deserialized.Needle1Calibration.BaseZ, 3);
+            Assert.Equal(6.2, deserialized.Needle2Calibration.BaseZ, 3);
+            Assert.Single(deserialized.Tables);
+            Assert.Equal("SharedTable1", deserialized.DefaultTableName);
+        }
+
+        [Fact]
         public void ZScanDataFormat_EnumValues()
         {
             Assert.Equal(0, (int)ZScanDataFormat.Double);

@@ -52,6 +52,7 @@ namespace Module.ViewModels
         private readonly IDispensingZScanOperations _dispensingOps;
         /// <summary> 配方池服务（用于全局变量链接读写） </summary>
         private readonly IRecipePoolService _recipePoolService;
+        private readonly IEventAggregator _eventAggregator;
 
         #region 原有属性
 
@@ -62,6 +63,9 @@ namespace Module.ViewModels
         private Brush _statusColor;
         private ObservableCollection<ZScanPointDetail> _pointDetails;
         private ZScanPointDetail _selectedPointDetail;
+
+        /// <summary> 批量更新测量点时抑制逐行全局变量回写，结束后统一同步 </summary>
+        private bool _suppressLinkedGlobalVariableSync;
 
         #endregion
 
@@ -204,24 +208,21 @@ namespace Module.ViewModels
 
         #endregion
 
-        #region 双针头支持
+        #region 双针头支持（仅 Z 标定参数分针头；数据表格全局共享）
 
-        /// <summary> 每根针头的完整状态（标定参数 + 表格集合） </summary>
+        /// <summary> 每根针头的 Z 标定状态（不含测量表格） </summary>
         private class NeedleState
         {
-            public ObservableCollection<ZScanTableConfig> Tables { get; set; } = new ObservableCollection<ZScanTableConfig>();
-            public ZScanTableConfig SelectedTable;
-            public double NeedleZOffset, NeedleCompensationInput, BaseZInput, MeasuredMZ;
-            public double DeltaZInput, NeedleCompensationValue, CalculatedDispenseHeight;
+            public ZScanCalibrationConfig Calibration { get; set; } = new ZScanCalibrationConfig();
+            public double NeedleCompensationInput, NeedleCompensationValue;
             public int CalibrationStep;
-            public double CurrentZHeightInput, ZHeightDifference, BaseDispenseHeight;
             public string LastCalibrationTimeText = string.Empty;
         }
 
         private readonly NeedleState[] _needles = { new NeedleState(), new NeedleState() };
 
         private int _currentNeedleIndex;
-        /// <summary> 当前活动针头索引（0=Dz1, 1=Dz2），切换时自动保存/恢复状态 </summary>
+        /// <summary> 当前活动针头索引（0=Dz1, 1=Dz2），仅切换 Z 标定参数，数据表格不变 </summary>
         public int CurrentNeedleIndex
         {
             get => _currentNeedleIndex;
@@ -230,59 +231,80 @@ namespace Module.ViewModels
                 if (_currentNeedleIndex == value) return;
                 SaveCurrentNeedleState();
                 SetProperty(ref _currentNeedleIndex, value);
-                LoadCurrentNeedleState();
+                // 先切换标定服务针头，再恢复 UI（避免写入错误针头）
                 _zscanCalibrationService.SetCurrentNeedle(value);
+                LoadCurrentNeedleState();
+                RaisePropertyChanged(nameof(CurrentNeedleDisplayName));
             }
         }
 
-        /// <summary> 保存当前针头的所有状态到 _needles[_currentNeedleIndex] </summary>
+        /// <summary> 当前针头显示名称（用于标定区域标题） </summary>
+        public string CurrentNeedleDisplayName => _currentNeedleIndex == 0 ? "Dz1" : "Dz2";
+
+        /// <summary> 保存当前针头的 Z 标定参数到 _needles[_currentNeedleIndex] </summary>
         private void SaveCurrentNeedleState()
         {
-            var s = _needles[_currentNeedleIndex];
-            // 同步当前 PointDetails 到 SelectedTable
-            SyncPointDetailsToTable(SelectedTable);
-            s.Tables = _tables;
-            s.SelectedTable = _selectedTable;
-            s.NeedleZOffset = _needleZOffset;
+            CaptureCalibrationToNeedleState(_needles[_currentNeedleIndex]);
+        }
+
+        /// <summary> 将 UI 与标定服务中的标定参数写入针头状态 </summary>
+        private void CaptureCalibrationToNeedleState(NeedleState s)
+        {
+            var cal = s.Calibration ??= new ZScanCalibrationConfig();
+            cal.CameraZOffset = _zscanCalibrationService.CameraZOffset;
+            cal.NeedleZOffset = _zscanCalibrationService.NeedleZOffset;
+            cal.BaseZ = _baseZInput;
+            cal.MeasuredMZ = _measuredMZ;
+            cal.DeltaZ = _deltaZInput;
+            cal.CurrentZHeight = _currentZHeightInput;
+            cal.ZHeightDifference = _zHeightDifference;
+            cal.BaseDispenseHeight = _baseDispenseHeight;
+            cal.DispenseHeight = _calculatedDispenseHeight;
             s.NeedleCompensationInput = _needleCompensationInput;
-            s.BaseZInput = _baseZInput;
-            s.MeasuredMZ = _measuredMZ;
-            s.DeltaZInput = _deltaZInput;
             s.NeedleCompensationValue = _needleCompensationValue;
-            s.CalculatedDispenseHeight = _calculatedDispenseHeight;
             s.CalibrationStep = _calibrationStep;
-            s.CurrentZHeightInput = _currentZHeightInput;
-            s.ZHeightDifference = _zHeightDifference;
-            s.BaseDispenseHeight = _baseDispenseHeight;
             s.LastCalibrationTimeText = _lastCalibrationTimeText;
         }
 
-        /// <summary> 从 _needles[_currentNeedleIndex] 加载针头状态并刷新所有绑定 </summary>
+        /// <summary> 从针头状态恢复标定参数到 UI 与标定服务 </summary>
+        private void ApplyCalibrationFromNeedleState(NeedleState s)
+        {
+            var cal = s.Calibration ?? new ZScanCalibrationConfig();
+            _zscanCalibrationService.RestoreState(cal.CameraZOffset, cal.NeedleZOffset, cal.BaseZ, cal.MeasuredMZ);
+
+            _suppressBaseZAutoApply = true;
+            _baseZInput = cal.BaseZ;
+            RaisePropertyChanged(nameof(BaseZInput));
+            _suppressBaseZAutoApply = false;
+
+            _needleZOffset = cal.NeedleZOffset;
+            RaisePropertyChanged(nameof(NeedleZOffset));
+            _measuredMZ = cal.MeasuredMZ;
+            RaisePropertyChanged(nameof(MeasuredMZ));
+            _deltaZInput = cal.DeltaZ;
+            RaisePropertyChanged(nameof(DeltaZInput));
+            _currentZHeightInput = cal.CurrentZHeight;
+            RaisePropertyChanged(nameof(CurrentZHeightInput));
+            _zHeightDifference = cal.ZHeightDifference;
+            RaisePropertyChanged(nameof(ZHeightDifference));
+            _baseDispenseHeight = cal.BaseDispenseHeight;
+            RaisePropertyChanged(nameof(BaseDispenseHeight));
+            _calculatedDispenseHeight = cal.DispenseHeight;
+            RaisePropertyChanged(nameof(CalculatedDispenseHeight));
+            _needleCompensationInput = s.NeedleCompensationInput;
+            RaisePropertyChanged(nameof(NeedleCompensationInput));
+            _needleCompensationValue = s.NeedleCompensationValue;
+            RaisePropertyChanged(nameof(NeedleCompensationValue));
+            _calibrationStep = s.CalibrationStep;
+            RaisePropertyChanged(nameof(CalibrationStep));
+            _lastCalibrationTimeText = s.LastCalibrationTimeText;
+            RaisePropertyChanged(nameof(LastCalibrationTimeText));
+        }
+
+        /// <summary> 从 _needles[_currentNeedleIndex] 恢复 Z 标定参数（数据表格不切换） </summary>
         private void LoadCurrentNeedleState()
         {
-            var s = _needles[_currentNeedleIndex];
-            _tables = s.Tables ?? new ObservableCollection<ZScanTableConfig>();
-            RaisePropertyChanged(nameof(Tables));
-            _selectedTable = s.SelectedTable;
-            RaisePropertyChanged(nameof(SelectedTable));
-            _needleZOffset = s.NeedleZOffset;         RaisePropertyChanged(nameof(NeedleZOffset));
-            _needleCompensationInput = s.NeedleCompensationInput; RaisePropertyChanged(nameof(NeedleCompensationInput));
-            _baseZInput = s.BaseZInput;
-            RaisePropertyChanged(nameof(BaseZInput));
-            _zscanCalibrationService.SetBaseZ(_baseZInput);
-            _measuredMZ = s.MeasuredMZ;                 RaisePropertyChanged(nameof(MeasuredMZ));
-            _deltaZInput = s.DeltaZInput;               RaisePropertyChanged(nameof(DeltaZInput));
-            _needleCompensationValue = s.NeedleCompensationValue; RaisePropertyChanged(nameof(NeedleCompensationValue));
-            _calculatedDispenseHeight = s.CalculatedDispenseHeight; RaisePropertyChanged(nameof(CalculatedDispenseHeight));
-            _calibrationStep = s.CalibrationStep;       RaisePropertyChanged(nameof(CalibrationStep));
-            _currentZHeightInput = s.CurrentZHeightInput; RaisePropertyChanged(nameof(CurrentZHeightInput));
-            _zHeightDifference = s.ZHeightDifference;   RaisePropertyChanged(nameof(ZHeightDifference));
-            _baseDispenseHeight = s.BaseDispenseHeight; RaisePropertyChanged(nameof(BaseDispenseHeight));
-            _lastCalibrationTimeText = s.LastCalibrationTimeText; RaisePropertyChanged(nameof(LastCalibrationTimeText));
-            // 重新加载 PointDetails
-            _previousTable = null;
-            OnSelectedTableChanged();
-            RecalculateStatistics();
+            ApplyCalibrationFromNeedleState(_needles[_currentNeedleIndex]);
         }
 
         #endregion
@@ -409,7 +431,8 @@ namespace Module.ViewModels
             IZScanCalibrationService zscanCalibrationService,
             IZScanArcCompensationService zscanArcCompensationService,
             INeedleTeachService needleTeachService,
-            IDispensingZScanOperations dispensingOps)
+            IDispensingZScanOperations dispensingOps,
+            IEventAggregator eventAggregator)
         {
             _dialogService = dialogService;
             _motionService = motionService;
@@ -422,9 +445,16 @@ namespace Module.ViewModels
             _zscanArcCompensationService = zscanArcCompensationService;
             _needleTeachService = needleTeachService;
             _dispensingOps = dispensingOps;
+            _eventAggregator = eventAggregator;
             _recipePoolService = _containerProvider.Resolve<IRecipePoolService>();
 
             _zscanCalibrationService.CalibrationChanged += OnCalibrationChanged;
+
+            // 订阅全局变量变更：全局变量页保存/配方池保存后同步刷新可链接列表
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>()
+                .Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
+            _eventAggregator.GetEvent<RecipePoolChangedEvent>()
+                .Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
 
             // 原有命令初始化
             AddRowCommand = new DelegateCommand(OnAddRow);
@@ -582,6 +612,9 @@ namespace Module.ViewModels
 
             // Task 9: 取消 PointDetails 事件监听，防止内存泄漏
             UnsubscribePointDetailsEvents();
+
+            _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
+            _eventAggregator.GetEvent<RecipePoolChangedEvent>().Unsubscribe(OnRecipePoolChanged);
 
             _logger?.Info("Z-SCAN Detail 弹窗关闭");
         }
@@ -995,14 +1028,22 @@ namespace Module.ViewModels
 
             _zscanArcCompensationService.Compensate(pointDataList, arcHeights, totalOffset, CurrentDataFormat);
 
-            for (int i = 0; i < Math.Min(pointDataList.Count, PointDetails.Count); i++)
+            _suppressLinkedGlobalVariableSync = true;
+            try
             {
-                var point = PointDetails[i];
-                var data = pointDataList[i];
-                point.ZMeasured = data.ZMeasured;
-                point.DeltaZ = data.DeltaZ;
-                RecalculateRow(point);
-                _logger?.Debug($"Z-SCAN 更新点[{point.PointNumber}]: ZMeasured={point.ZMeasured:F3}, DeltaZ={point.DeltaZ:F3}");
+                for (int i = 0; i < Math.Min(pointDataList.Count, PointDetails.Count); i++)
+                {
+                    var point = PointDetails[i];
+                    var data = pointDataList[i];
+                    point.ZMeasured = data.ZMeasured;
+                    point.DeltaZ = data.DeltaZ;
+                    RecalculateRow(point);
+                    _logger?.Debug($"Z-SCAN 更新点[{point.PointNumber}]: ZMeasured={point.ZMeasured:F3}, DeltaZ={point.DeltaZ:F3}");
+                }
+            }
+            finally
+            {
+                _suppressLinkedGlobalVariableSync = false;
             }
 
             _logger?.Info($"Z-SCAN 已更新 {Math.Min(pointDataList.Count, PointDetails.Count)} 个测量点（含标定偏移={totalOffset:F3}，数据格式={CurrentDataFormat}，数据点数={measuredValues.Count}）");
@@ -1176,28 +1217,42 @@ namespace Module.ViewModels
             {
                 try
                 {
+                    var point = sender as ZScanPointDetail;
+                    if (point == null) return;
+
+                    // 链接全局变量或 ΔZ 变化时，回写全局变量
+                    if (e.PropertyName == nameof(ZScanPointDetail.LinkedGlobalVarName))
+                    {
+                        if (!string.IsNullOrEmpty(point.LinkedGlobalVarName))
+                            _ = SyncLinkedGlobalVariablesAsync();
+                        return;
+                    }
+
+                    if (e.PropertyName == nameof(ZScanPointDetail.DeltaZ))
+                    {
+                        if (!_suppressLinkedGlobalVariableSync && !string.IsNullOrEmpty(point.LinkedGlobalVarName))
+                            _ = SyncLinkedGlobalVariablesAsync();
+                        return;
+                    }
+
                     // 只关注关键字段变化：ZMeasured、Nominal、Range
                     if (e.PropertyName == nameof(ZScanPointDetail.ZMeasured) ||
                         e.PropertyName == nameof(ZScanPointDetail.Nominal) ||
                         e.PropertyName == nameof(ZScanPointDetail.Range))
                     {
-                        var point = sender as ZScanPointDetail;
-                        if (point != null)
+                        // 重新计算该行并更新统计（使用 Dispatcher 延迟执行避免循环）
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            // 重新计算该行并更新统计（使用 Dispatcher 延迟执行避免循环）
-                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                            try
                             {
-                                try
-                                {
-                                    RecalculateRow(point);
-                                    RecalculateStatistics();
-                                }
-                                catch (Exception innerEx)
-                                {
-                                    _logger?.Error($"Z-SCAN 属性变更计算异常: {innerEx.Message}");
-                                }
-                            }), System.Windows.Threading.DispatcherPriority.Background);
-                        }
+                                RecalculateRow(point);
+                                RecalculateStatistics();
+                            }
+                            catch (Exception innerEx)
+                            {
+                                _logger?.Error($"Z-SCAN 属性变更计算异常: {innerEx.Message}");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
                     }
                 }
                 catch (Exception ex)
@@ -1451,13 +1506,20 @@ namespace Module.ViewModels
                 }
 
                 // Task 9: 对每一行重新计算确保数据一致性（Add 时已触发事件，此处确保最终一致性）
-                foreach (var point in PointDetails)
+                _suppressLinkedGlobalVariableSync = true;
+                try
                 {
-                    RecalculateRow(point);
+                    foreach (var point in PointDetails)
+                        RecalculateRow(point);
+                }
+                finally
+                {
+                    _suppressLinkedGlobalVariableSync = false;
                 }
 
                 // 更新统计信息（Clear+Add 已触发 CollectionChanged，此处确保最终一致性）
                 RecalculateStatistics();
+                _ = SyncLinkedGlobalVariablesAsync();
 
                 // 显示结果消息
                 string message = $"CSV 导入成功！\n" +
@@ -1813,8 +1875,6 @@ namespace Module.ViewModels
                         Description = p.Description,
                         Status = p.Status,
                         PointType = p.PointType,
-                        // 通过 LinkedGlobalVarName 恢复全局变量链接
-                        // （setter 会同步创建 GlobalVariableLink 对象，避免与直接赋值冲突）
                         LinkedGlobalVarName = p.GlobalVariableLink?.IsLinked == true
                             ? p.GlobalVariableLink.VariableName : null
                     }));
@@ -1824,24 +1884,7 @@ namespace Module.ViewModels
                 PointDetails = new ObservableCollection<ZScanPointDetail>();
             }
 
-            if (SelectedTable.Calibration != null)
-            {
-                _suppressBaseZAutoApply = true;
-                BaseZInput = SelectedTable.Calibration.BaseZ;
-                _suppressBaseZAutoApply = false;
-                // 加载表格时抑制了 setter 自动同步，需显式写入标定服务
-                _zscanCalibrationService.SetBaseZ(_baseZInput);
-                MeasuredMZ = SelectedTable.Calibration.MeasuredMZ;
-                NeedleZOffset = SelectedTable.Calibration.NeedleZOffset;
-                BaseDispenseHeight = SelectedTable.Calibration.BaseDispenseHeight;
-                CurrentZHeightInput = SelectedTable.Calibration.CurrentZHeight;
-                ZHeightDifference = SelectedTable.Calibration.ZHeightDifference;
-                CalculatedDispenseHeight = SelectedTable.Calibration.DispenseHeight;
-                DeltaZInput = SelectedTable.Calibration.DeltaZ;
-
-                _zscanCalibrationService.TeachNeedleMZ(MeasuredMZ);
-                _zscanCalibrationService.ApplyNeedleCompensation(NeedleZOffset);
-            }
+            // Z 标定参数为针头级，切换表格不加载/覆盖标定
 
             _previousTable = SelectedTable;
             SubscribePointDetailsEvents();
@@ -1858,29 +1901,59 @@ namespace Module.ViewModels
         }
 
         /// <summary>
+        /// 构建待保存的配置文件：共享测量表格 + 双针头独立 Z 标定
+        /// </summary>
+        private ZScanConfigFile BuildConfigFile()
+        {
+            SyncPointDetailsToTable(SelectedTable);
+            SaveCurrentNeedleState();
+            return new ZScanConfigFile
+            {
+                Needle1Calibration = CloneCalibration(_needles[0].Calibration),
+                Needle2Calibration = CloneCalibration(_needles[1].Calibration),
+                Tables = _tables?.ToList() ?? new List<ZScanTableConfig>(),
+                DefaultTableName = SelectedTable?.TableName ?? string.Empty,
+                CommunicationType = SelectedCommunicationType,
+                ConnectionName = SelectedConnectionName ?? string.Empty
+            };
+        }
+
+        /// <summary> 深拷贝标定配置（避免序列化时引用共享） </summary>
+        private static ZScanCalibrationConfig CloneCalibration(ZScanCalibrationConfig source)
+        {
+            if (source == null) return new ZScanCalibrationConfig();
+            return new ZScanCalibrationConfig
+            {
+                ConfigName = source.ConfigName,
+                CameraZOffset = source.CameraZOffset,
+                NeedleZOffset = source.NeedleZOffset,
+                LastCalibrationTime = source.LastCalibrationTime,
+                Operator = source.Operator,
+                BaseZ = source.BaseZ,
+                MeasuredMZ = source.MeasuredMZ,
+                DeltaZ = source.DeltaZ,
+                CurrentZHeight = source.CurrentZHeight,
+                ZHeightDifference = source.ZHeightDifference,
+                BaseDispenseHeight = source.BaseDispenseHeight,
+                DispenseHeight = source.DispenseHeight,
+                NeedleCompensationLink = source.NeedleCompensationLink
+            };
+        }
+
+        /// <summary>
         /// 自动保存配置到 Config/ZScan 文件夹（ZScan_时间.json 格式）
-        /// 保存时先同步当前针头状态，再写入 Needle1Tables + Needle2Tables
+        /// 保存针头级标定与各针头独立表格
         /// </summary>
         private void OnSaveConfig()
         {
             try
             {
-                // 同步当前针头状态
-                SyncPointDetailsToTable();
-                SaveCurrentNeedleState();
-
-                var configFile = new ZScanConfigFile
-                {
-                    DefaultTableName = SelectedTable?.TableName ?? string.Empty,
-                    Needle1Tables = _needles[0].Tables?.ToList() ?? new List<ZScanTableConfig>(),
-                    Needle2Tables = _needles[1].Tables?.ToList() ?? new List<ZScanTableConfig>(),
-                    CommunicationType = SelectedCommunicationType,
-                    ConnectionName = SelectedConnectionName ?? string.Empty
-                };
-
-                // 自动保存到 Config/ZScan/ZScan_yyyyMMdd_HHmmss.json
+                var configFile = BuildConfigFile();
                 string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
-                CurrentFilePath = Path.GetFileName(savedPath);  // 只显示文件名
+                CurrentFilePath = Path.GetFileName(savedPath);
+
+                // 保存配置后同步已链接全局变量
+                _ = SyncLinkedGlobalVariablesAsync();
 
                 _logger?.Info($"Z-SCAN 配置已自动保存: {savedPath}");
             }
@@ -1897,18 +1970,7 @@ namespace Module.ViewModels
         {
             await Task.Run(() =>
             {
-                // 同步当前针头状态
-                SyncPointDetailsToTable();
-                SaveCurrentNeedleState();
-
-                var configFile = new ZScanConfigFile
-                {
-                    DefaultTableName = SelectedTable?.TableName ?? string.Empty,
-                    Needle1Tables = _needles[0].Tables?.ToList() ?? new List<ZScanTableConfig>(),
-                    Needle2Tables = _needles[1].Tables?.ToList() ?? new List<ZScanTableConfig>(),
-                    CommunicationType = SelectedCommunicationType,
-                    ConnectionName = SelectedConnectionName ?? string.Empty
-                };
+                var configFile = BuildConfigFile();
                 string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
                 CurrentFilePath = Path.GetFileName(savedPath);
                 _logger?.Info($"Z-SCAN 扫描后自动保存: {savedPath}");
@@ -1962,32 +2024,7 @@ namespace Module.ViewModels
 
                 if (configFile != null)
                 {
-                    // 加载双针头表格，向后兼容旧格式
-                    LoadNeedleTables(configFile.Needle1Tables, 0);
-                    LoadNeedleTables(configFile.Needle2Tables, 1);
-
-                    // 向后兼容：若新属性为空，将旧 Tables 加载到针头1
-                    if (_needles[0].Tables.Count == 0 && _needles[1].Tables.Count == 0
-                        && configFile.Tables?.Count > 0)
-                    {
-                        LoadNeedleTables(configFile.Tables, 0);
-                    }
-
-                    // 恢复通讯配置
-                    if (!string.IsNullOrEmpty(configFile.CommunicationType))
-                        SelectedCommunicationType = configFile.CommunicationType;
-                    if (!string.IsNullOrEmpty(configFile.ConnectionName)
-                        && TcpConnections.Contains(configFile.ConnectionName))
-                        SelectedConnectionName = configFile.ConnectionName;
-
-                    // 加载当前针头状态
-                    LoadCurrentNeedleState();
-
-                    // 只显示文件名，不显示路径
-                    CurrentFilePath = !string.IsNullOrEmpty(_zscanConfigService.LastSavedFilePath)
-                        ? Path.GetFileName(_zscanConfigService.LastSavedFilePath)
-                        : string.Empty;
-                    _logger?.Info($"Z-SCAN 配置已加载: Needle1={_needles[0].Tables.Count}个表格, Needle2={_needles[1].Tables.Count}个表格");
+                    ApplyConfigFile(configFile);
                 }
             }
             catch (Exception ex)
@@ -2021,13 +2058,91 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 将表格列表加载到指定针头的 NeedleState 中
+        /// 将配置文件应用到 ViewModel：共享表格 + 双针头标定
         /// </summary>
-        private void LoadNeedleTables(List<ZScanTableConfig> tables, int needleIndex)
+        private void ApplyConfigFile(ZScanConfigFile configFile)
         {
-            if (tables == null || tables.Count == 0) return;
-            _needles[needleIndex].Tables = new ObservableCollection<ZScanTableConfig>(tables);
-            _needles[needleIndex].SelectedTable = _needles[needleIndex].Tables[0];
+            LoadSharedTables(configFile);
+
+            _needles[0].Calibration = ResolveNeedleCalibration(configFile, 0);
+            _needles[1].Calibration = ResolveNeedleCalibration(configFile, 1);
+
+            if (!string.IsNullOrEmpty(configFile.CommunicationType))
+                SelectedCommunicationType = configFile.CommunicationType;
+            if (!string.IsNullOrEmpty(configFile.ConnectionName)
+                && TcpConnections.Contains(configFile.ConnectionName))
+                SelectedConnectionName = configFile.ConnectionName;
+
+            _zscanCalibrationService.SetCurrentNeedle(_currentNeedleIndex);
+            LoadCurrentNeedleState();
+
+            CurrentFilePath = !string.IsNullOrEmpty(_zscanConfigService.LastSavedFilePath)
+                ? Path.GetFileName(_zscanConfigService.LastSavedFilePath)
+                : string.Empty;
+            _logger?.Info($"Z-SCAN 配置已加载: 共享表格={_tables.Count}个, Z标定分针头独立");
+        }
+
+        /// <summary>
+        /// 加载共享测量表格（不随针头切换）；向后兼容旧版 Needle1Tables/Needle2Tables
+        /// </summary>
+        private void LoadSharedTables(ZScanConfigFile configFile)
+        {
+            var tables = ResolveSharedTables(configFile);
+            if (tables.Count == 0) return;
+
+            _tables = new ObservableCollection<ZScanTableConfig>(tables);
+            RaisePropertyChanged(nameof(Tables));
+
+            var selectedName = !string.IsNullOrEmpty(configFile.DefaultTableName)
+                ? configFile.DefaultTableName
+                : configFile.Needle1SelectedTableName;
+            _selectedTable = !string.IsNullOrEmpty(selectedName)
+                ? tables.FirstOrDefault(t => t.TableName == selectedName) ?? tables[0]
+                : tables[0];
+            RaisePropertyChanged(nameof(SelectedTable));
+
+            _previousTable = null;
+            OnSelectedTableChanged();
+        }
+
+        /// <summary> 解析共享表格列表：优先 Tables，旧版回退 Needle1Tables </summary>
+        private static List<ZScanTableConfig> ResolveSharedTables(ZScanConfigFile configFile)
+        {
+            if (configFile.Tables?.Count > 0) return configFile.Tables;
+            if (configFile.Needle1Tables?.Count > 0) return configFile.Needle1Tables;
+            if (configFile.Needle2Tables?.Count > 0) return configFile.Needle2Tables;
+            return new List<ZScanTableConfig>();
+        }
+
+        /// <summary>
+        /// 解析针头标定配置：优先针头级字段，旧版回退到该针头首表标定
+        /// </summary>
+        private static ZScanCalibrationConfig ResolveNeedleCalibration(ZScanConfigFile configFile, int needleIndex)
+        {
+            var direct = needleIndex == 0 ? configFile.Needle1Calibration : configFile.Needle2Calibration;
+            if (direct != null && HasCalibrationData(direct))
+                return CloneCalibration(direct);
+
+            // 旧版分针头表格中的标定回退
+            var legacyTables = needleIndex == 0 ? configFile.Needle1Tables : configFile.Needle2Tables;
+            if (legacyTables?.Count > 0 && legacyTables[0].Calibration != null && HasCalibrationData(legacyTables[0].Calibration))
+                return CloneCalibration(legacyTables[0].Calibration);
+
+            if (needleIndex == 0)
+            {
+                var tables = ResolveSharedTables(configFile);
+                if (tables.Count > 0 && tables[0].Calibration != null && HasCalibrationData(tables[0].Calibration))
+                    return CloneCalibration(tables[0].Calibration);
+            }
+
+            return new ZScanCalibrationConfig();
+        }
+
+        /// <summary> 判断标定配置是否含有效数据（区分默认空对象与旧版未设置） </summary>
+        private static bool HasCalibrationData(ZScanCalibrationConfig cal)
+        {
+            return cal.CameraZOffset != 0 || cal.NeedleZOffset != 0 || cal.BaseZ != 0
+                || cal.MeasuredMZ != 0 || cal.DispenseHeight != 0 || cal.CurrentZHeight != 0;
         }
 
         private void SyncPointDetailsToTable()
@@ -2056,19 +2171,7 @@ namespace Module.ViewModels
                 GlobalVariableLink = p.GlobalVariableLink
             }).ToList();
             table.DataFormat = CurrentDataFormat;
-
-            if (table.Calibration != null)
-            {
-                // 保存时以标定服务 Current.BaseZ 为准，确保与运行时一致
-                table.Calibration.BaseZ = _zscanCalibrationService.BaseZ;
-                table.Calibration.MeasuredMZ = MeasuredMZ;
-                table.Calibration.NeedleZOffset = NeedleZOffset;
-                table.Calibration.BaseDispenseHeight = BaseDispenseHeight;
-                table.Calibration.CurrentZHeight = CurrentZHeightInput;
-                table.Calibration.ZHeightDifference = ZHeightDifference;
-                table.Calibration.DispenseHeight = CalculatedDispenseHeight;
-                table.Calibration.DeltaZ = DeltaZInput;
-            }
+            // 测量点数据与针头级 Z 标定分离，不在表格中保存标定参数
         }
 
         #endregion
@@ -2082,7 +2185,7 @@ namespace Module.ViewModels
         /// </summary>
         private async Task SyncLinkedGlobalVariablesAsync()
         {
-            if (PointDetails == null || PointDetails.Count == 0)
+            if (_suppressLinkedGlobalVariableSync || PointDetails == null || PointDetails.Count == 0)
                 return;
 
             try
@@ -2118,8 +2221,7 @@ namespace Module.ViewModels
                     await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
 
                     // 发布全局变量变更事件，通知 GV 页面重新加载最新数据
-                    var eventAggregator = _containerProvider.Resolve<IEventAggregator>();
-                    eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
+                    _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
 
                     // 同步更新 AvailableGlobalVariables 集合，保持 UI 显示一致
                     foreach (var point in PointDetails.Where(p => !string.IsNullOrEmpty(p.LinkedGlobalVarName)))
@@ -2145,6 +2247,9 @@ namespace Module.ViewModels
             _logger?.Info($"Z-SCAN 行{point.PointNumber}已取消全局变量链接: {varName}");
         }
 
+        /// <summary>
+        /// 从配方池重新加载可链接的全局变量列表（供下拉框绑定）
+        /// </summary>
         private void LoadAvailableGlobalVariables()
         {
             try
@@ -2161,6 +2266,25 @@ namespace Module.ViewModels
             {
                 _logger?.Error($"Z-SCAN 加载全局变量列表失败: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 全局变量被外部更新时（全局变量页保存、配方池保存、其他步骤回写）刷新可链接列表
+        /// </summary>
+        private void OnGlobalVariablesChanged(string poolId)
+        {
+            if (poolId != _recipePoolService.CurrentPoolName && poolId != _recipePoolService.CurrentPoolId)
+                return;
+
+            LoadAvailableGlobalVariables();
+            _logger?.Debug($"Z-SCAN 已同步全局变量列表（池={poolId}，共 {AvailableGlobalVariables.Count} 项）");
+        }
+
+        /// <summary> 配方池切换时重新加载全局变量 </summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            LoadAvailableGlobalVariables();
+            _logger?.Debug($"Z-SCAN 配方池切换，已重新加载全局变量（池={poolName}）");
         }
 
         #endregion
