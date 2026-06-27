@@ -437,6 +437,7 @@ namespace Module.ViewModels
             nameof(DispenseSegment.DispenseTime),
             nameof(DispenseSegment.PreDelay),
             nameof(DispenseSegment.PostDelay),
+            nameof(DispenseSegment.EarlyCloseGlueDelayMs),
             nameof(DispenseSegment.DispensingPressure),
             nameof(DispenseSegment.SuckBackTime),
             nameof(DispenseSegment.GlueTriggerOffsetMm),
@@ -1977,6 +1978,7 @@ namespace Module.ViewModels
             segment.DispenseAmount = detail.DefaultDispenseAmount;
             segment.PreDelay = detail.DefaultPreDelay;
             segment.PostDelay = detail.DefaultPostDelay;
+            segment.EarlyCloseGlueDelayMs = detail.DefaultEarlyCloseGlueDelayMs;
             segment.DispensingPressure = detail.DefaultDispensingPressure;
             segment.SuckBackTime = detail.DefaultSuckBackTime;
             segment.GlueTriggerOffsetMm = detail.DefaultGlueTriggerOffsetMm;
@@ -4322,6 +4324,8 @@ namespace Module.ViewModels
                 (seg, val) => seg.PreDelay = val));
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_PostDelay"), "ms", referenceSegment.PostDelay,
                 (seg, val) => seg.PostDelay = val));
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_EarlyCloseGlueDelay"), "ms", referenceSegment.EarlyCloseGlueDelayMs,
+                (seg, val) => seg.EarlyCloseGlueDelayMs = val));
             // 点胶时间（单点模式控制胶点大小，连续模式也可批量统一）
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_DispenseTime"), "ms", referenceSegment.DispenseTime,
                 (seg, val) => seg.DispenseTime = val));

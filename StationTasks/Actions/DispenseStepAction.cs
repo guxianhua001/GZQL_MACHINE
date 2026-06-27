@@ -3,6 +3,7 @@ using Core.Models;
 using Core.Services;
 using Core.Utilities;
 using MotionControl.Interfaces;
+using MotionControl.Services;
 using StationTasks.Models;
 using StationTasks.Params;
 using StationTasks.Tasks;
@@ -502,7 +503,8 @@ namespace StationTasks.Actions
                 double glueTriggerOffset = seg.GlueTriggerOffsetMm;
 
                 _logger.Info($"DISPENSE 弧线: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
-                             $"MoveSpeed={moveSpeed:F1}, InterpSpeed={seg.InterpSpeed:F1}, SafeHeight={safeHeight:F1}");
+                             $"MoveSpeed={moveSpeed:F1}, InterpSpeed={seg.InterpSpeed:F1}, SafeHeight={safeHeight:F1}, " +
+                             $"EarlyCloseGlueDelay={seg.EarlyCloseGlueDelayMs:F0}ms, PostDelay={seg.PostDelay:F0}ms");
 
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线Z抬升", t =>
                     _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
@@ -559,23 +561,27 @@ namespace StationTasks.Actions
 
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线连续插补", async t =>
                 {
-                    _motionService.InitializeContinuousInterpolation(
-                        CoordIdContinuous, new[] { dxAxisId, dyAxisId },
-                        startVel: 5, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
+                    var pathPoints = seg.Points
+                        .Select(pt => GetMachineXY(pt, seg))
+                        .ToList();
 
-                    foreach (var pt in seg.Points)
-                    {
-                        var (px, py) = GetMachineXY(pt, seg);
-                        _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
-                    }
-
-                    _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
-
-                    bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
-                        CoordIdContinuous, TimeSpan.FromMinutes(5), t);
-
-                    if (!completed)
-                        throw new TimeoutException($"DISPENSE 弧线: 段[{seg.SegmentId}] 运动超时");
+                    await ArcContinuousDispenseHelper.RunContinuousInterpolationWithEarlyGlueOffAsync(
+                        _motionService,
+                        CoordIdContinuous,
+                        new[] { dxAxisId, dyAxisId },
+                        pathPoints,
+                        seg.InterpSpeed,
+                        startVel: 0,
+                        DefaultAcc,
+                        DefaultDec,
+                        endVel: 0,
+                        (int)seg.EarlyCloseGlueDelayMs,
+                        (int)seg.PostDelay,
+                        on => WriteGlueIo(on, needleIndex),
+                        _logger,
+                        $"DISPENSE 弧线 段[{seg.SegmentId}]",
+                        t,
+                        TimeSpan.FromMinutes(5));
                 },
                 safeGlueOffOnPause: true,
                 onGluePauseAbandon: () =>
@@ -585,14 +591,6 @@ namespace StationTasks.Actions
                 });
                 if (abandonCurrentSegment)
                     continue;
-
-                WriteGlueIo(false, needleIndex);
-
-                if (seg.PostDelay > 0)
-                {
-                    await RunPausableAsync(task, stopToken, needleIndex, "弧线PostDelay", t =>
-                        Task.Delay((int)seg.PostDelay, t));
-                }
 
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线Z抬升", t =>
                     _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
@@ -633,6 +631,7 @@ namespace StationTasks.Actions
                 seg.DispenseTime = detail.DefaultDispenseTime;
                 seg.PreDelay = detail.DefaultPreDelay;
                 seg.PostDelay = detail.DefaultPostDelay;
+                seg.EarlyCloseGlueDelayMs = detail.DefaultEarlyCloseGlueDelayMs;
                 seg.DispensingPressure = detail.DefaultDispensingPressure;
                 seg.SuckBackTime = detail.DefaultSuckBackTime;
                 seg.GlueTriggerOffsetMm = detail.DefaultGlueTriggerOffsetMm;
@@ -653,6 +652,7 @@ namespace StationTasks.Actions
                 seg.DispenseTime = segRef.OverrideDispenseTime;
                 seg.PreDelay = segRef.OverridePreDelay;
                 seg.PostDelay = segRef.OverridePostDelay;
+                seg.EarlyCloseGlueDelayMs = segRef.OverrideEarlyCloseGlueDelayMs;
                 seg.DispensingPressure = segRef.OverrideDispensingPressure;
                 seg.SuckBackTime = segRef.OverrideSuckBackTime;
                 seg.GlueTriggerOffsetMm = segRef.OverrideGlueTriggerOffsetMm;

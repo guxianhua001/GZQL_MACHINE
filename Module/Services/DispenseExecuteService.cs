@@ -2,6 +2,7 @@ using Core.Extensions;
 using Core.Models;
 using Core.Utilities;
 using MotionControl.Interfaces;
+using MotionControl.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -185,41 +186,42 @@ namespace Module.Services
                         }
                     }
 
-                    // 4. 连续插补走轨迹
-                    _motionService.InitializeContinuousInterpolation(
-                        CoordIdContinuous, new[] { AxisDx, AxisDy },
-                        startVel: 0, maxVel: seg.InterpSpeed, acc: DefaultAcc, dec: DefaultDec, endVel: 0);
-
+                    // 4. 连续插补走轨迹（走胶：提前关胶 + 走完剩余路径 + PostDelay 泄压）
+                    var pathPoints = new List<(double X, double Y)>(seg.Points.Count);
                     foreach (var pt in seg.Points)
                     {
                         if (!pt.MachineX.HasValue || !pt.MachineY.HasValue)
                             throw new InvalidOperationException(
                                 ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId, ""));
-                        double px = pt.MachineX.Value;
-                        double py = pt.MachineY.Value;
-                        _motionService.AddLineSegment(CoordIdContinuous, new[] { px, py });
+                        pathPoints.Add((pt.MachineX.Value, pt.MachineY.Value));
                     }
 
-                    _motionService.ExecuteContinuousInterpolation(CoordIdContinuous);
+                    Action<bool>? glueWriter = dispenseGlue ? on => WriteGlueIo(on, needleIndex) : null;
+                    int earlyCloseMs = dispenseGlue ? (int)seg.EarlyCloseGlueDelayMs : 0;
+                    int postDelayMs = dispenseGlue ? (int)seg.PostDelay : 0;
 
-                    // 5. 等待运动完成
-                    bool completed = await _motionService.WaitForCoordMotionCompletionAsync(
-                        CoordIdContinuous, TimeSpan.FromMinutes(5), token);
+                    await ArcContinuousDispenseHelper.RunContinuousInterpolationWithEarlyGlueOffAsync(
+                        _motionService,
+                        CoordIdContinuous,
+                        new[] { AxisDx, AxisDy },
+                        pathPoints,
+                        seg.InterpSpeed,
+                        startVel: 0,
+                        DefaultAcc,
+                        DefaultDec,
+                        endVel: 0,
+                        earlyCloseMs,
+                        postDelayMs,
+                        glueWriter,
+                        _logger,
+                        $"[DispenseExecute] 段[{seg.SegmentId}]",
+                        token,
+                        TimeSpan.FromMinutes(5));
 
-                    if (!completed)
-                        throw new TimeoutException(ResourceHelper.GetString("DispenseExec_MotionTimeout", seg.SegmentId, modeLabel));
-
-                    // 6. 关胶 + 尾端延时
                     if (dispenseGlue)
-                    {
-                        WriteGlueIo(false, needleIndex);
                         _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_GlueOff", seg.SegmentId)}");
 
-                        if (seg.PostDelay > 0)
-                            await Task.Delay((int)seg.PostDelay, token);
-                    }
-
-                    // 7. Z 抬升到安全高度
+                    // 5. Z 抬升到安全高度
                     await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, moveSpeed, token);
                 }
 

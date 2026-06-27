@@ -176,11 +176,22 @@ namespace Core.Models
         }
 
         private double _postDelay = 50.0;
-        /// <summary>终点关胶延时 ms（范围 0~5000）</summary>
+        /// <summary>终点关胶延时 ms（范围 0~5000，连续插补结束后泄压等待）</summary>
         public double PostDelay
         {
             get => _postDelay;
             set => SetProperty(ref _postDelay, Math.Clamp(value, 0.0, 5000.0));
+        }
+
+        private double _earlyCloseGlueDelayMs = 100.0;
+        /// <summary>
+        /// 提前关胶延时 ms（范围 0~5000，连续插补模式专用）。
+        /// 在预估轨迹结束前此时间关阀，运动继续走完剩余路径，再 PostDelay 泄压，补偿胶阀机械滞后。
+        /// </summary>
+        public double EarlyCloseGlueDelayMs
+        {
+            get => _earlyCloseGlueDelayMs;
+            set => SetProperty(ref _earlyCloseGlueDelayMs, Math.Clamp(value, 0.0, 5000.0));
         }
 
         private double _cornerDecel = 0.3;

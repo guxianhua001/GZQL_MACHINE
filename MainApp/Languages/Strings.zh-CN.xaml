@@ -2393,6 +2393,8 @@
     <sys:String x:Key="DispenseDetail_DispenseTime">点胶时间</sys:String>
     <sys:String x:Key="DispenseDetail_PreDelay">开胶前延时</sys:String>
     <sys:String x:Key="DispenseDetail_PostDelay">关胶后延时</sys:String>
+    <sys:String x:Key="DispenseDetail_EarlyCloseGlueDelay">提前关胶延时</sys:String>
+    <sys:String x:Key="DispenseDetail_Tip_EarlyCloseGlueDelay">弧线/连续模式：轨迹结束前提前关阀(ms)，补偿胶阀滞后</sys:String>
     <sys:String x:Key="DispenseDetail_DispensingPressure">气压</sys:String>
     <sys:String x:Key="DispenseDetail_SuckBackTime">回吸时间</sys:String>
     <sys:String x:Key="DispenseDetail_GlueTriggerOffset">开胶距离</sys:String>
@@ -2757,6 +2759,7 @@
     <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">开胶距离</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PreDelay">起点延时</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PostDelay">终点延时</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_EarlyCloseGlueDelay">提前关胶延时</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_DispenseTime">点胶时间</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_TeachHeight">示教高度</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">高度补偿</sys:String>
@@ -2870,6 +2873,9 @@
     <sys:String x:Key="Step3_Label_MoveSpeed">移动速度</sys:String>
     <sys:String x:Key="Step3_Label_PointCount">分割点数</sys:String>
     <sys:String x:Key="Step3_Label_PostDelay">关胶后延时</sys:String>
+    <sys:String x:Key="Step3_Label_EarlyCloseGlueDelay">提前关胶延时</sys:String>
+    <sys:String x:Key="Step3_Tip_EarlyCloseGlueDelay">连续插补：轨迹结束前提前关阀(ms)，补偿胶阀滞后；运动继续走完剩余路径后再 PostDelay 泄压</sys:String>
+    <sys:String x:Key="Step3_Header_EarlyCloseGlueDelay">提前关胶</sys:String>
     <sys:String x:Key="Step3_Label_PreDelay">开胶前延时</sys:String>
     <sys:String x:Key="Step3_Label_PreDispenseDelay">预出胶延时</sys:String>
     <sys:String x:Key="Step3_Label_RoiTools">ROI工具</sys:String>
@@ -3709,6 +3715,7 @@
     <sys:String x:Key="PSE_AddStep">添加</sys:String>
     <sys:String x:Key="PSE_DeleteStep">删除</sys:String>
     <sys:String x:Key="PSE_AddStepTip">添加步骤</sys:String>
+    <sys:String x:Key="PSE_AddEditStepTitle">添加/编辑步骤</sys:String>
     <sys:String x:Key="PSE_DeleteStepTip">删除选中步骤</sys:String>
     <sys:String x:Key="PSE_MoveUpTip">上移步骤</sys:String>
     <sys:String x:Key="PSE_MoveDownTip">下移步骤</sys:String>

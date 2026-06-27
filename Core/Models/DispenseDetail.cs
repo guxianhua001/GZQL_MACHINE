@@ -343,11 +343,19 @@ namespace Core.Models
         }
 
         private double _defaultPostDelay = 50.0;
-        /// <summary>默认终点关胶延时 ms</summary>
+        /// <summary>默认终点关胶延时 ms（连续插补结束后泄压等待）</summary>
         public double DefaultPostDelay
         {
             get => _defaultPostDelay;
             set { SetProperty(ref _defaultPostDelay, value); }
+        }
+
+        private double _defaultEarlyCloseGlueDelayMs = 100.0;
+        /// <summary>默认提前关胶延时 ms（连续插补模式：轨迹结束前关阀，补偿胶阀滞后）</summary>
+        public double DefaultEarlyCloseGlueDelayMs
+        {
+            get => _defaultEarlyCloseGlueDelayMs;
+            set { SetProperty(ref _defaultEarlyCloseGlueDelayMs, Math.Clamp(value, 0.0, 5000.0)); }
         }
 
         private double _defaultDispensingPressure = -0.30;

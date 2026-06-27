@@ -3,45 +3,43 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
-             xmlns:system="clr-namespace:System;assembly=mscorlib"
+             xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="500">
-    <UserControl.Resources>
-
-    </UserControl.Resources>
     <StackPanel Margin="16">
-        <TextBlock FontSize="18" FontWeight="Bold" Margin="0,0,0,16">添加/编辑步骤</TextBlock>
+        <TextBlock Text="{lang:Lang PSE_AddEditStepTitle}"
+                   FontSize="18" FontWeight="Bold" Margin="0,0,0,16"/>
 
-        <!-- Step Type 下拉 -->
-        <ComboBox materialDesign:HintAssist.Hint="Step Type"
+        <!-- 步骤类型 -->
+        <ComboBox materialDesign:HintAssist.Hint="{lang:Lang PSE_StepTypeHint}"
                   ItemsSource="{Binding StepTypeValues}"
                   SelectedItem="{Binding Step.Step}"
                   Margin="0,8" />
 
-        <!-- Comp Feature 下拉 -->
-        <ComboBox materialDesign:HintAssist.Hint="Comp Feature"
+        <!-- 组件特征 -->
+        <ComboBox materialDesign:HintAssist.Hint="{lang:Lang PSE_ColumnCompFeature}"
                   ItemsSource="{Binding ComponentFeatures}"
                   SelectedItem="{Binding Step.CompFeature}"
                   Margin="0,8" />
 
-        <!-- Site Feature 下拉 -->
-        <ComboBox materialDesign:HintAssist.Hint="Site Feature"
+        <!-- 站点特征 -->
+        <ComboBox materialDesign:HintAssist.Hint="{lang:Lang PSE_ColumnSiteFeature}"
                   ItemsSource="{Binding SiteFeatures}"
                   SelectedItem="{Binding Step.SiteFeature}"
                   Margin="0,8" />
 
-        <!-- Camera 下拉 -->
-        <ComboBox materialDesign:HintAssist.Hint="Camera"
+        <!-- 相机 -->
+        <ComboBox materialDesign:HintAssist.Hint="{lang:Lang PSE_ColumnCamera}"
                   ItemsSource="{Binding CameraOptions}"
                   SelectedItem="{Binding Step.Camera}"
                   Margin="0,8" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="取消"
+            <Button Content="{lang:Lang Dialog_Cancel}"
                     Style="{StaticResource MaterialDesignFlatButton}"
                     Command="{Binding CancelCommand}"
                     Margin="8,0" />
-            <Button Content="确定"
+            <Button Content="{lang:Lang Dialog_OK}"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Command="{Binding OkCommand}" />
         </StackPanel>

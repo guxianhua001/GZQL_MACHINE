@@ -104,6 +104,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(DefaultDispenseAmount));
                     RaisePropertyChanged(nameof(DefaultPreDelay));
                     RaisePropertyChanged(nameof(DefaultPostDelay));
+                    RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
                     RaisePropertyChanged(nameof(DefaultDispensingPressure));
                     RaisePropertyChanged(nameof(DefaultSuckBackTime));
                     RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
@@ -135,6 +136,7 @@ namespace Module.ViewModels
                 RaisePropertyChanged(nameof(IsArcMode));
                 RaisePropertyChanged(nameof(ShowImportLines));
                 RaisePropertyChanged(nameof(ShowImportArcs));
+                RaisePropertyChanged(nameof(EffectiveEarlyCloseGlueDelayMs));
                 RaisePropertyChanged(nameof(SegmentImportTitle));
             }
         }
@@ -471,6 +473,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(EffectiveDispenseTime));
                     RaisePropertyChanged(nameof(EffectivePreDelay));
                     RaisePropertyChanged(nameof(EffectivePostDelay));
+                    RaisePropertyChanged(nameof(EffectiveEarlyCloseGlueDelayMs));
                     RaisePropertyChanged(nameof(EffectiveDispensingPressure));
                     RaisePropertyChanged(nameof(EffectiveSuckBackTime));
                     RaisePropertyChanged(nameof(EffectiveGlueTriggerOffsetMm));
@@ -486,6 +489,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(OverrideDispenseTime));
                     RaisePropertyChanged(nameof(OverridePreDelay));
                     RaisePropertyChanged(nameof(OverridePostDelay));
+                    RaisePropertyChanged(nameof(OverrideEarlyCloseGlueDelayMs));
                     RaisePropertyChanged(nameof(OverrideDispensingPressure));
                     RaisePropertyChanged(nameof(OverrideSuckBackTime));
                     RaisePropertyChanged(nameof(OverrideGlueTriggerOffsetMm));
@@ -600,6 +604,19 @@ namespace Module.ViewModels
                 if (_step.DispenseDetail.DefaultPostDelay == value) return;
                 _step.DispenseDetail.DefaultPostDelay = value;
                 PublishParamToSelectedSegment(nameof(DispenseSegment.PostDelay), value);
+            }
+        }
+
+        /// <summary>默认提前关胶延时 ms（连续插补/弧线模式）</summary>
+        public double DefaultEarlyCloseGlueDelayMs
+        {
+            get => _step?.DispenseDetail?.DefaultEarlyCloseGlueDelayMs ?? 100.0;
+            set
+            {
+                if (_step?.DispenseDetail == null) return;
+                if (_step.DispenseDetail.DefaultEarlyCloseGlueDelayMs == value) return;
+                _step.DispenseDetail.DefaultEarlyCloseGlueDelayMs = value;
+                PublishParamToSelectedSegment(nameof(DispenseSegment.EarlyCloseGlueDelayMs), value);
             }
         }
 
@@ -951,6 +968,27 @@ namespace Module.ViewModels
             }
         }
 
+        /// <summary>有效提前关胶延时 ms（弧线/连续插补模式）</summary>
+        public double EffectiveEarlyCloseGlueDelayMs
+        {
+            get => _selectedSegmentRef?.OverrideEarlyCloseGlueDelayMs ?? _step?.DispenseDetail?.DefaultEarlyCloseGlueDelayMs ?? 100.0;
+            set
+            {
+                if (_selectedSegmentRef != null)
+                {
+                    _selectedSegmentRef.OverrideEarlyCloseGlueDelayMs = value;
+                    SyncOverrideToSourceSegment(nameof(DispenseSegment.EarlyCloseGlueDelayMs), value);
+                }
+                else
+                {
+                    if (_step?.DispenseDetail == null) return;
+                    if (_step.DispenseDetail.DefaultEarlyCloseGlueDelayMs == value) return;
+                    _step.DispenseDetail.DefaultEarlyCloseGlueDelayMs = value;
+                    PublishParamToSelectedSegment(nameof(DispenseSegment.EarlyCloseGlueDelayMs), value);
+                }
+            }
+        }
+
         public double EffectiveDispensingPressure
         {
             get => _selectedSegmentRef?.OverrideDispensingPressure ?? _step?.DispenseDetail?.DefaultDispensingPressure ?? 0.30;
@@ -1159,6 +1197,12 @@ namespace Module.ViewModels
             set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverridePostDelay = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.PostDelay), value); } }
         }
 
+        public double OverrideEarlyCloseGlueDelayMs
+        {
+            get => _selectedSegmentRef?.OverrideEarlyCloseGlueDelayMs ?? 100.0;
+            set { if (_selectedSegmentRef != null) { _selectedSegmentRef.OverrideEarlyCloseGlueDelayMs = value; SyncOverrideToSourceSegment(nameof(DispenseSegment.EarlyCloseGlueDelayMs), value); } }
+        }
+
         public double OverrideDispensingPressure
         {
             get => _selectedSegmentRef?.OverrideDispensingPressure ?? 0.30;
@@ -1233,6 +1277,7 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.DispenseTime): seg.DispenseTime = value; break;
                 case nameof(DispenseSegment.PreDelay): seg.PreDelay = value; break;
                 case nameof(DispenseSegment.PostDelay): seg.PostDelay = value; break;
+                case nameof(DispenseSegment.EarlyCloseGlueDelayMs): seg.EarlyCloseGlueDelayMs = value; break;
                 case nameof(DispenseSegment.DispensingPressure): seg.DispensingPressure = value; break;
                 case nameof(DispenseSegment.SuckBackTime): seg.SuckBackTime = value; break;
                 case nameof(DispenseSegment.GlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
@@ -1391,6 +1436,10 @@ namespace Module.ViewModels
                     _step.DispenseDetail.DefaultPostDelay = payload.Segment.PostDelay;
                     RaisePropertyChanged(nameof(DefaultPostDelay));
                     break;
+                case nameof(DispenseSegment.EarlyCloseGlueDelayMs):
+                    _step.DispenseDetail.DefaultEarlyCloseGlueDelayMs = payload.Segment.EarlyCloseGlueDelayMs;
+                    RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
+                    break;
                 case nameof(DispenseSegment.DispensingPressure):
                     _step.DispenseDetail.DefaultDispensingPressure = payload.Segment.DispensingPressure;
                     RaisePropertyChanged(nameof(DefaultDispensingPressure));
@@ -1454,6 +1503,7 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.DispenseTime): segRef.OverrideDispenseTime = seg.DispenseTime; break;
                 case nameof(DispenseSegment.PreDelay): segRef.OverridePreDelay = seg.PreDelay; break;
                 case nameof(DispenseSegment.PostDelay): segRef.OverridePostDelay = seg.PostDelay; break;
+                case nameof(DispenseSegment.EarlyCloseGlueDelayMs): segRef.OverrideEarlyCloseGlueDelayMs = seg.EarlyCloseGlueDelayMs; break;
                 case nameof(DispenseSegment.DispensingPressure): segRef.OverrideDispensingPressure = seg.DispensingPressure; break;
                 case nameof(DispenseSegment.SuckBackTime): segRef.OverrideSuckBackTime = seg.SuckBackTime; break;
                 case nameof(DispenseSegment.GlueTriggerOffsetMm): segRef.OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm; break;
@@ -1505,6 +1555,7 @@ namespace Module.ViewModels
                 _step.DispenseDetail.DefaultDispenseTime = seg.DispenseTime;
                 _step.DispenseDetail.DefaultPreDelay = seg.PreDelay;
                 _step.DispenseDetail.DefaultPostDelay = seg.PostDelay;
+                _step.DispenseDetail.DefaultEarlyCloseGlueDelayMs = seg.EarlyCloseGlueDelayMs;
                 _step.DispenseDetail.DefaultDispensingPressure = seg.DispensingPressure;
                 _step.DispenseDetail.DefaultSuckBackTime = seg.SuckBackTime;
                 _step.DispenseDetail.DefaultGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
@@ -1529,6 +1580,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultDispenseTime));
             RaisePropertyChanged(nameof(DefaultPreDelay));
             RaisePropertyChanged(nameof(DefaultPostDelay));
+            RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
             RaisePropertyChanged(nameof(DefaultDispensingPressure));
             RaisePropertyChanged(nameof(DefaultSuckBackTime));
             RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
@@ -1552,6 +1604,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(EffectiveDispenseTime));
             RaisePropertyChanged(nameof(EffectivePreDelay));
             RaisePropertyChanged(nameof(EffectivePostDelay));
+            RaisePropertyChanged(nameof(EffectiveEarlyCloseGlueDelayMs));
             RaisePropertyChanged(nameof(EffectiveGlueTriggerOffsetMm));
             RaisePropertyChanged(nameof(EffectiveTeachHeight));
             RaisePropertyChanged(nameof(EffectiveHeightCompensation));
@@ -1579,6 +1632,7 @@ namespace Module.ViewModels
             _selectedSegmentRef.OverrideDispenseTime = seg.DispenseTime;
             _selectedSegmentRef.OverridePreDelay = seg.PreDelay;
             _selectedSegmentRef.OverridePostDelay = seg.PostDelay;
+            _selectedSegmentRef.OverrideEarlyCloseGlueDelayMs = seg.EarlyCloseGlueDelayMs;
             _selectedSegmentRef.OverrideDispensingPressure = seg.DispensingPressure;
             _selectedSegmentRef.OverrideSuckBackTime = seg.SuckBackTime;
             _selectedSegmentRef.OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
@@ -1676,6 +1730,7 @@ namespace Module.ViewModels
                 case nameof(DispenseSegment.DispenseTime): seg.DispenseTime = value; break;
                 case nameof(DispenseSegment.PreDelay): seg.PreDelay = value; break;
                 case nameof(DispenseSegment.PostDelay): seg.PostDelay = value; break;
+                case nameof(DispenseSegment.EarlyCloseGlueDelayMs): seg.EarlyCloseGlueDelayMs = value; break;
                 case nameof(DispenseSegment.DispensingPressure): seg.DispensingPressure = value; break;
                 case nameof(DispenseSegment.SuckBackTime): seg.SuckBackTime = value; break;
                 case nameof(DispenseSegment.GlueTriggerOffsetMm): seg.GlueTriggerOffsetMm = value; break;
@@ -1802,6 +1857,7 @@ namespace Module.ViewModels
                 OverrideDispenseTime = seg.DispenseTime,
                 OverridePreDelay = seg.PreDelay,
                 OverridePostDelay = seg.PostDelay,
+                OverrideEarlyCloseGlueDelayMs = seg.EarlyCloseGlueDelayMs,
                 OverrideDispensingPressure = seg.DispensingPressure,
                 OverrideSuckBackTime = seg.SuckBackTime,
                 OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm,
@@ -2010,6 +2066,7 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(DefaultDispenseAmount));
             RaisePropertyChanged(nameof(DefaultPreDelay));
             RaisePropertyChanged(nameof(DefaultPostDelay));
+            RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
             RaisePropertyChanged(nameof(DefaultDispensingPressure));
             RaisePropertyChanged(nameof(DefaultSuckBackTime));
             RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));

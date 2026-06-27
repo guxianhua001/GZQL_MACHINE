@@ -2393,6 +2393,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_DispenseTime">Dispensing Time</sys:String>
     <sys:String x:Key="DispenseDetail_PreDelay">Pre Delay</sys:String>
     <sys:String x:Key="DispenseDetail_PostDelay">Post Delay</sys:String>
+    <sys:String x:Key="DispenseDetail_EarlyCloseGlueDelay">Early Glue-Off Delay</sys:String>
+    <sys:String x:Key="DispenseDetail_Tip_EarlyCloseGlueDelay">Arc/continuous mode: close valve this many ms before path end to compensate valve lag</sys:String>
     <sys:String x:Key="DispenseDetail_DispensingPressure">Pressure</sys:String>
     <sys:String x:Key="DispenseDetail_SuckBackTime">Suck Back Time</sys:String>
     <sys:String x:Key="DispenseDetail_GlueTriggerOffset">Glue Trigger Offset</sys:String>
@@ -2757,6 +2759,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_GlueTriggerOffset">Glue Trigger Offset</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PreDelay">Pre Delay</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_PostDelay">Post Delay</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_EarlyCloseGlueDelay">Early Glue-Off Delay</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_DispenseTime">Dispense Time</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_TeachHeight">Teach Height</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">Height Compensation</sys:String>
@@ -2870,6 +2873,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step3_Label_MoveSpeed">Move Speed</sys:String>
     <sys:String x:Key="Step3_Label_PointCount">Point Count</sys:String>
     <sys:String x:Key="Step3_Label_PostDelay">Post Delay</sys:String>
+    <sys:String x:Key="Step3_Label_EarlyCloseGlueDelay">Early Glue-Off Delay</sys:String>
+    <sys:String x:Key="Step3_Tip_EarlyCloseGlueDelay">Continuous interp: close valve early (ms) before path end; motion finishes remaining path, then PostDelay depressurizes</sys:String>
+    <sys:String x:Key="Step3_Header_EarlyCloseGlueDelay">Early Off</sys:String>
     <sys:String x:Key="Step3_Label_PreDelay">Pre Delay</sys:String>
     <sys:String x:Key="Step3_Label_PreDispenseDelay">Pre-Dispense Delay</sys:String>
     <sys:String x:Key="Step3_Label_RoiTools">ROI Tools</sys:String>
@@ -3709,6 +3715,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="PSE_AddStep">Add</sys:String>
     <sys:String x:Key="PSE_DeleteStep">Delete</sys:String>
     <sys:String x:Key="PSE_AddStepTip">Add step</sys:String>
+    <sys:String x:Key="PSE_AddEditStepTitle">Add/Edit Step</sys:String>
     <sys:String x:Key="PSE_DeleteStepTip">Delete selected step</sys:String>
     <sys:String x:Key="PSE_MoveUpTip">Move step up</sys:String>
     <sys:String x:Key="PSE_MoveDownTip">Move step down</sys:String>

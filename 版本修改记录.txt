@@ -1,6 +1,44 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.27c — AddEditStepDialogView 多语言修复
+-------------------------------------------
+1. 问题：添加/编辑步骤对话框存在中文硬编码及英文 Hint 未本地化。
+
+2. 修复：
+   - XAML 使用 lang:Lang 绑定标题、字段 Hint、确定/取消按钮。
+   - ViewModel 注入 ILocalizationService，Title 随 LanguageChanged 刷新。
+   - 新增资源键 PSE_AddEditStepTitle（复用 PSE_StepTypeHint 等既有 PSE 键）。
+
+修改文件:
+  - Module/Controls/StepEditor/AddEditStepDialogView.xaml
+  - Module/Controls/StepEditor/AddEditStepDialogViewModel.cs
+  - MainApp/Languages/Strings.zh-CN.xaml, Strings.en-US.xaml
+
+v2026.06.27b — 连续插补/弧线模式提前关胶优化
+-------------------------------------------
+1. 问题
+   - 弧线模式整条线段走完才关阀，胶阀机械滞后导致末端拖尾、溢胶。
+
+2. 优化工艺
+   - Z 开胶触发 → PreDelay → 连续插补走轨迹 → 预估结束前 EarlyCloseGlueDelayMs 关阀
+     → 走完剩余路径 → PostDelay 泄压 → Z 抬升。
+
+3. 实现
+   - DispenseSegment / DispenseSegmentRef / DispenseDetail 新增 EarlyCloseGlueDelayMs（默认 100ms）。
+   - Step3EditParamsPanel 连续模式参数区与 DataGrid 列；DispenseDetail 弧线模式可见。
+   - ArcContinuousDispenseHelper 统一连续插补提前关胶逻辑。
+   - DispenseExecuteService、DispenseStepAction 弧线模式同步；单点模式未改。
+
+修改文件:
+  - Core/Models/DispenseSegment.cs, DispenseSegmentRef.cs, DispenseDetail.cs
+  - MotionControl/Services/ArcContinuousDispenseHelper.cs（新增）
+  - Module/Services/DispenseExecuteService.cs
+  - StationTasks/Actions/DispenseStepAction.cs
+  - Module/Controls/Cad/Step3EditParamsPanel.xaml, CadPointEditorViewModel.cs
+  - Module/Controls/StepDetails/DispenseDetailView.xaml, DispenseDetailViewModel.cs
+  - MainApp/Languages/Strings.zh-CN.xaml, Strings.en-US.xaml
+
 v2026.06.27 — DISPENSE 工具暂停/停止后恢复运行与断点续胶修复
 -------------------------------------------
 1. 问题

@@ -130,6 +130,14 @@ namespace Core.Models
             set => SetProperty(ref _overridePostDelay, value);
         }
 
+        private double _overrideEarlyCloseGlueDelayMs = 100.0;
+        /// <summary>覆盖提前关胶延时 ms（连续插补模式）</summary>
+        public double OverrideEarlyCloseGlueDelayMs
+        {
+            get => _overrideEarlyCloseGlueDelayMs;
+            set => SetProperty(ref _overrideEarlyCloseGlueDelayMs, Math.Clamp(value, 0.0, 5000.0));
+        }
+
         private double _overrideDispensingPressure = 0.30;
         /// <summary>覆盖点胶气压 MPa</summary>
         public double OverrideDispensingPressure

@@ -438,6 +438,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_DispenseTime}" Margin="0,2,8,0"/>
@@ -450,15 +451,24 @@
                                              Text="{Binding EffectivePreDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                     <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_PostDelay}" Margin="0,2,8,0"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_EarlyCloseGlueDelay}" Margin="0,2,8,0"
+                                               ToolTip="{lang:Lang DispenseDetail_Tip_EarlyCloseGlueDelay}"
+                                               Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Text="{Binding EffectivePostDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+                                             Text="{Binding EffectiveEarlyCloseGlueDelayMs, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"
+                                             Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"
+                                               Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_GlueTriggerOffset}" Margin="0,2,8,0"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_PostDelay}" Margin="0,2,8,0"/>
                                     <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding EffectivePostDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ms"/>
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="{lang:Lang DispenseDetail_GlueTriggerOffset}" Margin="0,2,8,0"/>
+                                    <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                              Text="{Binding EffectiveGlueTriggerOffsetMm, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="mm"/>
                                 </Grid>
                             </StackPanel>
 
