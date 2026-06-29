@@ -172,6 +172,7 @@ namespace ModuleCore.UserControls
                     PART_ComboBox.SelectedItem = null;
                     PART_ComboBox.Text = string.Empty;
                 }
+                CommitLinkedVariableNameToSource();
             }
             finally
             {
@@ -192,6 +193,9 @@ namespace ModuleCore.UserControls
                 control.PART_ComboBox.SelectedItem = null;
                 control.PART_ComboBox.Text = string.Empty;
             }
+
+            // DataGrid 模板列内 TwoWay 绑定需显式回写行模型
+            control.CommitLinkedVariableNameToSource();
         }
 
         /// <summary>
@@ -269,7 +273,19 @@ namespace ModuleCore.UserControls
                 return;
 
             if (PART_ComboBox?.SelectedValue is string selectedName && !string.IsNullOrWhiteSpace(selectedName))
+            {
                 LinkedVariableName = selectedName;
+                CommitLinkedVariableNameToSource();
+            }
+        }
+
+        /// <summary>
+        /// 将 LinkedVariableName 显式写回绑定源。
+        /// DataGrid 模板列内控件改 DP 时，TwoWay 绑定不一定自动回写行模型。
+        /// </summary>
+        private void CommitLinkedVariableNameToSource()
+        {
+            GetBindingExpression(LinkedVariableNameProperty)?.UpdateSource();
         }
 
         /// <summary>
@@ -296,7 +312,10 @@ namespace ModuleCore.UserControls
 
             // 用户手动输入变量名
             if (!string.Equals(LinkedVariableName, text, StringComparison.OrdinalIgnoreCase))
+            {
                 LinkedVariableName = text;
+                CommitLinkedVariableNameToSource();
+            }
         }
     }
 }

@@ -2374,6 +2374,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_Header_Layer">Layer</sys:String>
     <sys:String x:Key="DispenseDetail_Header_Length">Length</sys:String>
     <sys:String x:Key="DispenseDetail_Header_PointCount">Points</sys:String>
+    <sys:String x:Key="DispenseDetail_Header_SegmentZComp3D">Z Comp (3D Camera)</sys:String>
     <sys:String x:Key="DispenseDetail_Header_Use">Use</sys:String>
     <sys:String x:Key="DispenseDetail_ProcessParams">Process Parameters</sys:String>
     <sys:String x:Key="DispenseDetail_Group_MotionParams">Motion Params</sys:String>
@@ -4115,7 +4116,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Disp_Log_DotPointAbandonedAfterPause">DISPENSE step [{0}] dot: segment[{1}] point{2} glue was dispensed during pause, skipping after resume</sys:String>
     <sys:String x:Key="Disp_Log_DotPointDetail">DISPENSE step [{0}] dot: segment[{1}] point{2}/{3} [Id={4}] | original CAD=({5:F4}, {6:F4}, Z={7:F4}) | transform source={8}, transformed=({9:F4}, {10:F4}) | manual XY comp=({11:F4}, {12:F4})mm | needle offset=({13:F4}, {14:F4})mm | calibration XY=({15:F4}, {16:F4})mm | global XY=({17:F4}, {18:F4})mm | final XY=({19:F4}, {20:F4}), Z={21:F4}mm</sys:String>
     <sys:String x:Key="Disp_Log_DotSegmentNotFound">DISPENSE step [{0}] dot: source segment '{1}' not found, skipping</sys:String>
-    <sys:String x:Key="Disp_Log_DotSegmentProcessParams">DISPENSE step [{0}] dot: segment[{1}] ({2}/{3}), {4} points total | param source={5}, UseDefaultParams={6} | process params: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, HeightComp(total)={18:F3}mm, EffectiveZ={19:F3}mm, DispensingPressure={20:F3}MPa, SuckBackTime={21:F0}ms, manual XY comp=({22:F4}, {23:F4})mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotSegmentProcessParams">DISPENSE step [{0}] dot: segment[{1}] ({2}/{3}), {4} points total | param source={5}, UseDefaultParams={6} | process params: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, SegmentZComp3D={18:F3}mm, HeightComp(total)={19:F3}mm, EffectiveZ={20:F3}mm, DispensingPressure={21:F3}MPa, SuckBackTime={22:F0}ms, manual XY comp=({23:F4}, {24:F4})mm</sys:String>
     <sys:String x:Key="Disp_Log_DryRunCompleted">DISPENSE dry run completed</sys:String>
     <sys:String x:Key="Disp_Log_DryRunSegmentNotFound">DISPENSE dry run: source segment '{0}' not found, skipping</sys:String>
     <sys:String x:Key="Disp_Log_DryRunStart">DISPENSE dry run started</sys:String>

@@ -2374,6 +2374,7 @@
     <sys:String x:Key="DispenseDetail_Header_Layer">图层</sys:String>
     <sys:String x:Key="DispenseDetail_Header_Length">长度</sys:String>
     <sys:String x:Key="DispenseDetail_Header_PointCount">点数</sys:String>
+    <sys:String x:Key="DispenseDetail_Header_SegmentZComp3D">Z Comp (3D相机)</sys:String>
     <sys:String x:Key="DispenseDetail_Header_Use">使用</sys:String>
     <sys:String x:Key="DispenseDetail_ProcessParams">工艺参数配置</sys:String>
     <sys:String x:Key="DispenseDetail_Group_MotionParams">运动参数</sys:String>
@@ -4115,7 +4116,7 @@
     <sys:String x:Key="Disp_Log_DotPointAbandonedAfterPause">DISPENSE 步骤 [{0}] 单点: 段[{1}]点{2} 暂停时已出胶，恢复后跳过该点</sys:String>
     <sys:String x:Key="Disp_Log_DotPointDetail">DISPENSE 步骤 [{0}] 单点: 段[{1}] 点{2}/{3} [Id={4}] | 原始CAD=({5:F4}, {6:F4}, Z={7:F4}) | 变换来源={8}, 变换后=({9:F4}, {10:F4}) | 人工XY补偿=({11:F4}, {12:F4})mm | 针头偏移=({13:F4}, {14:F4})mm | 校准XY=({15:F4}, {16:F4})mm | 全局XY=({17:F4}, {18:F4})mm | 最终XY=({19:F4}, {20:F4}), Z={21:F4}mm</sys:String>
     <sys:String x:Key="Disp_Log_DotSegmentNotFound">DISPENSE 步骤 [{0}] 单点: 源段 '{1}' 未找到，跳过</sys:String>
-    <sys:String x:Key="Disp_Log_DotSegmentProcessParams">DISPENSE 步骤 [{0}] 单点: 段[{1}] ({2}/{3})，共 {4} 点 | 参数来源={5}, UseDefaultParams={6} | 工艺参数: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, HeightComp(total)={18:F3}mm, EffectiveZ={19:F3}mm, DispensingPressure={20:F3}MPa, SuckBackTime={21:F0}ms, 人工XY补偿=({22:F4}, {23:F4})mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotSegmentProcessParams">DISPENSE 步骤 [{0}] 单点: 段[{1}] ({2}/{3})，共 {4} 点 | 参数来源={5}, UseDefaultParams={6} | 工艺参数: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, SegmentZComp3D={18:F3}mm, HeightComp(total)={19:F3}mm, EffectiveZ={20:F3}mm, DispensingPressure={21:F3}MPa, SuckBackTime={22:F0}ms, 人工XY补偿=({23:F4}, {24:F4})mm</sys:String>
     <sys:String x:Key="Disp_Log_DryRunCompleted">DISPENSE 空跑完成</sys:String>
     <sys:String x:Key="Disp_Log_DryRunSegmentNotFound">DISPENSE 空跑: 源段 '{0}' 未找到，跳过</sys:String>
     <sys:String x:Key="Disp_Log_DryRunStart">DISPENSE 开始空跑</sys:String>

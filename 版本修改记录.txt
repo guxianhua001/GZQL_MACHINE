@@ -1,6 +1,33 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.29d — DISPENSE 线段导入表格段级 Z Comp（3D Camera）链接
+-------------------------------------------
+1. 需求
+   - Line Import（点模式）数据表格每行最后一列增加可手动选择的段级 Z Comp（3D Camera）
+     全局变量链接；步骤级 Z Comp（3D Camera）校准组保留不变。
+   - 每行线段最终点胶高度 = 原高度补偿 + 段级链接的 Z Comp（3D Camera）。
+
+2. 实现
+   - DispenseSegmentRef 新增 ZCompensation3DLinkedVar 及运行时显示值刷新。
+   - DispenseDetailView 线段导入 DataGrid 末列增加 GlobalVariableLinkControl（仅点模式显示）。
+   - DispenseDetailViewModel 订阅 SegmentRefs 集合并刷新段级链接显示值。
+   - DispenseStepAction.CreateSegmentWithParams 叠加段级 Z Comp；单点日志新增 SegmentZComp3D 字段。
+   - 多语言：DispenseDetail_Header_SegmentZComp3D、Disp_Log_DotSegmentProcessParams（zh-CN / en-US）。
+
+3. 修复（链接后数值不实时更新）
+   - GlobalVariableLinkControl：链接名变更/下拉选择/取消链接后显式 UpdateSource 回写 DataGrid 行模型。
+   - DispenseSegmentRef：变量名匹配改为大小写不敏感；行模型 ZCompensation3DDisplayValue 变更后驱动控件刷新。
+
+修改文件:
+  - Core/Models/DispenseSegmentRef.cs
+  - Module/Controls/StepDetails/DispenseDetailView.xaml
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - ModuleCore/UserControls/GlobalVariableLinkControl.xaml.cs
+  - StationTasks/Actions/DispenseStepAction.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.29c — 全站日志与 ViewModel 多语言支持（第二批 + 第三批）
 -------------------------------------------
 1. 问题：

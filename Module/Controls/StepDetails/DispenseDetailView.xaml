@@ -358,6 +358,22 @@
                                 <DataGridTextColumn Header="{lang:Lang DispenseDetail_Header_PointCount}"
                                                     Binding="{Binding SourcePointCount}" Width="*"/>
 
+                                <!-- 段级 Z Comp（3D Camera）链接列：仅线段导入（点模式）显示 -->
+                                <DataGridTemplateColumn Header="{lang:Lang DispenseDetail_Header_SegmentZComp3D}"
+                                                        Width="220" MinWidth="200"
+                                                        Visibility="{Binding DataContext.ShowImportLines, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <common:GlobalVariableLinkControl
+                                                DisplayValue="{Binding ZCompensation3DDisplayValue, Mode=OneWay}"
+                                                DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                                IsLinked="{Binding IsZCompensation3DLinked, Mode=OneWay}"
+                                                LinkedVariableName="{Binding ZCompensation3DLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                LinkableGlobalVariables="{Binding DataContext.AvailableGlobalVariables, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                ComboBoxWidth="110" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
 
                             </DataGrid.Columns>
                         </DataGrid>

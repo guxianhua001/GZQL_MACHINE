@@ -14,6 +14,8 @@ using Recipe.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -41,6 +43,8 @@ namespace Module.ViewModels
         private bool _syncingFromSelection;
         private ProcessStep _step;
         private DispenseDetail _subscribedDispenseDetail;
+        private ObservableCollection<DispenseSegmentRef> _subscribedSegmentRefs;
+        private readonly Dictionary<DispenseSegmentRef, PropertyChangedEventHandler> _segmentRefHandlers = new();
 
         /// <summary>请求关闭对话框时触发</summary>
         public event Action<object> RequestClose;
@@ -1944,6 +1948,7 @@ namespace Module.ViewModels
             _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
             _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Unsubscribe(OnNeedleIndexSyncedFromEditor);
             DetachDispenseDetailListener();
+            DetachSegmentRefsListeners();
             RequestClose?.Invoke(false);
         }
 
@@ -2026,6 +2031,7 @@ namespace Module.ViewModels
             _ = EnsureCadAlignSnapshotRestoredAsync();
 
             RefreshSourceSegmentInfo();
+            HookSegmentRefsListeners(SegmentRefs);
 
             RaisePropertyChanged(nameof(DispenseMode));
             RaisePropertyChanged(nameof(IsDotMode));
@@ -2228,6 +2234,81 @@ namespace Module.ViewModels
                 RotationAngleDisplayValue = RotationAngle;
             }
             RaisePropertyChanged(nameof(RotationAngleDisplayValue));
+
+            RefreshSegmentZComp3DDisplayValues();
+        }
+
+        /// <summary>刷新线段导入表格中段级 Z Comp（3D Camera）链接变量的实时显示值</summary>
+        private void RefreshSegmentZComp3DDisplayValues()
+        {
+            if (SegmentRefs == null) return;
+            foreach (var segRef in SegmentRefs)
+                segRef.UpdateZCompensation3DDisplayValue(AvailableGlobalVariables);
+        }
+
+        /// <summary>订阅 SegmentRefs 集合变更，维护段级 Z Comp 链接显示刷新</summary>
+        private void HookSegmentRefsListeners(ObservableCollection<DispenseSegmentRef> refs)
+        {
+            DetachSegmentRefsListeners();
+            if (refs == null) return;
+
+            _subscribedSegmentRefs = refs;
+            _subscribedSegmentRefs.CollectionChanged += OnSegmentRefsCollectionChanged;
+            foreach (var segRef in refs)
+                AttachSegmentRefListener(segRef);
+        }
+
+        private void DetachSegmentRefsListeners()
+        {
+            if (_subscribedSegmentRefs != null)
+            {
+                _subscribedSegmentRefs.CollectionChanged -= OnSegmentRefsCollectionChanged;
+                _subscribedSegmentRefs = null;
+            }
+
+            foreach (var pair in _segmentRefHandlers)
+                pair.Key.PropertyChanged -= pair.Value;
+            _segmentRefHandlers.Clear();
+        }
+
+        private void OnSegmentRefsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+            {
+                foreach (DispenseSegmentRef segRef in e.NewItems)
+                    AttachSegmentRefListener(segRef);
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (DispenseSegmentRef segRef in e.OldItems)
+                    DetachSegmentRefListener(segRef);
+            }
+        }
+
+        /// <summary>段级 Z Comp 链接变量变更时即时刷新显示值</summary>
+        private void AttachSegmentRefListener(DispenseSegmentRef segRef)
+        {
+            if (segRef == null || _segmentRefHandlers.ContainsKey(segRef)) return;
+
+            PropertyChangedEventHandler handler = (_, e) =>
+            {
+                if (e.PropertyName == nameof(DispenseSegmentRef.ZCompensation3DLinkedVar))
+                    segRef.UpdateZCompensation3DDisplayValue(AvailableGlobalVariables);
+            };
+            _segmentRefHandlers[segRef] = handler;
+            segRef.PropertyChanged += handler;
+            segRef.UpdateZCompensation3DDisplayValue(AvailableGlobalVariables);
+        }
+
+        private void DetachSegmentRefListener(DispenseSegmentRef segRef)
+        {
+            if (segRef == null) return;
+            if (_segmentRefHandlers.TryGetValue(segRef, out var handler))
+            {
+                segRef.PropertyChanged -= handler;
+                _segmentRefHandlers.Remove(segRef);
+            }
         }
 
         #endregion

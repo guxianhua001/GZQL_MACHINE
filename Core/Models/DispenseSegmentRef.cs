@@ -1,4 +1,7 @@
 using Prism.Mvvm;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace Core.Models
@@ -202,6 +205,18 @@ namespace Core.Models
             set => SetProperty(ref _overrideXyCompensationY, value);
         }
 
+        private string _zCompensation3DLinkedVar;
+        /// <summary>段级 Z Comp（3D Camera）链接的全局变量名（每行线段独立配置）</summary>
+        public string ZCompensation3DLinkedVar
+        {
+            get => _zCompensation3DLinkedVar;
+            set
+            {
+                if (SetProperty(ref _zCompensation3DLinkedVar, value))
+                    RaisePropertyChanged(nameof(IsZCompensation3DLinked));
+            }
+        }
+
         #endregion
 
         #region 只读显示属性
@@ -230,6 +245,33 @@ namespace Core.Models
         {
             get => _sourcePointCount;
             set => SetProperty(ref _sourcePointCount, value);
+        }
+
+        private double _zCompensation3DDisplayValue;
+        /// <summary>段级 Z Comp（3D Camera）链接变量的实时显示值（运行时刷新，不序列化）</summary>
+        [JsonIgnore]
+        public double ZCompensation3DDisplayValue
+        {
+            get => _zCompensation3DDisplayValue;
+            private set => SetProperty(ref _zCompensation3DDisplayValue, value);
+        }
+
+        /// <summary>是否已链接段级 Z Comp（3D Camera）全局变量</summary>
+        [JsonIgnore]
+        public bool IsZCompensation3DLinked => !string.IsNullOrEmpty(ZCompensation3DLinkedVar);
+
+        /// <summary>根据全局变量池刷新段级 Z Comp（3D Camera）显示值</summary>
+        public void UpdateZCompensation3DDisplayValue(IEnumerable<GlobalVariable> variables)
+        {
+            double display = 0;
+            if (!string.IsNullOrEmpty(ZCompensation3DLinkedVar))
+            {
+                var gv = variables?.FirstOrDefault(v =>
+                    string.Equals(v.Name, ZCompensation3DLinkedVar, StringComparison.OrdinalIgnoreCase));
+                display = gv != null && double.TryParse(gv.Value, out var val) ? val : 0;
+            }
+
+            ZCompensation3DDisplayValue = display;
         }
 
         #endregion

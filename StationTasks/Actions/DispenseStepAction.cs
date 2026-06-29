@@ -714,6 +714,9 @@ namespace StationTasks.Actions
             if (detail.EnableZCalibration)
                 seg.HeightCompensation += ResolveZCompensation(detail);
 
+            // 段级 Z Comp（3D Camera）：每行线段独立链接全局变量，叠加到最终点胶高度
+            seg.HeightCompensation += ResolveSegmentZCompensation3D(segRef);
+
             return seg;
         }
 
@@ -779,6 +782,15 @@ namespace StationTasks.Actions
             compensation += ResolveLinkedValue(detail.ZCompensationCalibrator, detail.ZCompensationCalibratorLinkedVar);
 
             return compensation;
+        }
+
+        /// <summary>
+        /// 解析段级 Z Comp（3D Camera）——线段导入表格每行独立链接的全局变量
+        /// </summary>
+        private double ResolveSegmentZCompensation3D(DispenseSegmentRef segRef)
+        {
+            if (segRef == null) return 0.0;
+            return ResolveLinkedValue(0, segRef.ZCompensation3DLinkedVar);
         }
 
         /// <summary>
@@ -1065,15 +1077,16 @@ namespace StationTasks.Actions
                 ? detail.DefaultHeightCompensation
                 : segRef.OverrideHeightCompensation;
             double zCalAddon = detail.EnableZCalibration ? ResolveZCompensation(detail) : 0;
+            double segmentZComp3D = ResolveSegmentZCompensation3D(segRef);
             string paramSource = useDefault ? "Default" : "Override";
 
             _logger.Info(string.Format(
                 _localization.GetResourceOrDefault("Disp_Log_DotSegmentProcessParams",
-                    "DISPENSE 步骤 [{0}] 单点: 段[{1}] ({2}/{3})，共 {4} 点 | 参数来源={5}, UseDefaultParams={6} | 工艺参数: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, HeightComp(total)={18:F3}mm, EffectiveZ={19:F3}mm, DispensingPressure={20:F3}MPa, SuckBackTime={21:F0}ms, 人工XY补偿=({22:F4}, {23:F4})mm"),
+                    "DISPENSE 步骤 [{0}] 单点: 段[{1}] ({2}/{3})，共 {4} 点 | 参数来源={5}, UseDefaultParams={6} | 工艺参数: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, SegmentZComp3D={18:F3}mm, HeightComp(total)={19:F3}mm, EffectiveZ={20:F3}mm, DispensingPressure={21:F3}MPa, SuckBackTime={22:F0}ms, 人工XY补偿=({23:F4}, {24:F4})mm"),
                 stepSeq, seg.SegmentId, currentRef, totalRefs, seg.Points.Count, paramSource, useDefault,
                 seg.MoveSpeed, seg.SafeHeight, seg.ApproachHeight, seg.CornerDecel, seg.GlueTriggerOffsetMm,
                 seg.PreDelay, seg.DispenseTime, seg.PostDelay, seg.TeachHeight, manualHeightComp, zCalAddon,
-                seg.HeightCompensation, seg.EffectiveZHeight, seg.DispensingPressure, seg.SuckBackTime,
+                segmentZComp3D, seg.HeightCompensation, seg.EffectiveZHeight, seg.DispensingPressure, seg.SuckBackTime,
                 seg.XyCompensationX, seg.XyCompensationY));
         }
 
