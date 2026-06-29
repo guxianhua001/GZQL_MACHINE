@@ -1,6 +1,43 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.30c — OverView 工作灯/吹气/安全门锁 DO 开关
+-------------------------------------------
+1. 需求
+   - OverView 总览页顶部「工作灯」「吹气」按钮实现 DO 输出 toggle 开关，分别控制
+     输出点 Q2.7CabinetLighting（柜内照明）、Q3.7MasterAirPressureControl（总气压控制）。
+   - 新增「安全门锁」按钮，控制输出点 Q1.2SafetyDoorLock（true=锁定）。
+   - 三个按钮均为手动 toggle，按钮外观反映通断/锁定状态（颜色 + 图标），
+     未配置对应 DO 点位时按钮自动禁用。
+
+2. 实现
+   - OverViewModel：注入 IMotionService；新增三组绑定属性（IsWorkLightOn/IsAirBlowOn/
+     IsSafetyDoorLocked 状态 + IsXxxAvailable 可用性，DoId=-1 时为 false）；
+     新增 ToggleWorkLightCommand/ToggleAirBlowCommand/ToggleSafetyDoorLockCommand。
+   - ResolveOutputDoIds：启动时按 hwcfg.xml name 精确匹配解析三个 DO LogicalId
+     （Q1.2SafetyDoorLock/Q2.7CabinetLighting/Q3.7MasterAirPressureControl），
+     未配置返回 -1，对应按钮 IsEnabled=False。
+   - RefreshOutputStates：OnNavigatedTo 末尾 best-effort 回读三个 DO 硬件状态
+     （TryReadDo 包 catch，运动卡未就绪保持默认 false），刷新按钮初始颜色。
+   - ToggleDo 通用方法：取反写入 + 乐观更新 UI + 失败回滚，避免 UI 与硬件不一致。
+   - OverView.xaml：工作灯/吹气按钮改用 Button.Style + Style.Triggers + DataTrigger
+     切换 Template（OFF 灰 #757575，工作灯 ON 橙 #FF9800，吹气 ON 蓝 #1565C0）；
+     新增安全门锁按钮（未锁灰，锁定红 #C62828，PackIcon 在 LockOpen/Lock 间切换）。
+   - 多语言：新增 OverView_Btn_SafetyDoorLock（zh-CN「安全门锁」/ en-US「Safety Door Lock」）。
+
+3. 安全性
+   - DO 极性遵循 SystemStateService.WriteLight 权威约定：WriteDo(true)=开/锁定，不反转。
+   - ToggleDo 失败回滚 UI 状态，防止显示与硬件脱节（工业 HMI 安全性）。
+   - DI 安全层（SystemStateService 20ms 轮询 SafetyGates）独立于 DO 锁，
+     本按钮仅控制 DO 锁定输出，不替代安全回路。
+   - 未配置 DO 点位时按钮自动禁用，避免误操作。
+
+修改文件:
+  - Module/ViewModels/OverViewModel.cs
+  - Module/Views/OverView.xaml
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.30b — DISPENSE 旋转补偿组新增角度补偿（链接全局变量）
 -------------------------------------------
 1. 需求

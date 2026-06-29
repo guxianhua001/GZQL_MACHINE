@@ -32,7 +32,17 @@ namespace Module.ViewModels
         private readonly IDialogService _dialogService;
         private readonly ILocalizationService _localization;
         private readonly IMachineInitializationService _machineInitService;
+        private readonly IMotionService _motionService;
         private readonly DispatcherTimer _timer;
+
+        // DO 输出点名（与 hwcfg.xml name 属性严格一致，无分隔符）
+        private const string WorkLightDoName = "Q2.7CabinetLighting";
+        private const string AirBlowDoName = "Q3.7MasterAirPressureControl";
+        private const string SafetyDoorLockDoName = "Q1.2SafetyDoorLock";
+        // 解析后的 DO LogicalId（-1 表示未配置）
+        private int _workLightDoId = -1;
+        private int _airBlowDoId = -1;
+        private int _doorLockDoId = -1;
         #region 绑定属性
         private DateTime _systemTime;
         public DateTime SystemTime
@@ -107,6 +117,25 @@ namespace Module.ViewModels
             get => _speedDisplayText;
             set => SetProperty(ref _speedDisplayText, value);
         }
+        // ===== DO 输出开关状态 =====
+        private bool _isWorkLightOn;
+        /// <summary>工作灯（柜内照明 Q2.7）通断状态</summary>
+        public bool IsWorkLightOn { get => _isWorkLightOn; set => SetProperty(ref _isWorkLightOn, value); }
+
+        private bool _isAirBlowOn;
+        /// <summary>吹气（总气压控制 Q3.7）通断状态</summary>
+        public bool IsAirBlowOn { get => _isAirBlowOn; set => SetProperty(ref _isAirBlowOn, value); }
+
+        private bool _isSafetyDoorLocked;
+        /// <summary>安全门锁（Q1.2）锁定状态：true=已锁定</summary>
+        public bool IsSafetyDoorLocked { get => _isSafetyDoorLocked; set => SetProperty(ref _isSafetyDoorLocked, value); }
+
+        /// <summary>工作灯 DO 点位是否已配置（控制按钮 IsEnabled）</summary>
+        public bool IsWorkLightAvailable => _workLightDoId >= 0;
+        /// <summary>吹气 DO 点位是否已配置</summary>
+        public bool IsAirBlowAvailable => _airBlowDoId >= 0;
+        /// <summary>安全门锁 DO 点位是否已配置</summary>
+        public bool IsSafetyDoorLockAvailable => _doorLockDoId >= 0;
         #endregion
         #region 命令
         public DelegateCommand InitializeCommand { get; }
@@ -119,6 +148,12 @@ namespace Module.ViewModels
         public DelegateCommand StepNextCommand { get; }
         /// <summary> 打开LogViewer日志窗口命令 </summary>
         public DelegateCommand ShowLogViewerCommand { get; }
+        /// <summary> 工作灯开关命令 </summary>
+        public DelegateCommand ToggleWorkLightCommand { get; }
+        /// <summary> 吹气开关命令 </summary>
+        public DelegateCommand ToggleAirBlowCommand { get; }
+        /// <summary> 安全门锁定开关命令 </summary>
+        public DelegateCommand ToggleSafetyDoorLockCommand { get; }
         #endregion
         public OverViewModel(IRegionManager regionManager,
             IEventAggregator ea,
@@ -128,7 +163,8 @@ namespace Module.ViewModels
             ISpeedOverrideService speedOverride,
             IDialogService dialogService,
             ILocalizationService localization,
-            IMachineInitializationService machineInitService)
+            IMachineInitializationService machineInitService,
+            IMotionService motionService)
         {
             _regionManager = regionManager;
             _ea = ea;
@@ -139,6 +175,7 @@ namespace Module.ViewModels
             _dialogService = dialogService;
             _localization = localization;
             _machineInitService = machineInitService;
+            _motionService = motionService;
             _speedPercent = _speedOverride.SpeedPercent;
             _speedOverride.SpeedChanged += OnSpeedChanged;
             _singleStepButtonText = _localization.GetResource("OverView_Btn_SingleStep_Off");
@@ -164,6 +201,14 @@ namespace Module.ViewModels
 
             // 订阅主窗口控制按钮点击事件（从MainWindow右侧栏触发）
             _ea.GetEvent<ControlButtonClickedEvent>().Subscribe(OnControlButtonClicked, ThreadOption.PublisherThread, false);
+
+            // DO 输出开关命令（工作灯/吹气/安全门锁）
+            ToggleWorkLightCommand = new DelegateCommand(OnToggleWorkLight);
+            ToggleAirBlowCommand = new DelegateCommand(OnToggleAirBlow);
+            ToggleSafetyDoorLockCommand = new DelegateCommand(OnToggleSafetyDoorLock);
+
+            // 解析 DO 点位 LogicalId（配置在启动时已加载，安全；未配置返回 -1，按钮自动禁用）
+            ResolveOutputDoIds();
         }
         private void OnStationStateChanged(StationStatePayload payload)
         {
@@ -332,6 +377,101 @@ namespace Module.ViewModels
             }
         }
         #endregion
+
+        #region DO 输出开关（工作灯/吹气/安全门锁）
+
+        /// <summary>
+        /// 解析三个 DO 输出点位的 LogicalId（按 hwcfg.xml name 精确匹配，不硬编码 actDoId）。
+        /// 未配置时返回 -1，对应按钮 IsEnabled=False。配置在应用启动时已加载，此处安全调用。
+        /// </summary>
+        private void ResolveOutputDoIds()
+        {
+            _workLightDoId = ResolveDoId(WorkLightDoName);
+            _airBlowDoId = ResolveDoId(AirBlowDoName);
+            _doorLockDoId = ResolveDoId(SafetyDoorLockDoName);
+            // 触发可用性属性通知（按钮 IsEnabled 绑定）
+            RaisePropertyChanged(nameof(IsWorkLightAvailable));
+            RaisePropertyChanged(nameof(IsAirBlowAvailable));
+            RaisePropertyChanged(nameof(IsSafetyDoorLockAvailable));
+        }
+
+        /// <summary>按 name 查询 DO LogicalId；未找到返回 -1 并记录警告</summary>
+        private int ResolveDoId(string name)
+        {
+            try
+            {
+                var outputs = _motionService.GetOutputConfigurations();
+                var cfg = outputs.FirstOrDefault(o => o.Name == name);
+                if (cfg == null)
+                    System.Diagnostics.Debug.WriteLine($"[OverView] DO 点位未配置: {name}，对应按钮将禁用");
+                return cfg?.LogicalId ?? -1;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OverView] 解析 DO 点位 {name} 失败: {ex.Message}");
+                return -1;
+            }
+        }
+
+        /// <summary>
+        /// 回读三个 DO 点位当前硬件状态，刷新 UI 显示。best-effort：运动卡未就绪时 catch 异常，保持默认 false。
+        /// 约定：ReadDo 返回 true = 功能开（与 SystemStateService.WriteLight 的 WriteDo(true)=开 一致，不反转）。
+        /// </summary>
+        private void RefreshOutputStates()
+        {
+            if (_workLightDoId >= 0)
+                IsWorkLightOn = TryReadDo(_workLightDoId);
+            if (_airBlowDoId >= 0)
+                IsAirBlowOn = TryReadDo(_airBlowDoId);
+            if (_doorLockDoId >= 0)
+                IsSafetyDoorLocked = TryReadDo(_doorLockDoId);
+        }
+
+        /// <summary>best-effort 读取 DO 状态，失败返回 false</summary>
+        private bool TryReadDo(int logicalId)
+        {
+            try { return _motionService.ReadDo(logicalId); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OverView] ReadDo(logicalId={logicalId}) 失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>工作灯开关：toggle 柜内照明 Q2.7</summary>
+        private void OnToggleWorkLight() => ToggleDo(_workLightDoId, v => IsWorkLightOn = v, nameof(IsWorkLightOn), "工作灯");
+
+        /// <summary>吹气开关：toggle 总气压控制 Q3.7</summary>
+        private void OnToggleAirBlow() => ToggleDo(_airBlowDoId, v => IsAirBlowOn = v, nameof(IsAirBlowOn), "吹气");
+
+        /// <summary>安全门锁开关：toggle Q1.2（true=锁定）</summary>
+        private void OnToggleSafetyDoorLock() => ToggleDo(_doorLockDoId, v => IsSafetyDoorLocked = v, nameof(IsSafetyDoorLocked), "安全门锁");
+
+        /// <summary>
+        /// 通用 DO toggle：读取当前状态取反写入，乐观更新 UI，失败回滚。
+        /// 约定 WriteDo(true)=开/锁定，与 SystemStateService.WriteLight 一致。
+        /// </summary>
+        private void ToggleDo(int doId, Action<bool> setState, string propName, string label)
+        {
+            if (doId < 0) return;
+            // 取当前 UI 状态取反作为目标值（UI 状态由 ReadDo/上次写入维护）
+            // 反射读属性值可能为 null（属性不存在），先转 bool? 再 ?? false 兜底
+            bool current = (bool?)GetType().GetProperty(propName)?.GetValue(this) ?? false;
+            bool newVal = !current;
+            try
+            {
+                _motionService.WriteDo(doId, newVal);
+                setState(newVal);   // 乐观更新
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OverView] {label} DO 切换失败 (logicalId={doId}): {ex.Message}");
+                setState(current);  // 回滚
+            }
+        }
+
+        #endregion
+
         public void OnNavigatedTo(NavigationContext navigationContext)
         {
             if (_regionManager.Regions.ContainsRegionWithName("OverviewDeviceRegion"))
@@ -359,6 +499,8 @@ namespace Module.ViewModels
                     speedRegion.RequestNavigate(nameof(SpeedControlView));
                 }
             }
+            // 回读 DO 输出硬件状态，刷新按钮通断/锁定显示（best-effort，失败保持默认）
+            RefreshOutputStates();
         }
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;
         public void OnNavigatedFrom(NavigationContext navigationContext) { }

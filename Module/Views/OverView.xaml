@@ -42,44 +42,154 @@
                             <TextBlock Text="{Binding SpeedDisplayText}" Foreground="#1565C0" FontWeight="Medium" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
-                    <Button Margin="0,0,10,0" Padding="15,8" Foreground="White" FontWeight="Medium" FontSize="14"
+                    <Button Command="{Binding ToggleWorkLightCommand}" IsEnabled="{Binding IsWorkLightAvailable}"
+                            Margin="0,0,10,0" Padding="15,8" Foreground="White" FontWeight="Medium" FontSize="14"
                             ToolTip="{lang:Lang OverView_Btn_WorkLight}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="bd" Background="#757575" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="bd" Property="Background" Value="#616161"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="#757575" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#616161"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <!-- 工作灯 ON：橙色背景（灯亮语义） -->
+                                    <DataTrigger Binding="{Binding IsWorkLightOn}" Value="True">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bd" Background="#FF9800" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bd" Property="Background" Value="#F57C00"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="Lightbulb" Width="18" Height="18" Foreground="White" VerticalAlignment="Center"
                                                      xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" Margin="0,0,6,0"/>
                             <TextBlock Text="{lang:Lang OverView_Btn_WorkLight}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button Margin="0,0,10,0" Padding="15,8" Foreground="White" FontWeight="Medium" FontSize="14"
+                    <Button Command="{Binding ToggleAirBlowCommand}" IsEnabled="{Binding IsAirBlowAvailable}"
+                            Margin="0,0,10,0" Padding="15,8" Foreground="White" FontWeight="Medium" FontSize="14"
                             ToolTip="{lang:Lang OverView_Btn_AirBlow}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="bd" Background="#757575" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="bd" Property="Background" Value="#616161"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="#757575" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#616161"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <!-- 吹气 ON：蓝色背景（气流语义） -->
+                                    <DataTrigger Binding="{Binding IsAirBlowOn}" Value="True">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bd" Background="#1565C0" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bd" Property="Background" Value="#0D47A1"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="WeatherWindy" Width="18" Height="18" Foreground="White" VerticalAlignment="Center"
                                                      xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" Margin="0,0,6,0"/>
                             <TextBlock Text="{lang:Lang OverView_Btn_AirBlow}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <!-- 安全门锁开关：toggle Q1.2SafetyDoorLock（true=锁定，红色锁定态） -->
+                    <Button Command="{Binding ToggleSafetyDoorLockCommand}" IsEnabled="{Binding IsSafetyDoorLockAvailable}"
+                            Margin="0,0,10,0" Padding="15,8" Foreground="White" FontWeight="Medium" FontSize="14"
+                            ToolTip="{lang:Lang OverView_Btn_SafetyDoorLock}">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="#757575" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#616161"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <!-- 安全门锁已锁定：红色背景（危险/受限语义） -->
+                                    <DataTrigger Binding="{Binding IsSafetyDoorLocked}" Value="True">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bd" Background="#C62828" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bd" Property="Background" Value="#B71C1C"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="LockOpen" Width="18" Height="18" Foreground="White" VerticalAlignment="Center"
+                                                     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" Margin="0,0,6,0">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Style.Triggers>
+                                            <!-- 已锁定时切换为 Lock 图标 -->
+                                            <DataTrigger Binding="{Binding IsSafetyDoorLocked}" Value="True">
+                                                <Setter Property="Kind" Value="Lock"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                            <TextBlock Text="{lang:Lang OverView_Btn_SafetyDoorLock}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding ShowLogViewerCommand}" Margin="0,0,10,0" Padding="15,8" Foreground="White" FontWeight="Medium" FontSize="14"

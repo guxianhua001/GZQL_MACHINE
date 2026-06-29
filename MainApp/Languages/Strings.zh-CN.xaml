@@ -2994,6 +2994,7 @@
     <sys:String x:Key="OverView_Btn_EStop">急停</sys:String>
     <sys:String x:Key="OverView_Btn_Log">日志</sys:String>
     <sys:String x:Key="OverView_Btn_NextStep">下一步</sys:String>
+    <sys:String x:Key="OverView_Btn_SafetyDoorLock">安全门锁</sys:String>
     <sys:String x:Key="OverView_Btn_SingleStep_Off">单步模式</sys:String>
     <sys:String x:Key="OverView_Btn_SingleStep_On">单步模式(开)</sys:String>
     <sys:String x:Key="OverView_Btn_WorkLight">工作灯</sys:String>
