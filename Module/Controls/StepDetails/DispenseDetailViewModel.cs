@@ -326,6 +326,28 @@ namespace Module.ViewModels
         /// <summary>旋转角度链接全局变量的实时显示值</summary>
         public double RotationAngleDisplayValue { get; private set; }
 
+        /// <summary>角度补偿链接的全局变量名（未链接时补偿值按 0 处理）</summary>
+        public string AngleCompensationLinkedVar
+        {
+            get => _step?.DispenseDetail?.AngleCompensationLinkedVar;
+            set
+            {
+                if (_step?.DispenseDetail != null)
+                {
+                    _step.DispenseDetail.AngleCompensationLinkedVar = value;
+                    RaisePropertyChanged(nameof(AngleCompensationLinkedVar));
+                    RaisePropertyChanged(nameof(IsAngleCompensationLinked));
+                    RefreshCalibrationDisplayValues();
+                }
+            }
+        }
+
+        /// <summary>角度补偿是否已链接全局变量</summary>
+        public bool IsAngleCompensationLinked => !string.IsNullOrEmpty(_step?.DispenseDetail?.AngleCompensationLinkedVar);
+
+        /// <summary>角度补偿链接全局变量的实时显示值</summary>
+        public double AngleCompensationDisplayValue { get; private set; }
+
         /// <summary>CAD 对齐变换快照是否有效（来自共享服务）</summary>
         public bool IsTransformAvailable => _cadAlignTransformService?.CurrentSnapshot?.IsValid == true;
 
@@ -449,6 +471,7 @@ namespace Module.ViewModels
         public DelegateCommand UnlinkXCompensationCommand { get; }
         public DelegateCommand UnlinkYCompensationCommand { get; }
         public DelegateCommand UnlinkRotationAngleCommand { get; }
+        public DelegateCommand UnlinkAngleCompensationCommand { get; }
         /// <summary>查看旋转后坐标弹窗命令</summary>
         public DelegateCommand ViewRotatedCoordsCommand { get; }
 
@@ -1387,6 +1410,7 @@ namespace Module.ViewModels
             UnlinkXCompensationCommand = new DelegateCommand(() => XCompensationLinkedVar = null);
             UnlinkYCompensationCommand = new DelegateCommand(() => YCompensationLinkedVar = null);
             UnlinkRotationAngleCommand = new DelegateCommand(() => RotationAngleLinkedVar = null);
+            UnlinkAngleCompensationCommand = new DelegateCommand(() => AngleCompensationLinkedVar = null);
             // 查看旋转后坐标弹窗命令（异步打开弹窗）
             ViewRotatedCoordsCommand = new DelegateCommand(async () => await OnViewRotatedCoordsAsync());
 
@@ -2235,6 +2259,18 @@ namespace Module.ViewModels
             }
             RaisePropertyChanged(nameof(RotationAngleDisplayValue));
 
+            // 角度补偿（与旋转角度相加后参与坐标变换；未链接全局变量时按 0 处理）
+            if (!string.IsNullOrEmpty(_step?.DispenseDetail?.AngleCompensationLinkedVar))
+            {
+                var gv = AvailableGlobalVariables.FirstOrDefault(v => v.Name == _step.DispenseDetail.AngleCompensationLinkedVar);
+                AngleCompensationDisplayValue = gv != null && double.TryParse(gv.Value, out var val) ? val : 0.0;
+            }
+            else
+            {
+                AngleCompensationDisplayValue = 0.0;
+            }
+            RaisePropertyChanged(nameof(AngleCompensationDisplayValue));
+
             RefreshSegmentZComp3DDisplayValues();
         }
 
@@ -2362,7 +2398,11 @@ namespace Module.ViewModels
                     return;
                 }
 
-                double rotationAngle = IsRotationAngleLinked ? RotationAngleDisplayValue : RotationAngle;
+                // 有效旋转角度 = 旋转角度 + 角度补偿（角度补偿未链接变量时按 0 处理）
+                double baseRotationAngle = IsRotationAngleLinked ? RotationAngleDisplayValue : RotationAngle;
+                double angleCompensation = AngleCompensationDisplayValue; // 未链接时为 0
+                double rotationAngle = baseRotationAngle + angleCompensation;
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_EffectiveRotationAngle", "[DispenseDetail] 旋转角度={0:F3}°, 角度补偿={1:F3}°, 有效角度={2:F3}°"), baseRotationAngle, angleCompensation, rotationAngle));
                 _logger?.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_RotationAngleAndCenter", "[DispenseDetail] 旋转角度={0:F3}°, 回转中心=({1:F3}, {2:F3})"), rotationAngle, snapshot.Mox, snapshot.Moy));
 
                 // 构建坐标对照列表

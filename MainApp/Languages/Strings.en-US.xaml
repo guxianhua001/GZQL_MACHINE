@@ -2331,6 +2331,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseDetail_XCompensation">X Compensation</sys:String>
     <sys:String x:Key="DispenseDetail_YCompensation">Y Compensation</sys:String>
     <sys:String x:Key="DispenseDetail_RotationAngle">Rotation Angle</sys:String>
+    <sys:String x:Key="DispenseDetail_AngleCompensation">Angle Compensation</sys:String>
+    <sys:String x:Key="DispenseDetail_AngleCompensationHint">Added to Rotation Angle (Effective = Rotation + Compensation)</sys:String>
     <sys:String x:Key="DispenseDetail_ViewRotatedCoords">View Rotated Coords</sys:String>
     <sys:String x:Key="DispenseDetail_RotatedCoordsTitle">Rotated Coordinates</sys:String>
     <sys:String x:Key="DispenseDetail_RotationCenter">Rotation Center</sys:String>
@@ -4097,6 +4099,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DD_Log_RestoreCadSnapshotFailed">[DispenseDetail] Failed to restore CAD alignment transform snapshot: {0}</sys:String>
     <sys:String x:Key="DD_Log_RefreshGlobalVarsFailed">[DispenseDetail] Failed to refresh global variable display values: {0}</sys:String>
     <sys:String x:Key="DD_Log_RotationAngleAndCenter">[DispenseDetail] Rotation angle={0:F3}°, rotation center=({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="DD_Log_EffectiveRotationAngle">[DispenseDetail] rotation={0:F3}°, compensation={1:F3}°, effective={2:F3}°</sys:String>
     <sys:String x:Key="DD_Log_SegmentNotFoundOrNoPoints">[DispenseDetail] Segment {0} not found or has no point data</sys:String>
     <sys:String x:Key="DD_Log_SourceAndRefCount">[DispenseDetail] Source segment count={0}, SegmentRefs count={1}</sys:String>
     <sys:String x:Key="DD_Log_ViewRotatedCoordsClicked">[DispenseDetail] ViewRotatedCoords button clicked, building coordinate comparison</sys:String>
@@ -4131,6 +4134,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Disp_Log_PausedWaiting">DISPENSE {0} paused, waiting to resume current action</sys:String>
     <sys:String x:Key="Disp_Log_ResolveLinkedVarFailed">Failed to resolve linked global variable '{0}': {1}</sys:String>
     <sys:String x:Key="Disp_Log_RotationCompEnabled">DISPENSE step [{0}] rotation compensation enabled: rotation angle={1:F3}°, rotation center=({2:F3}, {3:F3})</sys:String>
+    <sys:String x:Key="Disp_Log_AngleCompensationApplied">DISPENSE step [{0}] angle compensation={1:F3}°, effective rotation={2:F3}°</sys:String>
     <sys:String x:Key="Disp_Log_RotationCompNoCadAlign">DISPENSE step [{0}] rotation compensation enabled but CAD alignment transform unavailable, falling back to original coordinates</sys:String>
     <sys:String x:Key="Disp_Log_SourceSegmentCount">DISPENSE step [{0}] source trajectory segments: {1}</sys:String>
     <sys:String x:Key="Disp_Log_StepCancelled">DISPENSE step [{0}] cancelled, glue safely turned off</sys:String>

@@ -1,6 +1,48 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.30b — DISPENSE 旋转补偿组新增角度补偿（链接全局变量）
+-------------------------------------------
+1. 需求
+   - DISPENSE 工具「Enable Rotation Comp」旋转补偿组新增「角度补偿」字段，
+     链接全局变量、实时更新链接数值，计算时使用「旋转角度 + 角度补偿」，
+     可持久化。
+   - 角度补偿仅由链接的全局变量提供；未链接变量时按 0 处理（无字面量回退）。
+   - 与「旋转角度」同一行显示，节省空间；不单独启用开关，旋转补偿组启用即生效。
+   - 用于工业现场在不修改配方基础旋转角度的前提下，通过全局变量动态微调
+     补偿角度，最终生效角度 = 旋转角度 + 角度补偿。
+
+2. 实现
+   - DispenseDetail（Model）：新增 AngleCompensationLinkedVar（string）属性，
+     随 DispenseDetail JSON 序列化自动持久化；不存字面量值。
+   - DispenseDetailViewModel：新增 AngleCompensationLinkedVar /
+     IsAngleCompensationLinked / AngleCompensationDisplayValue / UnlinkAngleCompensationCommand；
+     RefreshCalibrationDisplayValues 解析角度补偿（未链接时 DisplayValue=0），复用既有
+     GlobalVariablesChangedEvent → ReplaceAvailableGlobalVariables → RefreshCalibrationDisplayValues
+     实时刷新链路；OnViewRotatedCoordsAsync 预览改为有效角度之和。
+   - DispenseDetailView：旋转角度与角度补偿合并为同一 Grid 行（5 列），
+     复用 GlobalVariableLinkControl；查看旋转坐标按钮改为图标按钮节省空间；
+     角度补偿标签 ToolTip 提示计算规则。
+   - DispenseStepAction（执行路径）：新增 _angleCompensation 字段，步骤解析时
+     ResolveLinkedValue(0.0, LinkedVar) 读取（未链接返回 0）；ResolveMachineXYBreakdown
+     中 CadAlignTransformSnapshot.Transform 改用 _rotationAngle + _angleCompensation；
+     日志追加 Disp_Log_AngleCompensationApplied 显示角度补偿与有效角度。
+   - 多语言：DispenseDetail_AngleCompensation / DispenseDetail_AngleCompensationHint /
+     Disp_Log_AngleCompensationApplied / DD_Log_EffectiveRotationAngle（zh-CN / en-US）。
+
+3. 安全性
+   - 角度补偿仅在 EnableRotationComp == true 且 CAD 对齐快照有效时参与计算；
+     未链接变量时补偿为 0，行为等价于变更前；快照无效仍回退原始坐标。
+   - 安全逻辑（无仿射/无 MachineXY 抛 InvalidOperationException）保持不变。
+
+修改文件:
+  - Core/Models/DispenseDetail.cs
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - Module/Controls/StepDetails/DispenseDetailView.xaml
+  - StationTasks/Actions/DispenseStepAction.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.30a — 工序序列/Z-SCAN 保存路径同步配方池
 -------------------------------------------
 1. 问题

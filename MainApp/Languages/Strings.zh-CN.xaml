@@ -2331,6 +2331,8 @@
     <sys:String x:Key="DispenseDetail_XCompensation">X方向补偿</sys:String>
     <sys:String x:Key="DispenseDetail_YCompensation">Y方向补偿</sys:String>
     <sys:String x:Key="DispenseDetail_RotationAngle">旋转角度</sys:String>
+    <sys:String x:Key="DispenseDetail_AngleCompensation">角度补偿</sys:String>
+    <sys:String x:Key="DispenseDetail_AngleCompensationHint">计算时与旋转角度相加（有效角度=旋转角度+角度补偿）</sys:String>
     <sys:String x:Key="DispenseDetail_ViewRotatedCoords">查看旋转坐标</sys:String>
     <sys:String x:Key="DispenseDetail_RotatedCoordsTitle">旋转后坐标对照</sys:String>
     <sys:String x:Key="DispenseDetail_RotationCenter">回转中心</sys:String>
@@ -4097,6 +4099,7 @@
     <sys:String x:Key="DD_Log_RestoreCadSnapshotFailed">[DispenseDetail] 恢复 CAD 对齐变换快照失败: {0}</sys:String>
     <sys:String x:Key="DD_Log_RefreshGlobalVarsFailed">[DispenseDetail] 刷新全局变量显示值失败: {0}</sys:String>
     <sys:String x:Key="DD_Log_RotationAngleAndCenter">[DispenseDetail] 旋转角度={0:F3}°, 回转中心=({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="DD_Log_EffectiveRotationAngle">[DispenseDetail] 旋转角度={0:F3}°, 角度补偿={1:F3}°, 有效角度={2:F3}°</sys:String>
     <sys:String x:Key="DD_Log_SegmentNotFoundOrNoPoints">[DispenseDetail] 段 {0} 未找到或无点数据</sys:String>
     <sys:String x:Key="DD_Log_SourceAndRefCount">[DispenseDetail] 源段数={0}, SegmentRefs数={1}</sys:String>
     <sys:String x:Key="DD_Log_ViewRotatedCoordsClicked">[DispenseDetail] ViewRotatedCoords 按钮已点击，开始构建坐标对照</sys:String>
@@ -4131,6 +4134,7 @@
     <sys:String x:Key="Disp_Log_PausedWaiting">DISPENSE {0} 已暂停，等待恢复后继续当前动作</sys:String>
     <sys:String x:Key="Disp_Log_ResolveLinkedVarFailed">解析链接全局变量 '{0}' 失败: {1}</sys:String>
     <sys:String x:Key="Disp_Log_RotationCompEnabled">DISPENSE 步骤 [{0}] 旋转补偿已启用: 旋转角度={1:F3}°, 回转中心=({2:F3}, {3:F3})</sys:String>
+    <sys:String x:Key="Disp_Log_AngleCompensationApplied">DISPENSE 步骤 [{0}] 角度补偿={1:F3}°, 有效旋转角度={2:F3}°</sys:String>
     <sys:String x:Key="Disp_Log_RotationCompNoCadAlign">DISPENSE 步骤 [{0}] 旋转补偿已启用但 CAD 对齐变换不可用，回退使用原始坐标</sys:String>
     <sys:String x:Key="Disp_Log_SourceSegmentCount">DISPENSE 步骤 [{0}] 源轨迹段 {1} 条</sys:String>
     <sys:String x:Key="Disp_Log_StepCancelled">DISPENSE 步骤 [{0}] 已取消，已安全关胶</sys:String>

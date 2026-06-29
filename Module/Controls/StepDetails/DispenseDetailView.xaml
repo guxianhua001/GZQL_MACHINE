@@ -240,6 +240,8 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="{lang:Lang DispenseDetail_RotationAngle}"
                                                            VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -250,17 +252,26 @@
                                                     LinkedVariableName="{Binding RotationAngleLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
                                                     UnlinkCommand="{Binding UnlinkRotationAngleCommand}"
-                                                    ComboBoxWidth="180" />
-                                                <!-- 查看旋转后坐标弹窗按钮 -->
-                                                <Button Grid.Column="2" Command="{Binding ViewRotatedCoordsCommand}"
+                                                    ComboBoxWidth="150" />
+                                                <!-- 角度补偿：与旋转角度同一行显示，未链接变量时按 0 处理 -->
+                                                <TextBlock Grid.Column="2" Text="{lang:Lang DispenseDetail_AngleCompensation}"
+                                                           VerticalAlignment="Center" Margin="12,0,8,0"
+                                                           ToolTip="{lang:Lang DispenseDetail_AngleCompensationHint}"/>
+                                                <common:GlobalVariableLinkControl Grid.Column="3"
+                                                    DisplayValue="{Binding AngleCompensationDisplayValue, Mode=OneWay}"
+                                                    DisplayForeground="{DynamicResource DialogAccentBrush}"
+                                                    IsLinked="{Binding IsAngleCompensationLinked, Mode=OneWay}"
+                                                    LinkedVariableName="{Binding AngleCompensationLinkedVar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    LinkableGlobalVariables="{Binding AvailableGlobalVariables}"
+                                                    UnlinkCommand="{Binding UnlinkAngleCompensationCommand}"
+                                                    ComboBoxWidth="150" />
+                                                <!-- 查看旋转后坐标弹窗按钮（图标按钮，节省空间，ToolTip 说明用途） -->
+                                                <Button Grid.Column="4" Command="{Binding ViewRotatedCoordsCommand}"
                                                         Style="{StaticResource MaterialDesignFlatButton}"
-                                                        Padding="8,2" Margin="8,0,0,0" FontSize="11"
+                                                        Padding="6,2" Margin="8,0,0,0"
                                                         ToolTip="{lang:Lang DispenseDetail_ViewRotatedCoords}"
                                                         IsEnabled="{Binding IsTransformAvailable}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <materialDesign:PackIcon Kind="MapMarkerDistance" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                                        <TextBlock Text="{lang:Lang DispenseDetail_ViewRotatedCoords}" VerticalAlignment="Center"/>
-                                                    </StackPanel>
+                                                    <materialDesign:PackIcon Kind="MapMarkerDistance" Width="16" Height="16" VerticalAlignment="Center"/>
                                                 </Button>
                                             </Grid>
                                             <!-- Coord Transform 状态提示 -->

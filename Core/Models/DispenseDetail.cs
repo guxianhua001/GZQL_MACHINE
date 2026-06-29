@@ -185,6 +185,14 @@ namespace Core.Models
             set => SetProperty(ref _rotationAngleLinkedVar, value);
         }
 
+        private string _angleCompensationLinkedVar;
+        /// <summary>角度补偿链接的全局变量名（运行时从全局变量读取补偿角度；未链接时按 0 处理，与 RotationAngle 相加后参与坐标变换）</summary>
+        public string AngleCompensationLinkedVar
+        {
+            get => _angleCompensationLinkedVar;
+            set => SetProperty(ref _angleCompensationLinkedVar, value);
+        }
+
         #endregion
 
         #region 针头偏移补偿（旋转后坐标→实际点胶针头坐标）

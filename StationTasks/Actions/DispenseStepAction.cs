@@ -76,6 +76,9 @@ namespace StationTasks.Actions
         /// <summary>当前步骤解析后的产品旋转角度（度数）</summary>
         private double _rotationAngle;
 
+        /// <summary>当前步骤解析后的角度补偿（度数，与 _rotationAngle 相加后参与坐标变换）</summary>
+        private double _angleCompensation;
+
         /// <summary>CAD 对齐坐标变换快照（启用旋转补偿时使用）</summary>
         private CadAlignTransformSnapshot _cadAlignSnapshot;
 
@@ -196,6 +199,8 @@ namespace StationTasks.Actions
             if (_enableRotationComp)
             {
                 _rotationAngle = ResolveLinkedValue(detail.RotationAngle, detail.RotationAngleLinkedVar);
+                // 角度补偿：与旋转角度相加后参与坐标变换；未链接变量时按 0 处理（无字面量回退）
+                _angleCompensation = ResolveLinkedValue(0.0, detail.AngleCompensationLinkedVar);
                 _cadAlignSnapshot = _cadAlignTransformService?.CurrentSnapshot;
                 if (_cadAlignSnapshot == null || !_cadAlignSnapshot.IsValid)
                 {
@@ -209,6 +214,9 @@ namespace StationTasks.Actions
                     _logger.Info(string.Format(
                         _localization.GetResourceOrDefault("Disp_Log_RotationCompEnabled", "DISPENSE 步骤 [{0}] 旋转补偿已启用: 旋转角度={1:F3}°, 回转中心=({2:F3}, {3:F3})"),
                         step.Seq, _rotationAngle, _cadAlignSnapshot.Mox, _cadAlignSnapshot.Moy));
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_AngleCompensationApplied", "DISPENSE 步骤 [{0}] 角度补偿={1:F3}°, 有效旋转角度={2:F3}°"),
+                        step.Seq, _angleCompensation, _rotationAngle + _angleCompensation));
                 }
             }
 
@@ -993,10 +1001,11 @@ namespace StationTasks.Actions
             double tx, ty;
             string transformSource;
 
-            // 旋转补偿优先：使用 CAD 对齐变换快照按旋转角度换算坐标
+            // 旋转补偿优先：使用 CAD 对齐变换快照按有效旋转角度（旋转角度 + 角度补偿）换算坐标
             if (_enableRotationComp && _cadAlignSnapshot != null && _cadAlignSnapshot.IsValid)
             {
-                (tx, ty) = _cadAlignSnapshot.Transform(cadX, cadY, _rotationAngle);
+                double effectiveAngle = _rotationAngle + _angleCompensation;
+                (tx, ty) = _cadAlignSnapshot.Transform(cadX, cadY, effectiveAngle);
                 transformSource = "Rotation";
             }
             else if (_runtimeAffine != null)
