@@ -3857,6 +3857,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="PSE_Log_RunTaskStarted">[ProcessSequence] RUNTASK: start passive task '{0}', {1} steps total</sys:String>
     <sys:String x:Key="PSE_Log_RunTaskCompleted">[ProcessSequence] RUNTASK: passive task '{0}' execution completed</sys:String>
     <sys:String x:Key="PSE_Log_SequencePathSaved">[ProcessSequence] Saved process sequence path: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SequencePathSavedToRecipePool">[ProcessSequence] Saved process sequence path to recipe pool: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SaveSequencePathToRecipePoolFailed">[ProcessSequence] Failed to save process sequence path to recipe pool: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPathFromRecipePool">[ProcessSequence] Read last process sequence path from recipe pool: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPathFromRecipePoolFailed">[ProcessSequence] Failed to read process sequence path from recipe pool: {0}</sys:String>
     <sys:String x:Key="PSE_Log_SaveSequencePathFailed">[ProcessSequence] Failed to save process sequence path: {0}</sys:String>
     <sys:String x:Key="PSE_Log_ReadLastPath">[ProcessSequence] Read last process sequence path from config: {0}</sys:String>
     <sys:String x:Key="PSE_Log_LastPathNotFound">[ProcessSequence] Last process sequence path not found in config (key missing or non-string in ExtensionData)</sys:String>
@@ -5066,6 +5070,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZScan_Log_PropertyChangedHandlerException">Z-SCAN property changed event handler exception: {0}</sys:String>
     <sys:String x:Key="ZScan_Log_ReceivedPointCount">Z-SCAN received {0} measurement point data</sys:String>
     <sys:String x:Key="ZScan_Log_RecipePoolSwitched">Z-SCAN recipe pool switched, global variables reloaded (pool={0})</sys:String>
+    <sys:String x:Key="ZScan_Log_LoadConfigFromRecipePool">Z-SCAN loaded config from recipe pool record: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_SaveFilePathToRecipePool">Z-SCAN saved file path to recipe pool: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_SaveFilePathToRecipePoolFailed">Z-SCAN failed to save file path to recipe pool: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ReadFilePathFromRecipePoolFailed">Z-SCAN failed to read file path from recipe pool: {0}</sys:String>
     <sys:String x:Key="ZScan_Log_ReturnedToStandby">Z-SCAN returned to standby position</sys:String>
     <sys:String x:Key="ZScan_Log_ReturnToStandbyFailed">Z-SCAN failed to return to standby: {0}</sys:String>
     <sys:String x:Key="ZScan_Log_ReturnToStandbyInterrupted">Z-SCAN return to standby interrupted</sys:String>

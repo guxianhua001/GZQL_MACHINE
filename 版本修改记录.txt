@@ -1,6 +1,30 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.30a — 工序序列/Z-SCAN 保存路径同步配方池
+-------------------------------------------
+1. 问题
+   - ProcessSequenceEditor SaveToJsonCommand 保存后仅写入 appsettings，
+     未将最新文件路径同步到配方池 ExtensionData。
+   - Z-SCAN 保存后未将文件路径写入配方池，初始化时按全局最新文件加载，
+     切换配方池后可能加载错误配置。
+   - 配方池切换时 ProcessSequenceEditor 调用 LoadWorkOrderDataAsync，
+     因 _isInitialized 守卫导致不重新加载，偶发参数回退旧版本。
+
+2. 修复
+   - ProcessSequenceService：保存/加载时通过 ProcessSequence_CurrentFile
+     键同步文件路径到配方池；自动加载优先读配方池记录。
+   - ProcessSequenceEditorViewModel：配方池切换改为 ReloadWorkOrderDataAsync。
+   - ZScanDetailViewModel：保存/扫描后自动保存时写入 ZScan_CurrentFile；
+     初始化及配方池切换优先从配方池恢复配置。
+
+修改文件:
+  - Module/Services/ProcessSequenceService.cs
+  - Module/Controls/StepEditor/ProcessSequenceEditorViewModel.cs
+  - Module/Controls/ZScan/ZScanDetailViewModel.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
 v2026.06.29d — DISPENSE 线段导入表格段级 Z Comp（3D Camera）链接
 -------------------------------------------
 1. 需求

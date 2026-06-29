@@ -3857,6 +3857,10 @@
     <sys:String x:Key="PSE_Log_RunTaskStarted">[ProcessSequence] RUNTASK: 开始执行被动任务 '{0}'，共 {1} 步</sys:String>
     <sys:String x:Key="PSE_Log_RunTaskCompleted">[ProcessSequence] RUNTASK: 被动任务 '{0}' 执行完成</sys:String>
     <sys:String x:Key="PSE_Log_SequencePathSaved">[ProcessSequence] 已保存工序序列路径: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SequencePathSavedToRecipePool">[ProcessSequence] 已保存工序序列路径到配方池: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SaveSequencePathToRecipePoolFailed">[ProcessSequence] 保存工序序列路径到配方池失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPathFromRecipePool">[ProcessSequence] 从配方池读取上次工序序列路径: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPathFromRecipePoolFailed">[ProcessSequence] 从配方池读取工序序列路径失败: {0}</sys:String>
     <sys:String x:Key="PSE_Log_SaveSequencePathFailed">[ProcessSequence] 保存工序序列路径失败: {0}</sys:String>
     <sys:String x:Key="PSE_Log_ReadLastPath">[ProcessSequence] 从配置读取上次工序序列路径: {0}</sys:String>
     <sys:String x:Key="PSE_Log_LastPathNotFound">[ProcessSequence] 配置中未找到上次工序序列路径 (ExtensionData 中无键或类型非字符串)</sys:String>
@@ -5066,6 +5070,10 @@
     <sys:String x:Key="ZScan_Log_PropertyChangedHandlerException">Z-SCAN 属性变更事件处理异常: {0}</sys:String>
     <sys:String x:Key="ZScan_Log_ReceivedPointCount">Z-SCAN 接收到 {0} 个测量点数据</sys:String>
     <sys:String x:Key="ZScan_Log_RecipePoolSwitched">Z-SCAN 配方池切换，已重新加载全局变量（池={0}）</sys:String>
+    <sys:String x:Key="ZScan_Log_LoadConfigFromRecipePool">Z-SCAN 从配方池记录加载配置: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_SaveFilePathToRecipePool">Z-SCAN 已保存文件路径到配方池: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_SaveFilePathToRecipePoolFailed">Z-SCAN 保存文件路径到配方池失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ReadFilePathFromRecipePoolFailed">Z-SCAN 从配方池读取文件路径失败: {0}</sys:String>
     <sys:String x:Key="ZScan_Log_ReturnedToStandby">Z-SCAN 已返回待机位置</sys:String>
     <sys:String x:Key="ZScan_Log_ReturnToStandbyFailed">Z-SCAN 返回待机失败: {0}</sys:String>
     <sys:String x:Key="ZScan_Log_ReturnToStandbyInterrupted">Z-SCAN 返回待机被中断</sys:String>

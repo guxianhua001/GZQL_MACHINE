@@ -484,7 +484,7 @@ namespace Module.ViewModels
             AddTableCommand = new DelegateCommand(OnAddTable);
             DeleteTableCommand = new DelegateCommand(OnDeleteTable, () => SelectedTable != null).ObservesProperty(() => SelectedTable);
             SaveConfigCommand = new DelegateCommand(OnSaveConfig);
-            LoadConfigCommand = new DelegateCommand(() => OnLoadConfig());
+            LoadConfigCommand = new DelegateCommand(() => _ = LoadConfigAsync());
 
             UnlinkRowGlobalVariableCommand = new DelegateCommand(() =>
             {
@@ -605,7 +605,7 @@ namespace Module.ViewModels
 
             // Task 9: 注册 PointDetails 事件监听（自动计算引擎）
             SubscribePointDetailsEvents();
-            OnLoadConfig(showDialog: false);  // 初始化时自动加载最新文件，不弹对话框
+            _ = LoadConfigAsync(showDialog: false);  // 初始化时自动加载，优先从配方池恢复
             UpdateCalibrationDisplay();
         }
 
@@ -1955,6 +1955,9 @@ namespace Module.ViewModels
                 string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
                 CurrentFilePath = Path.GetFileName(savedPath);
 
+                // 保存最新文件路径到配方池（不写 appsettings）
+                _ = SaveCurrentFileToRecipePoolAsync(savedPath);
+
                 // 保存配置后同步已链接全局变量
                 _ = SyncLinkedGlobalVariablesAsync();
 
@@ -1971,21 +1974,18 @@ namespace Module.ViewModels
         /// </summary>
         private async Task AutoSaveZScanConfigAsync()
         {
-            await Task.Run(() =>
-            {
-                var configFile = BuildConfigFile();
-                string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
-                CurrentFilePath = Path.GetFileName(savedPath);
-                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AutoSavedAfterScan", "Z-SCAN 扫描后自动保存: {0}"), savedPath));
-            });
+            var configFile = BuildConfigFile();
+            string savedPath = await Task.Run(() => _zscanConfigService.SaveWithTimestamp(configFile));
+            CurrentFilePath = Path.GetFileName(savedPath);
+            await SaveCurrentFileToRecipePoolAsync(savedPath);
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AutoSavedAfterScan", "Z-SCAN 扫描后自动保存: {0}"), savedPath));
         }
 
         /// <summary>
-        /// 加载配置：打开文件选择对话框，默认指向 Config/ZScan 文件夹
-        /// 初始化时自动加载最新文件（不弹对话框）
+        /// 加载配置：弹出文件选择对话框或自动从配方池/最新文件恢复
         /// </summary>
         /// <param name="showDialog">是否弹出文件选择对话框（初始化时为 false）</param>
-        private void OnLoadConfig(bool showDialog = true)
+        private async Task LoadConfigAsync(bool showDialog = true)
         {
             try
             {
@@ -2012,16 +2012,23 @@ namespace Module.ViewModels
                 }
                 else
                 {
-                    // 初始化时自动查找最新文件
-                    var latestFile = FindLatestZScanFile();
-                    if (!string.IsNullOrEmpty(latestFile))
+                    // 初始化时优先从配方池恢复上次文件路径
+                    var poolPath = await GetLastFilePathFromRecipePoolAsync();
+                    if (!string.IsNullOrEmpty(poolPath))
                     {
-                        configFile = _zscanConfigService.LoadFromFile(latestFile);
-                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AutoLoadLatestConfig", "Z-SCAN 自动加载最新配置: {0}"), latestFile));
+                        configFile = _zscanConfigService.LoadFromFile(poolPath);
+                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_LoadConfigFromRecipePool",
+                            "Z-SCAN 从配方池记录加载配置: {0}"), poolPath));
                     }
                     else
                     {
-                        configFile = _zscanConfigService.LoadLastFromRecipePool();
+                        // 回退：查找 Config/ZScan 目录最新文件
+                        var latestFile = FindLatestZScanFile();
+                        if (!string.IsNullOrEmpty(latestFile))
+                        {
+                            configFile = _zscanConfigService.LoadFromFile(latestFile);
+                            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AutoLoadLatestConfig", "Z-SCAN 自动加载最新配置: {0}"), latestFile));
+                        }
                     }
                 }
 
@@ -2033,6 +2040,42 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ConfigLoadFailed", "Z-SCAN 配置加载失败: {0}"), ex.Message));
+            }
+        }
+
+        /// <summary> 从配方池 ExtensionData 读取当前 Z-SCAN 配置文件路径 </summary>
+        private async Task<string> GetLastFilePathFromRecipePoolAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                var extData = await _recipePoolService.GetExtensionDataAsync<ZScanFileRecord>(poolName, "ZScan_CurrentFile");
+                if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                    return extData.FilePath;
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ReadFilePathFromRecipePoolFailed",
+                    "Z-SCAN 从配方池读取文件路径失败: {0}"), ex.Message));
+            }
+            return null;
+        }
+
+        /// <summary> 将当前 Z-SCAN 配置文件路径保存到配方池 ExtensionData </summary>
+        private async Task SaveCurrentFileToRecipePoolAsync(string fullPath)
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                await _recipePoolService.SetExtensionDataAsync(poolName, "ZScan_CurrentFile",
+                    new ZScanFileRecord { FilePath = fullPath });
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_SaveFilePathToRecipePool",
+                    "Z-SCAN 已保存文件路径到配方池: {0}"), fullPath));
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_SaveFilePathToRecipePoolFailed",
+                    "Z-SCAN 保存文件路径到配方池失败: {0}"), ex.Message));
             }
         }
 
@@ -2283,13 +2326,20 @@ namespace Module.ViewModels
             _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_GlobalVarListSynced", "Z-SCAN 已同步全局变量列表（池={0}，共 {1} 项）"), poolId, AvailableGlobalVariables.Count));
         }
 
-        /// <summary> 配方池切换时重新加载全局变量 </summary>
+        /// <summary> 配方池切换时重新加载全局变量及 Z-SCAN 配置 </summary>
         private void OnRecipePoolChanged(string poolName)
         {
             LoadAvailableGlobalVariables();
+            _ = LoadConfigAsync(showDialog: false);
             _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_RecipePoolSwitched", "Z-SCAN 配方池切换，已重新加载全局变量（池={0}）"), poolName));
         }
 
         #endregion
+    }
+
+    /// <summary> 配方池中记录当前 Z-SCAN 配置文件路径的扩展数据 </summary>
+    public class ZScanFileRecord
+    {
+        public string FilePath { get; set; }
     }
 }

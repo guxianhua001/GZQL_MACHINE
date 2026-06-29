@@ -53,6 +53,8 @@ namespace Module.Services
         private const string ProcessSequenceDirectory = "Config\\ProcessSequences";
         private const string LastPathKey = "LastProcessSequencePath";
         private const string RecentPathsKey = "RecentProcessSequencePaths";
+        /// <summary> 配方池 ExtensionData 键：记录当前配方池关联的工序序列文件路径 </summary>
+        private const string ProcessSequenceCurrentFileKey = "ProcessSequence_CurrentFile";
         private const int MaxRecentFiles = 10;
 
         private ObservableCollection<Component> _components = new ObservableCollection<Component>();
@@ -314,6 +316,8 @@ namespace Module.Services
 
             SaveRecentFilesToSettings();
             RecordLastSequencePath(filePath);
+            // 同步最新文件路径到配方池（按配方池隔离，避免切换配方后加载错误序列）
+            _ = SaveCurrentFileToRecipePoolAsync(filePath);
         }
 
         /// <summary> 从 ExtensionData 读取 MRU 列表，过滤不存在的文件 </summary>
@@ -1563,6 +1567,59 @@ namespace Module.Services
         }
 
         /// <summary>
+        /// 将当前工序序列文件路径保存到配方池 ExtensionData（参考 CadAlignment/VisionCapture 模式）
+        /// </summary>
+        private async Task SaveCurrentFileToRecipePoolAsync(string filePath)
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                await _recipePoolService.SetExtensionDataAsync(poolName, ProcessSequenceCurrentFileKey,
+                    new ProcessSequenceFileRecord { FilePath = filePath });
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_SequencePathSavedToRecipePool",
+                        "[ProcessSequence] 已保存工序序列路径到配方池: {0}"),
+                    filePath));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_SaveSequencePathToRecipePoolFailed",
+                        "[ProcessSequence] 保存工序序列路径到配方池失败: {0}"),
+                    ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// 从配方池 ExtensionData 读取当前配方池关联的工序序列文件路径
+        /// </summary>
+        private async Task<string> GetLastSequencePathFromRecipePoolAsync()
+        {
+            try
+            {
+                var poolName = _recipePoolService.CurrentPoolName ?? "Default";
+                var extData = await _recipePoolService.GetExtensionDataAsync<ProcessSequenceFileRecord>(
+                    poolName, ProcessSequenceCurrentFileKey);
+                if (extData?.FilePath != null && File.Exists(extData.FilePath))
+                {
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("PSE_Log_ReadLastPathFromRecipePool",
+                            "[ProcessSequence] 从配方池读取上次工序序列路径: {0}"),
+                        extData.FilePath));
+                    return extData.FilePath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_ReadLastPathFromRecipePoolFailed",
+                        "[ProcessSequence] 从配方池读取工序序列路径失败: {0}"),
+                    ex.Message));
+            }
+            return null;
+        }
+
+        /// <summary>
         /// 将上次保存路径记录到 IAppSettingService.ExtensionData
         /// </summary>
         private void RecordLastSequencePath(string filePath)
@@ -1733,7 +1790,10 @@ namespace Module.Services
                 foreach (var p in recentList)
                     RecentFiles.Add(p);
 
-                var lastPath = GetLastSequencePath();
+                // 优先从配方池恢复（按配方隔离）；无记录时回退到 appsettings 全局路径
+                var lastPath = await GetLastSequencePathFromRecipePoolAsync();
+                if (string.IsNullOrEmpty(lastPath))
+                    lastPath = GetLastSequencePath();
                 if (!string.IsNullOrEmpty(lastPath) && File.Exists(lastPath))
                 {
                     _logger.Info(string.Format(
@@ -1904,5 +1964,11 @@ namespace Module.Services
         public List<ProcessMethod> Methods { get; set; }
         // 向后兼容：旧格式只有 Steps，加载时迁移为 Methods
         public List<ProcessStep> Steps { get; set; }
+    }
+
+    /// <summary> 配方池中记录当前工序序列文件路径的扩展数据 </summary>
+    public class ProcessSequenceFileRecord
+    {
+        public string FilePath { get; set; }
     }
 }

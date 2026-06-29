@@ -223,8 +223,9 @@ namespace Module.ViewModels
             {
                 _propertyChangedHandler = (s, e) =>
                 {
+                    // 配方池切换时必须 Reload（LoadWorkOrderDataAsync 有 _isInitialized 守卫会跳过）
                     if (e.PropertyName == nameof(IRecipePoolService.CurrentPoolName))
-                        System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () => await _sequenceService.LoadWorkOrderDataAsync());
+                        System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () => await _sequenceService.ReloadWorkOrderDataAsync());
                 };
                 _sequenceService.PropertyChanged += (s, e) =>
                 {
