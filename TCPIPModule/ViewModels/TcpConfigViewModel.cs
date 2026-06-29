@@ -220,7 +220,7 @@ namespace TCPIPModule.ViewModels
             };
             ConfigItems.Add(newItem);
             SelectedConfig = newItem;
-            _logger.Info($"添加TCP配置项: {newItem.Name}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_AddConfig", "添加TCP配置项: {0}"), newItem.Name));
         }
 
         /// <summary>
@@ -232,7 +232,7 @@ namespace TCPIPModule.ViewModels
             var name = SelectedConfig.Name;
             ConfigItems.Remove(SelectedConfig);
             SelectedConfig = ConfigItems.Count > 0 ? ConfigItems[0] : null;
-            _logger.Info($"删除TCP配置项: {name}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_DeleteConfig", "删除TCP配置项: {0}"), name));
         }
 
         /// <summary>
@@ -298,7 +298,7 @@ namespace TCPIPModule.ViewModels
                                 EncodingMethod = item.Encoding
                             };
                             _tcpEventService.StartServer(serverConfig, item.Name);
-                            _logger.Info($"TCP服务器 [{item.Name}] 已启动监听 {item.IP}:{item.Port}");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_ServerStarted", "TCP服务器 [{0}] 已启动监听 {1}:{2}"), item.Name, item.IP, item.Port));
                         }
                         else
                         {
@@ -310,12 +310,12 @@ namespace TCPIPModule.ViewModels
 
                 _appSettingService.Save();
                 TestResult = string.Format(_localization.GetResourceOrDefault("Tcp_SaveSuccess", "Saved successfully, {0} config(s)"), ConfigItems.Count);
-                _logger.Info($"TCP配置保存成功，共 {ConfigItems.Count} 项");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_SaveSuccess", "TCP配置保存成功，共 {0} 项"), ConfigItems.Count));
             }
             catch (System.Exception ex)
             {
                 TestResult = string.Format(_localization.GetResourceOrDefault("Tcp_SaveFailed", "Save failed: {0}"), ex.Message);
-                _logger.Error(ex, "保存TCP配置失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("TcpCfg_Log_SaveFailed", "保存TCP配置失败"));
             }
         }
 
@@ -343,12 +343,14 @@ namespace TCPIPModule.ViewModels
                 TestResult = sent
                     ? string.Format(_localization.GetResourceOrDefault("Tcp_TestSuccess", "Connection {0}:{1} successful, test command sent"), SelectedConfig.IP, SelectedConfig.Port)
                     : string.Format(_localization.GetResourceOrDefault("Tcp_TestFailed", "Connection {0}:{1} failed, client not connected or timeout"), SelectedConfig.IP, SelectedConfig.Port);
-                _logger.Info($"TCP连接测试{(sent ? "成功" : "失败")}: {SelectedConfig.Name} ({SelectedConfig.IP}:{SelectedConfig.Port})");
+                _logger.Info(sent
+                    ? string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_TestConnectionSuccess", "TCP连接测试成功: {0} ({1}:{2})"), SelectedConfig.Name, SelectedConfig.IP, SelectedConfig.Port)
+                    : string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_TestConnectionFailed", "TCP连接测试失败: {0} ({1}:{2})"), SelectedConfig.Name, SelectedConfig.IP, SelectedConfig.Port));
             }
             catch (System.Exception ex)
             {
                 TestResult = string.Format(_localization.GetResourceOrDefault("Tcp_ConnectionFailed", "Connection failed: {0}"), ex.Message);
-                _logger.Error(ex, $"TCP连接测试失败: {SelectedConfig.Name} ({SelectedConfig.IP}:{SelectedConfig.Port})");
+                _logger.Error(ex, string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_TestConnectionFailed", "TCP连接测试失败: {0} ({1}:{2})"), SelectedConfig.Name, SelectedConfig.IP, SelectedConfig.Port));
             }
             finally
             {
@@ -416,11 +418,11 @@ namespace TCPIPModule.ViewModels
                     });
                 }
                 SelectedConfig = ConfigItems.Count > 0 ? ConfigItems[0] : null;
-                _logger.Info($"加载TCP配置成功，共 {ConfigItems.Count} 项");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpCfg_Log_LoadSuccess", "加载TCP配置成功，共 {0} 项"), ConfigItems.Count));
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, "加载TCP配置失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("TcpCfg_Log_LoadFailed", "加载TCP配置失败"));
             }
         }
     }

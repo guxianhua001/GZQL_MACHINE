@@ -1,4 +1,4 @@
-﻿using Core.Utilities;
+using Core.Utilities;
 using Core.Abstraction;
 using MotionControl.Events;
 using MotionControl.Interfaces;
@@ -16,17 +16,20 @@ namespace MotionControl.Services
         private CancellationTokenSource _cts;
         private readonly IEventAggregator _ea;
         private readonly ILoggerService _logger;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
         /// <summary>
         /// 通过工站注册表获取所有ITask实例，注册表是活集合，不受模块加载时序影响
         /// </summary>
         private IEnumerable<ITask> Tasks => _stationRegistry.GetAllStations().OfType<ITask>();
 
-        public StationTaskManager(IStationRegistry stationRegistry, IEventAggregator ea, ILoggerService logger)
+        public StationTaskManager(IStationRegistry stationRegistry, IEventAggregator ea, ILoggerService logger, ILocalizationService localization)
         {
             _stationRegistry = stationRegistry;
             _ea = ea;
             _logger = logger;
+            _localization = localization;
             // 与硬件急停、UI 急停统一：EmergencyStopAllEvent 触发所有工站任务急停
             _ea.GetEvent<EmergencyStopAllEvent>().Subscribe(OnEmergencyStopAll, ThreadOption.BackgroundThread, false);
         }
@@ -80,7 +83,7 @@ namespace MotionControl.Services
             }
             catch(TaskCanceledException ex)
             {
-                _logger.Error($"部分工站回零失败！+ {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("STMgr_Log_HomeAllPartialFailed", "部分工站回零失败！+ {0}"), ex.Message));
             }
             // 3. 检查所有 Task 的最终状态，只有全部是 Idle 才算成功
             bool allIdle = Tasks.All(t => t.State == TaskState.Idle);

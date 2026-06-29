@@ -19,6 +19,8 @@ namespace MotionControl.Services
         private readonly IAxisConfigurationService _axisConfig;
         private readonly ILoggerService _logger;
         private readonly IMotionInterlockService _motionInterlock;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
         private const double DefaultVelocity = 10.0;
 
@@ -28,7 +30,8 @@ namespace MotionControl.Services
             ISystemStateService systemState,
             IAxisConfigurationService axisConfig,
             ILoggerService logger,
-            IMotionInterlockService motionInterlock)
+            IMotionInterlockService motionInterlock,
+            ILocalizationService localization)
         {
             _stationRegistry = stationRegistry;
             _motion = motion;
@@ -36,6 +39,7 @@ namespace MotionControl.Services
             _axisConfig = axisConfig;
             _logger = logger;
             _motionInterlock = motionInterlock;
+            _localization = localization;
         }
 
         public async Task<Dictionary<string, double>> TeachAsync(string stationIdentifier)
@@ -56,7 +60,7 @@ namespace MotionControl.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"Teach: 读取轴 {axis.Name}(ID={axisId}) 位置失败: {ex.Message}");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PMC_Log_TeachReadPositionFailed", "Teach: 读取轴 {0}(ID={1}) 位置失败: {2}"), axis.Name, axisId, ex.Message));
                     }
                 }
             }
@@ -99,7 +103,7 @@ namespace MotionControl.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"Stop: 停止轴 {axis.Name}(ID={axisId}) 失败: {ex.Message}");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PMC_Log_StopAxisFailed", "Stop: 停止轴 {0}(ID={1}) 失败: {2}"), axis.Name, axisId, ex.Message));
                     }
                 }
             }

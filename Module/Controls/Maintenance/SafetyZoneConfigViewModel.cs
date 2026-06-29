@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Events;
 using MotionControl.Interfaces;
@@ -23,6 +24,7 @@ namespace Module.ViewModels
         private readonly ISafetyZoneConfigLoader _configLoader;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly IDialogService _dialogService;
 
         /// <summary>定时刷新间隔（毫秒）</summary>
@@ -237,12 +239,14 @@ namespace Module.ViewModels
             ISafetyZoneConfigLoader configLoader,
             IEventAggregator eventAggregator,
             ILoggerService logger,
+            ILocalizationService localization,
             IDialogService dialogService)
         {
             _safetyZoneMonitor = safetyZoneMonitor ?? throw new ArgumentNullException(nameof(safetyZoneMonitor));
             _configLoader = configLoader ?? throw new ArgumentNullException(nameof(configLoader));
             _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _localization = localization;
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
             SaveCommand = new DelegateCommand(ExecuteSave);
@@ -272,7 +276,7 @@ namespace Module.ViewModels
             if (e == null) return;
             AlarmMessage = $"{e.Timestamp:HH:mm:ss} | {e.Reason}";
             IsAlarmVisible = Visibility.Visible;
-            _logger.Warn($"[安全区域] 违规 | 轴:{e.AxisName}(#{e.AxisId}) | {e.Reason}");
+            _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZCfgVM_Log_Violation", "[安全区域] 违规 | 轴:{0}(#{1}) | {2}"), e.AxisName, e.AxisId, e.Reason));
         }
 
         private void RefreshStatus()
@@ -307,7 +311,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[安全区域] 刷新状态失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZCfgVM_Log_RefreshStatusFailed", "[安全区域] 刷新状态失败: {0}"), ex.Message));
             }
         }
 
@@ -321,7 +325,7 @@ namespace Module.ViewModels
 
                 _configLoader.Save(_config.Clone());
                 SyncConfigToMonitor();
-                _logger.Info("[安全区域] 配置已保存");
+                _logger.Info(_localization.GetResourceOrDefault("SZCfgVM_Log_ConfigSaved", "[安全区域] 配置已保存"));
                 _dialogService.ShowDialog("NotificationDialog", new DialogParameters
                 {
                     { "title", "SafetyZone_SaveSuccess" },
@@ -332,7 +336,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "[安全区域] 保存配置失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("SZCfgVM_Log_SaveConfigFailed", "[安全区域] 保存配置失败"));
                 _dialogService.ShowDialog("NotificationDialog", new DialogParameters
                 {
                     { "title", "Error" },
@@ -432,7 +436,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[安全区域] 同步配置失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZCfgVM_Log_SyncConfigFailed", "[安全区域] 同步配置失败: {0}"), ex.Message));
             }
         }
 

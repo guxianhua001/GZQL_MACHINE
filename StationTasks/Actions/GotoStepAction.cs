@@ -23,6 +23,7 @@ namespace StationTasks.Actions
         private readonly ILoggerService _logger;
         private readonly IStationRegistry _stationRegistry;
         private readonly IPositionProvider _positionProvider;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.GOTO;
 
@@ -30,12 +31,14 @@ namespace StationTasks.Actions
             IRecipePoolService recipePoolService,
             ILoggerService logger,
             IStationRegistry stationRegistry,
-            IPositionProvider positionProvider)
+            IPositionProvider positionProvider,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _stationRegistry = stationRegistry;
             _positionProvider = positionProvider;
+            _localization = localization;
         }
 
         /// <summary>
@@ -46,7 +49,9 @@ namespace StationTasks.Actions
         {
             if (step.SubMoves == null || step.SubMoves.Count == 0)
             {
-                _logger.Warn($"GOTO 步骤 [{step.Seq}] 没有 SubMove，跳过执行");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Goto_Log_NoSubMove", "GOTO 步骤 [{0}] 没有 SubMove，跳过执行"),
+                    step.Seq));
                 return;
             }
 
@@ -77,7 +82,9 @@ namespace StationTasks.Actions
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"SubMove [{subMove.SubSeq}] 刷新全局变量失败: {ex.Message}");
+                        _logger.Warn(string.Format(
+                            _localization.GetResourceOrDefault("Goto_Log_RefreshGlobalVarsFailed", "SubMove [{0}] 刷新全局变量失败: {1}"),
+                            subMove.SubSeq, ex.Message));
                     }
                 }
 
@@ -93,14 +100,18 @@ namespace StationTasks.Actions
                     bool isHomed = await targetTask.IsAxisHomedAsync(axisId);
                     if (isHomed)
                     {
-                        _logger.Info($"HOME SubMove [{subMove.SubSeq}]: 轴 {axisName}({axisId}) 已回零，跳过");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Goto_Log_HomeAlreadyHomed", "HOME SubMove [{0}]: 轴 {1}({2}) 已回零，跳过"),
+                            subMove.SubSeq, axisName, axisId));
                         continue;
                     }
 
                     if (subMove.HomeMode == 0)
                     {
                         // HomeMode=0: 使用控制卡已配置的回零参数（HomeAxisAsync）
-                        _logger.Info($"HOME SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}), 使用卡内配置回零");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Goto_Log_HomeCardConfig", "HOME SubMove [{0}]: 工站={1}, 轴{2}({3}), 使用卡内配置回零"),
+                            subMove.SubSeq, targetTask.StationIdentifierValue, axisId, axisName));
                         string moveLabel = $"[{step.Seq}] {axisName} → Home (card config)";
                         targetTask.PublishStepStatus(moveLabel, overrideState);
                         await targetTask.ExecuteHomeAxisAsync(axisId);
@@ -108,7 +119,9 @@ namespace StationTasks.Actions
                     else
                     {
                         // HomeMode!=0: 使用自定义回零模式/速度参数（HomeAsync）
-                        _logger.Info($"HOME SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}), 模式={subMove.HomeMode}, 低速={subMove.HomeMinVel}, 高速={subMove.HomeMaxVel}");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Goto_Log_HomeCustom", "HOME SubMove [{0}]: 工站={1}, 轴{2}({3}), 模式={4}, 低速={5}, 高速={6}"),
+                            subMove.SubSeq, targetTask.StationIdentifierValue, axisId, axisName, subMove.HomeMode, subMove.HomeMinVel, subMove.HomeMaxVel));
                         string moveLabel = $"[{step.Seq}] {axisName} → Home (mode={subMove.HomeMode}, vel={subMove.HomeMinVel}/{subMove.HomeMaxVel})";
                         targetTask.PublishStepStatus(moveLabel, overrideState);
                         await targetTask.ExecuteHomeAsync(axisId, subMove.HomeMode, subMove.HomeMinVel, subMove.HomeMaxVel);
@@ -123,21 +136,27 @@ namespace StationTasks.Actions
                     if (subMove.Offset != 0)
                     {
                         totalOffset += subMove.Offset;
-                        _logger.Info($"SubMove [{subMove.SubSeq}] 固定偏移 = {subMove.Offset}");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Goto_Log_FixedOffset", "SubMove [{0}] 固定偏移 = {1}"),
+                            subMove.SubSeq, subMove.Offset));
                     }
 
                     if (!string.IsNullOrEmpty(subMove.OffsetVariableName) && globalVars != null)
                     {
                         double varOffset = ResolveVariableOffset(subMove.OffsetVariableName, globalVars);
                         totalOffset += varOffset;
-                        _logger.Info($"SubMove [{subMove.SubSeq}] 偏移变量 '{subMove.OffsetVariableName}' = {varOffset}");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Goto_Log_VariableOffset", "SubMove [{0}] 偏移变量 '{1}' = {2}"),
+                            subMove.SubSeq, subMove.OffsetVariableName, varOffset));
                     }
 
                     double speed = subMove.Speed > 0 ? subMove.Speed : 10.0;
                     double posValue = await targetTask.GetPositionValueAsync(subMove.PositionName, axisName);
                     double targetPos = posValue + totalOffset;
                     // 记录配方位置值、偏移量和最终目标位置
-                    _logger.Info($"GOTO SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}) -> 位置名'{subMove.PositionName}'={posValue:F3}, 偏移{totalOffset:F3}, 目标位置={targetPos:F3}, 速度{speed}");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Goto_Log_GotoMove", "GOTO SubMove [{0}]: 工站={1}, 轴{2}({3}) -> 位置名'{4}'={5:F3}, 偏移{6:F3}, 目标位置={7:F3}, 速度{8}"),
+                        subMove.SubSeq, targetTask.StationIdentifierValue, axisId, axisName, subMove.PositionName, posValue, totalOffset, targetPos, speed));
 
                     string moveLabel = $"[{step.Seq}] {axisName} → {subMove.PositionName} ({posValue:F3})+{totalOffset:F3}={targetPos:F3}";
                     targetTask.PublishStepStatus(moveLabel, overrideState);
@@ -162,7 +181,9 @@ namespace StationTasks.Actions
             if (station is StationTaskBase task)
                 return task;
 
-            _logger.Warn($"SubMove 指定的工站 '{stationId}' 未找到，使用默认工站 '{defaultTask.TaskName}'");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Goto_Log_StationNotFound", "SubMove 指定的工站 '{0}' 未找到，使用默认工站 '{1}'"),
+                stationId, defaultTask.TaskName));
             return defaultTask;
         }
 
@@ -186,7 +207,9 @@ namespace StationTasks.Actions
                 }
             }
 
-            _logger.Warn($"SubMove [{subMove.SubSeq}] 无法解析轴ID，AxisId={subMove.AxisId}, Axis={subMove.Axis}，使用原始值");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Goto_Log_AxisIdUnresolved", "SubMove [{0}] 无法解析轴ID，AxisId={1}, Axis={2}，使用原始值"),
+                subMove.SubSeq, subMove.AxisId, subMove.Axis));
             return subMove.AxisId;
         }
 
@@ -198,7 +221,9 @@ namespace StationTasks.Actions
             var gv = globalVars.FirstOrDefault(v => v.Name == variableName);
             if (gv == null)
             {
-                _logger.Warn($"全局变量 '{variableName}' 未找到，偏移量按 0 处理");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Goto_Log_VariableNotFound", "全局变量 '{0}' 未找到，偏移量按 0 处理"),
+                    variableName));
                 return 0;
             }
 
@@ -207,7 +232,9 @@ namespace StationTasks.Actions
                 return result;
             }
 
-            _logger.Warn($"全局变量 '{variableName}' 的值 '{gv.Value}' 无法解析为数值，偏移量按 0 处理");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Goto_Log_VariableParseFailed", "全局变量 '{0}' 的值 '{1}' 无法解析为数值，偏移量按 0 处理"),
+                variableName, gv.Value));
             return 0;
         }
     }

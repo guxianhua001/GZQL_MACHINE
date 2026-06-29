@@ -21,6 +21,14 @@ namespace Module.Services
         private readonly IPositionMotionController _motionController;
         private readonly ITCPEventService _tcpEventService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         /// <summary>自动标定取消令牌源</summary>
         private CancellationTokenSource? _autoCalibCts;
@@ -52,11 +60,13 @@ namespace Module.Services
         public NPointCalibrationService(
             IPositionMotionController motionController,
             ITCPEventService tcpEventService,
-            ILoggerService logger)
+            ILoggerService logger,
+            ILocalizationService localization)
         {
             _motionController = motionController;
             _tcpEventService = tcpEventService;
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>
@@ -109,7 +119,7 @@ namespace Module.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.Warn($"N点标定: 发送触发命令失败 - {ex.Message}");
+                            _logger.Warn(L("NPC_Log_SendTriggerCommandFailed", "N点标定: 发送触发命令失败 - {0}", ex.Message));
                         }
                     }
 
@@ -135,7 +145,7 @@ namespace Module.Services
                             }
                             else
                             {
-                                _logger.Warn($"N点标定: 点位 {point.Name} 等待视觉数据超时");
+                                _logger.Warn(L("NPC_Log_VisionDataTimeout", "N点标定: 点位 {0} 等待视觉数据超时", point.Name));
                             }
                         }
                         finally
@@ -165,12 +175,12 @@ namespace Module.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("N点标定: 自动标定已取消");
+                _logger.Info(L("NPC_Log_AutoCalibrationCanceled", "N点标定: 自动标定已取消"));
                 CalibrationError?.Invoke("自动标定已取消");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 自动标定异常");
+                _logger.Error(ex, L("NPC_Log_AutoCalibrationException", "N点标定: 自动标定异常"));
                 CalibrationError?.Invoke($"自动标定异常: {ex.Message}");
             }
             finally
@@ -244,12 +254,12 @@ namespace Module.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"N点标定: 解析视觉数据失败 - {ex.Message}, 原始数据: {message}");
+                    _logger.Warn(L("NPC_Log_ParseVisionDataFailed", "N点标定: 解析视觉数据失败 - {0}, 原始数据: {1}", ex.Message, message));
                 }
             };
 
             _tcpEventService.CameraMessageReceived += _cameraDataHandler;
-            _logger.Info($"N点标定: 已订阅TCP视觉数据，连接名: {connectionName}");
+            _logger.Info(L("NPC_Log_SubscribedTcpVisionData", "N点标定: 已订阅TCP视觉数据，连接名: {0}", connectionName));
         }
 
         /// <summary>取消订阅TCP视觉数据</summary>
@@ -260,7 +270,7 @@ namespace Module.Services
                 _tcpEventService.CameraMessageReceived -= _cameraDataHandler;
                 _cameraDataHandler = null;
                 _subscribedConnectionName = null;
-                _logger.Info("N点标定: 已取消订阅TCP视觉数据");
+                _logger.Info(L("NPC_Log_UnsubscribedTcpVisionData", "N点标定: 已取消订阅TCP视觉数据"));
             }
         }
 

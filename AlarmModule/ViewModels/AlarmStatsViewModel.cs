@@ -75,7 +75,7 @@ namespace AlarmModule.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"刷新报警统计失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmStats_Log_RefreshFailed", "刷新报警统计失败：{0}"), ex.Message));
             }
         }
 

@@ -31,7 +31,7 @@ namespace StationTasks.Tasks
             // 设置取消令牌，支持初始化过程中的停止/急停
             _cts = new CancellationTokenSource();
             State = TaskState.Homing;
-            Logger.Info($"[{TaskName}] 开始上下料系统初始化...");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_InitStart", "[{0}] 开始上下料系统初始化..."), TaskName));
             PublishTaskStatusChanged(L("Init_Initializing"), State);
             PublishInitProgress(0, L("Init_Loading_Start"));
 
@@ -45,18 +45,18 @@ namespace StationTasks.Tasks
                 ResetInitSignals();
 
                 // ===== 等待所有Z轴归零完成（点胶Z轴 + 组装Z轴） =====
-                Logger.Info($"[{TaskName}] 等待所有Z轴归零完成...");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_WaitZAxesHoming", "[{0}] 等待所有Z轴归零完成..."), TaskName));
                 PublishTaskStatusChanged(L("Init_Loading_WaitZ"), State);
                 PublishInitProgress(10, L("Init_Loading_WaitZ"));
 
                 // 等待点胶Z轴完成
                 await WaitForSignalAsync("LoadingStation", "DispensingZComplete", true, SignalWaitTimeoutMs);
-                Logger.Info($"[{TaskName}] 点胶Z轴已完成。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_DispensingZDone", "[{0}] 点胶Z轴已完成。"), TaskName));
                 PublishInitProgress(30, L("Init_Loading_DispensingZDone"));
 
                 // 等待组装Z轴完成
                 await WaitForSignalAsync("LoadingStation", "AssemblyZComplete", true, SignalWaitTimeoutMs);
-                Logger.Info($"[{TaskName}] 组装Z轴已完成，开始上下料轴回零。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_AssemblyZDoneStartHoming", "[{0}] 组装Z轴已完成，开始上下料轴回零。"), TaskName));
                 PublishInitProgress(50, L("Init_Loading_AssemblyZDone"));
 
                 // ===== 阶段2：上下料轴（Y, Rz, Rx）回零 =====
@@ -72,7 +72,7 @@ namespace StationTasks.Tasks
                     CurrentToken.ThrowIfCancellationRequested();
                     if (axisId < 0) continue;
 
-                    Logger.Info($"[{TaskName}] {axisName} 轴回零中...");
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
                     PublishInitProgress(55 + axisIndex * 8, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
@@ -93,14 +93,14 @@ namespace StationTasks.Tasks
                 }
 
                 State = TaskState.Idle;
-                Logger.Info($"[{TaskName}] 上下料系统初始化完成，进入待机。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_InitCompleteStandby", "[{0}] 上下料系统初始化完成，进入待机。"), TaskName));
                 PublishTaskStatusChanged(L("Init_Idle"), State);
                 PublishInitProgress(100, L("Init_Loading_Complete"), true);
             }
             catch (System.OperationCanceledException)
             {
                 State = TaskState.Error;
-                Logger.Warn($"[{TaskName}] 上下料系统初始化被取消。");
+                Logger.Warn(string.Format(_localizationService.GetResourceOrDefault("LT_Log_InitCanceled", "[{0}] 上下料系统初始化被取消。"), TaskName));
                 PublishTaskStatusChanged(L("Init_Canceled"), State);
                 PublishInitProgress(0, L("Init_Canceled"), true, true);
                 throw;
@@ -108,7 +108,7 @@ namespace StationTasks.Tasks
             catch (RecoverableException ex)
             {
                 State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 上下料系统初始化失败（等待信号超时）: {ex.Message}");
+                Logger.Error(string.Format(_localizationService.GetResourceOrDefault("LT_Log_InitFailedSignalTimeout", "[{0}] 上下料系统初始化失败（等待信号超时）: {1}"), TaskName, ex.Message));
                 PublishTaskStatusChanged(L("Init_Failed"), State);
                 PublishInitProgress(0, L("Init_Failed"), true, true);
                 throw;
@@ -116,7 +116,7 @@ namespace StationTasks.Tasks
             catch (System.Exception ex)
             {
                 State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 上下料系统初始化失败: {ex.Message}");
+                Logger.Error(string.Format(_localizationService.GetResourceOrDefault("LT_Log_InitFailed", "[{0}] 上下料系统初始化失败: {1}"), TaskName, ex.Message));
                 PublishTaskStatusChanged(L("Init_Failed"), State);
                 PublishInitProgress(0, L("Init_Failed"), true, true);
                 throw;

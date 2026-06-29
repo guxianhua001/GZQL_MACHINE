@@ -407,7 +407,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 移动到基准位失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_MoveToRefFailed", "载台校准: 移动到基准位失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -424,7 +424,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 示教基准位失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_TeachRefFailed", "载台校准: 示教基准位失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -443,7 +443,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 移动到拍照位1失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_MoveToPhoto1Failed", "载台校准: 移动到拍照位1失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -460,7 +460,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 示教拍照位1失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_TeachPhoto1Failed", "载台校准: 示教拍照位1失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -491,7 +491,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 拍照位1拍照失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_Capture1Failed", "载台校准: 拍照位1拍照失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -510,7 +510,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 移动到拍照位2失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_MoveToPhoto2Failed", "载台校准: 移动到拍照位2失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -527,7 +527,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 示教拍照位2失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_TeachPhoto2Failed", "载台校准: 示教拍照位2失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -561,7 +561,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 拍照位2拍照失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_Capture2Failed", "载台校准: 拍照位2拍照失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -607,7 +607,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: Halcon计算失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_HalconCalcFailed", "载台校准: Halcon计算失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -679,7 +679,7 @@ namespace Module.ViewModels
 
             // 订阅相机消息事件
             _calibService.SubscribeCameraData(SelectedTcpConnection, OnAutoDataReceived);
-            _logger?.Info($"载台校准: 已订阅相机自动接收，连接={SelectedTcpConnection}，目标=拍照位{_currentAutoReceiveIndex}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_SubscribedAutoReceive", "载台校准: 已订阅相机自动接收，连接={0}，目标=拍照位{1}"), SelectedTcpConnection, _currentAutoReceiveIndex));
         }
 
         /// <summary>取消相机自动接收订阅</summary>
@@ -688,11 +688,11 @@ namespace Module.ViewModels
             try
             {
                 _calibService?.UnsubscribeCameraData();
-                _logger?.Info("载台校准: 已取消相机自动接收订阅");
+                _logger?.Info(_localization.GetResourceOrDefault("ProdCal_Log_UnsubscribedAutoReceive", "载台校准: 已取消相机自动接收订阅"));
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"载台校准: 取消自动接收订阅失败 - {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_UnsubscribeFailed", "载台校准: 取消自动接收订阅失败 - {0}"), ex.Message));
             }
         }
 
@@ -745,7 +745,7 @@ namespace Module.ViewModels
             if (index != 1 && index != 2) return;
             _currentAutoReceiveIndex = index;
             _calibService?.SetAutoReceiveFeatureIndex(index);
-            _logger?.Info($"载台校准: 自动接收目标已设置为拍照位{index}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_AutoReceiveTargetSet", "载台校准: 自动接收目标已设置为拍照位{0}"), index));
         }
 
         #endregion
@@ -764,7 +764,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 旋转校正失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_RotateFailed", "载台校准: 旋转校正失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -801,7 +801,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 保存失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_SaveFailed", "载台校准: 保存失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -820,7 +820,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 加载失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_LoadFailed", "载台校准: 加载失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -839,7 +839,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 导入失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_ImportFailed", "载台校准: 导入失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -867,7 +867,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "载台校准: 导出失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("ProdCal_Log_ExportFailed", "载台校准: 导出失败"));
                 UpdateStatus($"{L("ProductCalib_Error", "错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -903,7 +903,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"载台校准: 自动加载失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_AutoLoadFailed", "载台校准: 自动加载失败 - {0}"), ex.Message));
             }
         }
 
@@ -1002,7 +1002,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"载台校准: 加载TCP连接列表失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_LoadTcpListFailed", "载台校准: 加载TCP连接列表失败 - {0}"), ex.Message));
             }
         }
 
@@ -1021,7 +1021,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"载台校准: 加载全局变量失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_LoadGlobalVarsFailed", "载台校准: 加载全局变量失败 - {0}"), ex.Message));
             }
         }
 
@@ -1053,7 +1053,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"载台校准: 写入全局变量失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_WriteGlobalVarsFailed", "载台校准: 写入全局变量失败 - {0}"), ex.Message));
             }
         }
 
@@ -1103,11 +1103,11 @@ namespace Module.ViewModels
             try
             {
                 UnsubscribeAutoReceive();
-                _logger?.Info("载台校准: ViewModel已销毁，资源已释放");
+                _logger?.Info(_localization.GetResourceOrDefault("ProdCal_Log_Destroyed", "载台校准: ViewModel已销毁，资源已释放"));
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"载台校准: Destroy失败 - {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ProdCal_Log_DestroyFailed", "载台校准: Destroy失败 - {0}"), ex.Message));
             }
         }
 

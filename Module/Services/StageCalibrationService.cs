@@ -22,8 +22,16 @@ namespace Module.Services
         private readonly ITCPEventService _tcpEventService;
         private readonly ILoggerService _logger;
         private readonly IZScanConfigService _configService;
+        private readonly ILocalizationService _localization;
         private readonly string _configDirectory;
         private readonly JsonSerializerSettings _serializerSettings;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         private StageCalibrationData _currentData = new StageCalibrationData();
 
@@ -44,13 +52,15 @@ namespace Module.Services
             IPositionMotionController motionController,
             ITCPEventService tcpEventService,
             ILoggerService logger,
-            IZScanConfigService configService)
+            IZScanConfigService configService,
+            ILocalizationService localization)
         {
             _controller = controller;
             _motionController = motionController;
             _tcpEventService = tcpEventService;
             _logger = logger;
             _configService = configService;
+            _localization = localization;
             _configDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "StageCalibration");
             _serializerSettings = new JsonSerializerSettings
             {
@@ -183,14 +193,14 @@ namespace Module.Services
             if (!_motionController.CanExecuteMotion(StationIdentifier))
                 throw new InvalidOperationException("运动控制不可用，请检查安全互锁状态");
 
-            _logger?.Info($"StageCalibration: 移动载台到基准位 Rx:{rx:F3}, Rz:{rz:F3}");
+            _logger?.Info(L("StageCal_Log_MoveToReferencePosition", "StageCalibration: 移动载台到基准位 Rx:{0:F3}, Rz:{1:F3}", rx, rz));
 
             var targetPositions = new Dictionary<string, double>();
             if (rx != 0) targetPositions["Rx"] = rx;
             if (rz != 0) targetPositions["Rz"] = rz;
 
             await _motionController.GotoAsync(StationIdentifier, targetPositions, 30.0);
-            _logger?.Info("StageCalibration: 载台已到达基准位");
+            _logger?.Info(L("StageCal_Log_ReferencePositionReached", "StageCalibration: 载台已到达基准位"));
         }
 
         /// <summary>移动相机(Dx/Dy/Dz轴)到指定拍照位</summary>
@@ -199,7 +209,7 @@ namespace Module.Services
             if (!_motionController.CanExecuteMotion(StationIdentifier))
                 throw new InvalidOperationException("运动控制不可用，请检查安全互锁状态");
 
-            _logger?.Info($"StageCalibration: 移动相机到拍照位 Dx:{dx:F3}, Dy:{dy:F3}, Dz:{dz:F3}");
+            _logger?.Info(L("StageCal_Log_MoveCameraToPhotoPosition", "StageCalibration: 移动相机到拍照位 Dx:{0:F3}, Dy:{1:F3}, Dz:{2:F3}", dx, dy, dz));
 
             var targetPositions = new Dictionary<string, double>();
             if (dx != 0) targetPositions["Dx"] = dx;
@@ -207,13 +217,13 @@ namespace Module.Services
             if (dz != 0) targetPositions["Dz"] = dz;
 
             await _motionController.GotoAsync(StationIdentifier, targetPositions, 50.0);
-            _logger?.Info("StageCalibration: 相机已到达拍照位");
+            _logger?.Info(L("StageCal_Log_CameraPhotoPositionReached", "StageCalibration: 相机已到达拍照位"));
         }
 
         /// <summary>触发视觉拍照并返回结果（通过TCP通讯）</summary>
         public async Task<FiducialCaptureResult> TriggerCaptureAsync(string tcpConnectionName, string triggerCommand, int timeoutMs)
         {
-            _logger?.Info($"StageCalibration: 触发视觉拍照，连接:{tcpConnectionName}, 命令:{triggerCommand}");
+            _logger?.Info(L("StageCal_Log_TriggerCapture", "StageCalibration: 触发视觉拍照，连接:{0}, 命令:{1}", tcpConnectionName, triggerCommand));
 
             try
             {
@@ -241,7 +251,7 @@ namespace Module.Services
             }
             catch (TimeoutException)
             {
-                _logger?.Warn($"StageCalibration: 视觉拍照超时 ({timeoutMs}ms)");
+                _logger?.Warn(L("StageCal_Log_CaptureTimeout", "StageCalibration: 视觉拍照超时 ({0}ms)", timeoutMs));
                 return new FiducialCaptureResult
                 {
                     Success = false,
@@ -250,7 +260,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger?.Error($"StageCalibration: 视觉拍照失败 - {ex.Message}");
+                _logger?.Error(L("StageCal_Log_CaptureFailed", "StageCalibration: 视觉拍照失败 - {0}", ex.Message));
                 return new FiducialCaptureResult
                 {
                     Success = false,
@@ -266,7 +276,7 @@ namespace Module.Services
                 throw new InvalidOperationException("运动控制不可用，请检查安全互锁状态");
 
             var targetAngle = currentRz + deltaAngle;
-            _logger?.Info($"StageCalibration: 旋转Rz轴到基准角度，当前:{currentRz:F3}, 偏差:{deltaAngle:F3}, 目标:{targetAngle:F3}");
+            _logger?.Info(L("StageCal_Log_RotateToReferenceAngle", "StageCalibration: 旋转Rz轴到基准角度，当前:{0:F3}, 偏差:{1:F3}, 目标:{2:F3}", currentRz, deltaAngle, targetAngle));
 
             var targetPositions = new Dictionary<string, double>
             {
@@ -274,13 +284,13 @@ namespace Module.Services
             };
 
             await _motionController.GotoAsync(StationIdentifier, targetPositions, 20.0);
-            _logger?.Info("StageCalibration: Rz轴旋转完成");
+            _logger?.Info(L("StageCal_Log_RotationCompleted", "StageCalibration: Rz轴旋转完成"));
         }
 
         /// <summary>读取当前所有轴位置</summary>
         public async Task<CurrentPositionResult> ReadCurrentPositionsAsync()
         {
-            _logger?.Info("StageCalibration: 读取当前轴位置");
+            _logger?.Info(L("StageCal_Log_ReadCurrentPositions", "StageCalibration: 读取当前轴位置"));
 
             var positions = await _motionController.TeachAsync(StationIdentifier);
 
@@ -342,7 +352,7 @@ namespace Module.Services
         /// </summary>
         public ProductAlignResult CalculateCenterAndAngleWithHalcon(double p1X, double p1Y, double p2X, double p2Y)
         {
-            _logger?.Info($"StageCalibration: Halcon计算 中心点/角度 P1({p1X:F3},{p1Y:F3}) P2({p2X:F3},{p2Y:F3})");
+            _logger?.Info(L("StageCal_Log_HalconCalcStart", "StageCalibration: Halcon计算 中心点/角度 P1({0:F3},{1:F3}) P2({2:F3},{3:F3})", p1X, p1Y, p2X, p2Y));
 
             // 1. 中心点：两点的中点
             double centerX = (p1X + p2X) / 2.0;
@@ -365,7 +375,7 @@ namespace Module.Services
                 Distance = distance.D
             };
 
-            _logger?.Info($"StageCalibration: Halcon计算完成 中心({result.CenterX:F3},{result.CenterY:F3}) 角度:{result.AngleDeg:F3}° 距离:{result.Distance:F3}");
+            _logger?.Info(L("StageCal_Log_HalconCalcDone", "StageCalibration: Halcon计算完成 中心({0:F3},{1:F3}) 角度:{2:F3}° 距离:{3:F3}", result.CenterX, result.CenterY, result.AngleDeg, result.Distance));
             return result;
         }
 
@@ -391,7 +401,7 @@ namespace Module.Services
             _dataReceivedCallback = onDataReceived;
 
             _tcpEventService.CameraMessageReceived += OnCameraMessageReceived;
-            _logger?.Info($"StageCalibration: 已订阅相机数据自动接收，连接:{tcpConnectionName}");
+            _logger?.Info(L("StageCal_Log_SubscribedCameraData", "StageCalibration: 已订阅相机数据自动接收，连接:{0}", tcpConnectionName));
         }
 
         /// <summary>取消订阅相机数据</summary>
@@ -400,7 +410,7 @@ namespace Module.Services
             if (!string.IsNullOrEmpty(_subscribedTcpConnectionName))
             {
                 _tcpEventService.CameraMessageReceived -= OnCameraMessageReceived;
-                _logger?.Info("StageCalibration: 已取消订阅相机数据");
+                _logger?.Info(L("StageCal_Log_UnsubscribedCameraData", "StageCalibration: 已取消订阅相机数据"));
             }
             _subscribedTcpConnectionName = string.Empty;
             _dataReceivedCallback = null;
@@ -429,12 +439,12 @@ namespace Module.Services
             try
             {
                 var (x, y) = ParseVisionData(message);
-                _logger?.Info($"StageCalibration: 自动接收数据 特征点{_autoReceiveFeatureIndex} X:{x:F3} Y:{y:F3}");
+                _logger?.Info(L("StageCal_Log_AutoReceivedData", "StageCalibration: 自动接收数据 特征点{0} X:{1:F3} Y:{2:F3}", _autoReceiveFeatureIndex, x, y));
                 _dataReceivedCallback?.Invoke(_autoReceiveFeatureIndex, x, y);
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"StageCalibration: 解析自动接收数据失败 - {ex.Message}, 原始消息:{message}");
+                _logger?.Warn(L("StageCal_Log_ParseAutoReceivedDataFailed", "StageCalibration: 解析自动接收数据失败 - {0}, 原始消息:{1}", ex.Message, message));
             }
         }
     }

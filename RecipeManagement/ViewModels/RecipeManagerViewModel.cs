@@ -59,6 +59,7 @@ namespace Recipe.ViewModels
         private readonly IStationRegistry _stationRegistry;
         private readonly IRecipeDialogService _recipeDialogService;
         private readonly IParameterEditor _parameterEditor;
+        private readonly ILocalizationService _localization;
         private ObservableCollection<StationParameterGroup> _stationParameters = new();
         public ObservableCollection<StationParameterGroup> StationParameters
         {
@@ -90,7 +91,8 @@ namespace Recipe.ViewModels
             IRecipePoolService recipePoolService,
             IRecipeDialogService recipeDialogService,
             IParameterEditor parameterEditor,
-            IStationRegistry stationRegistry)
+            IStationRegistry stationRegistry,
+            ILocalizationService localization)
         {
             _recipeStorage = recipeStorage;
             _eventAggregator = eventAggregator;
@@ -101,6 +103,7 @@ namespace Recipe.ViewModels
             _stationRegistry = stationRegistry;
             _recipeDialogService = recipeDialogService;
             _parameterEditor = parameterEditor;
+            _localization = localization;
 
             RefreshStationParametersCommand = new DelegateCommand(ExecuteRefreshStationParameters);
 
@@ -274,22 +277,22 @@ namespace Recipe.ViewModels
 
                 // 先弹出确认框，用户确认后再执行切换
                 var confirmed = await ShowGlobalConfirmAsync(
-                    "确认切换配方",
-                    $"确定要切换到配方 '{recipeName}' 吗？\n所有工站将统一切换到该配方。",
+                    _localization.GetResourceOrDefault("RM_Msg_ConfirmSwitchRecipeTitle", "确认切换配方"),
+                    string.Format(_localization.GetResourceOrDefault("RM_Msg_ConfirmSwitchRecipeMsg", "确定要切换到配方 '{0}' 吗？\n所有工站将统一切换到该配方。"), recipeName),
                     "SwapHorizontal", "#FF9800");
                 if (!confirmed)
                 {
-                    StatusMessage = "用户取消切换配方";
+                    StatusMessage = _localization.GetResourceOrDefault("RM_Msg_UserCancelSwitchRecipe", "用户取消切换配方");
                     return;
                 }
 
                 IsLoading = true;
-                StatusMessage = $"正在切换到配方: {recipeName}";
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchingRecipe", "正在切换到配方: {0}"), recipeName);
 
                 var targetRecipe = Recipes.FirstOrDefault(r => r.Name == recipeName);
                 if (targetRecipe == null)
                 {
-                    StatusMessage = $"配方 '{recipeName}' 不存在于当前池中";
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeNotExistInPool", "配方 '{0}' 不存在于当前池中"), recipeName);
                     return;
                 }
 
@@ -297,7 +300,7 @@ namespace Recipe.ViewModels
                 var (exists, poolName, poolId) = await _recipePoolService.RecipeExistsInAnyPoolAsync(recipeId);
                 if (!exists)
                 {
-                    StatusMessage = $"配方 '{recipeName}' 不存在";
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeNotExist", "配方 '{0}' 不存在"), recipeName);
                     return;
                 }
 
@@ -322,12 +325,12 @@ namespace Recipe.ViewModels
 
                 UpdateTreeCurrentState();
                 _eventAggregator.GetEvent<RecipeChangedEvent>().Publish(poolName);
-                StatusMessage = $"已切换到配方池: {poolName} -> 配方:{recipeName}，时间: {DateTime.Now:HH:mm:ss}";
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchedRecipePool", "已切换到配方池: {0} -> 配方:{1}，时间: {2}"), poolName, recipeName, DateTime.Now.ToString("HH:mm:ss"));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"切换配方失败: {ex.Message}";
-                _logger.Error($"切换配方失败: {ex.Message}");
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchRecipeFail", "切换配方失败: {0}"), ex.Message);
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_SwitchRecipeFail", "切换配方失败: {0}"), ex.Message));
             }
             finally
             {
@@ -341,14 +344,14 @@ namespace Recipe.ViewModels
             {
                 if (SelectedRecipePool == null)
                 {
-                    StatusMessage = "请先选择一个配方池";
+                    StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectPoolFirst", "请先选择一个配方池");
                     return;
                 }
 
                 var dialogParameters = new DialogParameters
                 {
                     { "Mode", "Create" },
-                    { "Title", "创建新配方" }
+                    { "Title", _localization.GetResourceOrDefault("RM_Msg_CreateNewRecipe", "创建新配方") }
                 };
 
                 _dialogService.ShowDialog("RecipeEditorDialog", dialogParameters, async result =>
@@ -381,15 +384,15 @@ namespace Recipe.ViewModels
 
                         await _recipeStorage.SaveRecipeAsync(SelectedRecipePool.Name, newRecipe);
                         await LoadRecipesAsync();
-                        StatusMessage = $"已创建配方: {recipeName}";
-                        _logger.Info($"新配方已创建: {recipeName}");
+                        StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeCreated", "已创建配方: {0}"), recipeName);
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_RecipeCreated", "新配方已创建: {0}"), recipeName));
                     }
                 });
             }
             catch (Exception ex)
             {
-                StatusMessage = $"创建配方失败: {ex.Message}";
-                _logger.Error($"创建配方失败: {ex.Message}");
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_CreateRecipeFail", "创建配方失败: {0}"), ex.Message);
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_CreateRecipeFail", "创建配方失败: {0}"), ex.Message));
             }
         }
 
@@ -397,7 +400,7 @@ namespace Recipe.ViewModels
         {
             if (SelectedRecipePool == null || SelectedRecipe == null)
             {
-                StatusMessage = "请先选择配方池和配方";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectPoolAndRecipeFirst", "请先选择配方池和配方");
                 return;
             }
 
@@ -406,7 +409,7 @@ namespace Recipe.ViewModels
                 var dialogParameters = new DialogParameters
                 {
                     { "Mode", "Edit" },
-                    { "Title", "编辑配方" },
+                    { "Title", _localization.GetResourceOrDefault("RM_Msg_EditRecipe", "编辑配方") },
                     { "RecipeName", SelectedRecipe.Name },
                     { "Description", SelectedRecipe.Description }
                 };
@@ -423,7 +426,7 @@ namespace Recipe.ViewModels
                         var originalRecipe = await _recipeStorage.LoadRecipeAsync(poolName, oldName);
                         if (originalRecipe == null)
                         {
-                            StatusMessage = "配方不存在";
+                            StatusMessage = _localization.GetResourceOrDefault("RM_Msg_RecipeNotExistShort", "配方不存在");
                             return;
                         }
 
@@ -448,15 +451,15 @@ namespace Recipe.ViewModels
 
                         await LoadRecipesAsync();
                         SelectedRecipe = Recipes.FirstOrDefault(r => r.Name == newName);
-                        StatusMessage = $"配方已更新: {newName}";
-                        _logger.Info($"配方已更新: {oldName} -> {newName}");
+                        StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeUpdated", "配方已更新: {0}"), newName);
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_RecipeUpdated", "配方已更新: {0} -> {1}"), oldName, newName));
                     }
                 });
             }
             catch (Exception ex)
             {
-                StatusMessage = $"编辑配方失败: {ex.Message}";
-                _logger.Error($"编辑配方失败: {ex.Message}");
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_EditRecipeFail", "编辑配方失败: {0}"), ex.Message);
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_EditRecipeFail", "编辑配方失败: {0}"), ex.Message));
             }
         }
 
@@ -464,7 +467,7 @@ namespace Recipe.ViewModels
         {
             if (SelectedRecipe == null || SelectedRecipePool == null)
             {
-                StatusMessage = "请先选择一个配方";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectRecipeFirst", "请先选择一个配方");
                 return;
             }
 
@@ -472,16 +475,16 @@ namespace Recipe.ViewModels
             {
                 _dialogService.ShowDialog("NotificationDialog", new DialogParameters
                 {
-                    { "title", "无法删除" },
-                    { "message", $"配方 '{SelectedRecipe.Name}' 正在使用中，无法删除。请先切换到其他配方。" }
+                    { "title", _localization.GetResourceOrDefault("RM_Msg_CannotDelete", "无法删除") },
+                    { "message", string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeInUse", "配方 '{0}' 正在使用中，无法删除。请先切换到其他配方。"), SelectedRecipe.Name) }
                 }, _ => { });
                 return;
             }
 
             _dialogService.ShowDialog("AlertDialog", new DialogParameters
             {
-                { "title", "删除配方" },
-                { "message",  $"确定要删除配方 '{SelectedRecipe.Name}' 吗？此操作不可恢复。" }
+                { "title", _localization.GetResourceOrDefault("RM_Msg_DeleteRecipeTitle", "删除配方") },
+                { "message",  string.Format(_localization.GetResourceOrDefault("RM_Msg_ConfirmDeleteRecipe", "确定要删除配方 '{0}' 吗？此操作不可恢复。"), SelectedRecipe.Name) }
             }, async result =>
             {
                 if (result.Result != ButtonResult.Yes) return;
@@ -504,13 +507,13 @@ namespace Recipe.ViewModels
                     }
 
                     await LoadRecipesAsync();
-                    StatusMessage = $"已删除配方: {recipeName}";
-                    _logger.Info($"配方 '{recipeName}' 已删除");
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeDeleted", "已删除配方: {0}"), recipeName);
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_RecipeDeleted", "配方 '{0}' 已删除"), recipeName));
                 }
                 catch (Exception ex)
                 {
-                    StatusMessage = $"删除配方失败: {ex.Message}";
-                    _logger.Error(ex, "删除配方失败");
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_DeleteRecipeFail", "删除配方失败: {0}"), ex.Message);
+                    _logger.Error(ex, _localization.GetResourceOrDefault("RM_Log_DeleteRecipeFail", "删除配方失败"));
                 }
             });
         }
@@ -521,7 +524,7 @@ namespace Recipe.ViewModels
             try
             {
                 await Application.Current.Dispatcher.InvokeAsync(() => IsLoading = true);
-                await Application.Current.Dispatcher.InvokeAsync(() => StatusMessage = $"正在加载配方池 '{SelectedRecipePool.Name}' 的配方...");
+                await Application.Current.Dispatcher.InvokeAsync(() => StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_LoadingRecipes", "正在加载配方池 '{0}' 的配方..."), SelectedRecipePool.Name));
 
                 string poolId = SelectedRecipePool.Name;
                 var recipes = await _recipeStorage.LoadAllRecipesAsync(poolId);
@@ -531,7 +534,7 @@ namespace Recipe.ViewModels
                     Recipes.Clear();
                     foreach (var r in recipes)
                         Recipes.Add(r);
-                    StatusMessage = $"已加载 {Recipes.Count} 个配方";
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipesLoaded", "已加载 {0} 个配方"), Recipes.Count);
                     IsLoading = false;
                 });
             }
@@ -539,10 +542,10 @@ namespace Recipe.ViewModels
             {
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    StatusMessage = $"加载配方失败: {ex.Message}";
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_LoadRecipesFail", "加载配方失败: {0}"), ex.Message);
                     IsLoading = false;
                 });
-                _logger.Error(ex, "加载配方失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("RM_Log_LoadRecipesFail", "加载配方失败"));
             }
         }
 
@@ -614,30 +617,34 @@ namespace Recipe.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "加载配方池失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("RM_Log_LoadRecipePoolsFail", "加载配方池失败"));
             }
         }
         private async Task SaveCurrentRecipeParametersAsync()
         {
             if (SelectedRecipe == null || SelectedRecipePool == null)
             {
-                StatusMessage = "请先选择一个配方";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectRecipeFirst", "请先选择一个配方");
                 return;
             }
 
             try
             {
                 IsLoading = true;
-                StatusMessage = $"正在保存配方 '{SelectedRecipe.Name}' 的参数...";
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SavingRecipeParams", "正在保存配方 '{0}' 的参数..."), SelectedRecipe.Name);
                 var poolId = SelectedRecipePool.Name;
                 bool success = await _recipePoolService.SaveAllStationParametersAsync(poolId, SelectedRecipe.Name);
-                StatusMessage = success ? $"配方 '{SelectedRecipe.Name}' 的参数已保存" : $"保存配方 '{SelectedRecipe.Name}' 的参数失败";
-                _logger.Info(success ? $"配方 '{SelectedRecipe.Name}' 的参数已手动保存" : "保存失败");
+                StatusMessage = success
+                    ? string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeParamsSaved", "配方 '{0}' 的参数已保存"), SelectedRecipe.Name)
+                    : string.Format(_localization.GetResourceOrDefault("RM_Msg_SaveRecipeParamsFail", "保存配方 '{0}' 的参数失败"), SelectedRecipe.Name);
+                _logger.Info(success
+                    ? string.Format(_localization.GetResourceOrDefault("RM_Log_RecipeParamsManualSaved", "配方 '{0}' 的参数已手动保存"), SelectedRecipe.Name)
+                    : _localization.GetResourceOrDefault("RM_Log_SaveFail", "保存失败"));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"保存配方参数失败: {ex.Message}";
-                _logger.Error(ex, "保存配方参数失败");
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SaveRecipeParamsFailShort", "保存配方参数失败: {0}"), ex.Message);
+                _logger.Error(ex, _localization.GetResourceOrDefault("RM_Log_SaveRecipeParamsFail", "保存配方参数失败"));
             }
             finally { IsLoading = false; }
         }
@@ -646,14 +653,14 @@ namespace Recipe.ViewModels
         {
             if (SelectedRecipePool == null)
             {
-                StatusMessage = "请先选择一个配方池";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectPoolFirst", "请先选择一个配方池");
                 return;
             }
             try
             {
                 IsLoading = true;
-                StatusMessage = $"正在保存配方池 '{SelectedRecipePool.Name}'...";
-                _logger.Info($"开始保存配方池 '{SelectedRecipePool.Name}'");
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SavingRecipePool", "正在保存配方池 '{0}'..."), SelectedRecipePool.Name);
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_StartSaveRecipePool", "开始保存配方池 '{0}'"), SelectedRecipePool.Name));
 
                 // 从文件加载最新池（包含被编辑器修改的工站参数）
                 var latestPool = await _recipePoolService.GetRecipePoolAsync(SelectedRecipePool.Name);
@@ -667,13 +674,13 @@ namespace Recipe.ViewModels
                 _eventAggregator.GetEvent<SavePositionEditorEvent>().Publish(SelectedRecipePool.Name);
 
                 await _recipePoolService.SaveRecipePoolAsync(SelectedRecipePool);
-                _logger.Info($"配方池 '{SelectedRecipePool.Name}' 及全局变量已保存");
-                StatusMessage = $"配方池 '{SelectedRecipePool.Name}' 及全局变量已保存";
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_RecipePoolAndGlobalsSaved", "配方池 '{0}' 及全局变量已保存"), SelectedRecipePool.Name));
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolAndGlobalsSaved", "配方池 '{0}' 及全局变量已保存"), SelectedRecipePool.Name);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, $"保存配方池 '{SelectedRecipePool?.Name}' 失败");
-                StatusMessage = $"保存失败: {ex.Message}";
+                _logger.Error(ex, string.Format(_localization.GetResourceOrDefault("RM_Log_SaveRecipePoolFail", "保存配方池 '{0}' 失败"), SelectedRecipePool?.Name));
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SaveFailShort", "保存失败: {0}"), ex.Message);
             }
             finally { IsLoading = false; }
         }
@@ -683,14 +690,14 @@ namespace Recipe.ViewModels
             var sourcePool = SelectedRecipePool;
             if (sourcePool == null)
             {
-                StatusMessage = "请先选择一个配方池作为复制源";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectPoolAsSourceFirst", "请先选择一个配方池作为复制源");
                 return;
             }
 
             var parameters = new DialogParameters
             {
                 { "Mode", "Create" },
-                { "Title", "新建配方池（复制当前池）" }
+                { "Title", _localization.GetResourceOrDefault("RM_Msg_NewRecipePoolTitle", "新建配方池（复制当前池）") }
             };
 
             _dialogService.ShowDialog("RecipeEditorDialog", parameters, async result =>
@@ -705,12 +712,12 @@ namespace Recipe.ViewModels
                         await _recipePoolService.CopyRecipePoolAsync(sourcePool.CurrentRecipePoolName, id, name, description);
                         await LoadPoolsAsync();
                         SelectedRecipePool = RecipePools.FirstOrDefault(p => p.CurrentRecipePoolName == id);
-                        StatusMessage = $"已复制配方池 '{sourcePool.Name}' 为 '{name}'";
+                        StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolCopied", "已复制配方池 '{0}' 为 '{1}'"), sourcePool.Name, name);
                     }
                     catch (Exception ex)
                     {
-                        StatusMessage = $"复制配方池失败: {ex.Message}";
-                        _logger.Error(ex, "复制配方池失败");
+                        StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_CopyRecipePoolFail", "复制配方池失败: {0}"), ex.Message);
+                        _logger.Error(ex, _localization.GetResourceOrDefault("RM_Log_CopyRecipePoolFail", "复制配方池失败"));
                     }
                 }
             });
@@ -722,7 +729,7 @@ namespace Recipe.ViewModels
             var parameters = new DialogParameters
             {
                 { "Mode", "Edit" },
-                { "Title", "编辑配方池" },
+                { "Title", _localization.GetResourceOrDefault("RM_Msg_EditRecipePool", "编辑配方池") },
                 { "RecipeName", SelectedRecipePool.Name },
                 { "Description", SelectedRecipePool.Description }
             };
@@ -737,7 +744,7 @@ namespace Recipe.ViewModels
                     await LoadPoolsAsync();
                     //if (oldName == CurrentPoolName)
                     //    CurrentPoolName = newName;
-                    StatusMessage = $"配方池 '{newName}' 已更新";
+                    StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolUpdated", "配方池 '{0}' 已更新"), newName);
                 }
             });
         }
@@ -749,16 +756,16 @@ namespace Recipe.ViewModels
             {
                 _dialogService.ShowDialog("NotificationDialog", new DialogParameters
                 {
-                    { "title", "无法删除" },
-                    { "message", $"配方池 '{SelectedRecipePool.Name}' 当前正在使用中，无法删除。" },
+                    { "title", _localization.GetResourceOrDefault("RM_Msg_CannotDelete", "无法删除") },
+                    { "message", string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolInUse", "配方池 '{0}' 当前正在使用中，无法删除。"), SelectedRecipePool.Name) },
                     { "icon", PackIconKind.Warning }
                 }, _ => { });
                 return;
             }
             _dialogService.ShowDialog("AlertDialog", new DialogParameters
             {
-                { "title", "删除配方池" },
-                { "message", $"确定要删除配方池 '{SelectedRecipePool.Name}' 及其所有配方吗？此操作不可恢复。" }
+                { "title", _localization.GetResourceOrDefault("RM_Msg_DeleteRecipePoolTitle", "删除配方池") },
+                { "message", string.Format(_localization.GetResourceOrDefault("RM_Msg_ConfirmDeleteRecipePool", "确定要删除配方池 '{0}' 及其所有配方吗？此操作不可恢复。"), SelectedRecipePool.Name) }
             }, async result =>
             {
                 if (result.Result != ButtonResult.Yes) return;
@@ -774,34 +781,37 @@ namespace Recipe.ViewModels
 
             // 先弹出确认框，用户确认后再执行切换
             var confirmed = await ShowGlobalConfirmAsync(
-                "确认切换配方池",
-                $"确定要切换到配方池 '{pool.Name}' 吗？\n当前系统将加载该配方池的配方数据。",
+                _localization.GetResourceOrDefault("RM_Msg_ConfirmSwitchRecipePoolTitle", "确认切换配方池"),
+                string.Format(_localization.GetResourceOrDefault("RM_Msg_ConfirmSwitchRecipePoolMsg", "确定要切换到配方池 '{0}' 吗？\n当前系统将加载该配方池的配方数据。"), pool.Name),
                 "DatabaseSyncOutline", "#2196F3");
             if (!confirmed)
             {
-                StatusMessage = "用户取消切换配方池";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_UserCancelSwitchRecipePool", "用户取消切换配方池");
                 return;
             }
 
             try
             {
                 IsLoading = true;
-                StatusMessage = $"正在切换到配方池 '{pool.Name}'...";
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchingRecipePool", "正在切换到配方池 '{0}'..."), pool.Name);
 
                 await _recipePoolService.SwitchToPoolAsync(pool.Name, saveCurrentPool);
 
                 await LoadRecipesAsync();
                 await LoadPoolsAsync();
 
-                StatusMessage = $"已切换到配方池 '{pool.Name}'";
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchedRecipePool", "已切换到配方池 '{0}'"), pool.Name);
                 RaisePropertyChanged(nameof(RecipePools));
 
-                ShowGlobalNotification("切换配方池", $"已切换到配方池 '{pool.Name}'", "CheckCircle", "#4CAF50");
+                ShowGlobalNotification(
+                    _localization.GetResourceOrDefault("RM_Msg_SwitchRecipePoolTitle", "切换配方池"),
+                    string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchedRecipePool", "已切换到配方池 '{0}'"), pool.Name),
+                    "CheckCircle", "#4CAF50");
             }
             catch (Exception ex)
             {
-                StatusMessage = $"切换配方池失败: {ex.Message}";
-                _logger.Error(ex, "切换配方池失败");
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchRecipePoolFail", "切换配方池失败: {0}"), ex.Message);
+                _logger.Error(ex, _localization.GetResourceOrDefault("RM_Log_SwitchRecipePoolFail", "切换配方池失败"));
             }
             finally { IsLoading = false; }
         }
@@ -952,9 +962,9 @@ namespace Recipe.ViewModels
 
                     StationParameters.Add(group);
                 }
-                StatusMessage = $"已加载 {StationParameters.Count} 个工站的参数";
+                StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_StationParamsLoaded", "已加载 {0} 个工站的参数"), StationParameters.Count);
             }
-            catch (Exception ex) { _logger.Error($"加载工站参数失败: {ex.Message}"); }
+            catch (Exception ex) { _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_LoadStationParamsFail", "加载工站参数失败: {0}"), ex.Message)); }
             finally { IsLoading = false; }
         }
 
@@ -967,7 +977,7 @@ namespace Recipe.ViewModels
             {
                 if (provider?.CurrentParameters is TaskParametersBase parameters)
                 {
-                    var editable = new StationParameterEditable(stationId, parameters);
+                    var editable = new StationParameterEditable(stationId, parameters, _localization);
                     _ = _parameterEditor.EditParameters(editable, async (updatedParams) =>
                     {
                         // 将编辑后的参数同步保存到配方文件
@@ -976,11 +986,11 @@ namespace Recipe.ViewModels
                             string poolName = provider.CurrentPoolName ?? _recipePoolService.CurrentPoolName;
                             string recipeName = provider.CurrentRecipeName ?? _recipePoolService.CurrentRecipeName;
                             await _recipePoolService.SaveStationParametersAsync(poolName, recipeName, stationId, updatedParams);
-                            _logger.Info($"工站 '{stationId}' 参数已同步保存到配方文件");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_StationParamsSynced", "工站 '{0}' 参数已同步保存到配方文件"), stationId));
                         }
                         catch (Exception saveEx)
                         {
-                            _logger.Error($"工站 '{stationId}' 参数保存到配方文件失败: {saveEx.Message}");
+                            _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_StationParamsSaveFail", "工站 '{0}' 参数保存到配方文件失败: {1}"), stationId, saveEx.Message));
                         }
 
                         _eventAggregator.GetEvent<StationParameterSavedEvent>().Publish(stationId);
@@ -990,15 +1000,15 @@ namespace Recipe.ViewModels
                 {
                     _dialogService.ShowDialog("NotificationDialog", new DialogParameters
                     {
-                        { "title", "提示" },
-                        { "message", $"工站 '{stationId}' 暂不支持参数编辑" },
+                        { "title", _localization.GetResourceOrDefault("RM_Msg_Prompt", "提示") },
+                        { "message", string.Format(_localization.GetResourceOrDefault("RM_Msg_StationNotSupportEdit", "工站 '{0}' 暂不支持参数编辑"), stationId) },
                         { "icon", MaterialDesignThemes.Wpf.PackIconKind.Information }
                     }, _ => { });
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error($"打开工站参数编辑器失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_OpenStationEditorFail", "打开工站参数编辑器失败: {0}"), ex.Message));
             }
         }
 
@@ -1017,7 +1027,7 @@ namespace Recipe.ViewModels
             if (SelectedRecipe != null)
                 _ = LoadStationParametersForRecipe(SelectedRecipe);
             else
-                StatusMessage = "请先选择一个配方";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectRecipeFirst", "请先选择一个配方");
         }
         #endregion
 
@@ -1061,7 +1071,7 @@ namespace Recipe.ViewModels
                 SelectedRecipePool = pool;
                 Recipes = new ObservableCollection<RecipeInfo>(recipes);
             }
-            catch (Exception ex) { _logger.Error($"加载池 '{pool.Name}' 的配方失败: {ex.Message}"); }
+            catch (Exception ex) { _logger.Error(string.Format(_localization.GetResourceOrDefault("RM_Log_LoadPoolRecipesFail", "加载池 '{0}' 的配方失败: {1}"), pool.Name, ex.Message)); }
         }
 
         private void UpdateTreeCurrentState()
@@ -1097,10 +1107,10 @@ namespace Recipe.ViewModels
             if (SelectedRecipe != null && SelectedRecipePool != null)
                 await SaveCurrentRecipeParametersAsync();
             else
-                StatusMessage = "请先选择一个配方";
+                StatusMessage = _localization.GetResourceOrDefault("RM_Msg_SelectRecipeFirst", "请先选择一个配方");
         }
 
-        private void OnRecipeSelected() => StatusMessage = SelectedRecipe != null ? $"已选择配方: {SelectedRecipe.Name}" : "";
+        private void OnRecipeSelected() => StatusMessage = SelectedRecipe != null ? string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipeSelected", "已选择配方: {0}"), SelectedRecipe.Name) : "";
         #endregion
 
         #region 辅助类
@@ -1155,14 +1165,16 @@ namespace Recipe.ViewModels
         private class StationParameterEditable : IParameterEditable
         {
             private readonly TaskParametersBase _parameters;
+            private readonly ILocalizationService _localization;
 
-            public StationParameterEditable(string stationId, TaskParametersBase parameters)
+            public StationParameterEditable(string stationId, TaskParametersBase parameters, ILocalizationService localization)
             {
                 Identifier = stationId;
                 _parameters = parameters;
+                _localization = localization;
             }
 
-            public string EditTitle => $"{Identifier} - 参数编辑";
+            public string EditTitle => string.Format(_localization.GetResourceOrDefault("RM_Msg_StationParamEditTitle", "{0} - 参数编辑"), Identifier);
             public string Identifier { get; }
             public object Parameters => _parameters;
         }

@@ -1,6 +1,7 @@
 using AlarmModule.Interfaces;
 using AlarmModule.Models;
 using ClosedXML.Excel;
+using Core.Abstraction;
 using Core.Utilities;
 using System;
 using System.Collections.ObjectModel;
@@ -19,6 +20,7 @@ namespace AlarmModule.Services
         private readonly IAlarmRepository _repository;
         private readonly IAlarmNotificationService _notificationService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         /// <summary>
         /// 当前活跃报警集合（Status != Eliminated）
@@ -36,13 +38,14 @@ namespace AlarmModule.Services
         public event Action<AlarmRecord>? AlarmTriggered;
 
         /// <summary>
-        /// 构造函数：注入仓储、通知服务、日志服务，并初始化活跃报警列表
+        /// 构造函数：注入仓储、通知服务、日志服务、本地化服务，并初始化活跃报警列表
         /// </summary>
-        public AlarmService(IAlarmRepository repository, IAlarmNotificationService notificationService, ILoggerService logger)
+        public AlarmService(IAlarmRepository repository, IAlarmNotificationService notificationService, ILoggerService logger, ILocalizationService localization)
         {
             _repository = repository;
             _notificationService = notificationService;
             _logger = logger;
+            _localization = localization;
             InitializeActiveAlarmsAsync();
         }
 
@@ -62,7 +65,7 @@ namespace AlarmModule.Services
             {
                 recentAlarm.AlarmTime = DateTime.Now;
                 await _repository.UpdateAsync(recentAlarm);
-                _logger.Warn($"报警防抖抑制：{alarmCode}@{source}，更新时间而非重复创建");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("Alarm_Log_DebounceSuppressed", "报警防抖抑制：{0}@{1}，更新时间而非重复创建"), alarmCode, source));
                 return;
             }
 
@@ -88,7 +91,7 @@ namespace AlarmModule.Services
 
             AlarmTriggered?.Invoke(record);
             _notificationService.ShowNotification(record);
-            _logger.Warn($"报警触发：[{level}] {alarmCode}@{source} - {description}");
+            _logger.Warn(string.Format(_localization.GetResourceOrDefault("Alarm_Log_Triggered", "报警触发：[{0}] {1}@{2} - {3}"), level, alarmCode, source, description));
         }
 
         /// <summary>
@@ -108,7 +111,7 @@ namespace AlarmModule.Services
             await _repository.UpdateAsync(record);
 
             UpdateActiveAlarm(record);
-            _logger.Info($"报警确认：Id={alarmId}，操作人={confirmedBy}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_Confirmed", "报警确认：Id={0}，操作人={1}"), alarmId, confirmedBy));
         }
 
         /// <summary>
@@ -128,7 +131,7 @@ namespace AlarmModule.Services
             await _repository.UpdateAsync(record);
 
             UpdateActiveAlarm(record);
-            _logger.Info($"报警复位：Id={alarmId}，操作人={resetBy}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_Reset", "报警复位：Id={0}，操作人={1}"), alarmId, resetBy));
         }
 
         /// <summary>
@@ -152,7 +155,7 @@ namespace AlarmModule.Services
                     ActiveAlarms.Remove(existing);
             });
 
-            _logger.Info($"报警消除：Id={alarmId}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_Eliminated", "报警消除：Id={0}"), alarmId));
         }
 
         /// <summary>
@@ -172,7 +175,7 @@ namespace AlarmModule.Services
                 }
             });
 
-            _logger.Info($"批量确认所有未确认报警，操作人={confirmedBy}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_ConfirmAll", "批量确认所有未确认报警，操作人={0}"), confirmedBy));
         }
 
         /// <summary>
@@ -192,7 +195,7 @@ namespace AlarmModule.Services
                 }
             });
 
-            _logger.Info($"批量复位所有已确认报警，操作人={resetBy}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_ResetAll", "批量复位所有已确认报警，操作人={0}"), resetBy));
         }
 
         /// <summary>
@@ -252,7 +255,7 @@ namespace AlarmModule.Services
             worksheet.Columns().AdjustToContents();
             workbook.SaveAs(filePath);
 
-            _logger.Info($"报警数据已导出到Excel：{filePath}，共{alarms.Count}条记录");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_ExportedToExcel", "报警数据已导出到Excel：{0}，共{1}条记录"), filePath, alarms.Count));
         }
 
         /// <summary>
@@ -271,7 +274,7 @@ namespace AlarmModule.Services
                 }
             });
 
-            _logger.Info($"活跃报警列表已刷新，共{activeAlarms.Count}条");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Alarm_Log_ActiveListRefreshed", "活跃报警列表已刷新，共{0}条"), activeAlarms.Count));
         }
 
         /// <summary>
@@ -285,7 +288,7 @@ namespace AlarmModule.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"初始化活跃报警列表失败：{ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("Alarm_Log_InitActiveListFailed", "初始化活跃报警列表失败：{0}"), ex.Message));
             }
         }
 

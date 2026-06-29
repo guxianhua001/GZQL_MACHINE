@@ -29,6 +29,7 @@ namespace TCPIPModule.Services
         private readonly IAlarmService? _alarmService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IAppSettingService? _appSettingService;
+        private readonly ILocalizationService _localization;
         private readonly ConcurrentDictionary<string, ITCPServer> _servers = new();
 
         /// <summary>
@@ -70,10 +71,11 @@ namespace TCPIPModule.Services
             return _servers.Keys.ToList();
         }
 
-        public TcpEventServiceImpl(ITCPClientManagerService clientManager, ILoggerService logger, IAlarmService? alarmService = null, IEventAggregator? eventAggregator = null, IAppSettingService? appSettingService = null)
+        public TcpEventServiceImpl(ITCPClientManagerService clientManager, ILoggerService logger, ILocalizationService localization, IAlarmService? alarmService = null, IEventAggregator? eventAggregator = null, IAppSettingService? appSettingService = null)
         {
             _clientManager = clientManager;
             _logger = logger;
+            _localization = localization;
             _alarmService = alarmService;
             _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
             _appSettingService = appSettingService;
@@ -87,7 +89,7 @@ namespace TCPIPModule.Services
             _clientManager.ClientAdded += OnClientAdded;
             _clientManager.ClientRemoved += OnClientRemoved;
             IsInitialized = true;
-            _logger.Info("TCP事件服务初始化完成");
+            _logger.Info(_localization.GetResourceOrDefault("TCP_Log_Initialized", "TCP事件服务初始化完成"));
         }
 
         /// <summary>
@@ -101,7 +103,7 @@ namespace TCPIPModule.Services
             {
                 if (_servers.ContainsKey(serverName))
                 {
-                    _logger.Warn($"TCP服务器 '{serverName}' 已存在，先停止旧实例");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerExistsStopOld", "TCP服务器 '{0}' 已存在，先停止旧实例"), serverName));
                     StopServer(serverName);
                 }
 
@@ -118,7 +120,7 @@ namespace TCPIPModule.Services
                 server.ClientConnected += serverClient =>
                 {
                     ServerClientConnected?.Invoke(serverClient.ClientName, serverClient.RemotePort);
-                    _logger.Info($"TCP服务器[{capturedName}]接受客户端连接: {serverClient.ClientName} ({serverClient.RemoteIP}:{serverClient.RemotePort})");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerClientConnected", "TCP服务器[{0}]接受客户端连接: {1} ({2}:{3})"), capturedName, serverClient.ClientName, serverClient.RemoteIP, serverClient.RemotePort));
                     ClientConnected?.Invoke(capturedName, serverClient.RemoteIP, serverClient.RemotePort);
 
                     // 更新连接状态快照，支持迟到订阅者回放
@@ -133,7 +135,7 @@ namespace TCPIPModule.Services
                 server.ClientDisconnected += serverClient =>
                 {
                     ServerClientDisconnected?.Invoke(serverClient.ClientName, serverClient.RemotePort);
-                    _logger.Info($"TCP服务器[{capturedName}]客户端断开: {serverClient.ClientName}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerClientDisconnected", "TCP服务器[{0}]客户端断开: {1}"), capturedName, serverClient.ClientName));
                     ClientDisconnected?.Invoke(capturedName, serverClient.RemoteIP, serverClient.RemotePort);
 
                     // 更新连接状态快照
@@ -154,27 +156,27 @@ namespace TCPIPModule.Services
                 server.DataReceived += (clientId, message) =>
                 {
                     var sourceName = string.IsNullOrEmpty(capturedName) ? clientId : capturedName;
-                    _logger.Info($"TCP服务器收到数据: 服务器={sourceName}, 客户端={clientId}, 消息={message}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerDataReceived", "TCP服务器收到数据: 服务器={0}, 客户端={1}, 消息={2}"), sourceName, clientId, message));
                     CameraMessageReceived?.Invoke(sourceName, message);
                 };
 
                 server.ServerError += ex =>
                 {
-                    _logger.Error($"TCP服务器[{capturedName}]错误: {ex.Message}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerError", "TCP服务器[{0}]错误: {1}"), capturedName, ex.Message));
                     ClientError?.Invoke(capturedName, "", 0, $"服务器异常: {ex.Message}");
                     TriggerErrorAlarm(capturedName, ex.Message);
                 };
 
                 server.StartAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                 _servers[serverName] = server;
-                _logger.Info($"TCP服务器[{serverName}]启动成功: {serverConfig.ServerIP}:{serverConfig.Port} (当前共{_servers.Count}个服务器)");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerStarted", "TCP服务器[{0}]启动成功: {1}:{2} (当前共{3}个服务器)"), serverName, serverConfig.ServerIP, serverConfig.Port, _servers.Count));
 
                 // 服务器启动后发布TCP状态变更事件
                 PublishTcpStatusChanged();
             }
             catch (Exception ex)
             {
-                _logger.Error($"TCP服务器[{serverName}]启动失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerStartFailed", "TCP服务器[{0}]启动失败: {1}"), serverName, ex.Message));
             }
         }
 
@@ -193,11 +195,11 @@ namespace TCPIPModule.Services
                     {
                         kvp.Value.StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                         kvp.Value.Dispose();
-                        _logger.Info($"TCP服务器[{kvp.Key}]已停止");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerStopped", "TCP服务器[{0}]已停止"), kvp.Key));
                     }
                     catch (Exception ex)
                     {
-                        _logger.Error($"停止TCP服务器[{kvp.Key}]失败: {ex.Message}");
+                        _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_StopServerFailed", "停止TCP服务器[{0}]失败: {1}"), kvp.Key, ex.Message));
                     }
                 }
                 _servers.Clear();
@@ -211,16 +213,16 @@ namespace TCPIPModule.Services
                     {
                         server.StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                         server.Dispose();
-                        _logger.Info($"TCP服务器[{serverName}]已停止");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerStopped", "TCP服务器[{0}]已停止"), serverName));
                     }
                     catch (Exception ex)
                     {
-                        _logger.Error($"停止TCP服务器[{serverName}]失败: {ex.Message}");
+                        _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_StopServerFailed", "停止TCP服务器[{0}]失败: {1}"), serverName, ex.Message));
                     }
                 }
                 else
                 {
-                    _logger.Warn($"TCP服务器[{serverName}]不存在或已停止");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerNotFound", "TCP服务器[{0}]不存在或已停止"), serverName));
                 }
             }
 
@@ -234,7 +236,7 @@ namespace TCPIPModule.Services
         public async Task AddClientAsync(string clientName, ClientConfiguration config)
         {
             await _clientManager.AddClientAsync(clientName, config).ConfigureAwait(false);
-            _logger.Info($"TCP客户端 [{clientName}] 已添加: {config.IP}:{config.Port}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientAdded", "TCP客户端 [{0}] 已添加: {1}:{2}"), clientName, config.IP, config.Port));
 
             // 客户端添加后发布TCP状态变更事件
             PublishTcpStatusChanged();
@@ -247,7 +249,7 @@ namespace TCPIPModule.Services
         public void AddClient(string clientName, ClientConfiguration config)
         {
             Task.Run(() => AddClientAsync(clientName, config)).Wait();
-            _logger.Info($"TCP客户端 [{clientName}] 已添加: {config.IP}:{config.Port}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientAdded", "TCP客户端 [{0}] 已添加: {1}:{2}"), clientName, config.IP, config.Port));
         }
 
         /// <summary>
@@ -256,7 +258,7 @@ namespace TCPIPModule.Services
         public void RemoveClient(string clientName)
         {
             _clientManager.RemoveClientAsync(clientName).ConfigureAwait(false).GetAwaiter().GetResult();
-            _logger.Info($"TCP客户端 [{clientName}] 已移除");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientRemoved", "TCP客户端 [{0}] 已移除"), clientName));
 
             // 客户端移除后发布TCP状态变更事件
             PublishTcpStatusChanged();
@@ -288,7 +290,7 @@ namespace TCPIPModule.Services
 
                 if (tasks.Count == 0)
                 {
-                    _logger.Warn("没有可用的TCP连接进行广播");
+                    _logger.Warn(_localization.GetResourceOrDefault("TCP_Log_NoConnectionForBroadcast", "没有可用的TCP连接进行广播"));
                     return false;
                 }
 
@@ -297,7 +299,7 @@ namespace TCPIPModule.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"广播命令失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_BroadcastFailed", "广播命令失败: {0}"), ex.Message));
                 return false;
             }
         }
@@ -321,7 +323,7 @@ namespace TCPIPModule.Services
             {
                 if (!client.IsConnected)
                 {
-                    _logger.Warn($"TCP客户端 [{cameraName}] 未连接");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientNotConnected", "TCP客户端 [{0}] 未连接"), cameraName));
                     return false;
                 }
 
@@ -331,7 +333,7 @@ namespace TCPIPModule.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"发送命令到 [{cameraName}] 失败: {ex.Message}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_SendCommandFailed", "发送命令到 [{0}] 失败: {1}"), cameraName, ex.Message));
                     ClientError?.Invoke(cameraName, client.RemoteIP, client.RemotePort, ex.Message);
                     return false;
                 }
@@ -341,7 +343,7 @@ namespace TCPIPModule.Services
             if (_servers.TryGetValue(cameraName, out var targetServer) && targetServer.IsRunning)
             {
                 // cameraName是服务器配置名（如TCP_1），向该服务器的所有已连接客户端广播
-                _logger.Debug($"通过服务器[{cameraName}]广播消息到所有已连接客户端");
+                _logger.Debug(string.Format(_localization.GetResourceOrDefault("TCP_Log_BroadcastViaServer", "通过服务器[{0}]广播消息到所有已连接客户端"), cameraName));
                 return await targetServer.BroadcastAsync(command);
             }
 
@@ -352,7 +354,7 @@ namespace TCPIPModule.Services
                 if (sent) return true;
             }
 
-            _logger.Warn($"TCP [{cameraName}] 不存在：既不是Client模式的客户端，也不是Server模式的服务器");
+            _logger.Warn(string.Format(_localization.GetResourceOrDefault("TCP_Log_TargetNotFound", "TCP [{0}] 不存在：既不是Client模式的客户端，也不是Server模式的服务器"), cameraName));
             return false;
         }
 
@@ -420,7 +422,7 @@ namespace TCPIPModule.Services
             cts.Token.Register(() =>
             {
                 tcs.TrySetResult(string.Empty);
-                _logger.Warn($"Server模式等待[{cameraName}]响应超时({timeout}ms)");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerResponseTimeout", "Server模式等待[{0}]响应超时({1}ms)"), cameraName, timeout));
             });
 
             Action<string, string> handler = (sourceName, message) =>
@@ -444,7 +446,7 @@ namespace TCPIPModule.Services
                 }
 
                 CameraCommandCompleted?.Invoke(cameraName, true);
-                _logger.Info($"Server模式[{cameraName}]收到响应: {response}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ServerResponseReceived", "Server模式[{0}]收到响应: {1}"), cameraName, response));
                 return response;
             }
             finally
@@ -480,12 +482,12 @@ namespace TCPIPModule.Services
                 if (connected)
                 {
                     ClientConnected?.Invoke(c.ClientName, c.RemoteIP, c.RemotePort);
-                    _logger.Info($"TCP客户端 [{c.ClientName}] 已连接: {c.RemoteIP}:{c.RemotePort}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientConnected", "TCP客户端 [{0}] 已连接: {1}:{2}"), c.ClientName, c.RemoteIP, c.RemotePort));
                 }
                 else
                 {
                     ClientDisconnected?.Invoke(c.ClientName, c.RemoteIP, c.RemotePort);
-                    _logger.Warn($"TCP客户端 [{c.ClientName}] 已断开: {c.RemoteIP}:{c.RemotePort}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientDisconnected", "TCP客户端 [{0}] 已断开: {1}:{2}"), c.ClientName, c.RemoteIP, c.RemotePort));
                 }
 
                 // 发布TCP连接状态变更事件，供MainWindow状态栏订阅
@@ -495,7 +497,7 @@ namespace TCPIPModule.Services
             client.ErrorOccurred += (c, ex) =>
             {
                 ClientError?.Invoke(c.ClientName, c.RemoteIP, c.RemotePort, ex.Message);
-                _logger.Error($"TCP客户端 [{c.ClientName}] 错误: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientError", "TCP客户端 [{0}] 错误: {1}"), c.ClientName, ex.Message));
             };
 
             client.DataReceived += (c, data) =>
@@ -510,7 +512,7 @@ namespace TCPIPModule.Services
         /// </summary>
         private void OnClientRemoved(string clientName)
         {
-            _logger.Info($"TCP客户端 [{clientName}] 已从管理器移除");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ClientRemovedFromManager", "TCP客户端 [{0}] 已从管理器移除"), clientName));
         }
 
         /// <summary>
@@ -528,7 +530,7 @@ namespace TCPIPModule.Services
 
                 foreach (var (ip, port) in snapshot)
                 {
-                    _logger.Info($"回放连接状态: 服务器[{serverName}] 客户端已连接 ({ip}:{port})");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("TCP_Log_ReplayConnection", "回放连接状态: 服务器[{0}] 客户端已连接 ({1}:{2})"), serverName, ip, port));
                     ClientConnected?.Invoke(serverName, ip, port);
                 }
             }
@@ -616,7 +618,7 @@ namespace TCPIPModule.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"发布TCP状态变更事件失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("TCP_Log_PublishStatusFailed", "发布TCP状态变更事件失败: {0}"), ex.Message));
             }
         }
     }

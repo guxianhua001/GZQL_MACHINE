@@ -3806,6 +3806,77 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="PSE_SkippedDisabledStep">Skipped disabled step: [{0}] {1}</sys:String>
     <sys:String x:Key="PSE_SkippedDisabledMethod">Skipped disabled method: {0}</sys:String>
     <sys:String x:Key="PSE_SkippedDisabledTask">Skipped disabled task: {0}</sys:String>
+    <!-- ProcessSequenceService log localization -->
+    <sys:String x:Key="PSE_Log_LoadRecentFailed">[ProcessSequence] Failed to load recent file list: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SaveRecentFailed">[ProcessSequence] Failed to save recent file list: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_CrossLevelDragNotSupported">[ProcessSequence] Cross-level or cross-IF-branch drag reordering is not supported</sys:String>
+    <sys:String x:Key="PSE_Log_TaskMoved">[ProcessSequence] Task [{0}] moved from position {1} to {2}</sys:String>
+    <sys:String x:Key="PSE_Log_OperationRejected">[ProcessSequence] {0} rejected: {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Operation_StartTask">Start task</sys:String>
+    <sys:String x:Key="PSE_Log_Operation_StartMethod">Start method [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Operation_SingleStep">Single step execution</sys:String>
+    <sys:String x:Key="PSE_Log_NoStationTaskRegistered">[ProcessSequence] No registered station task found</sys:String>
+    <sys:String x:Key="PSE_Log_UseExecutionHost">[ProcessSequence] Using execution host: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_StationRunningForceReset">[ProcessSequence] Station [{0}] left in Running state, force resetting before start</sys:String>
+    <sys:String x:Key="PSE_Log_PassiveTaskCannotStart">[ProcessSequence] Task {0} is in passive mode and cannot be started directly; trigger it via a calling task action</sys:String>
+    <sys:String x:Key="PSE_Log_AlreadyExecutingRejectStart">[ProcessSequence] A task is already executing; rejected starting a new task</sys:String>
+    <sys:String x:Key="PSE_Log_SelectedMethodDisabled">[ProcessSequence] Selected method [{0}] is disabled and cannot execute</sys:String>
+    <sys:String x:Key="PSE_Log_NoExecutableSteps">[ProcessSequence] No executable steps; cannot start</sys:String>
+    <sys:String x:Key="PSE_Log_SequenceStarted">[ProcessSequence] Start: {0}, {1} steps total, target station: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_StartFailed">[ProcessSequence] Start failed: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_TaskExecutionEnded">[ProcessSequence] Task execution ended</sys:String>
+    <sys:String x:Key="PSE_Log_TaskStopped">[ProcessSequence] Task stopped</sys:String>
+    <sys:String x:Key="PSE_Log_TaskPaused">[ProcessSequence] Task paused</sys:String>
+    <sys:String x:Key="PSE_Log_TaskResumed">[ProcessSequence] Task resumed</sys:String>
+    <sys:String x:Key="PSE_Log_StartMethodFailedNull">[ProcessSequence] Failed to start method: method is null</sys:String>
+    <sys:String x:Key="PSE_Log_RejectStartMethodBusy">[ProcessSequence] A task/method is already executing; rejected starting method [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_MethodDisabled">[ProcessSequence] Method [{0}] is disabled and cannot execute</sys:String>
+    <sys:String x:Key="PSE_Log_MethodNoSteps">[ProcessSequence] Method [{0}] has no executable steps; cannot start</sys:String>
+    <sys:String x:Key="PSE_Log_MethodStarted">[ProcessSequence] Start method: [{0}], {1} steps total, target station: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_StartMethodFailed">[ProcessSequence] Failed to start method: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_MethodEnded">[ProcessSequence] Method [{0}] execution ended</sys:String>
+    <sys:String x:Key="PSE_Log_MethodPaused">[ProcessSequence] Method [{0}] paused</sys:String>
+    <sys:String x:Key="PSE_Log_MethodResumed">[ProcessSequence] Method [{0}] resumed</sys:String>
+    <sys:String x:Key="PSE_Log_MethodStopped">[ProcessSequence] Method [{0}] stopped</sys:String>
+    <sys:String x:Key="PSE_Log_MethodStateResetIdle">[ProcessSequence] Method [{0}] runtime state reset to Idle</sys:String>
+    <sys:String x:Key="PSE_Log_SingleStepEnabled">[ProcessSequence] Single-step mode: enabled</sys:String>
+    <sys:String x:Key="PSE_Log_SingleStepDisabled">[ProcessSequence] Single-step mode: disabled</sys:String>
+    <sys:String x:Key="PSE_Log_SingleStepNext">[ProcessSequence] Single-step mode: user confirmed next step</sys:String>
+    <sys:String x:Key="PSE_Log_SyncStepUiFailed">[ProcessSequence] Failed to sync executing step UI: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ResetStepHighlightCalled">[ProcessSequenceService] ResetStepHighlight called</sys:String>
+    <sys:String x:Key="PSE_Log_ResetStepHighlightDone">[ProcessSequenceService] ResetStepHighlight done</sys:String>
+    <sys:String x:Key="PSE_Log_NoStationForSingleStep">[ProcessSequenceService] No available station task found; cannot run the step standalone</sys:String>
+    <sys:String x:Key="PSE_Log_RunSingleStepError">[ProcessSequenceService] Standalone step execution error: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskNameEmpty">[ProcessSequence] RUNTASK: target task name is empty</sys:String>
+    <sys:String x:Key="PSE_Log_CircularCall">[ProcessSequence] Circular call detected: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_CircularCallAlarm">Circular call: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskNotFound">[ProcessSequence] RUNTASK: passive task '{0}' not found</sys:String>
+    <sys:String x:Key="PSE_Log_SkippedDisabledTask">[ProcessSequence] Skipped disabled task: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskNoSteps">[ProcessSequence] RUNTASK: target task '{0}' has no executable steps</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskStarted">[ProcessSequence] RUNTASK: start passive task '{0}', {1} steps total</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskCompleted">[ProcessSequence] RUNTASK: passive task '{0}' execution completed</sys:String>
+    <sys:String x:Key="PSE_Log_SequencePathSaved">[ProcessSequence] Saved process sequence path: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SaveSequencePathFailed">[ProcessSequence] Failed to save process sequence path: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPath">[ProcessSequence] Read last process sequence path from config: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_LastPathNotFound">[ProcessSequence] Last process sequence path not found in config (key missing or non-string in ExtensionData)</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPathFailed">[ProcessSequence] Failed to read last process sequence path: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_GripperSpeedLoaded">[ProcessSequence] Loaded gripper speed: {0}%</sys:String>
+    <sys:String x:Key="PSE_Log_AutoLoadSequence">[ProcessSequence] Auto-loading last process sequence: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_AutoLoadSkipped">[ProcessSequence] Last process sequence file not found; skipping auto-load</sys:String>
+    <sys:String x:Key="PSE_Log_AutoLoadFailed">[ProcessSequence] Failed to auto-load process sequence: {0}</sys:String>
+    <!-- GotoStepAction log localization -->
+    <sys:String x:Key="Goto_Log_NoSubMove">GOTO step [{0}] has no SubMove; skipping execution</sys:String>
+    <sys:String x:Key="Goto_Log_RefreshGlobalVarsFailed">SubMove [{0}] failed to refresh global variables: {1}</sys:String>
+    <sys:String x:Key="Goto_Log_HomeAlreadyHomed">HOME SubMove [{0}]: axis {1}({2}) already homed; skipping</sys:String>
+    <sys:String x:Key="Goto_Log_HomeCardConfig">HOME SubMove [{0}]: station={1}, axis{2}({3}), homing with card config</sys:String>
+    <sys:String x:Key="Goto_Log_HomeCustom">HOME SubMove [{0}]: station={1}, axis{2}({3}), mode={4}, low-speed={5}, high-speed={6}</sys:String>
+    <sys:String x:Key="Goto_Log_FixedOffset">SubMove [{0}] fixed offset = {1}</sys:String>
+    <sys:String x:Key="Goto_Log_VariableOffset">SubMove [{0}] offset variable '{1}' = {2}</sys:String>
+    <sys:String x:Key="Goto_Log_GotoMove">GOTO SubMove [{0}]: station={1}, axis{2}({3}) -> position '{4}'={5:F3}, offset {6:F3}, target position={7:F3}, speed {8}</sys:String>
+    <sys:String x:Key="Goto_Log_StationNotFound">SubMove station '{0}' not found; using default station '{1}'</sys:String>
+    <sys:String x:Key="Goto_Log_AxisIdUnresolved">SubMove [{0}] cannot resolve axis id, AxisId={1}, Axis={2}; using raw value</sys:String>
+    <sys:String x:Key="Goto_Log_VariableNotFound">Global variable '{0}' not found; offset treated as 0</sys:String>
+    <sys:String x:Key="Goto_Log_VariableParseFailed">Value '{1}' of global variable '{0}' cannot be parsed as number; offset treated as 0</sys:String>
     <sys:String x:Key="PSE_TaskProperties">Task Properties</sys:String>
     <sys:String x:Key="PSE_MethodProperties">Method Properties</sys:String>
     <sys:String x:Key="PSE_ActionProperties">Action Properties</sys:String>
@@ -3983,5 +4054,1251 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="TaskMonitor_Collapse">Collapse Steps</sys:String>
     <sys:String x:Key="TaskMonitor_NoStep">No Step</sys:String>
     <sys:String x:Key="TaskMonitor_Layout">Layout Density</sys:String>
+    <!-- New multilingual resource keys (STB_Log_/MS_Log_/PSE_Log_Exec_/Disp_Log_/Cure_Log_/Pick_Log_/Rel_Log_/Scan3D_Log_/Vis_Log_/Script_Log_/Seek_Log_/Sig_Log_/Wait_Log_/If_Log_/Branch_Log_/DB_Log_/RM_/MSP_/DD_/ACD_/RCD_) -->
+    <sys:String x:Key="ACD_Log_EarlyGlueOff">[{0}] Early glue off: path {1:F2}mm, interp {2:F1}mm/s, advance {3}ms</sys:String>
+    <sys:String x:Key="ACD_Log_ShortPathGlueOff">[{0}] Short path, glue off at motion end</sys:String>
+    <sys:String x:Key="ACD_Msg_InterpTimeout">{0} continuous interpolation motion timeout</sys:String>
+    <sys:String x:Key="ACD_Msg_PathPointsEmpty">Path points are empty</sys:String>
+    <sys:String x:Key="Branch_Log_ConditionHandledByExecutor">BRANCH step [{0}] condition evaluation handled by ProcessStepExecutor</sys:String>
+    <sys:String x:Key="Cure_Log_AxisIdUnresolved">SubMove [{0}] failed to resolve axis ID, AxisId={1}, Axis={2}</sys:String>
+    <sys:String x:Key="Cure_Log_HoldDelay">CURE step [{0}] SubMove [{1}] cure delay: {2}ms</sys:String>
+    <sys:String x:Key="Cure_Log_HoldDelayCompleted">CURE step [{0}] SubMove [{1}] cure delay completed</sys:String>
+    <sys:String x:Key="Cure_Log_LoadGlobalVarsFailed">Failed to load global variables: {0}, offset variable names will not be resolved</sys:String>
+    <sys:String x:Key="Cure_Log_NoCureDetail">CURE step [{0}] has no CureDetail, skipping execution</sys:String>
+    <sys:String x:Key="Cure_Log_StationNotFound">SubMove specified station '{0}' not found, using default station '{1}'</sys:String>
+    <sys:String x:Key="Cure_Log_SubMoveInfo">CURE SubMove [{0}]: station={1}, axis{2}({3}) → '{4}'={5:F3}, offset{6:F3}, target position={7:F3}, speed{8}</sys:String>
+    <sys:String x:Key="Cure_Log_UnknownAction">CURE step [{0}] SubMove [{1}] unknown action type: {2}, skipping</sys:String>
+    <sys:String x:Key="Cure_Log_UvOff">CURE step [{0}] SubMove [{1}] UV lamp off, DO port: {2}</sys:String>
+    <sys:String x:Key="Cure_Log_UvOn">CURE step [{0}] SubMove [{1}] UV lamp on, DO port: {2}</sys:String>
+    <sys:String x:Key="Cure_Log_VariableNotFound">Global variable '{0}' not found, offset treated as 0</sys:String>
+    <sys:String x:Key="Cure_Log_VariableParseFailed">Global variable '{0}' value '{1}' cannot be parsed as number, offset treated as 0</sys:String>
+    <sys:String x:Key="DB_Log_AutoJudgeNG">DASHBOARD step [{0}] auto-judged NG: {1}, output result=false, flow continues</sys:String>
+    <sys:String x:Key="DB_Log_AutoJudgeOK">DASHBOARD step [{0}] auto-judged OK, output result=true</sys:String>
+    <sys:String x:Key="DB_Log_DashboardData">DASHBOARD step [{0}] dashboard data: {1}</sys:String>
+    <sys:String x:Key="DB_Log_DataCalculated">DASHBOARD step [{0}] data calculation completed</sys:String>
+    <sys:String x:Key="DB_Log_FormulaEvalFailed">DASHBOARD field [{0}] formula evaluation failed: {1}</sys:String>
+    <sys:String x:Key="DB_Log_GlobalVarProviderFailed">[DashboardAction] Failed to get global variable provider: {0}</sys:String>
+    <sys:String x:Key="DB_Log_NoFields">DASHBOARD step [{0}] has no dashboard fields configured, skipping</sys:String>
+    <sys:String x:Key="DB_Log_UserConfirmNG">DASHBOARD step [{0}] user confirmed NG, output result=false, flow continues</sys:String>
+    <sys:String x:Key="DB_Log_UserConfirmOK">DASHBOARD step [{0}] user confirmed OK, output result=true</sys:String>
+    <sys:String x:Key="DD_Log_CadTransformUnavailable">[DispenseDetail] CAD alignment transform unavailable, cannot view rotated coordinates</sys:String>
+    <sys:String x:Key="DD_Log_CoordListBuilt">[DispenseDetail] Coordinate comparison list built, {0} points total</sys:String>
+    <sys:String x:Key="DD_Log_DialogClosed">[DispenseDetail] Dialog closed</sys:String>
+    <sys:String x:Key="DD_Log_ImportedSegments">[DispenseDetail] Imported {0} segments (Step3 checked)</sys:String>
+    <sys:String x:Key="DD_Log_LoadGlobalVarsFailed">[DispenseDetail] Failed to load global variables: {0}</sys:String>
+    <sys:String x:Key="DD_Log_NoCoordPoints">[DispenseDetail] No segment coordinate points available, please import segments first</sys:String>
+    <sys:String x:Key="DD_Log_OpenRotatedCoordsDialogFailed">[DispenseDetail] Failed to open rotated coordinates dialog</sys:String>
+    <sys:String x:Key="DD_Log_PreparingDialog">[DispenseDetail] Preparing to show dialog: title={0}, _baseDialogService={1}</sys:String>
+    <sys:String x:Key="DD_Log_RestoreCadSnapshotFailed">[DispenseDetail] Failed to restore CAD alignment transform snapshot: {0}</sys:String>
+    <sys:String x:Key="DD_Log_RefreshGlobalVarsFailed">[DispenseDetail] Failed to refresh global variable display values: {0}</sys:String>
+    <sys:String x:Key="DD_Log_RotationAngleAndCenter">[DispenseDetail] Rotation angle={0:F3}°, rotation center=({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="DD_Log_SegmentNotFoundOrNoPoints">[DispenseDetail] Segment {0} not found or has no point data</sys:String>
+    <sys:String x:Key="DD_Log_SourceAndRefCount">[DispenseDetail] Source segment count={0}, SegmentRefs count={1}</sys:String>
+    <sys:String x:Key="DD_Log_ViewRotatedCoordsClicked">[DispenseDetail] ViewRotatedCoords button clicked, building coordinate comparison</sys:String>
+    <sys:String x:Key="DD_Msg_SourceDeleted">⚠ Source deleted</sys:String>
+    <sys:String x:Key="Disp_Log_AffineMatrixNotFound">DISPENSE step [{0}] needle{1} affine matrix not found, falling back to in-point MachineX/MachineY</sys:String>
+    <sys:String x:Key="Disp_Log_AffineMatrixUsed">DISPENSE step [{0}] using needle{1} affine matrix for real-time coordinate conversion (RMS={2:F4}mm)</sys:String>
+    <sys:String x:Key="Disp_Log_ArcGlueTriggerOn">DISPENSE arc: segment[{0}] position-triggered glue on, triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="Disp_Log_ArcModeCompleted">DISPENSE arc mode completed</sys:String>
+    <sys:String x:Key="Disp_Log_ArcModeStart">DISPENSE arc mode started</sys:String>
+    <sys:String x:Key="Disp_Log_ArcNoArcSegments">DISPENSE arc mode: no enabled arc-type segments (please import Arc/Circle/Ellipse or polyline containing arc segments)</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentInterrupted">DISPENSE arc: segment '{0}' glue interrupted during pause, skipping after resume</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentNotFound">DISPENSE arc: source segment '{0}' not found, skipping</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentParams">DISPENSE arc: segment[{0}] ({1}/{2}), {3} points, MoveSpeed={4:F1}, InterpSpeed={5:F1}, SafeHeight={6:F1}, EarlyCloseGlueDelay={7:F0}ms, PostDelay={8:F0}ms</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentStartCoords">DISPENSE step [{0}] arc: segment[{1}] start point original CAD=({2:F4}, {3:F4}), X Comp(calibrator)={4:F4}mm, Y Comp(calibrator)={5:F4}mm, Z Comp(calibrator)={6:F4}mm, Z Comp(3D Camera)={7:F4}mm, final start point XY=({8:F4}, {9:F4}), Z={10:F4}</sys:String>
+    <sys:String x:Key="Disp_Log_ArcZNotReached">DISPENSE arc: segment[{0}] Z-axis not reached: current={1:F3}, target={2:F3}, re-descending</sys:String>
+    <sys:String x:Key="Disp_Log_AxisResolveFailed">DISPENSE failed to resolve axis '{0}' from global axis config</sys:String>
+    <sys:String x:Key="Disp_Log_CalibrationCompEnabled">DISPENSE step [{0}] calibration compensation enabled: X Comp(calibrator)={1:F4}mm, Y Comp(calibrator)={2:F4}mm, Z Comp(calibrator)={3:F4}mm, Z Comp(3D Camera)={4:F4}mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotGlueTriggerOn">DISPENSE step [{0}] dot: segment[{1}] point{2} position-triggered glue on, triggerZ={3:F3}, targetZ={4:F3}, offset={5:F3}mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotModeCompleted">DISPENSE step [{0}] dot mode completed</sys:String>
+    <sys:String x:Key="Disp_Log_DotModeStart">DISPENSE step [{0}] dot mode started</sys:String>
+    <sys:String x:Key="Disp_Log_DotPointAbandonedAfterPause">DISPENSE step [{0}] dot: segment[{1}] point{2} glue was dispensed during pause, skipping after resume</sys:String>
+    <sys:String x:Key="Disp_Log_DotPointDetail">DISPENSE step [{0}] dot: segment[{1}] point{2}/{3} [Id={4}] | original CAD=({5:F4}, {6:F4}, Z={7:F4}) | transform source={8}, transformed=({9:F4}, {10:F4}) | manual XY comp=({11:F4}, {12:F4})mm | needle offset=({13:F4}, {14:F4})mm | calibration XY=({15:F4}, {16:F4})mm | global XY=({17:F4}, {18:F4})mm | final XY=({19:F4}, {20:F4}), Z={21:F4}mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotSegmentNotFound">DISPENSE step [{0}] dot: source segment '{1}' not found, skipping</sys:String>
+    <sys:String x:Key="Disp_Log_DotSegmentProcessParams">DISPENSE step [{0}] dot: segment[{1}] ({2}/{3}), {4} points total | param source={5}, UseDefaultParams={6} | process params: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, HeightComp(total)={18:F3}mm, EffectiveZ={19:F3}mm, DispensingPressure={20:F3}MPa, SuckBackTime={21:F0}ms, manual XY comp=({22:F4}, {23:F4})mm</sys:String>
+    <sys:String x:Key="Disp_Log_DryRunCompleted">DISPENSE dry run completed</sys:String>
+    <sys:String x:Key="Disp_Log_DryRunSegmentNotFound">DISPENSE dry run: source segment '{0}' not found, skipping</sys:String>
+    <sys:String x:Key="Disp_Log_DryRunStart">DISPENSE dry run started</sys:String>
+    <sys:String x:Key="Disp_Log_NeedleAxisInfo">DISPENSE step [{0}] using needle{1}/{2} (logical axis ID={3}), Dx={4}, Dy={5}, glue IO={6}</sys:String>
+    <sys:String x:Key="Disp_Log_NeedleOffsetCompEnabled">DISPENSE step [{0}] needle offset compensation enabled: dX={1:F4}mm, dY={2:F4}mm</sys:String>
+    <sys:String x:Key="Disp_Log_NoDispenseDetail">DISPENSE step [{0}] has no DispenseDetail, skipping execution</sys:String>
+    <sys:String x:Key="Disp_Log_PausedGlueOff">DISPENSE {0} glue turned off during pause, will skip current point/segment after resume</sys:String>
+    <sys:String x:Key="Disp_Log_PausedWaiting">DISPENSE {0} paused, waiting to resume current action</sys:String>
+    <sys:String x:Key="Disp_Log_ResolveLinkedVarFailed">Failed to resolve linked global variable '{0}': {1}</sys:String>
+    <sys:String x:Key="Disp_Log_RotationCompEnabled">DISPENSE step [{0}] rotation compensation enabled: rotation angle={1:F3}°, rotation center=({2:F3}, {3:F3})</sys:String>
+    <sys:String x:Key="Disp_Log_RotationCompNoCadAlign">DISPENSE step [{0}] rotation compensation enabled but CAD alignment transform unavailable, falling back to original coordinates</sys:String>
+    <sys:String x:Key="Disp_Log_SourceSegmentCount">DISPENSE step [{0}] source trajectory segments: {1}</sys:String>
+    <sys:String x:Key="Disp_Log_StepCancelled">DISPENSE step [{0}] cancelled, glue safely turned off</sys:String>
+    <sys:String x:Key="Disp_Log_StepException">DISPENSE step [{0}] execution exception, glue safely turned off</sys:String>
+    <sys:String x:Key="Disp_Log_UnknownDispenseMode">DISPENSE step [{0}] unknown dispense mode: {1}</sys:String>
+    <sys:String x:Key="Disp_Log_WriteGlueIoFailed">DISPENSE failed to write glue IO port={0} value={1}</sys:String>
+    <sys:String x:Key="Disp_Log_XyCompEnabled">DISPENSE step [{0}] XY compensation enabled: dX={1:F4}mm, dY={2:F4}mm</sys:String>
+    <sys:String x:Key="If_Log_ConditionHandledByExecutor">IF step [{0}] condition evaluation handled by ProcessStepExecutor</sys:String>
+    <sys:String x:Key="MS_Log_ADChannelsLoaded">Loaded {0} AD channel configurations</sys:String>
+    <sys:String x:Key="MS_Log_AxisPanelToggle">Axis panel {0}, polling interval {1}ms</sys:String>
+    <sys:String x:Key="MS_Log_CardBusError">Card {0} EtherCAT bus error (0x{1:X}), attempting soft reset...</sys:String>
+    <sys:String x:Key="MS_Log_CardConfigLoadFailed">Card {0} failed to load config '{1}', error code: {2}</sys:String>
+    <sys:String x:Key="MS_Log_CardConfigLoaded">Card {0} loaded config '{1}'</sys:String>
+    <sys:String x:Key="MS_Log_CardConfigPathEmpty">Card {0} ConfigPath is empty and no default config found in hwcfg.xml. Skipping config load.</sys:String>
+    <sys:String x:Key="MS_Log_CardNotAvailable">Card {0} not available (hardware may be missing)</sys:String>
+    <sys:String x:Key="MS_Log_CardResetFailed">Card {0} bus reset failed, status: 0x{1:X}. Skipping config load.</sys:String>
+    <sys:String x:Key="MS_Log_InterlockAbsMoveRejected">[Safety Interlock] Axis{0} absolute move rejected | target position:{1:F3} | reason:{2}</sys:String>
+    <sys:String x:Key="MS_Log_InterlockInterpMoveRejected">[Safety Interlock] Interpolation move (coord system{0}) rejected | reason:{1}</sys:String>
+    <sys:String x:Key="MS_Log_InterlockRelMoveRejected">[Safety Interlock] Axis{0} relative move rejected | target position:{1:F3} | reason:{2}</sys:String>
+    <sys:String x:Key="MS_Log_JogStartFailed">JogStart failed | logical axis:{0} physical axis:{1} return value:{2}</sys:String>
+    <sys:String x:Key="MS_Log_NoHardwareCards">No hardware cards found, adding virtual card for simulation.</sys:String>
+    <sys:String x:Key="MS_Log_PanelClosed">Closed</sys:String>
+    <sys:String x:Key="MS_Log_PanelOpen">Open</sys:String>
+    <sys:String x:Key="MSP_Log_BuildSaveNodeFailed">Failed to build station save node: {0}, will save position data only</sys:String>
+    <sys:String x:Key="MSP_Log_LoadStationFailed">Failed to load station '{0}' position data: {1}</sys:String>
+    <sys:String x:Key="MSP_Log_PositionStaged">[{0}] position parameters staged (triggered by Save Pool)</sys:String>
+    <sys:String x:Key="MSP_Log_StageParamsFailed">Failed to stage position editor parameters: {0}</sys:String>
+    <sys:String x:Key="MSP_Log_TeachReadPosFailed">Teach: failed to read axis {0} (ID={1}) position: {2}</sys:String>
+    <sys:String x:Key="MSP_Msg_NoStationSelected">No station selected, cannot save.</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConfigDisabled">[Branch] step [{0}] BranchConfig not enabled, continuing to next step</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionEmpty">[Branch] condition[{0}] ConditionExpression is empty, skipping (Desc={1}, TargetSeq={2})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionEvalFailed">[Branch] condition expression evaluation failed: '{0}' - {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionMatched">[Branch] ✓ Condition matched! Jumping to step [{0}] ({1})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionResult">[Branch] condition '{0}' = {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchEvalStart">[Branch] step [{0}] starting condition branch evaluation, BranchConfig.IsEnabled={1}, condition count={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchInvalidTargetSafetyWarn">[Branch] ⚠️ Safety warning: condition branch configured jump target step Seq={0} does not exist! Sequence automatically terminated to avoid collision risk. Please check configuration and retry.</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchInvalidTargetSeqSafetyWarn">[Branch] ⚠️ Safety warning: condition branch configured jump target step Seq={0} is invalid! Sequence automatically terminated to avoid collision risk. Please check configuration and retry.</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchNoMatchDefault">[Branch] no condition matched, executing default action: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchStart">[ProcessStepExecutor] Starting BRANCH step [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckAlarmTriggered">CHECK step [{0}] alarm triggered CHECK_MAX_RETRIES</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckItemFailed">Check item [{0}] failed: value={1}, range=[{2}, {3}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckRetryExceededContinue">CHECK step [{0}] retries exceeded, continuing to next step</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckRetryExceededStop">CHECK step [{0}] retries exceeded, terminating execution</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckRetryExhausted">CHECK step [{0}] failed after {1} retries, executing OnMaxExceeded={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckStepResult">CHECK step [{0}] check result #{1}: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_DefaultActionContinue">[Branch] default action: Continue → next step</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_DefaultActionSkipTo">[Branch] default action: jump to step [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_DefaultActionStop">[Branch] default action: terminate sequence execution</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ExecuteStepBegin">=== Execute step [{0}] {1} ({2} → {3}) ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ExpressionEvalException">[Branch] expression evaluation exception: '{0}' - {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_GlobalVarNotFound">[Branch] global variable '{0}' does not exist, skipping write</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_GlobalVarsSaved">[Branch] global variables saved</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfBranchExecute">[IF] step [{0}] executing {1} branch, sub-step count={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfBranchNotFound">[IF] step [{0}] {1} branch not found, skipping</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfBranchOuterJump">[ProcessStepExecutor] IF step [{0}] outer jump due to sub-step BRANCH, continue index={1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfCompleted">[ProcessStepExecutor] IF step [{0}] completed</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfConditionEmpty">[IF] step [{0}] condition expression is empty, treating as false</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfConditionEvalException">[IF] step [{0}] condition evaluation exception: {1}, treating as false</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfConditionResult">[IF] step [{0}] condition '{1}' = {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfDetailNull">[IF] step [{0}] IfDetail is null, skipping</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfLoadGlobalVarsFailed">[IF] Failed to load global variables: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfStart">[ProcessStepExecutor] Starting IF step [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchConditionEvalFailed">[IF-Sub] BRANCH condition evaluation failed: '{0}' - {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchConditionMatched">[IF-Sub] BRANCH condition matched, outer jump to step Seq={0} ({1})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchConditionResult">[IF-Sub] BRANCH condition '{0}' = {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchDefaultContinue">[IF-Sub] BRANCH step [{0}] default Continue, next step within block</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchDefaultSkipTo">[IF-Sub] BRANCH default action SkipTo step Seq={0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchDefaultStop">[IF-Sub] BRANCH default action Stop, terminating sequence</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchOuterJump">[IF-Sub] BRANCH step [{0}] outer jump, target index={1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubSkipDisabledStep">[IF-Sub] skipping disabled step: [{0}] {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubStepBegin">[IF-Sub] === Execute sub-step [{0}] {1} ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubStepException">[IF-Sub] sub-step [{0}] {1} execution exception: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_JumpTargetNotFoundSafetyWarn">[Branch] ⚠️ Safety warning: jump target step Seq={0} does not exist in current sequence! It may have been deleted or has wrong sequence number. Sequence automatically terminated to avoid collision risk.</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_JumpTargetResolved">[Branch] jump target resolved: Seq={0} → Index={1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_JumpToStep">Jump to step Seq={0} (index={1})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_LoadGlobalVarsFailed">[Branch] Failed to load global variables: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_NoRegisteredAction">Step [{0}] type {1} has no registered Action, skipping</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_NoRegisteredActionStandalone">Step [{0}] type {1} has no registered Action, cannot execute standalone</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_OutputTypeMismatch">[Branch] type mismatch: output param '{0}' type={1}, global variable '{2}' type={3}, skipping write</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_OutputWrittenToGlobalVar">[Branch] output param written to global variable: {0}={1} → {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ProcessSequenceCompleted">=== Process step sequence execution completed ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ProcessStepListEmpty">Process step list is empty, skipping execution</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskCompleted">[ProcessStepExecutor] RUNTASK step [{0}] completed</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskNoExecutor">[ProcessStepExecutor] RUNTASK step [{0}] IRunTaskExecutor not injected, skipping</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskNoTarget">[ProcessStepExecutor] RUNTASK step [{0}] no target task configured, skipping</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskNotStandalone">Step [{0}] RUNTASK type does not support standalone execution, please run in task sequence</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskStart">[ProcessStepExecutor] Starting RUNTASK step [{0}], target task: {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_SkipDisabledStep">[ProcessStepExecutor] Skipping disabled step: [{0}] {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StandaloneStepBegin">=== Execute step standalone [{0}] {1} ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StandaloneStepCompleted">=== Standalone step [{0}] {1} completed ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepCanceledException">[ProcessStepExecutor] step [{0}] {1} caught OperationCanceledException, LastFaultStepName: {2}, IsEnabled: {3}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepCaughtException">[ProcessStepExecutor] step [{0}] {1} caught Exception: {2}, IsEnabled: {3}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepCompleted">[ProcessStepExecutor] step [{0}] {1} completed, LastFaultStepName: {2}, IsEnabled: {3}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepErrorEvent">[ProcessStepExecutor] step error event: [{0}] {1} ErrorCode={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepExecutionException">[ProcessSequence] step [{0}] {1} execution exception: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepFaultedEventTriggered">[ProcessStepExecutor] event triggered: step [{0}] {1} immediately set HasActiveAlarm = true</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepModeReceivedNextConfirm">[ProcessStepExecutor] single-step mode received next step confirmation</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepModeWaitNextConfirm">[ProcessStepExecutor] single-step mode waiting for next step confirmation (next step [{0}])</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSeqNotFound">Step with Seq={0} not found, continuing sequential execution</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSetAlarmCanceledPath">[ProcessStepExecutor] step [{0}] {1} set HasActiveAlarm = true (OperationCanceledException path)</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSetAlarmExceptionPath">[ProcessStepExecutor] step [{0}] {1} set HasActiveAlarm = true (Exception path)</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSetAlarmLastFaultMatch">[ProcessStepExecutor] step [{0}] {1} set HasActiveAlarm = true (LastFaultStepName match path)</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepStart">[ProcessStepExecutor] Starting step [{0}] {1}, stepLabel: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepTypeNotImplemented">Step type {0} executor not implemented, skipping step [{1}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_VariablePoolAdd">[Branch] variable pool += {0} = {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_VariablePoolSummary">[Branch] variable pool has {0} items: {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_WriteGlobalVarsFailed">[Branch] Failed to write global variables: {0}</sys:String>
+    <sys:String x:Key="Pick_Log_AxisIdUnresolved">SubMove [{0}] failed to resolve axis ID, AxisId={1}, Axis={2}</sys:String>
+    <sys:String x:Key="Pick_Log_ClampDone">PICK step [{0}] SubMove [{1}] clamp completed</sys:String>
+    <sys:String x:Key="Pick_Log_ClampStart">PICK step [{0}] SubMove [{1}] clamping, target position: {2}, speed: {3}%</sys:String>
+    <sys:String x:Key="Pick_Log_HoldDone">PICK step [{0}] SubMove [{1}] delay completed</sys:String>
+    <sys:String x:Key="Pick_Log_HoldStart">PICK step [{0}] SubMove [{1}] delay waiting: {2}ms</sys:String>
+    <sys:String x:Key="Pick_Log_LoadGlobalVarsFailed">Failed to load global variables: {0}, offset variable names will not be resolved</sys:String>
+    <sys:String x:Key="Pick_Log_NoPickDetail">PICK step [{0}] has no PickDetail, skipping execution</sys:String>
+    <sys:String x:Key="Pick_Log_PickMove">PICK SubMove [{0}]: station={1}, axis{2}({3}) → '{4}'={5:F3}, offset{6:F3}, target position={7:F3}, speed{8}</sys:String>
+    <sys:String x:Key="Pick_Log_ReleaseDone">PICK step [{0}] SubMove [{1}] release completed</sys:String>
+    <sys:String x:Key="Pick_Log_ReleaseStart">PICK step [{0}] SubMove [{1}] releasing, target position: {2}, speed: {3}%</sys:String>
+    <sys:String x:Key="Pick_Log_StationNotFound">SubMove specified station '{0}' not found, using default station '{1}'</sys:String>
+    <sys:String x:Key="Pick_Log_UnknownAction">PICK step [{0}] SubMove [{1}] unknown action type: {2}, skipping</sys:String>
+    <sys:String x:Key="Pick_Log_VacuumOff">PICK step [{0}] SubMove [{1}] vacuum off</sys:String>
+    <sys:String x:Key="Pick_Log_VacuumOn">PICK step [{0}] SubMove [{1}] vacuum on</sys:String>
+    <sys:String x:Key="Pick_Log_VariableNotFound">Global variable '{0}' not found, offset treated as 0</sys:String>
+    <sys:String x:Key="Pick_Log_VariableParseFailed">Global variable '{0}' value '{1}' cannot be parsed as number, offset treated as 0</sys:String>
+    <sys:String x:Key="RCD_Title_ConfirmOperation">Confirm Operation</sys:String>
+    <sys:String x:Key="Rel_Log_AxisIdUnresolved">SubMove [{0}] failed to resolve axis ID, AxisId={1}, Axis={2}</sys:String>
+    <sys:String x:Key="Rel_Log_ClampDone">RELEASE step [{0}] SubMove [{1}] clamp completed</sys:String>
+    <sys:String x:Key="Rel_Log_ClampStart">RELEASE step [{0}] SubMove [{1}] clamping, target position: {2}, speed: {3}%</sys:String>
+    <sys:String x:Key="Rel_Log_HoldDone">RELEASE step [{0}] SubMove [{1}] delay completed</sys:String>
+    <sys:String x:Key="Rel_Log_HoldStart">RELEASE step [{0}] SubMove [{1}] delay waiting: {2}ms</sys:String>
+    <sys:String x:Key="Rel_Log_LoadGlobalVarsFailed">Failed to load global variables: {0}, offset variable names will not be resolved</sys:String>
+    <sys:String x:Key="Rel_Log_NoReleaseDetail">RELEASE step [{0}] has no ReleaseDetail, skipping execution</sys:String>
+    <sys:String x:Key="Rel_Log_ReleaseDone">RELEASE step [{0}] SubMove [{1}] release completed</sys:String>
+    <sys:String x:Key="Rel_Log_ReleaseMove">RELEASE SubMove [{0}]: station={1}, axis{2}({3}) → '{4}'={5:F3}, offset{6:F3}, target position={7:F3}, speed{8}</sys:String>
+    <sys:String x:Key="Rel_Log_ReleaseStart">RELEASE step [{0}] SubMove [{1}] releasing, target position: {2}, speed: {3}%</sys:String>
+    <sys:String x:Key="Rel_Log_StationNotFound">SubMove specified station '{0}' not found, using default station '{1}'</sys:String>
+    <sys:String x:Key="Rel_Log_UnknownAction">RELEASE step [{0}] SubMove [{1}] unknown action type: {2}, skipping</sys:String>
+    <sys:String x:Key="Rel_Log_VacuumOff">RELEASE step [{0}] SubMove [{1}] vacuum off</sys:String>
+    <sys:String x:Key="Rel_Log_VacuumOn">RELEASE step [{0}] SubMove [{1}] vacuum on</sys:String>
+    <sys:String x:Key="Rel_Log_VariableNotFound">Global variable '{0}' not found, offset treated as 0</sys:String>
+    <sys:String x:Key="Rel_Log_VariableParseFailed">Global variable '{0}' value '{1}' cannot be parsed as number, offset treated as 0</sys:String>
+    <sys:String x:Key="RM_Log_CopyRecipePoolFail">Failed to copy recipe pool</sys:String>
+    <sys:String x:Key="RM_Log_CreateRecipeFail">Failed to create recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Log_DeleteRecipeFail">Failed to delete recipe</sys:String>
+    <sys:String x:Key="RM_Log_EditRecipeFail">Failed to edit recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Log_LoadPoolRecipesFail">Failed to load recipes from pool '{0}': {1}</sys:String>
+    <sys:String x:Key="RM_Log_LoadRecipePoolsFail">Failed to load recipe pools</sys:String>
+    <sys:String x:Key="RM_Log_LoadRecipesFail">Failed to load recipes</sys:String>
+    <sys:String x:Key="RM_Log_LoadStationParamsFail">Failed to load station parameters: {0}</sys:String>
+    <sys:String x:Key="RM_Log_OpenStationEditorFail">Failed to open station parameter editor: {0}</sys:String>
+    <sys:String x:Key="RM_Log_RecipeCreated">New recipe created: {0}</sys:String>
+    <sys:String x:Key="RM_Log_RecipeDeleted">Recipe '{0}' deleted</sys:String>
+    <sys:String x:Key="RM_Log_RecipeParamsManualSaved">Recipe '{0}' parameters manually saved</sys:String>
+    <sys:String x:Key="RM_Log_RecipePoolAndGlobalsSaved">Recipe pool '{0}' and global variables saved</sys:String>
+    <sys:String x:Key="RM_Log_RecipeUpdated">Recipe updated: {0} -> {1}</sys:String>
+    <sys:String x:Key="RM_Log_SaveFail">Save failed</sys:String>
+    <sys:String x:Key="RM_Log_SaveRecipeParamsFail">Failed to save recipe parameters</sys:String>
+    <sys:String x:Key="RM_Log_SaveRecipePoolFail">Failed to save recipe pool '{0}'</sys:String>
+    <sys:String x:Key="RM_Log_StartSaveRecipePool">Starting to save recipe pool '{0}'</sys:String>
+    <sys:String x:Key="RM_Log_StationParamsSaveFail">Failed to save station '{0}' parameters to recipe file: {1}</sys:String>
+    <sys:String x:Key="RM_Log_StationParamsSynced">Station '{0}' parameters synced to recipe file</sys:String>
+    <sys:String x:Key="RM_Log_SwitchRecipeFail">Failed to switch recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Log_SwitchRecipePoolFail">Failed to switch recipe pool</sys:String>
+    <sys:String x:Key="RM_Msg_CannotDelete">Cannot delete</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmDeleteRecipe">Are you sure you want to delete recipe '{0}'? This operation is irreversible.</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmDeleteRecipePool">Are you sure you want to delete recipe pool '{0}' and all its recipes? This operation is irreversible.</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipeMsg">Are you sure you want to switch to recipe '{0}'?\nAll stations will switch to this recipe.</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipePoolMsg">Are you sure you want to switch to recipe pool '{0}'?\nThe system will load the recipe data of this pool.</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipePoolTitle">Confirm Switch Recipe Pool</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipeTitle">Confirm Switch Recipe</sys:String>
+    <sys:String x:Key="RM_Msg_CopyRecipePoolFail">Failed to copy recipe pool: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_CreateNewRecipe">Create New Recipe</sys:String>
+    <sys:String x:Key="RM_Msg_CreateRecipeFail">Failed to create recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_DeleteRecipeFail">Failed to delete recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_DeleteRecipePoolTitle">Delete Recipe Pool</sys:String>
+    <sys:String x:Key="RM_Msg_DeleteRecipeTitle">Delete Recipe</sys:String>
+    <sys:String x:Key="RM_Msg_EditRecipe">Edit Recipe</sys:String>
+    <sys:String x:Key="RM_Msg_EditRecipeFail">Failed to edit recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_EditRecipePool">Edit Recipe Pool</sys:String>
+    <sys:String x:Key="RM_Msg_LoadingRecipes">Loading recipes from pool '{0}'...</sys:String>
+    <sys:String x:Key="RM_Msg_LoadRecipesFail">Failed to load recipes: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_NewRecipePoolTitle">New Recipe Pool (Copy Current Pool)</sys:String>
+    <sys:String x:Key="RM_Msg_Prompt">Prompt</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeCreated">Recipe created: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeDeleted">Recipe deleted: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeInUse">Recipe '{0}' is in use and cannot be deleted. Please switch to another recipe first.</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeNotExist">Recipe '{0}' does not exist</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeNotExistInPool">Recipe '{0}' does not exist in current pool</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeNotExistShort">Recipe does not exist</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeParamsSaved">Recipe '{0}' parameters saved</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolAndGlobalsSaved">Recipe pool '{0}' and global variables saved</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolCopied">Recipe pool '{0}' copied as '{1}'</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolInUse">Recipe pool '{0}' is currently in use and cannot be deleted.</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolUpdated">Recipe pool '{0}' updated</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeSelected">Recipe selected: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeUpdated">Recipe updated: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipesLoaded">Loaded {0} recipes</sys:String>
+    <sys:String x:Key="RM_Msg_SaveFailShort">Save failed: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SaveRecipeParamsFail">Failed to save recipe '{0}' parameters</sys:String>
+    <sys:String x:Key="RM_Msg_SaveRecipeParamsFailShort">Failed to save recipe parameters: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SelectPoolAndRecipeFirst">Please select a recipe pool and recipe first</sys:String>
+    <sys:String x:Key="RM_Msg_SelectPoolAsSourceFirst">Please select a recipe pool as copy source first</sys:String>
+    <sys:String x:Key="RM_Msg_SelectPoolFirst">Please select a recipe pool first</sys:String>
+    <sys:String x:Key="RM_Msg_SelectRecipeFirst">Please select a recipe first</sys:String>
+    <sys:String x:Key="RM_Msg_StationNotSupportEdit">Station '{0}' does not support parameter editing</sys:String>
+    <sys:String x:Key="RM_Msg_StationParamEditTitle">{0} - Parameter Editing</sys:String>
+    <sys:String x:Key="RM_Msg_StationParamsLoaded">Loaded parameters for {0} stations</sys:String>
+    <sys:String x:Key="RM_Msg_SavingRecipeParams">Saving recipe '{0}' parameters...</sys:String>
+    <sys:String x:Key="RM_Msg_SavingRecipePool">Saving recipe pool '{0}'...</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchRecipeFail">Failed to switch recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchRecipePoolFail">Failed to switch recipe pool: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchRecipePoolTitle">Switch Recipe Pool</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchedRecipePool">Switched to recipe pool '{0}'</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchingRecipe">Switching to recipe: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchingRecipePool">Switching to recipe pool '{0}'...</sys:String>
+    <sys:String x:Key="RM_Msg_UserCancelSwitchRecipe">User cancelled recipe switch</sys:String>
+    <sys:String x:Key="RM_Msg_UserCancelSwitchRecipePool">User cancelled recipe pool switch</sys:String>
+    <sys:String x:Key="Scan3D_Log_GlobalVarsSaved">SCAN global variables saved</sys:String>
+    <sys:String x:Key="Scan3D_Log_IOAutoReset">IO[{0}] auto reset (delay {1}ms)</sys:String>
+    <sys:String x:Key="Scan3D_Log_IOAutoResetFailed">IO[{0}] auto reset failed: {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapDeviation">SCAN mapping: {0}({1:F3}-{2:F3})={3:F3} → '{4}'(deviation)</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapOriginal">SCAN mapping: {0}={1:F3} → '{2}'(original)</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapSkipNoCompVar">SCAN mapping skipped: deviation global variable '{0}' does not exist</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapSkipNoKey">SCAN mapping skipped: key '{0}' not in parse result</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapSkipNoVar">SCAN mapping skipped: global variable '{0}' does not exist</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoDataReceived">SCAN [{0}] no 3D camera data received</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoScanDetail">SCAN step [{0}] has no ScanDetail config, skipping execution</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoTCPIPMode">SCAN communication not configured or not TCPIP mode, executing moves only</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoVariableMapping">SCAN no variable mapping configured, skipping global variable write</sys:String>
+    <sys:String x:Key="Scan3D_Log_ParseFailed">SCAN data parse failed: {0}</sys:String>
+    <sys:String x:Key="Scan3D_Log_ParseResult">SCAN [{0}] parse result: {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_RealtimeTCPData">SCAN real-time TCP data received: {0}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step1_ZUp">SCAN [{0}] step 1: Z-axis raised to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step2_YStart">SCAN [{0}] step 2: Y-axis moved to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step3_XStart">SCAN [{0}] step 3: X-axis moved to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step4_ZDown">SCAN [{0}] step 4: Z-axis lowered to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step5_TriggerIO">SCAN [{0}] step 5: trigger IO[{1}] capture signal, reset delay {2}ms</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step6_XMoveRecv">SCAN [{0}] step 6: X-axis moved to {1}, receiving TCP data simultaneously</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step7_ZSafe">SCAN [{0}] step 7: Z-axis raised to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step8_XStandby">SCAN [{0}] step 8: X-axis returned to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step9_YStandby">SCAN [{0}] step 9: Y-axis returned to {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_TCPDataProcessFailed">SCAN TCP data processing failed: {0}</sys:String>
+    <sys:String x:Key="Scan3D_Log_TCPTimeout">SCAN TCP data wait timeout ({0}ms)</sys:String>
+    <sys:String x:Key="Script_Log_CompileFailed">SCRIPT compile failed: {0}</sys:String>
+    <sys:String x:Key="Script_Log_CompileSuccess">SCRIPT compiled and bound successfully</sys:String>
+    <sys:String x:Key="Script_Log_CompletedNoOutput">SCRIPT step [{0}] completed, no output</sys:String>
+    <sys:String x:Key="Script_Log_CompletedWithOutput">SCRIPT step [{0}] completed, output {1} parameters</sys:String>
+    <sys:String x:Key="Script_Log_GlobalVarUpdated">SCRIPT step [{0}] global variable [{1}] = {2}</sys:String>
+    <sys:String x:Key="Script_Log_NoScriptCode">SCRIPT step [{0}] has no script code, skipping</sys:String>
+    <sys:String x:Key="Script_Log_OutputNoMatch">SCRIPT step [{0}] output parameter [{1}] did not match any global variable, skipping writeback</sys:String>
+    <sys:String x:Key="Script_Log_StartExecute">SCRIPT step [{0}] starting, global variable count: {1}, step output count: {2}</sys:String>
+    <sys:String x:Key="Seek_Log_ChannelOutOfRange">SEEK step [{0}] channel {1} out of valid range (0-7), skipping</sys:String>
+    <sys:String x:Key="Seek_Log_ChannelReadFailed">SEEK step [{0}] channel {1} read failed: {2}, skipping</sys:String>
+    <sys:String x:Key="Seek_Log_ForceOutOfRange">SEEK step [{0}] channel {1} force out of range: {2:F3}N, range=[{3}, {4}]</sys:String>
+    <sys:String x:Key="Seek_Log_ForceValue">SEEK step [{0}] channel {1}: force={2:F3}N</sys:String>
+    <sys:String x:Key="Seek_Log_GlobalVarUpdated">SEEK step [{0}] global variable [{1}] = {2:F3}</sys:String>
+    <sys:String x:Key="Seek_Log_GlobalVarsSaved">SEEK step [{0}] global variables saved</sys:String>
+    <sys:String x:Key="Seek_Log_NoChannelConfig">SEEK step [{0}] has no channel config, skipping</sys:String>
+    <sys:String x:Key="Sig_Log_Send_NoSignalName">[SignalSend] step [{0}] no signal name configured, skipping send</sys:String>
+    <sys:String x:Key="Sig_Log_Send_SignalSent">[SignalSend] step [{0}] signal sent: {1}</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_Infinite">Infinite</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_NoSignalName">[SignalWait] step [{0}] no signal name configured, skipping wait</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_SignalReceived">[SignalWait] step [{0}] signal received: {1}, auto reset (consumed)</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_StartWait">[SignalWait] step [{0}] start waiting for signal: {1}, timeout: {2}</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_TimeoutError">[SignalWait] step [{0}] {1}</sys:String>
+    <sys:String x:Key="STB_Log_AxesDiscovered">[{0}] discovered {1} axes from hardware config: {2}</sys:String>
+    <sys:String x:Key="STB_Log_AxisConfigByNameNotFound">Axis config with name '{0}' not found</sys:String>
+    <sys:String x:Key="STB_Log_AxisConfigNotFound">[{0}] config for axis '{1}' not found</sys:String>
+    <sys:String x:Key="STB_Log_AxisNameNotFound">Axis {0} name config not found, will use ID as recipe Key.</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceCancelled">[{0}] custom sequence cancelled</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceCompleted">[{0}] custom sequence completed</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceError">[{0}] custom sequence execution error: {1}</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceStarted">[{0}] custom sequence started</sys:String>
+    <sys:String x:Key="STB_Log_DIPortNotFound">[{0}] DI port config '{1}' not found</sys:String>
+    <sys:String x:Key="STB_Log_DOPortNotFound">[{0}] DO port config '{1}' not found</sys:String>
+    <sys:String x:Key="STB_Log_ExecutingStep">[{0}] executing step: {1}</sys:String>
+    <sys:String x:Key="STB_Log_FatalStepCrash">Fatal fault, task [{0}] crashed at step [{1}]. Inner exception: {2}</sys:String>
+    <sys:String x:Key="STB_Log_LastFaultStepSet">[StationTaskBase] LastFaultStepName set to: {0}, alarmConfig.IsEnabled: {1}</sys:String>
+    <sys:String x:Key="STB_Log_ManualOpFaultPropagated">Step [{0}] manual operation fault, exception propagated to ViewModel</sys:String>
+    <sys:String x:Key="STB_Log_OperatorStopTask">Step [{0}] operator chose to stop task</sys:String>
+    <sys:String x:Key="STB_Log_RecoverableFault">Step [{0}] recoverable fault. Reason: {1} | Suggestion: {2}</sys:String>
+    <sys:String x:Key="STB_Log_ResumedRetryStep">Step [{0}] resumed, will re-execute current step...</sys:String>
+    <sys:String x:Key="STB_Log_SingleStepWait">[{0}] single-step wait: {1}</sys:String>
+    <sys:String x:Key="STB_Log_StepCompleted">[{0}] step completed: {1} (elapsed: {2}ms)</sys:String>
+    <sys:String x:Key="STB_Log_StepFatalError">[{0}] step [{1}] fatal exception: {2}</sys:String>
+    <sys:String x:Key="STB_Log_StepInterruptedByPause">Step [{0}] interrupted by pause, waiting to retry after resume</sys:String>
+    <sys:String x:Key="STB_Log_StationTypeNotFound">[{0}] station type '{1}' not found in hardware config</sys:String>
+    <sys:String x:Key="STB_Log_TaskNotResumedCancelStep">Step [{0}] task not resumed, cancelling current step</sys:String>
+    <sys:String x:Key="STB_Log_WaitingNextStep">[{0}] waiting for next step...</sys:String>
+    <sys:String x:Key="Vis_Log_AllRetriesTimeout">VISION step [{0}] retried {1} times, all timed out</sys:String>
+    <sys:String x:Key="Vis_Log_EmptyData">VISION received empty data, cannot parse</sys:String>
+    <sys:String x:Key="Vis_Log_GlobalVarsSaved">VISION global variables saved</sys:String>
+    <sys:String x:Key="Vis_Log_MapApplied">VISION mapping: {0}={1:F3} → global variable '{2}'</sys:String>
+    <sys:String x:Key="Vis_Log_MapSkipNoKey">VISION mapping skipped: key '{0}' not in parse result</sys:String>
+    <sys:String x:Key="Vis_Log_MapSkipNoVar">VISION mapping skipped: global variable '{0}' does not exist</sys:String>
+    <sys:String x:Key="Vis_Log_NoTCPIPMode">VISION step [{0}] communication not configured or not TCPIP mode</sys:String>
+    <sys:String x:Key="Vis_Log_NoTriggerCmd">VISION step [{0}] no trigger command configured</sys:String>
+    <sys:String x:Key="Vis_Log_NoVariableMapping">VISION no variable mapping configured, skipping global variable write</sys:String>
+    <sys:String x:Key="Vis_Log_NoVisionDetail">VISION step [{0}] has no VisionDetail config, skipping execution</sys:String>
+    <sys:String x:Key="Vis_Log_ParseFailed">VISION data parse failed: {0}</sys:String>
+    <sys:String x:Key="Vis_Log_ParseResult">VISION step [{0}] parse result: {1}</sys:String>
+    <sys:String x:Key="Vis_Log_ReceivedResponse">VISION step [{0}] response received: {1}</sys:String>
+    <sys:String x:Key="Vis_Log_ResponseTimeout">VISION step [{0}] response wait timeout #{1} ({2}ms): {3}</sys:String>
+    <sys:String x:Key="Vis_Log_RetrySend">VISION step [{0}] will resend capture command and wait for return signal...</sys:String>
+    <sys:String x:Key="Vis_Log_SendCmdFailed">VISION step [{0}] send command failed: {1}</sys:String>
+    <sys:String x:Key="Vis_Log_SendTrigger">VISION step [{0}] send trigger command (attempt {1}): '{2}' → {3}, timeout={4}ms</sys:String>
+    <sys:String x:Key="Wait_Log_DelayCompleted">WAIT step [{0}] delay completed: {1} ms</sys:String>
+    <sys:String x:Key="Wait_Log_StartDelay">WAIT step [{0}] starting delay: {1} ms</sys:String>
+    <!-- RecipeService log keys -->
+    <sys:String x:Key="RS_Log_InitCurrentRecipeStart">[{0}] Initializing current recipe from recipe pool '{1}'...</sys:String>
+    <sys:String x:Key="RS_Log_PoolNotExistUseDefault">[{0}] Recipe pool '{1}' does not exist, using default recipe</sys:String>
+    <sys:String x:Key="RS_Log_NoValidCurrentRecipe">[{0}] No valid current recipe record, using default recipe</sys:String>
+    <sys:String x:Key="RS_Log_LoadedLastRecipe">[{0}] Successfully loaded last selected recipe from pool '{1}': {2}</sys:String>
+    <sys:String x:Key="RS_Log_InitCurrentRecipeFailed">[{0}] Failed to initialize current recipe from pool '{1}': {2}</sys:String>
+    <sys:String x:Key="RS_Log_OpenEditWindow">[{0}] Opening parameter editor window, current recipe: {1}</sys:String>
+    <sys:String x:Key="RS_Log_OpenEditWindowFailed">[{0}] Failed to open parameter editor window: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParametersSavedAndApplied">[{0}] Parameters saved and applied</sys:String>
+    <sys:String x:Key="RS_Log_SaveCallbackFailed">[{0}] Parameter save callback handling failed: {1}</sys:String>
+    <sys:String x:Key="RS_Log_LoadedStationParamsFromRecipe">[{0}] Loaded station parameters from recipe '{1}' (pool: {2})</sys:String>
+    <sys:String x:Key="RS_Log_LoadedParamsFromFile">[{0}] Loaded parameters for recipe '{1}' from file</sys:String>
+    <sys:String x:Key="RS_Log_LoadParamsFromRecipeFailed">[{0}] Failed to load parameters from recipe '{1}': {2}</sys:String>
+    <sys:String x:Key="RS_Log_GetRecipeParamsFailed">[{0}] Failed to get recipe parameters: {1}</sys:String>
+    <sys:String x:Key="RS_Log_SavingRecipeToPool">[{0}] Saving current recipe '{1}' to recipe pool {2}</sys:String>
+    <sys:String x:Key="RS_Log_RecipeSavedToPoolTopLevel">[{0}] Current recipe '{1}' saved to pool {2} top-level properties</sys:String>
+    <sys:String x:Key="RS_Log_SaveRecipeToPoolFailed">[{0}] Failed to save current recipe to pool {1}: {2}</sys:String>
+    <sys:String x:Key="RS_Log_SaveParamsToSystemFailed">[{0}] Failed to save parameters to recipe system: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParamsSavedToLocalFile">[{0}] Parameters saved to local file: {1}</sys:String>
+    <sys:String x:Key="RS_Log_SaveParamsToLocalFileFailed">[{0}] Failed to save parameters to local file: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParametersNullCannotSave">[{0}] Parameters are null, cannot save</sys:String>
+    <sys:String x:Key="RS_Log_StartSaveParamsToRecipeCurrent">[{0}] Starting to save parameters to recipe: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParamsSavedToRecipeCurrent">[{0}] Parameters saved to recipe '{1}'</sys:String>
+    <sys:String x:Key="RS_Log_SaveParamsToRecipeFailed">[{0}] Failed to save parameters to recipe: {1}</sys:String>
+    <sys:String x:Key="RS_Log_StartSaveParamsToRecipe">[{0}] Starting to save parameters to recipe: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParamsSavedToRecipe">[{0}] Parameters saved to recipe '{1}'</sys:String>
+    <sys:String x:Key="RS_Log_LoadedParamsFromLocalFile">[{0}] Loaded parameters for recipe '{1}' from local file</sys:String>
+    <sys:String x:Key="RS_Log_LoadedParamsFromDefaultFile">[{0}] Loaded parameters from default file</sys:String>
+    <sys:String x:Key="RS_Log_LoadParamsFromFileFailed">[{0}] Failed to load parameters from file: {1}</sys:String>
+    <sys:String x:Key="RS_Log_GetCurrentRecipeNameFromPoolFailed">[{0}] Failed to get current recipe name from default recipe pool: {1}</sys:String>
+    <sys:String x:Key="RS_Log_GetCurrentRecipeInfoFailed">[{0}] Failed to get current recipe info: {1}</sys:String>
+    <sys:String x:Key="RS_Log_StartManualSwitchRecipe">[{0}] Starting manual recipe switch</sys:String>
+    <sys:String x:Key="RS_Log_UserCancelledSwitch">[{0}] User cancelled recipe switch</sys:String>
+    <sys:String x:Key="RS_Log_UserCancelledSwitchConfirm">[{0}] User cancelled recipe switch confirmation</sys:String>
+    <sys:String x:Key="RS_Log_ManualSwitchCompleted">[{0}] Manual recipe switch completed: {1} -> {2}</sys:String>
+    <sys:String x:Key="RS_Log_ManualSwitchFailed">[{0}] Manual recipe switch failed: {1}</sys:String>
+    <sys:String x:Key="RS_Log_StartSwitchToRecipe">[{0}] Starting switch to recipe: {1} (pool: {2})</sys:String>
+    <sys:String x:Key="RS_Log_SwitchToRecipeSuccess">[{0}] Successfully switched to recipe: {1} (pool: {2})</sys:String>
+    <sys:String x:Key="RS_Log_SwitchRecipeFailed">[{0}] Failed to switch recipe: {1}</sys:String>
+    <sys:String x:Key="RS_Log_BackupFileCreated">Parameter file backed up: {0}</sys:String>
+    <sys:String x:Key="RS_Log_BackupFileFailed">Failed to back up parameter file: {0}</sys:String>
+    <sys:String x:Key="RS_Log_LoadingDefaultParams">[{0}] Loading default parameters</sys:String>
+    <sys:String x:Key="RS_Log_DefaultParamsLoaded">[{0}] Default parameters loaded</sys:String>
+    <sys:String x:Key="RS_Log_LoadDefaultParamsFailed">[{0}] Failed to load default parameters: {1}</sys:String>
+    <sys:String x:Key="RS_Log_DefaultParamsSet">[{0}] Default parameter values set</sys:String>
+    <!-- RecipePoolService log keys -->
+    <sys:String x:Key="RPS_Log_DeleteCurrentPoolRejected">Attempt to delete the currently in-use recipe pool '{0}', operation rejected.</sys:String>
+    <sys:String x:Key="RPS_Log_DefaultPoolDeletedNewDefault">Default pool deleted, '{0}' set as new default pool</sys:String>
+    <sys:String x:Key="RPS_Log_ParametersStaged">[{0}] Parameters staged{1}</sys:String>
+    <sys:String x:Key="RPS_Log_NoStagedChanges">No pending parameter changes in staging area</sys:String>
+    <sys:String x:Key="RPS_Log_StagedParamsCommitted">Staged parameters committed to recipe pool: pool '{0}' -> recipe '{1}', {2} stations total</sys:String>
+    <sys:String x:Key="RPS_Log_CommitStagedParamsFailed">Failed to commit staged parameters: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_NoStationsCannotSave">No stations found, cannot save parameters</sys:String>
+    <sys:String x:Key="RPS_Log_StartSaveAllStations">Starting to save all station parameters to recipe: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_NoStationsCannotBatchSwitch">No stations found, cannot perform batch switch</sys:String>
+    <sys:String x:Key="RPS_Log_UserCancelledBatchSwitch">User cancelled batch recipe switch: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_AllStationsSwitched">All stations switched to recipe: {0} (pool: {1})</sys:String>
+    <sys:String x:Key="RPS_Log_AlreadyInPool">Already in recipe pool '{0}', no switch needed</sys:String>
+    <sys:String x:Key="RPS_Log_SavedOriginalPoolState">Saved original recipe pool '{0}' state</sys:String>
+    <sys:String x:Key="RPS_Log_TargetPoolNotExistCreated">Target recipe pool '{0}' does not exist, creating default pool</sys:String>
+    <sys:String x:Key="RPS_Log_SwitchedToPool">Switched to recipe pool '{0}', current recipe '{1}'</sys:String>
+    <sys:String x:Key="RPS_Log_NoStationsCannotSwitch">No stations found, cannot switch recipe</sys:String>
+    <sys:String x:Key="RPS_Log_AllStationsSwitchedInternal">All stations switched to recipe '{1}' in pool '{0}'</sys:String>
+    <sys:String x:Key="RPS_Log_DefaultPoolSet">Recipe pool '{0}' set as default pool</sys:String>
+    <sys:String x:Key="RPS_Log_PoolCopied">Copied recipe pool {0} -> {1}, containing {2} recipes</sys:String>
+    <sys:String x:Key="RPS_Log_ImportPoolFailed">Failed to import recipe pool: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_ExportPoolFailed">Failed to export recipe pool: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_GetAllRecipesFailed">Failed to get all available recipe list: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_CheckRecipeExistFailed">Failed to check recipe existence: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_LoadRecipeFailed">Failed to load recipe: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_PoolUpdated">Recipe pool updated: {0} -> {1}, synchronized {2} recipes' CurrentRecipePoolName</sys:String>
+    <sys:String x:Key="RPS_Log_StagedParamsCommittedBeforeSave">Staged position editor parameters committed before saving pool: pool '{0}' -> recipe '{1}', {2} stations total</sys:String>
+    <sys:String x:Key="RPS_Log_CommitStagedBeforeSaveFailed">Failed to commit staged position editor parameters before saving pool: pool '{0}' -> recipe '{1}'</sys:String>
+    <!-- RecipeStorage log keys -->
+    <sys:String x:Key="RStor_Log_PoolDeleted">Recipe pool '{0}' deleted.</sys:String>
+    <sys:String x:Key="RStor_Log_PoolFileBackedUp">Recipe pool file backed up: {0}</sys:String>
+    <sys:String x:Key="RStor_Log_BackupPoolFileFailed">Failed to back up recipe pool file: {0}</sys:String>
+    <!-- ConfigurationViewModel log keys -->
+    <sys:String x:Key="CfgVM_Log_InitComplete">ConfigurationViewModel initialization complete</sys:String>
+    <sys:String x:Key="CfgVM_Log_StartLoadConfig">Starting to load configuration</sys:String>
+    <sys:String x:Key="CfgVM_Log_ConfigLoaded">Configuration loaded, {0} clients total</sys:String>
+    <sys:String x:Key="CfgVM_Log_LoadConfigFailed">Failed to load configuration</sys:String>
+    <sys:String x:Key="CfgVM_Log_StartSaveConfig">Starting to save configuration</sys:String>
+    <sys:String x:Key="CfgVM_Log_ServerIPInvalid">Server IP address format invalid</sys:String>
+    <sys:String x:Key="CfgVM_Log_ServerPortInvalid">Server port number invalid</sys:String>
+    <sys:String x:Key="CfgVM_Log_ConfigSaved">Configuration saved successfully</sys:String>
+    <sys:String x:Key="CfgVM_Log_SaveConfigFailed">Failed to save configuration</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientNameEmpty">Client name cannot be empty</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientNameExists">Client name '{0}' already exists</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientIPInvalid">Client IP address format invalid</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientPortInvalid">Client port number invalid</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientAdded">Client added: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_AddClientFailed">Failed to add client</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientRemoved">Client removed: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_RemoveClientFailed">Failed to remove client: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientMovedUp">Client '{0}' moved up</sys:String>
+    <sys:String x:Key="CfgVM_Log_MoveClientUpFailed">Failed to move client up: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientMovedDown">Client '{0}' moved down</sys:String>
+    <sys:String x:Key="CfgVM_Log_MoveClientDownFailed">Failed to move client down: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_ConfigRefreshed">Configuration refreshed</sys:String>
+    <!-- RecipeSelectionDialogViewModel log keys -->
+    <sys:String x:Key="RSD_Log_DialogClosed">Recipe selection dialog closed</sys:String>
+    <sys:String x:Key="RSD_Log_DialogOpened">Recipe selection dialog opened, {0} recipes total</sys:String>
+    <!-- ===== Auto-added missing log keys (en-US) ===== -->
+    <sys:String x:Key="Alarm_Log_ActiveListRefreshed">Active alarm list refreshed, {0} entries total</sys:String>
+    <sys:String x:Key="Alarm_Log_ConfirmAll">Batch acknowledged all unacknowledged alarms, operator={0}</sys:String>
+    <sys:String x:Key="Alarm_Log_Confirmed">Alarm acknowledged: Id={0}, operator={1}</sys:String>
+    <sys:String x:Key="Alarm_Log_DebounceSuppressed">Alarm debounce suppressed: {0}@{1}, updated time instead of recreating</sys:String>
+    <sys:String x:Key="Alarm_Log_Eliminated">Alarm eliminated: Id={0}</sys:String>
+    <sys:String x:Key="Alarm_Log_ExportedToExcel">Alarm data exported to Excel: {0}, {1} records total</sys:String>
+    <sys:String x:Key="Alarm_Log_InitActiveListFailed">Failed to initialize active alarm list: {0}</sys:String>
+    <sys:String x:Key="Alarm_Log_Reset">Alarm reset: Id={0}, operator={1}</sys:String>
+    <sys:String x:Key="Alarm_Log_ResetAll">Batch reset all acknowledged alarms, operator={0}</sys:String>
+    <sys:String x:Key="Alarm_Log_Triggered">Alarm triggered: [{0}] {1}@{2} - {3}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_Exported">Alarm data exported to: {0}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_ExportFailed">Excel export failed: {0}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_PaginationFailed">Pagination failed: {0}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_QueryFailed">Failed to query alarm history: {0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ConfirmAll">Acknowledged all unacknowledged alarms</sys:String>
+    <sys:String x:Key="AlarmList_Log_ConfirmAllFailed">Batch acknowledge failed: {0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_Confirmed">Acknowledged alarm: {0}@{1}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ConfirmFailed">Failed to acknowledge alarm: {0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_Eliminated">Eliminated alarm: {0}@{1}</sys:String>
+    <sys:String x:Key="AlarmList_Log_EliminateFailed">Failed to eliminate alarm: {0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_RefreshFailed">Failed to refresh alarm list: {0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_Reset">Reset alarm: {0}@{1}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ResetAll">Reset all acknowledged alarms</sys:String>
+    <sys:String x:Key="AlarmList_Log_ResetAllFailed">Batch reset failed: {0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ResetFailed">Failed to reset alarm: {0}</sys:String>
+    <sys:String x:Key="AlarmStats_Log_RefreshFailed">Failed to refresh alarm statistics: {0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDeleted">Batch deleted {0} threshold configs</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDeleteFailed">Batch delete failed: {0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDisabled">Batch disabled {0} threshold configs</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDisableFailed">Batch disable failed: {0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchEnabled">Batch enabled {0} threshold configs</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchEnableFailed">Batch enable failed: {0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_Deleted">Deleted threshold config: {0}@{1}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_DeleteFailed">Failed to delete threshold config: {0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_RefreshFailed">Failed to refresh threshold config: {0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_Saved">Saved threshold config: {0}@{1}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_SaveFailed">Failed to save threshold config: {0}</sys:String>
+    <sys:String x:Key="App_Log_BackgroundThread">Background thread</sys:String>
+    <sys:String x:Key="App_Log_CallStack">Call stack: {0}</sys:String>
+    <sys:String x:Key="App_Log_ConfigInitFailed">Configuration initialization failed: {0}</sys:String>
+    <sys:String x:Key="App_Log_ConfigLoaded">Application configuration loaded</sys:String>
+    <sys:String x:Key="App_Log_ConfigServiceRegistered">Configuration service registered</sys:String>
+    <sys:String x:Key="App_Log_ConfigServiceRegisterFailed">Failed to register configuration service: {0}</sys:String>
+    <sys:String x:Key="App_Log_CurrentMemoryUsage">Current memory usage: {0:F2} MB</sys:String>
+    <sys:String x:Key="App_Log_DumpGenerationError">Error generating crash dump file</sys:String>
+    <sys:String x:Key="App_Log_DumpGenerationFailed">Failed to generate dump file, error code: {0}</sys:String>
+    <sys:String x:Key="App_Log_ErrorMessage">Error message: {0}</sys:String>
+    <sys:String x:Key="App_Log_ErrorTime">Error time: {0}</sys:String>
+    <sys:String x:Key="App_Log_ErrorType">Error type: {0}</sys:String>
+    <sys:String x:Key="App_Log_FatalErrorMessage">The application encountered a fatal error and will close. The error report has been saved to the ErrorReports folder under the program directory.</sys:String>
+    <sys:String x:Key="App_Log_FatalErrorTitle">System crash</sys:String>
+    <sys:String x:Key="App_Log_LoadedModules">Loaded modules:</sys:String>
+    <sys:String x:Key="App_Log_NormalExit">Application exited normally</sys:String>
+    <sys:String x:Key="App_Log_ServiceDepsInitDone">Service dependencies initialization completed</sys:String>
+    <sys:String x:Key="App_Log_ServiceDepsInitFailed">Service dependencies initialization failed: {0}</sys:String>
+    <sys:String x:Key="App_Log_ServiceDepsInitStart">Starting service dependencies initialization...</sys:String>
+    <sys:String x:Key="App_Log_TerminatingSuffix">[Will cause application termination]</sys:String>
+    <sys:String x:Key="App_Log_UIThread">UI thread</sys:String>
+    <sys:String x:Key="App_Log_UnhandledException">{0} unhandled exception {1}</sys:String>
+    <sys:String x:Key="App_Log_UnmanagedException">Unhandled unmanaged exception! Crash info saved: {0}</sys:String>
+    <sys:String x:Key="App_Log_UnobservedTaskException">Unobserved task exception</sys:String>
+    <sys:String x:Key="App_Log_VisionDataServiceRegistered">Vision data service registered</sys:String>
+    <sys:String x:Key="App_Log_VisionDataServiceRegisterFailed">Failed to register vision data service: {0}</sys:String>
+    <sys:String x:Key="AT_Log_AuxAxisHoming">[{0}] {1} axis homing...</sys:String>
+    <sys:String x:Key="AT_Log_DispensingHomingDone">[{0}] Dispenser station homing completed, starting assembly main axis homing.</sys:String>
+    <sys:String x:Key="AT_Log_DispensingZDone">[{0}] Dispense Z axis completed, starting assembly auxiliary axis homing.</sys:String>
+    <sys:String x:Key="AT_Log_InitCanceled">[{0}] Assembly system initialization cancelled.</sys:String>
+    <sys:String x:Key="AT_Log_InitComplete">[{0}] Assembly system initialization completed, entering standby.</sys:String>
+    <sys:String x:Key="AT_Log_InitFailed">[{0}] Assembly system initialization failed: {1}</sys:String>
+    <sys:String x:Key="AT_Log_InitFailedSignalTimeout">[{0}] Assembly system initialization failed (signal wait timeout): {1}</sys:String>
+    <sys:String x:Key="AT_Log_InitStart">[{0}] Starting assembly system initialization...</sys:String>
+    <sys:String x:Key="AT_Log_MainAxisHoming">[{0}] {1} axis homing...</sys:String>
+    <sys:String x:Key="AT_Log_NotifyZComplete">[{0}] Notified dispenser/load-unload: assembly Z axis homing completed.</sys:String>
+    <sys:String x:Key="AT_Log_Phase1ZHoming">[{0}] Phase 1: assembly Z axis homing...</sys:String>
+    <sys:String x:Key="AT_Log_ZHoming">[{0}] Z axis homing...</sys:String>
+    <sys:String x:Key="Bezier_Log_ArcCoordInfo">[BezierArcDispense] Arc coordinates: </sys:String>
+    <sys:String x:Key="Bezier_Log_ArcDispenseCompleted">[BezierArcDispense] Arc dispense completed, {0} interpolation segments</sys:String>
+    <sys:String x:Key="Bezier_Log_ArcDryRunCompleted">[BezierArcDispense] Arc dry-run mode, dispensing skipped, {0} interpolation segments completed</sys:String>
+    <sys:String x:Key="Bezier_Log_DotCoordTransform">[BezierArcDispense] Dot coordinate transform: photo({0:F3},{1:F3}) </sys:String>
+    <sys:String x:Key="Bezier_Log_DotDispenseExecuted">[BezierArcDispense] Dot dispense executed at ({0:F3}, {1:F3})</sys:String>
+    <sys:String x:Key="Bezier_Log_DotDryRun">[BezierArcDispense] Dot dry-run mode, dispensing skipped, position ({0:F3}, {1:F3})</sys:String>
+    <sys:String x:Key="Cam3D_Log_DataEmpty">3D camera data is empty, cannot parse</sys:String>
+    <sys:String x:Key="Cam3D_Log_NoValues">VISION_RESULT succeeded but no value data</sys:String>
+    <sys:String x:Key="Cam3D_Log_ParseCompleted">3D camera data parse completed: {0} tab height values</sys:String>
+    <sys:String x:Key="Cam3D_Log_ParseException">3D camera data parse exception: {0}</sys:String>
+    <sys:String x:Key="Cam3D_Log_TabParseFailed">Tab{0} value parse failed: '{1}'</sys:String>
+    <sys:String x:Key="Cam3D_Log_VisionResultSegmentInvalid">VISION_RESULT segment format invalid: {0}</sys:String>
+    <sys:String x:Key="Cam3D_Log_VisionResultSegmentNotFound">VISION_RESULT segment not found in 3D camera data: {0}</sys:String>
+    <sys:String x:Key="CfgRet_Log_BasePathInvalid">[ConfigRetention] BasePath invalid, falling back to default Config directory: {0}</sys:String>
+    <sys:String x:Key="CfgRet_Log_CleanedOldFile">[ConfigRetention] Cleaned old config file: {0} (exceeded max count {1})</sys:String>
+    <sys:String x:Key="CfgRet_Log_CleanFileFailed">[ConfigRetention] Failed to clean old config file: {0}, {1}</sys:String>
+    <sys:String x:Key="CfgRet_Log_CleanupFolderException">[ConfigRetention] Exception cleaning old files in folder {0}: {1}</sys:String>
+    <sys:String x:Key="CfgRet_Log_FolderCleanupSummary">[ConfigRetention] Folder {0} cleaned {1} old files (max retained {2})</sys:String>
+    <sys:String x:Key="CfgRet_Log_LoadSettingsFailed">[ConfigRetention] Failed to load retention policy settings, using defaults: {0}</sys:String>
+    <sys:String x:Key="CondBr_Log_ConditionDetail">[ConditionBranch]   Condition: Expression='{0}', Target={1}, Desc={2}</sys:String>
+    <sys:String x:Key="CondBr_Log_ConfigSaved">[ConditionBranch] Condition branch config saved: IsEnabled={0}, condition count={1}</sys:String>
+    <sys:String x:Key="CondBr_Log_ExpressionChecked">[ConditionBranch] Expression check: '{0}' =&gt; {1}</sys:String>
+    <sys:String x:Key="CondBr_Log_ExpressionCheckFailed">[ConditionBranch] Expression check failed: {0}</sys:String>
+    <sys:String x:Key="CondBr_Log_ExpressionErrorsExist">[ConditionBranch] Expression errors exist, cannot save: row [{0}]</sys:String>
+    <sys:String x:Key="DefaultStationName">All Axes</sys:String>
+    <sys:String x:Key="DefVis_Log_DataEmpty">Vision data is empty, cannot parse</sys:String>
+    <sys:String x:Key="DefVis_Log_UnrecognizedFormat">Unrecognized vision data format: {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_AutoLoadFailed">Dual-gantry calibration: Auto load failed - {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam1CommonRefCanceled">Dual-gantry calibration: Cam1 common reference capture cancelled</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam1CommonRefFailed">Dual-gantry calibration: Cam1 common reference capture failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam2CommonRefCanceled">Dual-gantry calibration: Cam2 common reference capture cancelled</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam2CommonRefFailed">Dual-gantry calibration: Cam2 common reference capture failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_CrossGantryAlignFailed">Dual-gantry calibration: Cross-gantry alignment failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_ExportFailed">Dual-gantry calibration: Export failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1AutoCalibCanceled">Dual-gantry calibration: Gantry1 auto calibration cancelled</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1AutoCalibStartFailed">Dual-gantry calibration: Gantry1 auto calibration start failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1CalcFailed">Dual-gantry calibration: Gantry1 calculation failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1MoveFailed">Dual-gantry calibration: Gantry1 move failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1TeachFailed">Dual-gantry calibration: Gantry1 teach failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2AutoCalibCanceled">Dual-gantry calibration: Gantry2 auto calibration cancelled</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2AutoCalibStartFailed">Dual-gantry calibration: Gantry2 auto calibration start failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2CalcFailed">Dual-gantry calibration: Gantry2 calculation failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2MoveFailed">Dual-gantry calibration: Gantry2 move failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2TeachFailed">Dual-gantry calibration: Gantry2 teach failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_GetAxisListFailed">Dual-gantry calibration: Failed to get axis list - {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_ImportFailed">Dual-gantry calibration: Import failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_LoadTcpConnectionsFailed">Dual-gantry calibration: Failed to load TCP connection list - {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_NoAxesConfig">Dual-gantry calibration: No axis configuration read</sys:String>
+    <sys:String x:Key="DGCVM_Log_SaveAsFailed">Dual-gantry calibration: Save as failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_SaveFailed">Dual-gantry calibration: Save failed</sys:String>
+    <sys:String x:Key="DGCVM_Log_TransformVerifyFailed">Dual-gantry calibration: Coordinate transform verification failed</sys:String>
+    <sys:String x:Key="DSS_Log_ReadStationParamsFailed">[DispenseSegmentSource] Failed to read station parameters: {0}</sys:String>
+    <sys:String x:Key="DSS_Log_SegmentsLoadedFromFile">[DispenseSegmentSource] Loaded {0} segments from config file: {1}</sys:String>
+    <sys:String x:Key="DT_Log_AssemblyZDone">[{0}] Assembly Z axis completed, starting dispenser XY axis homing.</sys:String>
+    <sys:String x:Key="DT_Log_AxisHoming">[{0}] {1} axis homing...</sys:String>
+    <sys:String x:Key="DT_Log_DxConfigNotFound">[{0}] Dx axis config not found, CoordId falls back to 0</sys:String>
+    <sys:String x:Key="DT_Log_DxMatchedCoordId">[{0}] Dx(actAxisId={1}) matched interpolation system CoordId={2}</sys:String>
+    <sys:String x:Key="DT_Log_DxNotInInterpSystem">[{0}] Dx is not in any interpolation system, CoordId falls back to 0</sys:String>
+    <sys:String x:Key="DT_Log_InitCanceled">[{0}] Dispenser system initialization cancelled.</sys:String>
+    <sys:String x:Key="DT_Log_InitComplete">[{0}] Dispenser system initialization completed, entering standby.</sys:String>
+    <sys:String x:Key="DT_Log_InitFailed">[{0}] Dispenser system initialization failed: {1}</sys:String>
+    <sys:String x:Key="DT_Log_InitFailedSignalTimeout">[{0}] Dispenser system initialization failed (signal wait timeout): {1}</sys:String>
+    <sys:String x:Key="DT_Log_InitStart">[{0}] Starting dispenser system initialization...</sys:String>
+    <sys:String x:Key="DT_Log_IOPortNotFound">[{0}] IO port '{1}' not found, skipping camera trigger</sys:String>
+    <sys:String x:Key="DT_Log_IOTriggerReset">[{0}] IO trigger signal reset: {1}</sys:String>
+    <sys:String x:Key="DT_Log_IOTriggerSet">[{0}] IO trigger signal set: {1} (LogicalId={2})</sys:String>
+    <sys:String x:Key="DT_Log_NotifyDispensingComplete">[{0}] Notified assembly: dispenser homing completed.</sys:String>
+    <sys:String x:Key="DT_Log_NotifyZComplete">[{0}] Notified assembly/load-unload: dispenser Z axis homing completed.</sys:String>
+    <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] Phase 1: dispenser Z axis homing...</sys:String>
+    <sys:String x:Key="DT_Log_PositionLookupFailed">[{0}] Position lookup failed: {1}</sys:String>
+    <sys:String x:Key="DT_Log_ReturnedToStandby">[{0}] Returned to standby position</sys:String>
+    <sys:String x:Key="DT_Log_ReturnToStandbySpeedParams">[{0}] ReturnToStandby speed params: Dz1={1:F1}, Dz2={2:F1}, Dz3={3:F1}, interpolation={4:F1}</sys:String>
+    <sys:String x:Key="DT_Log_ZScanPositionResolved">[{0}] ZScan position resolved: SafeZ(Dz1={1:F3}, Dz2={2:F3}, Dz3={3:F3}), Start(Dx={4:F3}, Dy={5:F3}), End(Dx={6:F3}), Standby(Dx={7:F3}, Dy={8:F3})</sys:String>
+    <sys:String x:Key="DT_Log_ZScanSequenceComplete">[{0}] Z-Scan 3D scan motion sequence completed</sys:String>
+    <sys:String x:Key="DT_Log_ZScanSpeedParams">[{0}] ZScan speed params: Dx scan={1:F1}mm/s, Dz1={2:F1}, Dz2={3:F1}, Dz3={4:F1}, interpolation={5:F1}</sys:String>
+    <sys:String x:Key="IfDetail_Log_ExpressionChecked">[IfDetail] Expression check: '{0}' =&gt; {1}</sys:String>
+    <sys:String x:Key="IfDetail_Log_ExpressionCheckFailed">[IfDetail] Expression check failed: {0}</sys:String>
+    <sys:String x:Key="IfDetail_Log_GlobalVarsLoaded">[IfDetail] Loaded {0} global variables</sys:String>
+    <sys:String x:Key="IfDetail_Log_LoadGlobalVarsFailed">[IfDetail] Failed to load global variables: {0}</sys:String>
+    <sys:String x:Key="IfDetail_Log_PrevOutputsCollected">[IfDetail] Collected {0} previous step output parameters</sys:String>
+    <sys:String x:Key="LoadUnload_Step_GripperPanelClosed">Gripper panel closed</sys:String>
+    <sys:String x:Key="Login_Log_AuthConfigSaved">Authentication config saved: auto logout time = {0} minutes</sys:String>
+    <sys:String x:Key="Login_Log_BackupCorruptedConfigFailed">Failed to backup corrupted config file: {0}</sys:String>
+    <sys:String x:Key="Login_Log_CorruptedConfigBackedUp">Corrupted config file detected, backed up to: {0}</sys:String>
+    <sys:String x:Key="Login_Log_SaveAuthConfigFailed">Failed to save authentication config: {0}</sys:String>
+    <sys:String x:Key="LT_Log_AssemblyZDoneStartHoming">[{0}] Assembly Z axis completed, starting load-unload axis homing.</sys:String>
+    <sys:String x:Key="LT_Log_AutoPickupComplete">[{0}] Auto pickup process completed</sys:String>
+    <sys:String x:Key="LT_Log_AutoScanComplete">[{0}] Auto scan process completed</sys:String>
+    <sys:String x:Key="LT_Log_AutoUnloadComplete">[{0}] Auto unload process completed</sys:String>
+    <sys:String x:Key="LT_Log_AxisHoming">[{0}] {1} axis homing...</sys:String>
+    <sys:String x:Key="LT_Log_CycleCompleteRestart">=== Load-unload cycle completed, restarting shortly ===</sys:String>
+    <sys:String x:Key="LT_Log_DispensingZDone">[{0}] Dispenser Z axis completed.</sys:String>
+    <sys:String x:Key="LT_Log_GripperVacuumOff">[{0}] Gripper vacuum turned off</sys:String>
+    <sys:String x:Key="LT_Log_GripperVacuumOn">[{0}] Gripper vacuum turned on</sys:String>
+    <sys:String x:Key="LT_Log_InitCanceled">[{0}] Load-unload system initialization cancelled.</sys:String>
+    <sys:String x:Key="LT_Log_InitCompleteStandby">[{0}] Load-unload system initialization completed, entering standby.</sys:String>
+    <sys:String x:Key="LT_Log_InitFailed">[{0}] Load-unload system initialization failed: {1}</sys:String>
+    <sys:String x:Key="LT_Log_InitFailedSignalTimeout">[{0}] Load-unload system initialization failed (signal wait timeout): {1}</sys:String>
+    <sys:String x:Key="LT_Log_InitStart">[{0}] Starting load-unload system initialization...</sys:String>
+    <sys:String x:Key="LT_Log_StageVacuumOff">[{0}] Stage vacuum turned off</sys:String>
+    <sys:String x:Key="LT_Log_StageVacuumOn">[{0}] Stage vacuum turned on</sys:String>
+    <sys:String x:Key="LT_Log_WaitZAxesHoming">[{0}] Waiting for all Z axes homing to complete...</sys:String>
+    <sys:String x:Key="MacInit_Log_AlreadyInProgress">[MachineInit] Initialization already in progress, ignoring duplicate request.</sys:String>
+    <sys:String x:Key="MacInit_Log_BusError">[MachineInit] Motion card connection error: EtherCAT bus error code 0x{0:X}.</sys:String>
+    <sys:String x:Key="MacInit_Log_CardNotConnectedAbort">[MachineInit] Motion card not connected or bus error, aborting machine initialization.</sys:String>
+    <sys:String x:Key="MacInit_Log_InitCancelled">[MachineInit] Machine initialization cancelled (user stop or emergency stop).</sys:String>
+    <sys:String x:Key="MacInit_Log_InitCompleted">[MachineInit] ===== Machine initialization completed =====</sys:String>
+    <sys:String x:Key="MacInit_Log_InitFailed">[MachineInit] Machine initialization failed: {0}</sys:String>
+    <sys:String x:Key="MacInit_Log_InitStart">[MachineInit] ===== Machine initialization started =====</sys:String>
+    <sys:String x:Key="MacInit_Log_SimulationModeNoCard">[MachineInit] Motion card not connected: simulation mode, no real hardware.</sys:String>
+    <sys:String x:Key="MCF_Log_InitCardFailed">MotionCardFactory: Failed to initialize card {0}, error code: {1}</sys:String>
+    <sys:String x:Key="MW_Log_AppClosing">Application is closing...</sys:String>
+    <sys:String x:Key="MW_Log_AxisPanelInitFailed">[MainWindow] Axis control panel initialization failed: {0}\n{1}</sys:String>
+    <sys:String x:Key="MW_Log_AxisPanelInitSuccess">[MainWindow] Axis control panel initialization succeeded</sys:String>
+    <sys:String x:Key="MW_Log_EStopButtonClicked">[MainWindow] User clicked emergency stop button</sys:String>
+    <sys:String x:Key="MW_Log_InitButtonClicked">[MainWindow] User clicked initialize button</sys:String>
+    <sys:String x:Key="MW_Log_PauseButtonClicked">[MainWindow] User clicked pause button</sys:String>
+    <sys:String x:Key="MW_Log_RecipeInfo">Recipe: {0}</sys:String>
+    <sys:String x:Key="MW_Log_ResumeButtonClicked">[MainWindow] User clicked resume button</sys:String>
+    <sys:String x:Key="MW_Log_StartButtonClicked">[MainWindow] User clicked start button</sys:String>
+    <sys:String x:Key="MW_Log_StopButtonClicked">[MainWindow] User clicked stop button</sys:String>
+    <sys:String x:Key="MW_Log_SystemStartup">System startup - version {0}</sys:String>
+    <sys:String x:Key="MW_Log_UserCancelInit">User chose to cancel initialization</sys:String>
+    <sys:String x:Key="MW_Log_UserConfirmInit">User chose to perform initialization</sys:String>
+    <sys:String x:Key="MW_Log_WarningDialog">[WarningDialog] {0}</sys:String>
+    <sys:String x:Key="NA_Log_ApplyCompensationFailed">Failed to apply needle compensation value</sys:String>
+    <sys:String x:Key="NA_Log_AutoLoadConfigFailed">[NeedleAligner] Failed to auto load calibration config: {0}</sys:String>
+    <sys:String x:Key="NA_Log_ConfigLoaded">[NeedleAligner] System{0} loaded: {1}</sys:String>
+    <sys:String x:Key="NA_Log_CreateDefaultCompVarsFailed">[NeedleAligner] Failed to create default compensation global variables: {0}</sys:String>
+    <sys:String x:Key="NA_Log_DefaultCompVarsCreated">[NeedleAligner] Default compensation global variables created</sys:String>
+    <sys:String x:Key="NA_Log_EnsureLinkedVarFailed">[NeedleAligner] Failed to ensure linked variable exists: {0}</sys:String>
+    <sys:String x:Key="NA_Log_GenericMessage">[NeedleAligner] {0}</sys:String>
+    <sys:String x:Key="NA_Log_GlobalVarSyncFailed">[NeedleAligner] Global variable change sync failed: {0}</sys:String>
+    <sys:String x:Key="NA_Log_LoadGlobalVarsFailed">[NeedleAligner] Failed to load global variables: {0}</sys:String>
+    <sys:String x:Key="NA_Log_LoadSystemParamsFailed">[NeedleAligner] Failed to load system{0} parameters: {1}</sys:String>
+    <sys:String x:Key="NA_Log_MoveToSearchPointFailed">[NeedleAligner] Failed to move to search point P{0}: {1}</sys:String>
+    <sys:String x:Key="NA_Log_NoConfigFile">[NeedleAligner] System{0} has no loadable calibration config file, default parameters applied</sys:String>
+    <sys:String x:Key="NA_Log_SaveFileToPoolFailed">[NeedleAligner] Failed to save file record to recipe pool: {0}</sys:String>
+    <sys:String x:Key="NA_Log_SwitchSystemFailed">[NeedleAligner] Failed to switch system: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CalculateCalibrationDeltaException">CalculateCalibrationDelta exception: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanedExpiredConfigFile">[NeedleCamera] Cleaned expired config file: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanFileFailed">[NeedleCamera] Failed to clean file: {0}, {1}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanupOldConfigFilesException">[NeedleCamera] Exception cleaning old config files: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanupSummary">[NeedleCamera] Cleaned {0} expired config files (retain {1} days)</sys:String>
+    <sys:String x:Key="NCA_Log_ConfigLoaded">[NeedleCamera] System{0} config loaded: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_CreateDefaultCompGlobalVarsFailed">[NeedleCamera] Failed to create default compensation global variables: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_DefaultCompGlobalVarsCreated">[NeedleCamera] Default compensation global variables created</sys:String>
+    <sys:String x:Key="NCA_Log_EnsureLinkedVarsExistFailed">[NeedleCamera] Failed to ensure linked variables exist: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_GlobalVarChangeSyncFailed">[NeedleCamera] Global variable change sync failed: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadFromRecipePool">[NeedleCamera] System{0} loaded from recipe pool record: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadGlobalVarsFailed">[NeedleCamera] Failed to load global variables: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadLatestFile">[NeedleCamera] System{0} loaded latest file: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadParametersException">[NeedleCamera] Exception loading parameters: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadSystemConfigFailed">[NeedleCamera] Failed to load system{0} config: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_NeedleTipZAxisNotFound">[NeedleCamera] System{0} needle tip Z axis not read ({1})</sys:String>
+    <sys:String x:Key="NCA_Log_NoConfigUseDefault">[NeedleCamera] System{0} has no loadable config file, using default parameters</sys:String>
+    <sys:String x:Key="NCA_Log_ParametersReset">[NeedleCamera] System{0} parameters reset</sys:String>
+    <sys:String x:Key="NCA_Log_ParametersSaved">[NeedleCamera] System{0} parameters saved: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_SaveFileRecordToRecipePoolFailed">[NeedleCamera] Failed to save file record to recipe pool: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_SaveParametersException">[NeedleCamera] Exception saving parameters: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_SwitchSystemFailed">[NeedleCamera] Failed to switch system: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_TeachCameraCenterException">TeachCameraCenter exception: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_TeachNeedleTipException">TeachNeedleTip exception: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_WriteCompToGlobalVarsFailed">[NeedleCamera] Failed to write compensation value to global variables: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_AutoLoadFailed">[NeedleVerify] Failed to auto load verification record: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_CancelFailed">[NeedleVerify] Cancel verification exception: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_Cancelled">[NeedleVerify] System{0} verification cancelled, motion axes stopped</sys:String>
+    <sys:String x:Key="NCV_Log_CleanedFile">[NeedleVerify] Cleaned expired verification record: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_CleanFileFailed">[NeedleVerify] Failed to clean file: {0}, {1}</sys:String>
+    <sys:String x:Key="NCV_Log_CleanupFailed">[NeedleVerify] Exception cleaning expired files: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_CleanupSummary">[NeedleVerify] Cleaned {0} expired files (retain {1} days)</sys:String>
+    <sys:String x:Key="NCV_Log_LoadFromPool">[NeedleVerify] Loaded from recipe pool record: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_LoadLatest">[NeedleVerify] No recipe pool record, loading latest file: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_LoadParamsFailed">[NeedleVerify] Failed to load calibration parameters: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordLoaded">[NeedleVerify] System{0} verification record loaded: {1}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordLoadFailed">[NeedleVerify] Failed to load verification record: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordSaved">[NeedleVerify] System{0} verification record saved: {1}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordSaveFailed">[NeedleVerify] Failed to save verification record: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_SaveToPoolFailed">[NeedleVerify] Failed to save file record to recipe pool: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_VerifyCompleted">[NeedleVerify] System{0} verification completed: Measured=({1:F4},{2:F4},{3:F4}) ActiveTcp=({4:F4},{5:F4},{6:F4}) Effective=({7:F4},{8:F4},{9:F4}) Ref=({10:F4},{11:F4},{12:F4}) Dev=({13:F4},{14:F4},{15:F4}) Overall={16}</sys:String>
+    <sys:String x:Key="NCV_Log_VerifyFailed">[NeedleVerify] Verification failed: {0}</sys:String>
+    <sys:String x:Key="NPCVM_Log_AutoCalibStartFailed">N-point calibration: Auto calibration start failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_AutoLoadFailed">N-point calibration: Auto load failed - {0}</sys:String>
+    <sys:String x:Key="NPCVM_Log_ComputeFailed">N-point calibration: Computation failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_ExportFailed">N-point calibration: Export failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_GetAxesFailed">N-point calibration: Failed to get station {0} axis list - {1}</sys:String>
+    <sys:String x:Key="NPCVM_Log_ImportFailed">N-point calibration: Import failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_LoadTcpListFailed">N-point calibration: Failed to load TCP connection list - {0}</sys:String>
+    <sys:String x:Key="NPCVM_Log_MoveFailed">N-point calibration: Move failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_NoAvailableAxes">N-point calibration: Station {0} has no available axes</sys:String>
+    <sys:String x:Key="NPCVM_Log_SaveAsFailed">N-point calibration: Save as failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_SaveFailed">N-point calibration: Save failed</sys:String>
+    <sys:String x:Key="NPCVM_Log_TeachFailed">N-point calibration: Teach failed</sys:String>
+    <sys:String x:Key="PMC_Log_StopAxisFailed">Stop: Failed to stop axis {0}(ID={1}): {2}</sys:String>
+    <sys:String x:Key="PMC_Log_TeachReadPositionFailed">Teach: Failed to read axis {0}(ID={1}) position: {2}</sys:String>
+    <sys:String x:Key="ProdCal_Log_AutoLoadFailed">Carrier calibration: Auto load failed - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_AutoReceiveTargetSet">Carrier calibration: Auto receive target set to photo position {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_Capture1Failed">Carrier calibration: Photo position 1 capture failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_Capture2Failed">Carrier calibration: Photo position 2 capture failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_Destroyed">Carrier calibration: ViewModel destroyed, resources released</sys:String>
+    <sys:String x:Key="ProdCal_Log_DestroyFailed">Carrier calibration: Destroy failed - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_ExportFailed">Carrier calibration: Export failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_HalconCalcFailed">Carrier calibration: Halcon computation failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_ImportFailed">Carrier calibration: Import failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_LoadFailed">Carrier calibration: Load failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_LoadGlobalVarsFailed">Carrier calibration: Failed to load global variables - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_LoadTcpListFailed">Carrier calibration: Failed to load TCP connection list - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_MoveToPhoto1Failed">Carrier calibration: Failed to move to photo position 1</sys:String>
+    <sys:String x:Key="ProdCal_Log_MoveToPhoto2Failed">Carrier calibration: Failed to move to photo position 2</sys:String>
+    <sys:String x:Key="ProdCal_Log_MoveToRefFailed">Carrier calibration: Failed to move to reference position</sys:String>
+    <sys:String x:Key="ProdCal_Log_RotateFailed">Carrier calibration: Rotation correction failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_SaveFailed">Carrier calibration: Save failed</sys:String>
+    <sys:String x:Key="ProdCal_Log_SubscribedAutoReceive">Carrier calibration: Subscribed to camera auto receive, connection={0}, target=photo position {1}</sys:String>
+    <sys:String x:Key="ProdCal_Log_TeachPhoto1Failed">Carrier calibration: Failed to teach photo position 1</sys:String>
+    <sys:String x:Key="ProdCal_Log_TeachPhoto2Failed">Carrier calibration: Failed to teach photo position 2</sys:String>
+    <sys:String x:Key="ProdCal_Log_TeachRefFailed">Carrier calibration: Failed to teach reference position</sys:String>
+    <sys:String x:Key="ProdCal_Log_UnsubscribedAutoReceive">Carrier calibration: Unsubscribed from camera auto receive</sys:String>
+    <sys:String x:Key="ProdCal_Log_UnsubscribeFailed">Carrier calibration: Failed to unsubscribe auto receive - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_WriteGlobalVarsFailed">Carrier calibration: Failed to write global variables - {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_AutoSaveSequenceFailed">Failed to auto save sequence: {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_BranchConfigUpdated">[ProcessSequenceEditor] Updated condition branch config for step [{0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_BranchStepInserted">[ProcessSequenceEditor] Inserted BRANCH condition branch step [Seq={0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallNavigateToDetailView">[OpenStepDetailForStep] -&gt; Calling NavigateToDetailView (type={0})</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallOnOpenBranchConfig">[OpenStepDetailForStep] -&gt; Calling OnOpenBranchConfig</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallOnOpenDashboard">[OpenStepDetailForStep] -&gt; Calling OnOpenDashboard</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallShowStepDetailDialog">[OnOpenDashboard] Calling ShowStepDetailDialog (BaseDialogWindow)...</sys:String>
+    <sys:String x:Key="PSEdit_Log_CreateDataDashboardView">[OnOpenDashboard] Creating DataDashboardView...</sys:String>
+    <sys:String x:Key="PSEdit_Log_DashboardDetailNullCreateDefault">[OnOpenDashboard] DashboardDetail is null, creating default config</sys:String>
+    <sys:String x:Key="PSEdit_Log_DashboardOpened">[OnOpenDashboard] Data dashboard opened for step [{0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_DashboardStepInserted">[ProcessSequenceEditor] Inserted DASHBOARD step [Seq={0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_IfConfigUpdated">[ProcessSequenceEditor] Updated condition config for IF step [{0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_IfStepInserted">[ProcessSequenceEditor] Inserted IF condition block step [Seq={0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_IfSubStepAdded">[ProcessSequenceEditor] Added sub-step [{1}] {2} under IF {0} branch</sys:String>
+    <sys:String x:Key="PSEdit_Log_LoadDashboardData">[OnOpenDashboard] Loading dashboard data, Fields count={0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OnOpenDashboardStart">[OnOpenDashboard] Start, step={0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenBranchConfigFailed">[ProcessSequenceEditor] Failed to open condition branch config: {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenDashboardFailed">[OnOpenDashboard] Failed to open data dashboard: {0}\n{1}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenIfConfigFailed">[ProcessSequenceEditor] Failed to open IF config dialog: {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenStepDetailForStepInfo">[OpenStepDetailForStep] Step type={0}, Seq={1}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenStepDetailInfo">[OpenStepDetail] Step: Seq={0}, Step={1}, CompFeature={2}</sys:String>
+    <sys:String x:Key="PSEdit_Log_ResolveDataDashboardViewModel">[OnOpenDashboard] Resolving DataDashboardViewModel...</sys:String>
+    <sys:String x:Key="PSEdit_Log_RunSingleStepFailed">Failed to run step [{0}] individually: {1}</sys:String>
+    <sys:String x:Key="PSEdit_Log_SelectedStepNullSkip">[OpenStepDetail] SelectedStep is null, skipping</sys:String>
+    <sys:String x:Key="PSEdit_Log_SeqValue">Seq={0}</sys:String>
+    <sys:String x:Key="RSB_Log_BatchSwitchCompleted">[{0}] Batch switch completed: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_BatchSwitchFailed">[{0}] Batch switch recipe failed: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_BatchSwitchToRecipe">[{0}] Batch switch to recipe: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_ParamsStagedAndSaved">[{0}] Parameters staged and saved</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsApplied">[{0}] Recipe parameters applied: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsInitCompleted">[{0}] Recipe parameters initialization completed: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsInitFailed">[{0}] Recipe parameters initialization failed: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsLoaded">[{0}] Recipe parameters loaded: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeSwitched">[{0}] Recipe switched: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RegisteredToStationRegistry">[{0}] Registered to station registry</sys:String>
+    <sys:String x:Key="RSB_Log_SaveParamsFailed">[{0}] Failed to save parameters: {1}</sys:String>
+    <sys:String x:Key="RSF_Log_UnknownStationIdentifier">Unknown station identifier: {0}, using default parameter type</sys:String>
+    <sys:String x:Key="Scan_Log_ConfigSaved">SCAN step config saved: {0} - {1} (with {2} scan results)</sys:String>
+    <sys:String x:Key="Scan_Log_CopiedVarName">Copied global variable name to clipboard: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_CopyVarNameFailed">Failed to copy global variable name: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_FilledSampleData">Filled 3D camera sample data, variable mappings and scan results</sys:String>
+    <sys:String x:Key="Scan_Log_InitRefreshMappingFailed">Failed to init refresh variable mapping DisplayValue: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadedLastResults">Loaded last saved scan results: {0} records, last parse time={1}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadGlobalVarsFailed">Failed to load global variable list: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadPositionsFailed">Failed to load position list: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadTcpListFailed">Failed to load TCP connection list: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_NoSyncNeeded">SCAN global variables no update needed: no matching variable mapping or parsed data</sys:String>
+    <sys:String x:Key="Scan_Log_ParseFailed">SCAN data parse failed: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_PassiveDataFailed">SCAN passive data processing failed: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_PassiveDataReceived">SCAN passively received camera data [{0}]: {1}</sys:String>
+    <sys:String x:Key="Scan_Log_RefreshMappingFailed">Failed to refresh variable mapping DisplayValue: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_StartSyncVars">SCAN starting global variable sync: PoolId={0}, parsed data items={1}</sys:String>
+    <sys:String x:Key="Scan_Log_SubscribedTcp">SCAN subscribed to TCP data receive: listening connection '{0}'</sys:String>
+    <sys:String x:Key="Scan_Log_SyncVarsCompleted">SCAN global variable sync completed: PoolId={0}, updated {1} variables</sys:String>
+    <sys:String x:Key="Scan_Log_UnlinkedMapping">Unlinked variable mapping: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_UnsubscribedTcp">SCAN unsubscribed from TCP data receive</sys:String>
+    <sys:String x:Key="ScriptVis_Log_CompileFailed">Vision script compile failed: {0}</sys:String>
+    <sys:String x:Key="ScriptVis_Log_CompileSuccess">Vision parse script compiled and bound successfully</sys:String>
+    <sys:String x:Key="ScriptVis_Log_RuntimeError">Vision script runtime error: {0}</sys:String>
+    <sys:String x:Key="STMgr_Log_HomeAllPartialFailed">Some station homing failed! + {0}</sys:String>
+    <sys:String x:Key="SysState_Log_BuzzerConfigNotFound">WriteBuzzer: Buzzer config not found, available types=[{0}]</sys:String>
+    <sys:String x:Key="SysState_Log_CardConnectionError">Motion card connection error: EtherCAT bus error code 0x{0:X}.</sys:String>
+    <sys:String x:Key="SysState_Log_CardNotConnectedResetDisabled">Motion card not connected, reset button long-press detection disabled to avoid accidental machine initialization.</sys:String>
+    <sys:String x:Key="SysState_Log_DebugModeSkipInit">Debug mode: "Reopen requires init" disabled, device state directly enters WAITRUN.</sys:String>
+    <sys:String x:Key="SysState_Log_LightConfigNotFound">WriteLight: Light config not found LightType='{0}', available types=[{1}]</sys:String>
+    <sys:String x:Key="SysState_Log_ResetButtonLongPressTrigger">Reset button long-pressed 5 seconds -&gt; triggered machine initialization.</sys:String>
+    <sys:String x:Key="SysState_Log_ResetButtonPressed">Reset button pressed, long-press 5 seconds will trigger machine initialization...</sys:String>
+    <sys:String x:Key="SysState_Log_TowerLightsConfigLoaded">TowerLights config loaded: [{0}], {1} items total</sys:String>
+    <sys:String x:Key="SZCfg_Log_ConfigFileNotFound">[SafetyInterlock] Config file not found, using default machine rules</sys:String>
+    <sys:String x:Key="SZCfg_Log_ConfigSaved">[SafetyInterlock] Config saved</sys:String>
+    <sys:String x:Key="SZCfg_Log_LoadConfigFailed">[SafetyInterlock] Failed to load config: {0}, using default rules</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_ConfigSaved">[SafetyZone] Config saved</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_RefreshStatusFailed">[SafetyZone] Failed to refresh status: {0}</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_SaveConfigFailed">[SafetyZone] Failed to save config</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_SyncConfigFailed">[SafetyZone] Failed to sync config: {0}</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_Violation"> 轴:{0}(#{1}) | {2}|[SafetyZone] Violation | Axis:{0}(#{1}) | {2}</sys:String>
+    <sys:String x:Key="SZM_Log_AxisNotFoundInHwConfig">[SafetyInterlock] Axis '{0}' referenced by config not found in hardware config</sys:String>
+    <sys:String x:Key="SZM_Log_ConfigHotUpdated"> Enabled={0} | 规则={1} | FailClosed={2}|[SafetyInterlock] Config hot updated | Enabled={0} | Rules={1} | FailClosed={2}</sys:String>
+    <sys:String x:Key="SZM_Log_NullConfigIgnored">[SafetyInterlock] Null config received, ignoring update</sys:String>
+    <sys:String x:Key="SZM_Log_Violation"> 规则:{0} | 轴:{1}(#{2}) | {3}|[SafetyInterlock] Violation | Rule:{0} | Axis:{1}(#{2}) | {3}</sys:String>
+    <sys:String x:Key="TCP_Log_BroadcastFailed">Broadcast command failed: {0}</sys:String>
+    <sys:String x:Key="TCP_Log_BroadcastViaServer">Broadcasting message via server[{0}] to all connected clients</sys:String>
+    <sys:String x:Key="TCP_Log_ClientAdded">TCP client [{0}] added: {1}:{2}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientConnected">TCP client [{0}] connected: {1}:{2}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientDisconnected">TCP client [{0}] disconnected: {1}:{2}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientError">TCP client [{0}] error: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientNotConnected">TCP client [{0}] not connected</sys:String>
+    <sys:String x:Key="TCP_Log_ClientRemoved">TCP client [{0}] removed</sys:String>
+    <sys:String x:Key="TCP_Log_ClientRemovedFromManager">TCP client [{0}] removed from manager</sys:String>
+    <sys:String x:Key="TCP_Log_Initialized">TCP event service initialized</sys:String>
+    <sys:String x:Key="TCP_Log_NoConnectionForBroadcast">No TCP connection available for broadcast</sys:String>
+    <sys:String x:Key="TCP_Log_PublishStatusFailed">Failed to publish TCP status change event: {0}</sys:String>
+    <sys:String x:Key="TCP_Log_ReplayConnection">Replay connection state: server[{0}] client connected ({1}:{2})</sys:String>
+    <sys:String x:Key="TCP_Log_SendCommandFailed">Failed to send command to [{0}]: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerClientConnected">TCP server[{0}] accepted client connection: {1} ({2}:{3})</sys:String>
+    <sys:String x:Key="TCP_Log_ServerClientDisconnected">TCP server[{0}] client disconnected: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerDataReceived">TCP server data received: server={0}, client={1}, message={2}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerError">TCP server[{0}] error: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerExistsStopOld">TCP server '{0}' already exists, stopping old instance first</sys:String>
+    <sys:String x:Key="TCP_Log_ServerNotFound">TCP server[{0}] does not exist or has stopped</sys:String>
+    <sys:String x:Key="TCP_Log_ServerResponseReceived">Server mode[{0}] response received: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerResponseTimeout">Server mode waiting for [{0}] response timeout ({1}ms)</sys:String>
+    <sys:String x:Key="TCP_Log_ServerStarted">TCP server[{0}] started successfully: {1}:{2} ({3} servers currently)</sys:String>
+    <sys:String x:Key="TCP_Log_ServerStartFailed">TCP server[{0}] start failed: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerStopped">TCP server[{0}] stopped</sys:String>
+    <sys:String x:Key="TCP_Log_StopServerFailed">Failed to stop TCP server[{0}]: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_TargetNotFound">TCP [{0}] does not exist: neither a Client-mode client nor a Server-mode server</sys:String>
+    <sys:String x:Key="TcpCfg_Log_AddConfig">Add TCP config item: {0}</sys:String>
+    <sys:String x:Key="TcpCfg_Log_DeleteConfig">Delete TCP config item: {0}</sys:String>
+    <sys:String x:Key="TcpCfg_Log_LoadFailed">Failed to load TCP config</sys:String>
+    <sys:String x:Key="TcpCfg_Log_LoadSuccess">TCP config loaded successfully, {0} items total</sys:String>
+    <sys:String x:Key="TcpCfg_Log_SaveFailed">Failed to save TCP config</sys:String>
+    <sys:String x:Key="TcpCfg_Log_SaveSuccess">TCP config saved successfully, {0} items total</sys:String>
+    <sys:String x:Key="TcpCfg_Log_ServerStarted">TCP server [{0}] started listening {1}:{2}</sys:String>
+    <sys:String x:Key="TcpCfg_Log_TestConnectionFailed">TCP connection test failed: {0} ({1}:{2})</sys:String>
+    <sys:String x:Key="TcpCfg_Log_TestConnectionSuccess">TCP connection test succeeded: {0} ({1}:{2})</sys:String>
+    <sys:String x:Key="TcpClient_Log_ClientConnected">TCP client [{0}] connected to {1}:{2}</sys:String>
+    <sys:String x:Key="TcpClient_Log_ClientExists">TCP client [{0}] already exists, skipping add</sys:String>
+    <sys:String x:Key="TcpClient_Log_ClientRemoved">TCP client [{0}] removed</sys:String>
+    <sys:String x:Key="TcpClient_Log_ConnectFailed">TCP client [{0}] connect to {1}:{2} failed: {3}, auto reconnect enabled</sys:String>
+    <sys:String x:Key="TcpClient_Log_Initialized">TCP client manager initialized, loaded {0} clients</sys:String>
+    <sys:String x:Key="TCPMod_Log_ClientConnected">TCP client '{0}' connected {1}:{2}</sys:String>
+    <sys:String x:Key="TCPMod_Log_InitConfigItemFailed">Failed to init TCP config item '{0}' (Mode={1}): {2}</sys:String>
+    <sys:String x:Key="TCPMod_Log_ServerStarted">TCP server '{0}' started listening {1}:{2}</sys:String>
+    <sys:String x:Key="TCPMod_Log_SystemInitComplete">TCP system initialization completed, {0} config items total</sys:String>
+    <sys:String x:Key="TCPMod_Log_SystemInitFailed">TCP system initialization failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ArcMachineCoordComplete">[VisionCapture] New format arc machine coordinates completed: P1({0:F3},{1:F3}) P2 midpoint({2:F3},{3:F3}) P3({4:F3},{5:F3}), arc height={6:F3} direction={7:F3} bezier {8} points</sys:String>
+    <sys:String x:Key="VisCap_Log_AutoCalcArcCoordFailed">[VisionCapture] Failed to auto calculate arc machine coordinates: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_AutoLoadConfigException">[VisionCapture] Auto load config exception: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_AutoLoadConfigFailed">[VisionCapture] Failed to auto load config: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ConfigLoaded">[VisionCapture] Config loaded: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ConfigSaved">[VisionCapture] Config saved: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_DispenseFailed">[VisionCapture] Dispense failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_DxAxisConfigNotFound">[VisionCapture] Dx axis config not found, CoordId falls back to 0</sys:String>
+    <sys:String x:Key="VisCap_Log_DxMatchedInterpSystem">[VisionCapture] Dx(actAxisId={0}) matched interpolation system CoordId={1}</sys:String>
+    <sys:String x:Key="VisCap_Log_DxNotInInterpSystem">[VisionCapture] Dx(actAxisId={0}) is not in any interpolation system, CoordId falls back to 0</sys:String>
+    <sys:String x:Key="VisCap_Log_ExecuteFailed">[VisionCapture] Execution failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_GlobalVarChangeSyncFailed">[VisionCapture] Global variable change sync failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_IgnoreInvalidNeedleOffsetXLink">[VisionCapture] Ignored invalid NeedleOffsetX link variable: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_IgnoreInvalidNeedleOffsetYLink">[VisionCapture] Ignored invalid NeedleOffsetY link variable: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_InitComplete">[VisionCapture] Initialization completed</sys:String>
+    <sys:String x:Key="VisCap_Log_InitGroupFailed">[VisionCapture] Failed to init Group: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_InitStart">[VisionCapture] Starting initialization...</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadConfigFailed">[VisionCapture] Failed to load config: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadConfigFromDefault">[VisionCapture] No recipe pool record, loading from default path: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadConfigFromRecipePool">[VisionCapture] Loading config from recipe pool record: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadGroupListFailed">[VisionCapture] Failed to load Group list: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadSiteFeatureFailed">[VisionCapture] Failed to load SiteFeature: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadTransformParamsFailed">[VisionCapture] Failed to load coordinate transform parameters: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_MoveComplete">[VisionCapture] Move completed [{0}]: ({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="VisCap_Log_MoveFailed">[VisionCapture] Move failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_NoConfigToLoad">[VisionCapture] No loadable config file</sys:String>
+    <sys:String x:Key="VisCap_Log_PositionDataSynced">[VisionCapture] Position data synced (recipe={0}), _allPositions count={1}, SafePositionName={2}, Dx={3}, Dy={4}, Dz1={5}</sys:String>
+    <sys:String x:Key="VisCap_Log_PositionDataSyncFailed">[VisionCapture] Position data sync failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_PreviewFailed">[VisionCapture] Preview failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ReturnedToSafePos">[VisionCapture] Returned to safe position</sys:String>
+    <sys:String x:Key="VisCap_Log_ReturnToSafePosDataIncomplete">[VisionCapture] Failed to return to safe position: safe position '{0}' data incomplete (Dz={1}, Dx={2}, Dy={3})</sys:String>
+    <sys:String x:Key="VisCap_Log_SafePosMissingAxis">[VisionCapture] Safe position '{0}' missing axis: {1}, please select a position of a station containing Dx/Dy/Dz₁ axes</sys:String>
+    <sys:String x:Key="VisCap_Log_SaveConfigFailed">[VisionCapture] Failed to save config: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_SaveFileRecordToRecipePoolFailed">[VisionCapture] Failed to save file record to recipe pool: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_SaveTransformParamsFailed">[VisionCapture] Failed to save coordinate transform parameters: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_StationPositionSaved">[VisionCapture] Station [{0}] position saved, _allPositions count={1}, SafePositionName={2}, Dx={3}, Dy={4}, Dz1={5}</sys:String>
+    <sys:String x:Key="VisCap_Log_StationPosSaveSyncFailed">[VisionCapture] Station position save sync failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_SyncCaptureFailed">[VisionCapture] Synchronous capture failed: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_TransformParamsSaved">[VisionCapture] Coordinate transform parameters saved to global variables</sys:String>
+    <sys:String x:Key="VisCap_Log_UpdateGlobalVarFailed">[VisionCapture] Failed to update global variable value: {0}</sys:String>
+    <sys:String x:Key="VisCapSvc_Log_ParseCompleted">[VisionCapture] Data parse completed, {0} key-value pairs total, raw data: {1}</sys:String>
+    <sys:String x:Key="VisCapSvc_Log_SendTriggerCommand">[VisionCapture] Send trigger command: {0} -&gt; {1}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_ConfigFileNotFound">Config file does not exist: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_ConfigSaved">Config saved: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_CreateDefaultConfigFailed">Failed to create default config: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_DefaultConfigCreated">Default config file created</sys:String>
+    <sys:String x:Key="XmlCfg_Log_LoadConfigFailed">Failed to load config: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_MigratedFromLegacy">Migrated from legacy config format to new format</sys:String>
+    <sys:String x:Key="XmlCfg_Log_SaveConfigFailed">Failed to save config: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_AddRowFailed">Z-SCAN add row failed: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_AutoLoadLatestConfig">Z-SCAN auto load latest config: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_AutoSavedAfterScan">Z-SCAN auto saved after scan: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_BaseZHeight">Z-SCAN [Dz{0}] Base Z height: {1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_CalcDispenseHeightFailed">Z-SCAN [Dz{0}] Failed to calculate dispense height: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CalibrationReset">Z-SCAN [Dz{0}] Calibration reset</sys:String>
+    <sys:String x:Key="ZScan_Log_CalibrationResetFailed">Z-SCAN [Dz{0}] Calibration reset failed: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataFilteredByConnName">Z-SCAN camera data ignored by connection name filter: source={0}, expected={1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataFormatError">Z-SCAN camera data format error: '{0}' marker not found</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataParseException">Z-SCAN camera data parse exception: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataParseSuccess">Z-SCAN camera data parse success: {0} values</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataProcessFailed">Z-SCAN camera data processing failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataReceived">Z-SCAN camera data received [{0}]: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataTimeout">Z-SCAN camera data receive timeout ({0}ms)</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraZCalibrationDone">Z-SCAN [Dz{0}] Camera Z calibration done: CameraZOffset={1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraZCalibrationFailed">Z-SCAN [Dz{0}] Camera Z calibration failed: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CannotParseValue">Z-SCAN cannot parse value: '{0}'</sys:String>
+    <sys:String x:Key="ZScan_Log_CollectionChangedHandlerException">Z-SCAN collection changed event handler exception: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigAutoSaved">Z-SCAN config auto saved: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigLoaded">Z-SCAN config loaded: shared tables={0}, Z calibration per-needle independent</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigLoadFailed">Z-SCAN config load failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigSaveFailed">Z-SCAN config save failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CreateTableFailed">Z-SCAN create table failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvExportCompleted">Z-SCAN CSV export completed: {0} rows -&gt; {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvExportException">Z-SCAN CSV export exception: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvExportPermissionError">Z-SCAN CSV export permission error: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvFileNotFound">Z-SCAN CSV file not found: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvFileReadError">Z-SCAN CSV file read error: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvFileWriteError">Z-SCAN CSV file write error: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvHeaderDetected">Z-SCAN CSV header row detected, parsing data from row 2</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvImportCompleted">Z-SCAN CSV import completed: {0} rows successful, {1} rows warning</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvImportException">Z-SCAN CSV import exception: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvRowFieldCountInsufficient">Z-SCAN CSV row {0} insufficient field count ({1}), skipped</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvRowParseFailed">Z-SCAN CSV row {0} parse failed: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_DeleteTableFailed">Z-SCAN delete table failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_EmbeddedModeInitDone">Z-SCAN Detail embedded mode init done</sys:String>
+    <sys:String x:Key="ZScan_Log_FindLatestFileFailed">Z-SCAN find latest file failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_GlobalVarLinkNotFound">Z-SCAN global variable link not found: {0} (row {1})</sys:String>
+    <sys:String x:Key="ZScan_Log_GlobalVarListSynced">Z-SCAN global variable list synced (pool={0}, {1} items total)</sys:String>
+    <sys:String x:Key="ZScan_Log_GlobalVarSync">Z-SCAN global variable sync: {0} = {1:F6} (row {2})</sys:String>
+    <sys:String x:Key="ZScan_Log_LinkedGlobalVarsSynced">Z-SCAN synced {0} linked global variables</sys:String>
+    <sys:String x:Key="ZScan_Log_LoadGlobalVarListFailed">Z-SCAN failed to load global variable list: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_LoadTcpConnectionsFailed">Z-SCAN failed to load TCP connection list: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_MoveNeedleToBaseZFailed">Z-SCAN [Dz{0}] Failed to move needle to base Z: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleCompensationApplied">Z-SCAN [Dz{0}] Needle change compensation applied: NeedleZOffset={1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleCompensationFailed">Z-SCAN [Dz{0}] Needle change compensation apply failed: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleMovedToBaseZ">Z-SCAN [Dz{0}] Needle moved to base Z height: {1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleTeachFailed">Z-SCAN [Dz{0}] Needle teach failed: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleTeachMZ">Z-SCAN [Dz{0}] Needle teach MZ: {1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_PointDetailsEventsSubscribed">Z-SCAN PointDetails event listening subscribed</sys:String>
+    <sys:String x:Key="ZScan_Log_PointDetailsEventsUnsubscribed">Z-SCAN PointDetails event listening unsubscribed</sys:String>
+    <sys:String x:Key="ZScan_Log_PointDetailsNullCannotAddRow">Z-SCAN PointDetails is null, cannot add row</sys:String>
+    <sys:String x:Key="ZScan_Log_PointsUpdatedWithCalibration">Z-SCAN updated {0} measurement points (with calibration offset={1:F3}, data format={2}, data point count={3})</sys:String>
+    <sys:String x:Key="ZScan_Log_PopupClosed">Z-SCAN Detail popup closed</sys:String>
+    <sys:String x:Key="ZScan_Log_PopupOpened">Z-SCAN Detail popup opened</sys:String>
+    <sys:String x:Key="ZScan_Log_PropertyChangedCalcException">Z-SCAN property changed calculation exception: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_PropertyChangedHandlerException">Z-SCAN property changed event handler exception: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ReceivedPointCount">Z-SCAN received {0} measurement point data</sys:String>
+    <sys:String x:Key="ZScan_Log_RecipePoolSwitched">Z-SCAN recipe pool switched, global variables reloaded (pool={0})</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnedToStandby">Z-SCAN returned to standby position</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnToStandbyFailed">Z-SCAN failed to return to standby: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnToStandbyInterrupted">Z-SCAN return to standby interrupted</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnToStandbyStart">Z-SCAN starting return to standby position</sys:String>
+    <sys:String x:Key="ZScan_Log_RowAdded">Z-SCAN new row added: point number={0}, total points={1}</sys:String>
+    <sys:String x:Key="ZScan_Log_RowRecalculated">Z-SCAN row recalculation completed: point[{0}] DeltaZ={1:F3}, Status={2}</sys:String>
+    <sys:String x:Key="ZScan_Log_RowUnlinkedGlobalVar">Z-SCAN row {0} unlinked global variable: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanCompleted">Z-SCAN 3D scan completed</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanDataReceivedTcsSet">Z-SCAN scan data received (source={0}, {1} points), TCS set</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanException">Z-SCAN scan exception: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanStart">Z-SCAN starting 3D scan</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanStoppedByUser">Z-SCAN scan stopped by user</sys:String>
+    <sys:String x:Key="ZScan_Log_SetBaseZFailed">Z-SCAN [Dz{0}] Failed to set base Z: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_StatisticsUpdated">Z-SCAN statistics updated: total points={0}, Z range={1}, max ΔZ={2:F3}, status={3} (Pass={4}, Fail={5}, Pending={6})</sys:String>
+    <sys:String x:Key="ZScan_Log_Step4CalcDispenseHeight">Z-SCAN [Dz{0}] Step4: base Z={1:F3}, current Z={2:F3}, Z height diff={3:F3}, base dispense height (MZ)={4:F3}, compensation={5:F3}, dispense height={6:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_StopCommandExecuted">Z-SCAN stop command executed</sys:String>
+    <sys:String x:Key="ZScan_Log_StopFailed">Z-SCAN stop failed: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_SyncGlobalVarsFailed">Z-SCAN failed to sync global variables: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TableCreated">Z-SCAN table created: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TableDeleted">Z-SCAN table deleted: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TableSwitched">Z-SCAN table switched: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TcpConnectionsLoaded">Z-SCAN TCP connection list loaded: {0} items</sys:String>
+    <sys:String x:Key="ZScan_Log_TcpDataSubscribed">Z-SCAN subscribed to TCP data receive: listening connection '{0}'</sys:String>
+    <sys:String x:Key="ZScan_Log_TcpDataUnsubscribed">Z-SCAN unsubscribed from TCP data receive</sys:String>
+    <sys:String x:Key="ZScan_Log_UpdatePoint">Z-SCAN update point[{0}]: ZMeasured={1:F3}, DeltaZ={2:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_UserLoadConfig">Z-SCAN user selected to load config: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_UserTriggeredStop">Z-SCAN user triggered stop</sys:String>
+    <sys:String x:Key="ZScan_Log_WaitingCameraData">Z-SCAN waiting for 3D camera data return (timeout={0}ms)...</sys:String>
+    <sys:String x:Key="CadAT_Log_NoValidSnapshot">[CadAlignTransform] 持久化配置无有效变换快照，保持当前状态</sys:String>
+    <sys:String x:Key="CadAT_Log_RestoreFailed">[CadAlignTransform] 恢复变换快照失败: {0}</sys:String>
+    <sys:String x:Key="CadAT_Log_SnapshotRestored">[CadAlignTransform] 已从持久化配置恢复变换快照，回转中心=({0:F3}, {1:F3})</sys:String>
+    <sys:String x:Key="DashDlg_Log_DialogClosed">[DashboardDialog] 弹窗已关闭, result={0}</sys:String>
+    <sys:String x:Key="DashDlg_Log_DialogException">[DashboardDialog] 看板弹窗异常: {0}</sys:String>
+    <sys:String x:Key="DashDlg_Log_ReceivedRequest">[DashboardDialog] 收到看板请求, IsExecutionMode={0}</sys:String>
+    <sys:String x:Key="DGC_Log_AutoCalibrationCanceled">双龙门标定: 龙门{0}自动标定已取消</sys:String>
+    <sys:String x:Key="DGC_Log_AutoCalibrationException">双龙门标定: 龙门{0}自动标定异常</sys:String>
+    <sys:String x:Key="DGC_Log_CalibrationCompleted">双龙门标定: 龙门{0}标定完成，RMS={1}mm，点数={2}</sys:String>
+    <sys:String x:Key="DGC_Log_Cam1VisionDataTimeout">双龙门标定: 等待Cam1视觉数据超时</sys:String>
+    <sys:String x:Key="DGC_Log_Cam2VisionDataTimeout">双龙门标定: 等待Cam2视觉数据超时</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry1Done">双龙门标定: Cam1公共基准采集完成，视觉=({0},{1})</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry1Start">双龙门标定: 采集Cam1公共基准，CommonY1={0}</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry2Done">双龙门标定: Cam2公共基准采集完成，视觉=({0},{1})</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry2Start">双龙门标定: 采集Cam2公共基准，CommonY2={0}</sys:String>
+    <sys:String x:Key="DGC_Log_GantryTransformComputed">双龙门标定: 跨龙门对齐完成，Offset=({0},{1})，旋转={2}°，残差={3}mm</sys:String>
+    <sys:String x:Key="DGC_Log_InsufficientPoints">双龙门标定: 龙门{0}已标定点数不足3个，无法计算仿射</sys:String>
+    <sys:String x:Key="DGC_Log_ParseVisionDataFailed">双龙门标定: 龙门{0}解析视觉数据失败 - {1}, 原始数据: {2}</sys:String>
+    <sys:String x:Key="DGC_Log_SendTriggerCommandFailed">双龙门标定: 龙门{0}发送触发命令失败 - {1}</sys:String>
+    <sys:String x:Key="DGC_Log_StartAutoCalibration">双龙门标定: 启动龙门{0}自动标定，共 {1} 个点位</sys:String>
+    <sys:String x:Key="DGC_Log_StoppedAllAutoCalibration">双龙门标定: 已停止所有自动标定流程</sys:String>
+    <sys:String x:Key="DGC_Log_SubscribeConnectionNameEmpty">双龙门标定: 龙门{0}订阅连接名为空，跳过订阅</sys:String>
+    <sys:String x:Key="DGC_Log_SubscribedTcpVisionData">双龙门标定: 龙门{0}已订阅TCP视觉数据，连接名: {1}</sys:String>
+    <sys:String x:Key="DGC_Log_TriggerCam1Failed">双龙门标定: 触发Cam1失败 - {0}</sys:String>
+    <sys:String x:Key="DGC_Log_TriggerCam2Failed">双龙门标定: 触发Cam2失败 - {0}</sys:String>
+    <sys:String x:Key="DGC_Log_UnsubscribedTcpVisionData">双龙门标定: 龙门{0}已取消订阅TCP视觉数据，连接名: {1}</sys:String>
+    <sys:String x:Key="DGC_Log_VisionDataTimeout">双龙门标定: 龙门{0}点位 {1} 等待视觉数据超时</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseCanceled">[DotDispense] 点胶已取消</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseCompleted">[DotDispense] 点胶完成</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseException">[DotDispense] 点胶异常</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispensePoint">[DotDispense] 点胶点 [{0}]</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseStart">[DotDispense] 开始点胶，针头{0}/Dz{1}(轴{2})，共 {3} 点，全选={4}</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunCanceled">[DotDispense] 空跑已取消</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunCompleted">[DotDispense] 空跑完成</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunException">[DotDispense] 空跑异常</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunPoint">[DotDispense] 空跑点 [{0}]</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunStart">[DotDispense] 开始空跑，针头{0}/Dz{1}(轴{2})，共 {3} 点</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunTriggerPosition">[DotDispense] 空跑 点 [{0}] 到达触发位，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointTriggerGlueOn">[DotDispense] 点 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="DotDisp_Log_SafeStop">[DotDispense] 执行安全停止</sys:String>
+    <sys:String x:Key="DotDisp_Log_TeachPoint">[DotDispense] 示教点位 [{0}] 针头{1}/Dz{2} → ({3:F3}, {4:F3}, Dz2={5:F3}, Dz3={6:F3}, 主Z={7:F3}, {8:F3}, {9:F3}, {10:F3})</sys:String>
+    <sys:String x:Key="DotDisp_Log_WriteIoFailed">[DotDispense] 写出胶IO失败 port={0} value={1}</sys:String>
+    <sys:String x:Key="DualGantryCalib_CalibrationRequired">请先完成双龙门标定</sys:String>
+    <sys:String x:Key="DualGantryCalib_CapturingReference">采集公共基准点...</sys:String>
+    <sys:String x:Key="DualGantryCalib_MinReferenceRequired">跨龙门对齐至少需要2个公共基准点</sys:String>
+    <sys:String x:Key="DualGantryCalib_PointTaught">龙门1点位 {0} 示教完成</sys:String>
+    <sys:String x:Key="DualGantryCalib_ReferenceCaptured">公共基准点 {0} 采集完成</sys:String>
+    <sys:String x:Key="DualGantryCalib_VerifyResult">验证结果: ({0:F4}, {1:F4})</sys:String>
+    <sys:String x:Key="LUL_Log_StopAxisFailed">StopMotion: 停止轴 {0} 失败: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_AxesSettleTimeout">[NeedleAligner] 停轴后等待位置稳定超时({0}ms)</sys:String>
+    <sys:String x:Key="NAM_Log_CalibrationException">[NeedleAligner] 寻针校准异常</sys:String>
+    <sys:String x:Key="NAM_Log_DualLaserPreclearIncomplete">[NeedleAligner] 双激光预清未完全灭光，继续束内双沿回退</sys:String>
+    <sys:String x:Key="NAM_Log_DualLaserScanTimeout">[NeedleAligner] 双激光入光扫描超时</sys:String>
+    <sys:String x:Key="NAM_Log_DxConfigNotFound">[NeedleAligner] 未找到 Dx 轴配置，CoordId 回退 0</sys:String>
+    <sys:String x:Key="NAM_Log_DxNotInInterpolationSystem">[NeedleAligner] Dx 不在插补系中，CoordId 回退 0</sys:String>
+    <sys:String x:Key="NAM_Log_EdgePointsExceedTwo">[NeedleAligner] X/Y 传感器边缘点超过 2 个，Halcon 拟合使用前两个: X=P{0}/P{1} Y=P{2}/P{3}</sys:String>
+    <sys:String x:Key="NAM_Log_EdgeSearchFailed">[NeedleAligner] 搜索点{0}边缘搜索失败</sys:String>
+    <sys:String x:Key="NAM_Log_HalconFitInsufficientPoints">[NeedleAligner] Halcon 拟合需 X/Y 传感器各至少 2 个边缘点，当前 X={0}(P{1}) Y={2}(P{3})</sys:String>
+    <sys:String x:Key="NAM_Log_HalconIntersection">[NeedleAligner] Halcon 交点: X={0:F3}, Y={1:F3}</sys:String>
+    <sys:String x:Key="NAM_Log_HalconIntersectionException">[NeedleAligner] Halcon 直线交点异常: {0}</sys:String>
+    <sys:String x:Key="NAM_Log_HalconIntersectionFailed">[NeedleAligner] Halcon 交点失败，直线可能平行或重叠</sys:String>
+    <sys:String x:Key="NAM_Log_RaiseSafeHeightOnFailure">[NeedleAligner] 寻针失败，自动抬升至安全高度</sys:String>
+    <sys:String x:Key="NAM_Log_RaiseSafeHeightOnFailureException">[NeedleAligner] 失败后抬升安全高度异常: {0}</sys:String>
+    <sys:String x:Key="NAM_Log_ReadDiFailed">[NeedleAligner] 读取 DI{0} 失败: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_RelativeScanNotStarted">[NeedleAligner] 相对扫描未启动 DI={0} 轴{1} 距离={2:F3}</sys:String>
+    <sys:String x:Key="NAM_Log_RelativeScanStartFailed">[NeedleAligner] 相对扫描启动失败 DI={0}: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_SensorPortInvalid">[NeedleAligner] 传感器 DI 端口号无效: {0}</sys:String>
+    <sys:String x:Key="NAM_Log_SingleSensorScanTimeout">[NeedleAligner] 单路入光扫描超时 DI={0}</sys:String>
+    <sys:String x:Key="NAM_Log_StopAxisFailed">[NeedleAligner] 停止轴{0}失败: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_ZAtDescendLimit">[NeedleAligner] 第{0}次 Z 已在下探极限({1:F3})，跳过</sys:String>
+    <sys:String x:Key="NAM_Log_ZDescendDirectionError">[NeedleAligner] Z下探方向异常: 起始Z={0:F3} 极限Z={1:F3} ΔZ={2:F3} downCoordIncrease={3}</sys:String>
+    <sys:String x:Key="NAM_Log_ZSampleFailed">[NeedleAligner] 第{0}次 Z 高度采样失败</sys:String>
+    <sys:String x:Key="NAM_Log_ZSearchTimeout">[NeedleAligner] 第{0}次 Z 高度搜索超时</sys:String>
+    <sys:String x:Key="NCCP_Log_GetOffsetFailed">[NeedleCameraCalibProvider] 获取系统{0}针头偏移失败: {1}</sys:String>
+    <sys:String x:Key="NCCP_Log_NoCalibrationFile">[NeedleCameraCalibProvider] 系统{0}无可用标定文件，偏移取0</sys:String>
+    <sys:String x:Key="NCCP_Log_ReadRecipePoolRecordFailed">[NeedleCameraCalibProvider] 读取配方池记录失败: {0}</sys:String>
+    <sys:String x:Key="Needle_Log_CountIncremented">NeedleService: 针头 {0} 使用次数递增至 {1}</sys:String>
+    <sys:String x:Key="Needle_Log_CountReset">NeedleService: 针头 {0} 使用计数已重置</sys:String>
+    <sys:String x:Key="Needle_Log_LifeWarningThreshold">NeedleService: 针头 {0} 使用次数已达预警阈值 ({1:P0})，当前 {2}/{3}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_CancelRequest">用户请求取消验证...</sys:String>
+    <sys:String x:Key="NPC_Log_AutoCalibrationCanceled">N点标定: 自动标定已取消</sys:String>
+    <sys:String x:Key="NPC_Log_AutoCalibrationException">N点标定: 自动标定异常</sys:String>
+    <sys:String x:Key="NPC_Log_ParseVisionDataFailed">N点标定: 解析视觉数据失败 - {0}, 原始数据: {1}</sys:String>
+    <sys:String x:Key="NPC_Log_SendTriggerCommandFailed">N点标定: 发送触发命令失败 - {0}</sys:String>
+    <sys:String x:Key="NPC_Log_SubscribedTcpVisionData">N点标定: 已订阅TCP视觉数据，连接名: {0}</sys:String>
+    <sys:String x:Key="NPC_Log_UnsubscribedTcpVisionData">N点标定: 已取消订阅TCP视觉数据</sys:String>
+    <sys:String x:Key="NPC_Log_VisionDataTimeout">N点标定: 点位 {0} 等待视觉数据超时</sys:String>
+    <sys:String x:Key="StageCal_Log_AutoReceivedData">StageCalibration: 自动接收数据 特征点{0} X:{1:F3} Y:{2:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_CameraPhotoPositionReached">StageCalibration: 相机已到达拍照位</sys:String>
+    <sys:String x:Key="StageCal_Log_CaptureFailed">StageCalibration: 视觉拍照失败 - {0}</sys:String>
+    <sys:String x:Key="StageCal_Log_CaptureTimeout">StageCalibration: 视觉拍照超时 ({0}ms)</sys:String>
+    <sys:String x:Key="StageCal_Log_HalconCalcDone">StageCalibration: Halcon计算完成 中心({0:F3},{1:F3}) 角度:{2:F3}° 距离:{3:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_HalconCalcStart">StageCalibration: Halcon计算 中心点/角度 P1({0:F3},{1:F3}) P2({2:F3},{3:F3})</sys:String>
+    <sys:String x:Key="StageCal_Log_MoveCameraToPhotoPosition">StageCalibration: 移动相机到拍照位 Dx:{0:F3}, Dy:{1:F3}, Dz:{2:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_MoveToReferencePosition">StageCalibration: 移动载台到基准位 Rx:{0:F3}, Rz:{1:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_ParseAutoReceivedDataFailed">StageCalibration: 解析自动接收数据失败 - {0}, 原始消息:{1}</sys:String>
+    <sys:String x:Key="StageCal_Log_ReadCurrentPositions">StageCalibration: 读取当前轴位置</sys:String>
+    <sys:String x:Key="StageCal_Log_ReferencePositionReached">StageCalibration: 载台已到达基准位</sys:String>
+    <sys:String x:Key="StageCal_Log_RotateToReferenceAngle">StageCalibration: 旋转Rz轴到基准角度，当前:{0:F3}, 偏差:{1:F3}, 目标:{2:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_RotationCompleted">StageCalibration: Rz轴旋转完成</sys:String>
+    <sys:String x:Key="StageCal_Log_SubscribedCameraData">StageCalibration: 已订阅相机数据自动接收，连接:{0}</sys:String>
+    <sys:String x:Key="StageCal_Log_TriggerCapture">StageCalibration: 触发视觉拍照，连接:{0}, 命令:{1}</sys:String>
+    <sys:String x:Key="StageCal_Log_UnsubscribedCameraData">StageCalibration: 已取消订阅相机数据</sys:String>
+    <sys:String x:Key="TB_Log_FatalStepFailure">致命故障，任务 [{0}] 在 [{1}] 步骤崩溃。内部异常: {2}</sys:String>
+    <sys:String x:Key="TB_Log_UnknownFatalError">[{0}] 未知严重错误: {1}</sys:String>
+    <sys:String x:Key="App_Log_ShutdownExitCode">App_Log_ShutdownExitCode</sys:String>
+    <sys:String x:Key="App_Log_ShutdownInfoHeader">App_Log_ShutdownInfoHeader</sys:String>
+    <sys:String x:Key="App_Log_ShutdownMemory">App_Log_ShutdownMemory</sys:String>
+    <sys:String x:Key="App_Log_ShutdownThreadCount">App_Log_ShutdownThreadCount</sys:String>
+    <sys:String x:Key="App_Log_ShutdownTime">App_Log_ShutdownTime</sys:String>
+    <sys:String x:Key="App_Log_StartupCmdArgs">App_Log_StartupCmdArgs</sys:String>
+    <sys:String x:Key="App_Log_StartupInfoHeader">App_Log_StartupInfoHeader</sys:String>
+    <sys:String x:Key="App_Log_StartupMemory">App_Log_StartupMemory</sys:String>
+    <sys:String x:Key="App_Log_StartupOSVersion">App_Log_StartupOSVersion</sys:String>
+    <sys:String x:Key="App_Log_StartupProcessorCount">App_Log_StartupProcessorCount</sys:String>
+    <sys:String x:Key="App_Log_StartupVersion">App_Log_StartupVersion</sys:String>
+    <sys:String x:Key="App_Log_StartupWorkDir">App_Log_StartupWorkDir</sys:String>
+    <sys:String x:Key="CAD_AutoRecommend_Confirm">CAD_AutoRecommend_Confirm</sys:String>
+    <sys:String x:Key="CAD_Baseline_Done_Status">CAD_Baseline_Done_Status</sys:String>
+    <sys:String x:Key="CAD_Baseline_Start_Status">CAD_Baseline_Start_Status</sys:String>
+    <sys:String x:Key="CAD_Rotation_Need4Points">CAD_Rotation_Need4Points</sys:String>
+    <sys:String x:Key="CAD_ShowBaseline_Status">CAD_ShowBaseline_Status</sys:String>
+    <sys:String x:Key="CAD_ShowTarget_Status">CAD_ShowTarget_Status</sys:String>
+    <sys:String x:Key="CAD_SmartRecommend_NotEnough">CAD_SmartRecommend_NotEnough</sys:String>
+    <sys:String x:Key="CAD_Target_Done_Status">CAD_Target_Done_Status</sys:String>
+    <sys:String x:Key="CAD_Target_Start_Status">CAD_Target_Start_Status</sys:String>
+    <sys:String x:Key="CAD_Transform_IndexOutOfRange">CAD_Transform_IndexOutOfRange</sys:String>
+    <sys:String x:Key="DataDetail_DefaultFieldName">DataDetail_DefaultFieldName</sys:String>
+    <sys:String x:Key="DataDetail_Log_DataLoaded">DataDetail_Log_DataLoaded</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramLoadFailed">DataDetail_Log_DiagramLoadFailed</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramNotExist">DataDetail_Log_DiagramNotExist</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramSuccess">DataDetail_Log_DiagramSuccess</sys:String>
+    <sys:String x:Key="DataDetail_Log_EvalFailed">DataDetail_Log_EvalFailed</sys:String>
+    <sys:String x:Key="DataDetail_Log_GetVarFailed">DataDetail_Log_GetVarFailed</sys:String>
+    <sys:String x:Key="DataDetail_Log_PoolIdEmpty">DataDetail_Log_PoolIdEmpty</sys:String>
+    <sys:String x:Key="DataDetail_Log_UserConfirmedNG">DataDetail_Log_UserConfirmedNG</sys:String>
+    <sys:String x:Key="DataDetail_Log_VarLoaded">DataDetail_Log_VarLoaded</sys:String>
+    <sys:String x:Key="DataDetail_Log_VarLoadFailed">DataDetail_Log_VarLoadFailed</sys:String>
+    <sys:String x:Key="DispExec_Log_SegmentDebug">DispExec_Log_SegmentDebug</sys:String>
+    <sys:String x:Key="DispExec_Log_SegmentStart">DispExec_Log_SegmentStart</sys:String>
+    <sys:String x:Key="DSS_Log_AlignDataLoadFailed">DSS_Log_AlignDataLoadFailed</sys:String>
+    <sys:String x:Key="DSS_Log_ConfigFileNotFound">DSS_Log_ConfigFileNotFound</sys:String>
+    <sys:String x:Key="DSS_Log_DeserializeFailed">DSS_Log_DeserializeFailed</sys:String>
+    <sys:String x:Key="Gripper_Dialog_OperationFailed_Title">Gripper_Dialog_OperationFailed_Title</sys:String>
+    <sys:String x:Key="Gripper_Error_Status">Gripper_Error_Status</sys:String>
+    <sys:String x:Key="Gripper_Log_DialogOpened">Gripper_Log_DialogOpened</sys:String>
+    <sys:String x:Key="Gripper_Log_OperationFailed">Gripper_Log_OperationFailed</sys:String>
+    <sys:String x:Key="Init_Loading_AxesStandby">Init_Loading_AxesStandby</sys:String>
+    <sys:String x:Key="Log_AlarmAcknowledged">Log_AlarmAcknowledged</sys:String>
+    <sys:String x:Key="Log_AlarmTriggered">Log_AlarmTriggered</sys:String>
+    <sys:String x:Key="Log_AxisHomingDone">Log_AxisHomingDone</sys:String>
+    <sys:String x:Key="Log_CameraTriggered">Log_CameraTriggered</sys:String>
+    <sys:String x:Key="Log_DiStatusChanged">Log_DiStatusChanged</sys:String>
+    <sys:String x:Key="Log_DoToggled">Log_DoToggled</sys:String>
+    <sys:String x:Key="Log_DoToggleFailed">Log_DoToggleFailed</sys:String>
+    <sys:String x:Key="Log_EmergencyStopTriggered">Log_EmergencyStopTriggered</sys:String>
+    <sys:String x:Key="Log_ProcessCompleted">Log_ProcessCompleted</sys:String>
+    <sys:String x:Key="Log_ProcessStarted">Log_ProcessStarted</sys:String>
+    <sys:String x:Key="Log_StepCompleted">Log_StepCompleted</sys:String>
+    <sys:String x:Key="Log_VisionDataReceived">Log_VisionDataReceived</sys:String>
+    <sys:String x:Key="MainWindow_InitConfirmMsg">MainWindow_InitConfirmMsg</sys:String>
+    <sys:String x:Key="MainWindow_InitConfirmNo">MainWindow_InitConfirmNo</sys:String>
+    <sys:String x:Key="MainWindow_InitConfirmYes">MainWindow_InitConfirmYes</sys:String>
+    <sys:String x:Key="MainWindow_TcpNoConfig">MainWindow_TcpNoConfig</sys:String>
+    <sys:String x:Key="NAM_Log_SensorState">NAM_Log_SensorState</sys:String>
+    <sys:String x:Key="PickDetail_Alert_ClampFailed">PickDetail_Alert_ClampFailed</sys:String>
+    <sys:String x:Key="PickDetail_Alert_ReleaseFailed">PickDetail_Alert_ReleaseFailed</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmClamp_Msg">PickDetail_ConfirmClamp_Msg</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmClamp_Title">PickDetail_ConfirmClamp_Title</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmRelease_Msg">PickDetail_ConfirmRelease_Msg</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmRelease_Title">PickDetail_ConfirmRelease_Title</sys:String>
+    <sys:String x:Key="PickDetail_Log_ClampDone">PickDetail_Log_ClampDone</sys:String>
+    <sys:String x:Key="PickDetail_Log_ClampFailed">PickDetail_Log_ClampFailed</sys:String>
+    <sys:String x:Key="PickDetail_Log_ReleaseDone">PickDetail_Log_ReleaseDone</sys:String>
+    <sys:String x:Key="PickDetail_Log_ReleaseFailed">PickDetail_Log_ReleaseFailed</sys:String>
+    <sys:String x:Key="ReleaseDetail_Alert_ReleaseFailed">ReleaseDetail_Alert_ReleaseFailed</sys:String>
+    <sys:String x:Key="ReleaseDetail_ConfirmRelease_Msg">ReleaseDetail_ConfirmRelease_Msg</sys:String>
+    <sys:String x:Key="ReleaseDetail_ConfirmRelease_Title">ReleaseDetail_ConfirmRelease_Title</sys:String>
+    <sys:String x:Key="ReleaseDetail_Log_ReleaseDone">ReleaseDetail_Log_ReleaseDone</sys:String>
+    <sys:String x:Key="ReleaseDetail_Log_ReleaseFailed">ReleaseDetail_Log_ReleaseFailed</sys:String>
+    <sys:String x:Key="ScriptDetail_CompileSuccess">ScriptDetail_CompileSuccess</sys:String>
+    <sys:String x:Key="ScriptDetail_EmptyCode">ScriptDetail_EmptyCode</sys:String>
+    <sys:String x:Key="ScriptDetail_ErrClassNotFound">ScriptDetail_ErrClassNotFound</sys:String>
+    <sys:String x:Key="ScriptDetail_ErrMethodNotFound">ScriptDetail_ErrMethodNotFound</sys:String>
+    <sys:String x:Key="ScriptDetail_ErrReturnType">ScriptDetail_ErrReturnType</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecFailed">ScriptDetail_ExecFailed</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecNoOutput">ScriptDetail_ExecNoOutput</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecResultHeader">ScriptDetail_ExecResultHeader</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecReturnFalse">ScriptDetail_ExecReturnFalse</sys:String>
+    <sys:String x:Key="ScriptDetail_Executing">ScriptDetail_Executing</sys:String>
+    <sys:String x:Key="ScriptDetail_Log_VarLoadFail">ScriptDetail_Log_VarLoadFail</sys:String>
+    <sys:String x:Key="SeekDetail_DefaultDesc">SeekDetail_DefaultDesc</sys:String>
+    <sys:String x:Key="SeekDetail_Error_ExportFailed">SeekDetail_Error_ExportFailed</sys:String>
+    <sys:String x:Key="SeekDetail_ImportDialogTitle">SeekDetail_ImportDialogTitle</sys:String>
+    <sys:String x:Key="STM_Log_TasksResolvedAndRegistered">STM_Log_TasksResolvedAndRegistered</sys:String>
+    <sys:String x:Key="CAD_Rotation_Done">CAD_Rotation_Done</sys:String>
+    <sys:String x:Key="DataDetail_ImageFileFilter">DataDetail_ImageFileFilter</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramSaved">DataDetail_Log_DiagramSaved</sys:String>
+    <sys:String x:Key="DataDetail_Log_UserConfirmed">DataDetail_Log_UserConfirmed</sys:String>
+    <sys:String x:Key="DataDetail_Log_ValuesRefreshed">DataDetail_Log_ValuesRefreshed</sys:String>
+    <sys:String x:Key="DataDetail_SelectDiagramTitle">DataDetail_SelectDiagramTitle</sys:String>
+    <sys:String x:Key="LanguageSelector.Title">LanguageSelector.Title</sys:String>
+    <sys:String x:Key="LanguageSelector.Tooltip">LanguageSelector.Tooltip</sys:String>
+    <sys:String x:Key="Log_AxisMovedToTarget">Log_AxisMovedToTarget</sys:String>
+    <sys:String x:Key="ScriptDetail_CompileFailed">ScriptDetail_CompileFailed</sys:String>
+    <sys:String x:Key="SeekDetail_Error_ImportFailed">SeekDetail_Error_ImportFailed</sys:String>
+    <!-- ===== End auto-added missing log keys ===== -->
 </ResourceDictionary>
 

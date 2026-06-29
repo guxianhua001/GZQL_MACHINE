@@ -35,7 +35,7 @@ namespace StationTasks.Tasks
             ILocalizationService localizationService)
             : base(motion, recipePool, interaction, ea, logger, alarmService, systemState,
                   recipeServiceFactory, recipePoolService, stationRegistry, speedOverride,
-                  3, localizationService?.GetResourceOrDefault("Station_AssemblyStation", "装配系统") ?? "装配系统", "AssemblyStation") { _localizationService = localizationService; }
+                  3, localizationService?.GetResourceOrDefault("Station_AssemblyStation", "装配系统") ?? "装配系统", "AssemblyStation", localizationService) { _localizationService = localizationService; }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)
         {

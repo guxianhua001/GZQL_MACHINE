@@ -38,7 +38,7 @@ namespace StationTasks.Actions
             var detail = step.DashboardDetail;
             if (detail == null || detail.Fields.Count == 0)
             {
-                task.TaskLogger.Warn($"DASHBOARD 步骤 [{step.Seq}] 未配置看板字段，跳过");
+                task.TaskLogger.Warn(string.Format(task.Localization.GetResourceOrDefault("DB_Log_NoFields", "DASHBOARD 步骤 [{0}] 未配置看板字段，跳过"), step.Seq));
                 return;
             }
 
@@ -58,11 +58,11 @@ namespace StationTasks.Actions
                 }
                 catch (Exception ex)
                 {
-                    task.TaskLogger.Error($"DASHBOARD 字段 [{field.DisplayName}] 公式求值失败: {ex.Message}");
+                    task.TaskLogger.Error(string.Format(task.Localization.GetResourceOrDefault("DB_Log_FormulaEvalFailed", "DASHBOARD 字段 [{0}] 公式求值失败: {1}"), field.DisplayName, ex.Message));
                 }
             }
 
-            task.TaskLogger.Info($"DASHBOARD 步骤 [{step.Seq}] 数据已计算完成");
+            task.TaskLogger.Info(string.Format(task.Localization.GetResourceOrDefault("DB_Log_DataCalculated", "DASHBOARD 步骤 [{0}] 数据已计算完成"), step.Seq));
 
             // 3. 根据配置决定是否弹出看板等待人工确认
             if (detail.RequireManualConfirm)
@@ -86,7 +86,7 @@ namespace StationTasks.Actions
 
                 if (result == DashboardConfirmResult.NG)
                 {
-                    task.TaskLogger.Warn($"DASHBOARD 步骤 [{step.Seq}] 用户确认NG，输出结果=false，流程继续");
+                    task.TaskLogger.Warn(string.Format(task.Localization.GetResourceOrDefault("DB_Log_UserConfirmNG", "DASHBOARD 步骤 [{0}] 用户确认NG，输出结果=false，流程继续"), step.Seq));
                     if (step.AlarmConfig?.IsEnabled == true)
                     {
                         _ea.GetEvent<MotionControl.Events.StepFaultedEvent>().Publish($"[{step.Seq}] {step.Step}");
@@ -106,7 +106,7 @@ namespace StationTasks.Actions
                 }
                 else
                 {
-                    task.TaskLogger.Info($"DASHBOARD 步骤 [{step.Seq}] 用户确认OK，输出结果=true");
+                    task.TaskLogger.Info(string.Format(task.Localization.GetResourceOrDefault("DB_Log_UserConfirmOK", "DASHBOARD 步骤 [{0}] 用户确认OK，输出结果=true"), step.Seq));
                 }
             }
             else
@@ -129,11 +129,11 @@ namespace StationTasks.Actions
 
                 if (allPassed)
                 {
-                    task.TaskLogger.Info($"DASHBOARD 步骤 [{step.Seq}] 自动判定OK，输出结果=true");
+                    task.TaskLogger.Info(string.Format(task.Localization.GetResourceOrDefault("DB_Log_AutoJudgeOK", "DASHBOARD 步骤 [{0}] 自动判定OK，输出结果=true"), step.Seq));
                 }
                 else
                 {
-                    task.TaskLogger.Warn($"DASHBOARD 步骤 [{step.Seq}] 自动判定NG: {string.Join(", ", failedFields)}，输出结果=false，流程继续");
+                    task.TaskLogger.Warn(string.Format(task.Localization.GetResourceOrDefault("DB_Log_AutoJudgeNG", "DASHBOARD 步骤 [{0}] 自动判定NG: {1}，输出结果=false，流程继续"), step.Seq, string.Join(", ", failedFields)));
                     if (step.AlarmConfig?.IsEnabled == true)
                     {
                         _ea.GetEvent<MotionControl.Events.StepFaultedEvent>().Publish($"[{step.Seq}] {step.Step}");
@@ -163,7 +163,7 @@ namespace StationTasks.Actions
 
             if (fieldData?.Length > 0)
             {
-                task.TaskLogger.Info($"DASHBOARD 步骤 [{step.Seq}] 看板数据: {string.Join(", ", fieldData)}");
+                task.TaskLogger.Info(string.Format(task.Localization.GetResourceOrDefault("DB_Log_DashboardData", "DASHBOARD 步骤 [{0}] 看板数据: {1}"), step.Seq, string.Join(", ", fieldData)));
             }
         }
 
@@ -183,7 +183,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                task.TaskLogger.Debug($"[DashboardAction] 无法获取全局变量提供者: {ex.Message}");
+                task.TaskLogger.Debug(string.Format(task.Localization.GetResourceOrDefault("DB_Log_GlobalVarProviderFailed", "[DashboardAction] 无法获取全局变量提供者: {0}"), ex.Message));
             }
 
             return result;

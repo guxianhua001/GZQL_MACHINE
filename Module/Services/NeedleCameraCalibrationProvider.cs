@@ -21,11 +21,20 @@ namespace Module.Services
     {
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
-        public NeedleCameraCalibrationProvider(IRecipePoolService recipePoolService, ILoggerService logger)
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
+
+        public NeedleCameraCalibrationProvider(IRecipePoolService recipePoolService, ILoggerService logger, ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>异步获取相机-针头固定偏移（针尖-相机中心）</summary>
@@ -38,7 +47,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[NeedleCameraCalibProvider] 获取系统{systemNumber}针头偏移失败: {ex.Message}");
+                _logger?.Warn(L("NCCP_Log_GetOffsetFailed", "[NeedleCameraCalibProvider] 获取系统{0}针头偏移失败: {1}", systemNumber, ex.Message));
                 return (0, 0);
             }
         }
@@ -54,7 +63,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[NeedleCameraCalibProvider] 获取系统{systemNumber}针头偏移失败: {ex.Message}");
+                _logger?.Warn(L("NCCP_Log_GetOffsetFailed", "[NeedleCameraCalibProvider] 获取系统{0}针头偏移失败: {1}", systemNumber, ex.Message));
                 return (0, 0);
             }
         }
@@ -75,7 +84,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[NeedleCameraCalibProvider] 读取配方池记录失败: {ex.Message}");
+                _logger?.Warn(L("NCCP_Log_ReadRecipePoolRecordFailed", "[NeedleCameraCalibProvider] 读取配方池记录失败: {0}", ex.Message));
             }
 
             var configDir = GetConfigDirectory(systemNumber);
@@ -93,7 +102,7 @@ namespace Module.Services
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
-                _logger?.Info($"[NeedleCameraCalibProvider] 系统{systemNumber}无可用标定文件，偏移取0");
+                _logger?.Info(L("NCCP_Log_NoCalibrationFile", "[NeedleCameraCalibProvider] 系统{0}无可用标定文件，偏移取0", systemNumber));
                 return (0, 0);
             }
 

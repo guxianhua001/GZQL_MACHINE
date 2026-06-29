@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using System;
 using System.Collections.Generic;
@@ -15,10 +16,13 @@ namespace StationTasks.Services
     {
         private static readonly string[] DefaultKeys = { "X", "Y", "U", "Distance" };
         private readonly ILoggerService _logger;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
-        public DefaultVisionDataParser(ILoggerService logger)
+        public DefaultVisionDataParser(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>
@@ -31,7 +35,7 @@ namespace StationTasks.Services
 
             if (string.IsNullOrWhiteSpace(rawData))
             {
-                _logger.Warn("视觉数据为空，无法解析");
+                _logger.Warn(_localization.GetResourceOrDefault("DefVis_Log_DataEmpty", "视觉数据为空，无法解析"));
                 return result;
             }
 
@@ -52,7 +56,7 @@ namespace StationTasks.Services
             if (TryParsePlainValues(dataForParsing, out var plainResult))
                 return plainResult;
 
-            _logger.Warn($"无法识别的视觉数据格式: {trimmed}");
+            _logger.Warn(string.Format(_localization.GetResourceOrDefault("DefVis_Log_UnrecognizedFormat", "无法识别的视觉数据格式: {0}"), trimmed));
             return result;
         }
 

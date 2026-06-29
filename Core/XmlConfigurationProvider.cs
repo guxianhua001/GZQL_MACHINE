@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Core.Abstraction;
+﻿﻿﻿﻿﻿﻿using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using System.IO;
@@ -10,13 +10,15 @@ namespace Core.Configuration
     {
         private readonly string _configPath;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         public bool ConfigurationExists => File.Exists(_configPath);
 
-        public XmlConfigurationProvider(string configPath, ILoggerService logger)
+        public XmlConfigurationProvider(string configPath, ILoggerService logger, ILocalizationService localization)
         {
             _configPath = configPath;
             _logger = logger;
+            _localization = localization;
 
             // 确保配置目录存在
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
@@ -28,7 +30,7 @@ namespace Core.Configuration
             {
                 if (!ConfigurationExists)
                 {
-                    _logger.Warn($"配置文件不存在: {_configPath}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("XmlCfg_Log_ConfigFileNotFound", "配置文件不存在: {0}"), _configPath));
                     return new T();
                 }
 
@@ -37,7 +39,7 @@ namespace Core.Configuration
             }
             catch (Exception ex)
             {
-                _logger.Error($"加载配置失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("XmlCfg_Log_LoadConfigFailed", "加载配置失败: {0}"), ex.Message));
                 return new T();
             }
         }
@@ -48,11 +50,11 @@ namespace Core.Configuration
             {
                 var doc = SerializeToXml(config);
                 doc.Save(_configPath);
-                _logger.Info($"配置已保存: {_configPath}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("XmlCfg_Log_ConfigSaved", "配置已保存: {0}"), _configPath));
             }
             catch (Exception ex)
             {
-                _logger.Error($"保存配置失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("XmlCfg_Log_SaveConfigFailed", "保存配置失败: {0}"), ex.Message));
                 throw;
             }
         }
@@ -93,11 +95,11 @@ namespace Core.Configuration
                 };
 
                 SaveConfiguration(defaultConfig);
-                _logger.Info("默认配置文件已创建");
+                _logger.Info(_localization.GetResourceOrDefault("XmlCfg_Log_DefaultConfigCreated", "默认配置文件已创建"));
             }
             catch (Exception ex)
             {
-                _logger.Error($"创建默认配置失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("XmlCfg_Log_CreateDefaultConfigFailed", "创建默认配置失败: {0}"), ex.Message));
                 throw;
             }
         }
@@ -183,7 +185,7 @@ namespace Core.Configuration
                 });
             }
 
-            _logger.Info("已从旧配置格式迁移到新格式");
+            _logger.Info(_localization.GetResourceOrDefault("XmlCfg_Log_MigratedFromLegacy", "已从旧配置格式迁移到新格式"));
         }
 
         private XDocument SerializeToXml<T>(T config) where T : class

@@ -429,12 +429,14 @@ namespace Module.ViewModels
                     DeviationZ.ToString("F4"), ResultZ,
                     OverallResult);
 
-                _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber}验证完成: " +
-                              $"Measured=({MeasuredX:F4},{MeasuredY:F4},{MeasuredZ:F4}) " +
-                              $"ActiveTcp=({ActiveTcpX:F4},{ActiveTcpY:F4},{ActiveTcpZ:F4}) " +
-                              $"Effective=({EffectiveX:F4},{EffectiveY:F4},{EffectiveZ:F4}) " +
-                              $"Ref=({ReferenceX:F4},{ReferenceY:F4},{ReferenceZ:F4}) " +
-                              $"Dev=({DeviationX:F4},{DeviationY:F4},{DeviationZ:F4}) Overall={OverallResult}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_VerifyCompleted", "[NeedleVerify] 系统{0}验证完成: Measured=({1:F4},{2:F4},{3:F4}) ActiveTcp=({4:F4},{5:F4},{6:F4}) Effective=({7:F4},{8:F4},{9:F4}) Ref=({10:F4},{11:F4},{12:F4}) Dev=({13:F4},{14:F4},{15:F4}) Overall={16}"),
+                    SelectedSystemNumber,
+                    MeasuredX, MeasuredY, MeasuredZ,
+                    ActiveTcpX, ActiveTcpY, ActiveTcpZ,
+                    EffectiveX, EffectiveY, EffectiveZ,
+                    ReferenceX, ReferenceY, ReferenceZ,
+                    DeviationX, DeviationY, DeviationZ,
+                    OverallResult));
 
                 verificationSucceeded = true;
             }
@@ -447,7 +449,7 @@ namespace Module.ViewModels
             {
                 VerificationStatus = L("NeedleVerify_Status_Error", "验证异常");
                 AddLog(L("NeedleVerify_Log_Error", "验证异常: {0}"), ex.Message);
-                _logger?.Error($"[NeedleVerify] 验证失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("NCV_Log_VerifyFailed", "[NeedleVerify] 验证失败: {0}"), ex.Message));
             }
             finally
             {
@@ -473,11 +475,11 @@ namespace Module.ViewModels
 
                 // 显式停止运动轴，防止 token 传播延迟期间运动继续
                 _needleMotion.StopMotion(SelectedSystemNumber);
-                _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber} 验证已取消，运动轴已停止");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_Cancelled", "[NeedleVerify] 系统{0} 验证已取消，运动轴已停止"), SelectedSystemNumber));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"[NeedleVerify] 取消验证异常: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("NCV_Log_CancelFailed", "[NeedleVerify] 取消验证异常: {0}"), ex.Message));
             }
         }
 
@@ -504,7 +506,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[NeedleVerify] 加载校准参数失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("NCV_Log_LoadParamsFailed", "[NeedleVerify] 加载校准参数失败: {0}"), ex.Message));
             }
 
             return null;
@@ -583,12 +585,12 @@ namespace Module.ViewModels
                 QueueCleanupOldConfigFiles(configDir, filePath, SelectedSystemNumber);
 
                 AddLog(L("NeedleVerify_Log_ReportSaved", "报告已保存: {0}"), fileName);
-                _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber}验证记录已保存: {filePath}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_RecordSaved", "[NeedleVerify] 系统{0}验证记录已保存: {1}"), SelectedSystemNumber, filePath));
             }
             catch (Exception ex)
             {
                 AddLog(L("NeedleVerify_Log_ReportError", "报告保存失败: {0}"), ex.Message);
-                _logger?.Error($"[NeedleVerify] 验证记录保存失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("NCV_Log_RecordSaveFailed", "[NeedleVerify] 验证记录保存失败: {0}"), ex.Message));
             }
         }
 
@@ -610,7 +612,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 AddLog(L("NeedleVerify_Log_LoadError", "加载失败: {0}"), ex.Message);
-                _logger?.Error($"[NeedleVerify] 加载验证记录失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("NCV_Log_RecordLoadFailed", "[NeedleVerify] 加载验证记录失败: {0}"), ex.Message));
             }
         }
 
@@ -631,7 +633,7 @@ namespace Module.ViewModels
             CurrentFilePath = filePath;
             CurrentFileName = Path.GetFileName(filePath);
             AddLog(L("NeedleVerify_Log_LoadSuccess", "已加载: {0}"), CurrentFileName);
-            _logger?.Info($"[NeedleVerify] 系统{SelectedSystemNumber}验证记录已加载: {filePath}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_RecordLoaded", "[NeedleVerify] 系统{0}验证记录已加载: {1}"), SelectedSystemNumber, filePath));
         }
 
         /// <summary>尝试从配方池或目录最新文件自动加载</summary>
@@ -645,7 +647,7 @@ namespace Module.ViewModels
 
                 if (extData?.FilePath != null && File.Exists(extData.FilePath))
                 {
-                    _logger?.Info($"[NeedleVerify] 从配方池记录加载: {extData.FilePath}");
+                    _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_LoadFromPool", "[NeedleVerify] 从配方池记录加载: {0}"), extData.FilePath));
                     await LoadFromPathAsync(extData.FilePath);
                     return;
                 }
@@ -658,13 +660,13 @@ namespace Module.ViewModels
 
                 if (latest != null)
                 {
-                    _logger?.Info($"[NeedleVerify] 配方池无记录，加载最新文件: {latest}");
+                    _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_LoadLatest", "[NeedleVerify] 配方池无记录，加载最新文件: {0}"), latest));
                     await LoadFromPathAsync(latest);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[NeedleVerify] 自动加载验证记录失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("NCV_Log_AutoLoadFailed", "[NeedleVerify] 自动加载验证记录失败: {0}"), ex.Message));
             }
         }
 
@@ -775,7 +777,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[NeedleVerify] 保存文件记录到配方池失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("NCV_Log_SaveToPoolFailed", "[NeedleVerify] 保存文件记录到配方池失败: {0}"), ex.Message));
             }
         }
 
@@ -821,20 +823,20 @@ namespace Module.ViewModels
 
                             File.Delete(file);
                             cleanedCount++;
-                            _logger?.Info($"[NeedleVerify] 已清理过期验证记录: {file}");
+                            _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_CleanedFile", "[NeedleVerify] 已清理过期验证记录: {0}"), file));
                         }
                         catch (Exception ex)
                         {
-                            _logger?.Warn($"[NeedleVerify] 清理文件失败: {file}, {ex.Message}");
+                            _logger?.Warn(string.Format(_localization.GetResourceOrDefault("NCV_Log_CleanFileFailed", "[NeedleVerify] 清理文件失败: {0}, {1}"), file, ex.Message));
                         }
                     }
 
                     if (cleanedCount > 0)
-                        _logger?.Info($"[NeedleVerify] 本次清理了 {cleanedCount} 个过期文件 (保留{ConfigRetentionDays}天)");
+                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_CleanupSummary", "[NeedleVerify] 本次清理了 {0} 个过期文件 (保留{1}天)"), cleanedCount, ConfigRetentionDays));
                 }
                 catch (Exception ex)
                 {
-                    _logger?.Warn($"[NeedleVerify] 清理过期文件异常: {ex.Message}");
+                    _logger?.Warn(string.Format(_localization.GetResourceOrDefault("NCV_Log_CleanupFailed", "[NeedleVerify] 清理过期文件异常: {0}"), ex.Message));
                 }
             });
         }

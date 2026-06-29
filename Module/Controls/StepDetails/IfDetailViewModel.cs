@@ -236,12 +236,12 @@ namespace Module.ViewModels
                         GlobalVariableNames.Add($"@GV:{gv.Name}");
                 }
 
-                _logger.Info($"[IfDetail] 已加载 {GlobalVariableNames.Count} 个全局变量");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("IfDetail_Log_GlobalVarsLoaded", "[IfDetail] 已加载 {0} 个全局变量"), GlobalVariableNames.Count));
                 RefreshAllVariableNames();
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[IfDetail] 加载全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("IfDetail_Log_LoadGlobalVarsFailed", "[IfDetail] 加载全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -299,7 +299,7 @@ namespace Module.ViewModels
                 }
             }
 
-            _logger.Info($"[IfDetail] 已收集 {PreviousStepOutputNames.Count} 个前序步骤输出参数");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("IfDetail_Log_PrevOutputsCollected", "[IfDetail] 已收集 {0} 个前序步骤输出参数"), PreviousStepOutputNames.Count));
             RefreshAllVariableNames();
         }
 
@@ -429,12 +429,12 @@ namespace Module.ViewModels
                     result ? L("IfDetail_CheckResultTrue") : L("IfDetail_CheckResultFalse"),
                     branchHint);
 
-                _logger.Info($"[IfDetail] 表达式检测: '{ConditionExpression}' => {result}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("IfDetail_Log_ExpressionChecked", "[IfDetail] 表达式检测: '{0}' => {1}"), ConditionExpression, result));
             }
             catch (Exception ex)
             {
                 CheckResultMessage = string.Format(CultureInfo.CurrentCulture, L("IfDetail_CheckFailed"), ex.Message);
-                _logger.Warn($"[IfDetail] 表达式检测失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("IfDetail_Log_ExpressionCheckFailed", "[IfDetail] 表达式检测失败: {0}"), ex.Message));
             }
         }
 

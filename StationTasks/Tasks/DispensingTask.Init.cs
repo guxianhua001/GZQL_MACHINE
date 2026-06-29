@@ -36,7 +36,7 @@ namespace StationTasks.Tasks
             // 设置取消令牌，支持初始化过程中的停止/急停
             _cts = new CancellationTokenSource();
             State = TaskState.Homing;
-            Logger.Info($"[{TaskName}] 开始点胶系统初始化...");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_InitStart", "[{0}] 开始点胶系统初始化..."), TaskName));
             PublishTaskStatusChanged(L("Init_Initializing"), State);
             PublishInitProgress(0, L("Init_Dispenser_Start"));
 
@@ -50,7 +50,7 @@ namespace StationTasks.Tasks
                 ResetInitSignals();
 
                 // ===== 阶段1：点胶Z轴（Dz₁, Dz₂, Dz₃）回零 → 待机位 =====
-                Logger.Info($"[{TaskName}] 阶段1：点胶Z轴回零...");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase1ZHoming", "[{0}] 阶段1：点胶Z轴回零..."), TaskName));
                 PublishTaskStatusChanged(L("Init_Dispenser_ZHoming"), State);
                 PublishInitProgress(10, L("Init_Dispenser_ZHoming"));
 
@@ -63,7 +63,7 @@ namespace StationTasks.Tasks
                     CurrentToken.ThrowIfCancellationRequested();
                     if (axisId < 0) continue;
 
-                    Logger.Info($"[{TaskName}] {axisName} 轴回零中...");
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
                     PublishInitProgress(10 + zIndex * 10, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
@@ -84,13 +84,13 @@ namespace StationTasks.Tasks
                 // 通知组装/上下料：点胶Z轴回零完成
                 SignalToStation("AssemblyStation", "DispensingZComplete", true);
                 SignalToStation("LoadingStation", "DispensingZComplete", true);
-                Logger.Info($"[{TaskName}] 已通知组装/上下料：点胶Z轴回零完成。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_NotifyZComplete", "[{0}] 已通知组装/上下料：点胶Z轴回零完成。"), TaskName));
 
                 // ===== 等待组装Z轴完成（所有Z轴归零前提） =====
                 PublishTaskStatusChanged(L("Init_Dispenser_WaitAssemblyZ"), State);
                 PublishInitProgress(60, L("Init_Dispenser_WaitAssemblyZ"));
                 await WaitForSignalAsync("DispensingStation", "AssemblyZComplete", true, SignalWaitTimeoutMs);
-                Logger.Info($"[{TaskName}] 组装Z轴已完成，开始点胶XY轴回零。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AssemblyZDone", "[{0}] 组装Z轴已完成，开始点胶XY轴回零。"), TaskName));
 
                 // ===== 阶段2：点胶XY轴（Dx, Dy）回零 → 待机位 =====
                 PublishTaskStatusChanged(L("Init_Dispenser_XYHoming"), State);
@@ -105,7 +105,7 @@ namespace StationTasks.Tasks
                     CurrentToken.ThrowIfCancellationRequested();
                     if (axisId < 0) continue;
 
-                    Logger.Info($"[{TaskName}] {axisName} 轴回零中...");
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
                     PublishInitProgress(65 + mIndex * 10, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
@@ -125,17 +125,17 @@ namespace StationTasks.Tasks
 
                 // 通知组装：点胶回零完成
                 SignalToStation("AssemblyStation", "DispensingComplete", true);
-                Logger.Info($"[{TaskName}] 已通知组装：点胶回零完成。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_NotifyDispensingComplete", "[{0}] 已通知组装：点胶回零完成。"), TaskName));
 
                 State = TaskState.Idle;
-                Logger.Info($"[{TaskName}] 点胶系统初始化完成，进入待机。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_InitComplete", "[{0}] 点胶系统初始化完成，进入待机。"), TaskName));
                 PublishTaskStatusChanged(L("Init_Idle"), State);
                 PublishInitProgress(100, L("Init_Dispenser_Complete"), true);
             }
             catch (System.OperationCanceledException)
             {
                 State = TaskState.Error;
-                Logger.Warn($"[{TaskName}] 点胶系统初始化被取消。");
+                Logger.Warn(string.Format(_localizationService.GetResourceOrDefault("DT_Log_InitCanceled", "[{0}] 点胶系统初始化被取消。"), TaskName));
                 PublishTaskStatusChanged(L("Init_Canceled"), State);
                 PublishInitProgress(0, L("Init_Canceled"), true, true);
                 throw;
@@ -143,7 +143,7 @@ namespace StationTasks.Tasks
             catch (RecoverableException ex)
             {
                 State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 点胶系统初始化失败（等待信号超时）: {ex.Message}");
+                Logger.Error(string.Format(_localizationService.GetResourceOrDefault("DT_Log_InitFailedSignalTimeout", "[{0}] 点胶系统初始化失败（等待信号超时）: {1}"), TaskName, ex.Message));
                 PublishTaskStatusChanged(L("Init_Failed"), State);
                 PublishInitProgress(0, L("Init_Failed"), true, true);
                 throw;
@@ -151,7 +151,7 @@ namespace StationTasks.Tasks
             catch (System.Exception ex)
             {
                 State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 点胶系统初始化失败: {ex.Message}");
+                Logger.Error(string.Format(_localizationService.GetResourceOrDefault("DT_Log_InitFailed", "[{0}] 点胶系统初始化失败: {1}"), TaskName, ex.Message));
                 PublishTaskStatusChanged(L("Init_Failed"), State);
                 PublishInitProgress(0, L("Init_Failed"), true, true);
                 throw;

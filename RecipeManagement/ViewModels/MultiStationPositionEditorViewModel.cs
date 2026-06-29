@@ -332,7 +332,7 @@ namespace Recipe.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"加载工站 '{_currentStationIdentifier}' 位置数据失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("MSP_Log_LoadStationFailed", "加载工站 '{0}' 位置数据失败: {1}"), _currentStationIdentifier, ex.Message));
                 // 异常时也创建空节点，确保保存功能可用
                 _currentStationNode = CreateEmptyStationNode();
                 PositionsTable = CreateEmptyTable();
@@ -540,7 +540,7 @@ namespace Recipe.ViewModels
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"Teach: 读取轴 {axis.Name}(ID={axisId}) 位置失败: {ex.Message}");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("MSP_Log_TeachReadPosFailed", "Teach: 读取轴 {0}(ID={1}) 位置失败: {2}"), axis.Name, axisId, ex.Message));
                     }
                 }
             }
@@ -787,7 +787,7 @@ namespace Recipe.ViewModels
             if (string.IsNullOrEmpty(_currentStationIdentifier))
             {
                 await _dialogService.ShowDialogAsync("NotificationDialog", new DialogParameters {
-                    { "message", "未选择工站，无法保存。" },
+                    { "message", Loc("MSP_Msg_NoStationSelected", "未选择工站，无法保存。") },
                     { "icon", PackIconKind.Warning }
                 });
                 return;
@@ -831,7 +831,7 @@ namespace Recipe.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"构建工站保存节点失败: {ex.Message}，将仅保存位置数据");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("MSP_Log_BuildSaveNodeFailed", "构建工站保存节点失败: {0}，将仅保存位置数据"), ex.Message));
                 stationNodeToSave = CreateEmptyStationNode();
                 stationNodeToSave["Positions"] = newPosObj;
             }
@@ -911,7 +911,7 @@ namespace Recipe.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"构建工站保存节点失败: {ex.Message}，将仅保存位置数据");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("MSP_Log_BuildSaveNodeFailed", "构建工站保存节点失败: {0}，将仅保存位置数据"), ex.Message));
                 stationNodeToSave = CreateEmptyStationNode();
                 stationNodeToSave["Positions"] = newPosObj;
             }
@@ -933,7 +933,7 @@ namespace Recipe.ViewModels
             // 仅暂存到暂存区，由 SaveRecipePoolAsync 统一提交到文件（完整替换 Positions，支持删除）
             _recipePoolService.StageStationParameters(_currentStationIdentifier, stationNodeToSave, replacePositions: true);
             _currentStationNode = stationNodeToSave;
-            _logger.Info($"[{_currentStationIdentifier}] 位置参数已暂存（由 Save Pool 触发）");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("MSP_Log_PositionStaged", "[{0}] 位置参数已暂存（由 Save Pool 触发）"), _currentStationIdentifier));
         }
 
         /// <summary>
@@ -952,7 +952,7 @@ namespace Recipe.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"暂存位置编辑器参数失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("MSP_Log_StageParamsFailed", "暂存位置编辑器参数失败: {0}"), ex.Message));
             }
         }
 

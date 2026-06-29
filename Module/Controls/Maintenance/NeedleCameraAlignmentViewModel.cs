@@ -341,7 +341,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"TeachCameraCenter异常: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("NCA_Log_TeachCameraCenterException", "TeachCameraCenter异常: {0}"), ex.Message));
                 UpdateStatus(
                     _localization.GetResource("NeedleCamera_Status_TeachFailed", ex.Message),
                     Brushes.Red);
@@ -365,7 +365,7 @@ namespace Module.ViewModels
                     NeedleTipZ = dz;
                 else
                 {
-                    _logger.Warn($"[NeedleCamera] 系统{_selectedSystemNumber}未读取到针尖Z轴 ({string.Join("/", zAxisNames)})");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_NeedleTipZAxisNotFound", "[NeedleCamera] 系统{0}未读取到针尖Z轴 ({1})"), _selectedSystemNumber, string.Join("/", zAxisNames)));
                 }
 
                 CalculateCalibrationDelta();
@@ -382,7 +382,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"TeachNeedleTip异常: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("NCA_Log_TeachNeedleTipException", "TeachNeedleTip异常: {0}"), ex.Message));
                 UpdateStatus(
                     _localization.GetResource("NeedleCamera_Status_TeachFailed", ex.Message),
                     Brushes.Red);
@@ -412,14 +412,14 @@ namespace Module.ViewModels
                 UpdateStatus(
                     _localization.GetResource("NeedleCamera_Status_SaveSuccess"),
                     Brushes.LightGreen);
-                _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}参数保存: {filePath}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_ParametersSaved", "[NeedleCamera] 系统{0}参数保存: {1}"), _selectedSystemNumber, filePath));
             }
             catch (Exception ex)
             {
                 UpdateStatus(
                     _localization.GetResource("NeedleCamera_Status_SaveFailed", ex.Message),
                     Brushes.Red);
-                _logger.Error($"[NeedleCamera] 保存参数异常: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("NCA_Log_SaveParametersException", "[NeedleCamera] 保存参数异常: {0}"), ex.Message));
             }
         }
 
@@ -443,7 +443,7 @@ namespace Module.ViewModels
                 UpdateStatus(
                     _localization.GetResource("NeedleCamera_Status_LoadFailed", ex.Message),
                     Brushes.Red);
-                _logger.Error($"[NeedleCamera] 加载参数异常: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("NCA_Log_LoadParametersException", "[NeedleCamera] 加载参数异常: {0}"), ex.Message));
             }
         }
 
@@ -468,7 +468,7 @@ namespace Module.ViewModels
             UpdateStatus(
                 _localization.GetResource("NeedleCamera_Status_ParametersReset"),
                 Brushes.LightGreen);
-            _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}参数已重置");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_ParametersReset", "[NeedleCamera] 系统{0}参数已重置"), _selectedSystemNumber));
         }
 
         #endregion
@@ -499,7 +499,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"CalculateCalibrationDelta异常: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("NCA_Log_CalculateCalibrationDeltaException", "CalculateCalibrationDelta异常: {0}"), ex.Message));
             }
         }
 
@@ -577,7 +577,7 @@ namespace Module.ViewModels
             StashCurrentSystemState(_selectedSystemNumber);
 
             UpdateStatus(_localization.GetResource("NeedleCamera_Status_LoadSuccess"), Brushes.LightGreen);
-            _logger.Info($"[NeedleCamera] 系统{_selectedSystemNumber}配置已加载: {filePath}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_ConfigLoaded", "[NeedleCamera] 系统{0}配置已加载: {1}"), _selectedSystemNumber, filePath));
         }
 
         /// <summary>从参数对象应用到 ViewModel；链接名为空时使用当前系统默认全局变量</summary>
@@ -653,11 +653,11 @@ namespace Module.ViewModels
 
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
                 _eventAggregator?.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>()?.Publish(poolId);
-                _logger.Info("[NeedleCamera] 已创建默认补偿全局变量");
+                _logger.Info(_localization.GetResourceOrDefault("NCA_Log_DefaultCompGlobalVarsCreated", "[NeedleCamera] 已创建默认补偿全局变量"));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 创建默认补偿全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_CreateDefaultCompGlobalVarsFailed", "[NeedleCamera] 创建默认补偿全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -704,7 +704,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 确保链接变量存在失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_EnsureLinkedVarsExistFailed", "[NeedleCamera] 确保链接变量存在失败: {0}"), ex.Message));
             }
         }
 
@@ -733,7 +733,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 切换系统失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_SwitchSystemFailed", "[NeedleCamera] 切换系统失败: {0}"), ex.Message));
             }
         }
 
@@ -799,7 +799,7 @@ namespace Module.ViewModels
                     var parameters = JsonConvert.DeserializeObject<NeedleCameraCalibrationParams>(json);
                     if (parameters != null)
                     {
-                        _logger.Info($"[NeedleCamera] 系统{systemNumber}从配方池记录加载: {extData.FilePath}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_LoadFromRecipePool", "[NeedleCamera] 系统{0}从配方池记录加载: {1}"), systemNumber, extData.FilePath));
                         return new NeedleCameraSystemState
                         {
                             Parameters = parameters,
@@ -821,7 +821,7 @@ namespace Module.ViewModels
                     var parameters = JsonConvert.DeserializeObject<NeedleCameraCalibrationParams>(json);
                     if (parameters != null)
                     {
-                        _logger.Info($"[NeedleCamera] 系统{systemNumber}加载最新文件: {latest}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_LoadLatestFile", "[NeedleCamera] 系统{0}加载最新文件: {1}"), systemNumber, latest));
                         return new NeedleCameraSystemState
                         {
                             Parameters = parameters,
@@ -831,12 +831,12 @@ namespace Module.ViewModels
                     }
                 }
 
-                _logger.Info($"[NeedleCamera] 系统{systemNumber}无可加载的配置文件，使用默认参数");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_NoConfigUseDefault", "[NeedleCamera] 系统{0}无可加载的配置文件，使用默认参数"), systemNumber));
                 return CreateDefaultSystemState(systemNumber);
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 加载系统{systemNumber}配置失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_LoadSystemConfigFailed", "[NeedleCamera] 加载系统{0}配置失败: {1}"), systemNumber, ex.Message));
                 return CreateDefaultSystemState(systemNumber);
             }
         }
@@ -876,7 +876,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 保存文件记录到配方池失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_SaveFileRecordToRecipePoolFailed", "[NeedleCamera] 保存文件记录到配方池失败: {0}"), ex.Message));
             }
         }
 
@@ -906,20 +906,20 @@ namespace Module.ViewModels
 
                         File.Delete(file);
                         cleanedCount++;
-                        _logger.Info($"[NeedleCamera] 已清理过期配置文件: {file}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_CleanedExpiredConfigFile", "[NeedleCamera] 已清理过期配置文件: {0}"), file));
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"[NeedleCamera] 清理文件失败: {file}, {ex.Message}");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_CleanFileFailed", "[NeedleCamera] 清理文件失败: {0}, {1}"), file, ex.Message));
                     }
                 }
 
                 if (cleanedCount > 0)
-                    _logger.Info($"[NeedleCamera] 本次清理了 {cleanedCount} 个过期配置文件 (保留{ConfigRetentionDays}天)");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_CleanupSummary", "[NeedleCamera] 本次清理了 {0} 个过期配置文件 (保留{1}天)"), cleanedCount, ConfigRetentionDays));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 清理旧配置文件异常: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_CleanupOldConfigFilesException", "[NeedleCamera] 清理旧配置文件异常: {0}"), ex.Message));
             }
         }
 
@@ -939,7 +939,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 加载全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_LoadGlobalVarsFailed", "[NeedleCamera] 加载全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -968,7 +968,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 全局变量变更同步失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_GlobalVarChangeSyncFailed", "[NeedleCamera] 全局变量变更同步失败: {0}"), ex.Message));
             }
         }
 
@@ -1008,7 +1008,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleCamera] 写入补偿值到全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_WriteCompToGlobalVarsFailed", "[NeedleCamera] 写入补偿值到全局变量失败: {0}"), ex.Message));
             }
         }
 

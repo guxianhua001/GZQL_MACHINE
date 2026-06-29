@@ -59,7 +59,8 @@ namespace MotionControl.Tests.LoadUnloadController
                 _systemStateMock.Object,
                 _axisConfigMock.Object,
                 _loggerMock.Object,
-                _motionInterlockMock.Object);
+                _motionInterlockMock.Object,
+                new Mock<ILocalizationService>().Object);
         }
 
         #region T1: ChuckVacuumOnAsync

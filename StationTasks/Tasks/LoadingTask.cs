@@ -45,12 +45,12 @@ namespace StationTasks.Tasks
             ILocalizationService localizationService)
             : base(motion, positionProvider, interaction, ea, logger, alarmService, systemState,
                   recipeServiceFactory, recipePoolService, stationRegistry, speedOverride,
-                  1, localizationService?.GetResourceOrDefault("Station_LoadingStation", "上下料系统") ?? "上下料系统", "LoadingStation") { _logger = logger; _localizationService = localizationService; }
+                  1, localizationService?.GetResourceOrDefault("Station_LoadingStation", "上下料系统") ?? "上下料系统", "LoadingStation", localizationService) { _logger = logger; _localizationService = localizationService; }
 
         protected override async Task ExecuteCycleAsync(CancellationToken token)
         {
             // 自动流程待实现，当前仅记录日志
-            Logger.Info("=== 上下料循环完成，稍后重启 ===");
+            Logger.Info(_localizationService.GetResourceOrDefault("LT_Log_CycleCompleteRestart", "=== 上下料循环完成，稍后重启 ==="));
             await Task.Delay(500, token);
         }
 
@@ -72,7 +72,7 @@ namespace StationTasks.Tasks
                 WriteDO(doOff, false);
                 //await TriggerCylinderAsync(doOn, true, diFeedback, timeout);
             });
-            Logger.Info($"[{TaskName}] 平台真空已开启");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_StageVacuumOn", "[{0}] 平台真空已开启"), TaskName));
         }
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace StationTasks.Tasks
                 await Task.Delay(breakTime, token);
                 WriteDO(doOff, false);
             });
-            Logger.Info($"[{TaskName}] 平台真空已关闭");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_StageVacuumOff", "[{0}] 平台真空已关闭"), TaskName));
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace StationTasks.Tasks
                 WriteDO(doValve, true);
                 await Task.Delay(200, token);
             });
-            Logger.Info($"[{TaskName}] 夹爪真空已开启");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_GripperVacuumOn", "[{0}] 夹爪真空已开启"), TaskName));
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace StationTasks.Tasks
                 WriteDO(doValve, false);
                 await Task.Delay(200, token);
             });
-            Logger.Info($"[{TaskName}] 夹爪真空已关闭");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_GripperVacuumOff", "[{0}] 夹爪真空已关闭"), TaskName));
         }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace StationTasks.Tasks
                 if (AxisRx >= 0) await ExecuteMoveAsync(AxisRx, "装配位1", DefaultVelocity);
                 if (AxisRz >= 0) await ExecuteMoveAsync(AxisRz, "装配位1", DefaultVelocity);
             });
-            Logger.Info($"[{TaskName}] 自动取料流程完成");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_AutoPickupComplete", "[{0}] 自动取料流程完成"), TaskName));
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace StationTasks.Tasks
                 // 3. Y轴返回待机位
                 if (AxisY >= 0) await ExecuteMoveAsync(AxisY, "待机位", DefaultVelocity);
             });
-            Logger.Info($"[{TaskName}] 自动扫描流程完成");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_AutoScanComplete", "[{0}] 自动扫描流程完成"), TaskName));
         }
 
         /// <summary>
@@ -225,7 +225,7 @@ namespace StationTasks.Tasks
                 if (AxisRx >= 0) await ExecuteMoveAsync(AxisRx, "待机位", DefaultVelocity);
                 if (AxisRz >= 0) await ExecuteMoveAsync(AxisRz, "待机位", DefaultVelocity);
             });
-            Logger.Info($"[{TaskName}] 自动下料流程完成");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_AutoUnloadComplete", "[{0}] 自动下料流程完成"), TaskName));
         }
 
         #endregion

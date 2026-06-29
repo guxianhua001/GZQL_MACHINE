@@ -42,6 +42,7 @@ namespace Core.Services
 
         private readonly IAppSettingService _appSettingService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly object _settingsLock = new object();
         private ConfigFileRetentionSettings _settings;
 
@@ -50,10 +51,12 @@ namespace Core.Services
         /// </summary>
         /// <param name="appSettingService">应用配置服务</param>
         /// <param name="logger">日志服务</param>
-        public ConfigFileRetentionService(IAppSettingService appSettingService, ILoggerService logger)
+        /// <param name="localization">本地化服务</param>
+        public ConfigFileRetentionService(IAppSettingService appSettingService, ILoggerService logger, ILocalizationService localization)
         {
             _appSettingService = appSettingService ?? throw new ArgumentNullException(nameof(appSettingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             LoadSettings();
         }
 
@@ -164,22 +167,22 @@ namespace Core.Services
                         file.Delete();
                         cleanedCount++;
                         deleteCount--;
-                        _logger.Info($"[ConfigRetention] 已清理旧配置文件: {file.FullName} (超出最大数量{maxCount})");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_CleanedOldFile", "[ConfigRetention] 已清理旧配置文件: {0} (超出最大数量{1})"), file.FullName, maxCount));
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"[ConfigRetention] 清理旧配置文件失败: {file.FullName}, {ex.Message}");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_CleanFileFailed", "[ConfigRetention] 清理旧配置文件失败: {0}, {1}"), file.FullName, ex.Message));
                     }
                 }
 
                 if (cleanedCount > 0)
                 {
-                    _logger.Info($"[ConfigRetention] 文件夹 {folderKey} 本次清理了 {cleanedCount} 个旧文件 (保留最大{maxCount}个)");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_FolderCleanupSummary", "[ConfigRetention] 文件夹 {0} 本次清理了 {1} 个旧文件 (保留最大{2}个)"), folderKey, cleanedCount, maxCount));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[ConfigRetention] 清理文件夹 {folderKey} 旧文件异常: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_CleanupFolderException", "[ConfigRetention] 清理文件夹 {0} 旧文件异常: {1}"), folderKey, ex.Message));
             }
         }
 
@@ -209,7 +212,7 @@ namespace Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"[ConfigRetention] 加载保留策略设置失败，使用默认值: {ex.Message}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_LoadSettingsFailed", "[ConfigRetention] 加载保留策略设置失败，使用默认值: {0}"), ex.Message));
                     _settings = new ConfigFileRetentionSettings();
                 }
             }
@@ -253,7 +256,7 @@ namespace Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"[ConfigRetention] BasePath 无效，回退到默认 Config 目录: {ex.Message}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_BasePathInvalid", "[ConfigRetention] BasePath 无效，回退到默认 Config 目录: {0}"), ex.Message));
                 }
             }
             // 默认根目录

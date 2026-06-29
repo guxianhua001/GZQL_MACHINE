@@ -1,5 +1,6 @@
 using AlarmModule.Interfaces;
 using AlarmModule.Models;
+using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using MotionControl.Exceptions;
@@ -25,6 +26,7 @@ namespace StationTasks.Actions
         private readonly IAlarmService _alarmService;
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.SEEK;
 
@@ -33,13 +35,15 @@ namespace StationTasks.Actions
             IRecipePoolService recipePoolService,
             IAlarmService alarmService,
             ILoggerService logger,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            ILocalizationService localization)
         {
             _motionService = motionService;
             _recipePoolService = recipePoolService;
             _alarmService = alarmService;
             _logger = logger;
             _eventAggregator = eventAggregator;
+            _localization = localization;
         }
 
         /// <summary>
@@ -49,7 +53,9 @@ namespace StationTasks.Actions
         {
             if (step.SeekDetail?.ChannelRows == null || step.SeekDetail.ChannelRows.Count == 0)
             {
-                _logger.Warn($"SEEK 步骤 [{step.Seq}] 无通道配置，跳过");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Seek_Log_NoChannelConfig", "SEEK 步骤 [{0}] 无通道配置，跳过"),
+                    step.Seq));
                 return;
             }
 
@@ -68,7 +74,9 @@ namespace StationTasks.Actions
                 // 通道号范围校验（dmc_get_ad_input: channel 取值 0~7）
                 if (row.LinkedChannel < 0 || row.LinkedChannel > 7)
                 {
-                    _logger.Warn($"SEEK 步骤 [{step.Seq}] 通道 {row.LinkedChannel} 超出有效范围(0-7)，跳过");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Seek_Log_ChannelOutOfRange", "SEEK 步骤 [{0}] 通道 {1} 超出有效范围(0-7)，跳过"),
+                        step.Seq, row.LinkedChannel));
                     row.CurrentForce = 0;
                     row.IsForceInRange = false;
                     continue;
@@ -82,13 +90,17 @@ namespace StationTasks.Actions
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"SEEK 步骤 [{step.Seq}] 通道 {row.LinkedChannel} 读取失败: {ex.Message}，跳过");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Seek_Log_ChannelReadFailed", "SEEK 步骤 [{0}] 通道 {1} 读取失败: {2}，跳过"),
+                        step.Seq, row.LinkedChannel, ex.Message));
                     row.CurrentForce = 0;
                     row.IsForceInRange = false;
                     continue;
                 }
 
-                _logger.Info($"SEEK 步骤 [{step.Seq}] 通道 {row.LinkedChannel}: 力值={force:F3}N");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Seek_Log_ForceValue", "SEEK 步骤 [{0}] 通道 {1}: 力值={2:F3}N"),
+                    step.Seq, row.LinkedChannel, force));
 
                 row.CurrentForce = force;
                 row.IsForceInRange = force >= row.ForceMin && force <= row.ForceMax;
@@ -98,7 +110,9 @@ namespace StationTasks.Actions
                     hasOutOfRange = true;
                     string detail = $"通道{row.LinkedChannel}: {force:F3}N (范围[{row.ForceMin}, {row.ForceMax}])";
                     outOfRangeDetails.Add(detail);
-                    _logger.Warn($"SEEK 步骤 [{step.Seq}] 通道 {row.LinkedChannel} 力值超限: {force:F3}N, 范围=[{row.ForceMin}, {row.ForceMax}]");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Seek_Log_ForceOutOfRange", "SEEK 步骤 [{0}] 通道 {1} 力值超限: {2:F3}N, 范围=[{3}, {4}]"),
+                        step.Seq, row.LinkedChannel, force, row.ForceMin, row.ForceMax));
                 }
 
                 if (!string.IsNullOrEmpty(row.LinkedVariableName))
@@ -107,7 +121,9 @@ namespace StationTasks.Actions
                     if (targetVar != null)
                     {
                         targetVar.Value = force.ToString("F3");
-                        _logger.Info($"SEEK 步骤 [{step.Seq}] 全局变量 [{row.LinkedVariableName}] = {force:F3}");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Seek_Log_GlobalVarUpdated", "SEEK 步骤 [{0}] 全局变量 [{1}] = {2:F3}"),
+                            step.Seq, row.LinkedVariableName, force));
                     }
                 }
             }
@@ -116,7 +132,9 @@ namespace StationTasks.Actions
             if (!string.IsNullOrEmpty(poolId) && variables.Count > 0)
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
-                _logger.Info($"SEEK 步骤 [{step.Seq}] 全局变量已保存");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Seek_Log_GlobalVarsSaved", "SEEK 步骤 [{0}] 全局变量已保存"),
+                    step.Seq));
 
                 // 通知所有订阅者全局变量已更新，刷新 UI 显示值
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);

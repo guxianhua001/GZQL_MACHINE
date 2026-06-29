@@ -247,12 +247,12 @@ namespace Module.ViewModels
 
                 if (AvailableAxes.Count == 0)
                 {
-                    _logger.Warn($"N点标定: 工站 {SelectedStationIdentifier} 无可用轴");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("NPCVM_Log_NoAvailableAxes", "N点标定: 工站 {0} 无可用轴"), SelectedStationIdentifier));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warn($"N点标定: 获取工站 {SelectedStationIdentifier} 轴列表失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NPCVM_Log_GetAxesFailed", "N点标定: 获取工站 {0} 轴列表失败 - {1}"), SelectedStationIdentifier, ex.Message));
                 AvailableAxes = new ObservableCollection<string>();
             }
         }
@@ -285,7 +285,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 自动标定启动失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_AutoCalibStartFailed", "N点标定: 自动标定启动失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -315,7 +315,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 示教失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_TeachFailed", "N点标定: 示教失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -329,7 +329,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 移动失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_MoveFailed", "N点标定: 移动失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -381,7 +381,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 计算失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_ComputeFailed", "N点标定: 计算失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -420,7 +420,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 保存失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_SaveFailed", "N点标定: 保存失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -454,7 +454,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 另存为失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_SaveAsFailed", "N点标定: 另存为失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -475,7 +475,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 导入失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_ImportFailed", "N点标定: 导入失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -504,7 +504,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "N点标定: 导出失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NPCVM_Log_ExportFailed", "N点标定: 导出失败"));
                 UpdateStatus($"{L("NPointCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -547,7 +547,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"N点标定: 自动加载失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NPCVM_Log_AutoLoadFailed", "N点标定: 自动加载失败 - {0}"), ex.Message));
             }
         }
 
@@ -624,7 +624,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"N点标定: 加载TCP连接列表失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NPCVM_Log_LoadTcpListFailed", "N点标定: 加载TCP连接列表失败 - {0}"), ex.Message));
             }
         }
 

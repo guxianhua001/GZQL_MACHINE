@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Exceptions;
 using MotionControl.Interfaces;
@@ -33,12 +34,15 @@ namespace StationTasks.Services
         private readonly IMotionService _motionService;
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILoggerService _logger;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
-        public BezierArcDispenseService(IMotionService motionService, IRecipePoolService recipePoolService, ILoggerService logger)
+        public BezierArcDispenseService(IMotionService motionService, IRecipePoolService recipePoolService, ILoggerService logger, ILocalizationService localization)
         {
             _motionService = motionService;
             _recipePoolService = recipePoolService;
             _logger = logger;
+            _localization = localization;
         }
 
         #region 静态计算方法
@@ -344,13 +348,19 @@ namespace StationTasks.Services
                 (needleOffsetX, needleOffsetY),
                 (needleCompensationX, needleCompensationY));
 
-            _logger.Info($"[BezierArcDispense] Dot坐标转换: photo({photoDx:F3},{photoDy:F3}) " +
-                $"targetOffset({targetOffsetX:F3},{targetOffsetY:F3}) " +
-                $"camNeedleDist({cameraNeedleDistanceX:F3},{cameraNeedleDistanceY:F3}) " +
-                $"needleOffset({needleOffsetX:F3},{needleOffsetY:F3}) " +
-                $"comp({needleCompensationX:F3},{needleCompensationY:F3}) " +
-                $"needleDescend={needleDescend} " +
-                $"→ 机械({mechX:F3},{mechY:F3})");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Bezier_Log_DotCoordTransform",
+                "[BezierArcDispense] Dot坐标转换: photo({0:F3},{1:F3}) " +
+                "targetOffset({2:F3},{3:F3}) " +
+                "camNeedleDist({4:F3},{5:F3}) " +
+                "needleOffset({6:F3},{7:F3}) " +
+                "comp({8:F3},{9:F3}) " +
+                "needleDescend={10} " +
+                "→ 机械({11:F3},{12:F3})"),
+                photoDx, photoDy, targetOffsetX, targetOffsetY,
+                cameraNeedleDistanceX, cameraNeedleDistanceY,
+                needleOffsetX, needleOffsetY,
+                needleCompensationX, needleCompensationY,
+                needleDescend, mechX, mechY));
 
             await _motionService.MoveAbsAsync(dz1AxisId, dzSafePos, speed, token);
             await _motionService.MoveLineAbsAsync(coordId, new[] { dxAxisId, dyAxisId }, new[] { mechX, mechY }, speed, token);
@@ -359,9 +369,9 @@ namespace StationTasks.Services
                 await _motionService.MoveAbsAsync(dz1AxisId, dzDispensePos, speed, token);
 
             if (!dryRun)
-                _logger.Info($"[BezierArcDispense] Dot点胶执行于 ({mechX:F3}, {mechY:F3})");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Bezier_Log_DotDispenseExecuted", "[BezierArcDispense] Dot点胶执行于 ({0:F3}, {1:F3})"), mechX, mechY));
             else
-                _logger.Info($"[BezierArcDispense] Dot空跑模式，跳过出胶，位置 ({mechX:F3}, {mechY:F3})");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Bezier_Log_DotDryRun", "[BezierArcDispense] Dot空跑模式，跳过出胶，位置 ({0:F3}, {1:F3})"), mechX, mechY));
 
             if (needleDescend)
                 await _motionService.MoveAbsAsync(dz1AxisId, dzSafePos, speed, token);
@@ -395,16 +405,25 @@ namespace StationTasks.Services
                 (needleCompensationX, needleCompensationY),
                 arcSegments, arcHeight, arcDirection);
 
-            _logger.Info($"[BezierArcDispense] Arc坐标: " +
-                $"photo({photoDx:F3},{photoDy:F3}) center({centerX:F3},{centerY:F3}) " +
-                $"P1→机械({bezierPoints[0].X:F3},{bezierPoints[0].Y:F3}) " +
-                $"P2→机械({bezierPoints[bezierPoints.Count / 2].X:F3},{bezierPoints[bezierPoints.Count / 2].Y:F3}) " +
-                $"P3→机械({bezierPoints[bezierPoints.Count - 1].X:F3},{bezierPoints[bezierPoints.Count - 1].Y:F3}) " +
-                $"camNeedle({cameraNeedleDistanceX:F3},{cameraNeedleDistanceY:F3}) " +
-                $"needleOffset({needleOffsetX:F3},{needleOffsetY:F3}) " +
-                $"comp({needleCompensationX:F3},{needleCompensationY:F3}) " +
-                $"arcHeight={arcHeight:F3} arcDirection={arcDirection:F3} " +
-                $"needleDescend={needleDescend} 插补点数={bezierPoints.Count}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("Bezier_Log_ArcCoordInfo",
+                "[BezierArcDispense] Arc坐标: " +
+                "photo({0:F3},{1:F3}) center({2:F3},{3:F3}) " +
+                "P1→机械({4:F3},{5:F3}) " +
+                "P2→机械({6:F3},{7:F3}) " +
+                "P3→机械({8:F3},{9:F3}) " +
+                "camNeedle({10:F3},{11:F3}) " +
+                "needleOffset({12:F3},{13:F3}) " +
+                "comp({14:F3},{15:F3}) " +
+                "arcHeight={16:F3} arcDirection={17:F3} " +
+                "needleDescend={18} 插补点数={19}"),
+                photoDx, photoDy, centerX, centerY,
+                bezierPoints[0].X, bezierPoints[0].Y,
+                bezierPoints[bezierPoints.Count / 2].X, bezierPoints[bezierPoints.Count / 2].Y,
+                bezierPoints[bezierPoints.Count - 1].X, bezierPoints[bezierPoints.Count - 1].Y,
+                cameraNeedleDistanceX, cameraNeedleDistanceY,
+                needleOffsetX, needleOffsetY,
+                needleCompensationX, needleCompensationY,
+                arcHeight, arcDirection, needleDescend, bezierPoints.Count));
 
             await _motionService.MoveAbsAsync(dz1AxisId, dzSafePos, speed, token);
             await _motionService.MoveLineAbsAsync(coordId, new[] { dxAxisId, dyAxisId },
@@ -422,9 +441,9 @@ namespace StationTasks.Services
             }
 
             if (!dryRun)
-                _logger.Info($"[BezierArcDispense] Arc点胶完成，{arcSegments}段插补");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Bezier_Log_ArcDispenseCompleted", "[BezierArcDispense] Arc点胶完成，{0}段插补"), arcSegments));
             else
-                _logger.Info($"[BezierArcDispense] Arc空跑模式，跳过出胶，{arcSegments}段插补运动完成");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Bezier_Log_ArcDryRunCompleted", "[BezierArcDispense] Arc空跑模式，跳过出胶，{0}段插补运动完成"), arcSegments));
 
             if (needleDescend)
                 await _motionService.MoveAbsAsync(dz1AxisId, dzSafePos, speed, token);

@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Events;
 using Core.Utilities;
 using MotionControl.Events;
@@ -21,6 +22,8 @@ namespace StationTasks.Services
         private readonly IEventAggregator _ea;
         private readonly ILoggerService _logger;
         private readonly IMotionService _motion;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
         /// <summary> 初始化锁，防止重复触发 </summary>
         private readonly object _initLock = new object();
@@ -39,12 +42,14 @@ namespace StationTasks.Services
             ITaskManager taskManager,
             IEventAggregator ea,
             ILoggerService logger,
-            IMotionService motion)
+            IMotionService motion,
+            ILocalizationService localization)
         {
             _taskManager = taskManager;
             _ea = ea;
             _logger = logger;
             _motion = motion;
+            _localization = localization;
 
             // 订阅复位按钮长按触发的初始化请求事件
             _ea.GetEvent<MachineInitializationRequestedEvent>().Subscribe(OnInitializationRequested, ThreadOption.BackgroundThread, false);
@@ -76,7 +81,7 @@ namespace StationTasks.Services
             {
                 if (_isInitializing)
                 {
-                    _logger.Warn("[MachineInit] 初始化已在进行中，忽略重复请求。");
+                    _logger.Warn(_localization.GetResourceOrDefault("MacInit_Log_AlreadyInProgress", "[MachineInit] 初始化已在进行中，忽略重复请求。"));
                     return false;
                 }
                 _isInitializing = true;
@@ -85,13 +90,13 @@ namespace StationTasks.Services
             // 初始化前安全校验：控制卡必须已连接且 EtherCAT 总线正常
             if (!IsControlCardConnected())
             {
-                _logger.Warn("[MachineInit] 控制卡未连接或总线异常，放弃整机初始化。");
+                _logger.Warn(_localization.GetResourceOrDefault("MacInit_Log_CardNotConnectedAbort", "[MachineInit] 控制卡未连接或总线异常，放弃整机初始化。"));
                 lock (_initLock) { _isInitializing = false; }
                 _ea.GetEvent<SystemResetResultEvent>().Publish(false);
                 return false;
             }
 
-            _logger.Info("[MachineInit] ===== 整机初始化开始 =====");
+            _logger.Info(_localization.GetResourceOrDefault("MacInit_Log_InitStart", "[MachineInit] ===== 整机初始化开始 ====="));
 
             try
             {
@@ -101,18 +106,18 @@ namespace StationTasks.Services
 
                 // 初始化成功：发布复位结果事件，驱动状态机 RESETING → WAITRUN
                 _ea.GetEvent<SystemResetResultEvent>().Publish(true);
-                _logger.Info("[MachineInit] ===== 整机初始化完成 =====");
+                _logger.Info(_localization.GetResourceOrDefault("MacInit_Log_InitCompleted", "[MachineInit] ===== 整机初始化完成 ====="));
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _logger.Warn("[MachineInit] 整机初始化被取消（用户停止或急停）。");
+                _logger.Warn(_localization.GetResourceOrDefault("MacInit_Log_InitCancelled", "[MachineInit] 整机初始化被取消（用户停止或急停）。"));
                 _ea.GetEvent<SystemResetResultEvent>().Publish(false);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.Error($"[MachineInit] 整机初始化失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("MacInit_Log_InitFailed", "[MachineInit] 整机初始化失败: {0}"), ex.Message));
                 _ea.GetEvent<SystemResetResultEvent>().Publish(false);
                 return false;
             }
@@ -136,7 +141,7 @@ namespace StationTasks.Services
             // 模拟模式下无真实硬件卡，视为未连接
             if (_motion.IsSimulationMode)
             {
-                _logger.Warn("[MachineInit] 控制卡未连接：当前为模拟模式，无真实硬件。");
+                _logger.Warn(_localization.GetResourceOrDefault("MacInit_Log_SimulationModeNoCard", "[MachineInit] 控制卡未连接：当前为模拟模式，无真实硬件。"));
                 return false;
             }
 
@@ -144,7 +149,7 @@ namespace StationTasks.Services
             int busError = _motion.GetEtherCatBusErrorCode();
             if (busError != 0)
             {
-                _logger.Warn($"[MachineInit] 控制卡连接异常：EtherCAT 总线错误码 0x{busError:X}。");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("MacInit_Log_BusError", "[MachineInit] 控制卡连接异常：EtherCAT 总线错误码 0x{0:X}。"), busError));
                 return false;
             }
 

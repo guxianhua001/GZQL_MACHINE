@@ -858,7 +858,7 @@ namespace Module.ViewModels
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_ApplyCompensationError", "应用补偿值失败: {0}"),
                     ex.Message));
-                _logger.Error(ex, "应用针头补偿值失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("NA_Log_ApplyCompensationFailed", "应用针头补偿值失败"));
             }
         }
 
@@ -1033,11 +1033,11 @@ namespace Module.ViewModels
 
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variables);
                 _eventAggregator?.GetEvent<GlobalVariablesChangedEvent>()?.Publish(poolId);
-                _logger.Info("[NeedleAligner] 已创建默认补偿全局变量");
+                _logger.Info(_localization.GetResourceOrDefault("NA_Log_DefaultCompVarsCreated", "[NeedleAligner] 已创建默认补偿全局变量"));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 创建默认补偿全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_CreateDefaultCompVarsFailed", "[NeedleAligner] 创建默认补偿全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -1068,7 +1068,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 确保链接变量存在失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_EnsureLinkedVarFailed", "[NeedleAligner] 确保链接变量存在失败: {0}"), ex.Message));
             }
         }
 
@@ -1359,7 +1359,7 @@ namespace Module.ViewModels
                 AddLog(string.Format(
                     _localization.GetResourceOrDefault("NeedleAligner_Log_MoveSearchPointError", "移动到搜索点失败: {0}"),
                     ex.Message));
-                _logger.Warn($"[NeedleAligner] 移动到搜索点 P{step} 失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_MoveToSearchPointFailed", "[NeedleAligner] 移动到搜索点 P{0} 失败: {1}"), step, ex.Message));
             }
             finally
             {
@@ -1587,7 +1587,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 切换系统失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_SwitchSystemFailed", "[NeedleAligner] 切换系统失败: {0}"), ex.Message));
             }
         }
 
@@ -1708,7 +1708,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 加载系统{systemNumber}参数失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_LoadSystemParamsFailed", "[NeedleAligner] 加载系统{0}参数失败: {1}"), systemNumber, ex.Message));
             }
 
             return new NeedleSystemState
@@ -1979,7 +1979,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 加载全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_LoadGlobalVarsFailed", "[NeedleAligner] 加载全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -2010,7 +2010,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 全局变量变更同步失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_GlobalVarSyncFailed", "[NeedleAligner] 全局变量变更同步失败: {0}"), ex.Message));
             }
         }
 
@@ -2144,7 +2144,7 @@ namespace Module.ViewModels
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
             var logEntry = $"[{timestamp}] {message}";
             _logQueue.Enqueue(logEntry);
-            _logger.Info($"[NeedleAligner] {message}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("NA_Log_GenericMessage", "[NeedleAligner] {0}"), message));
         }
 
         /// <summary>
@@ -2298,7 +2298,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 保存文件记录到配方池失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_SaveFileToPoolFailed", "[NeedleAligner] 保存文件记录到配方池失败: {0}"), ex.Message));
             }
         }
 
@@ -2315,16 +2315,16 @@ namespace Module.ViewModels
                 {
                     await ApplyDefaultLinkedVariablesAsync();
                     StashCurrentSystemState(SystemNumber);
-                    _logger.Info($"[NeedleAligner] 系统{SystemNumber}无可加载的校准配置文件，已应用默认参数");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("NA_Log_NoConfigFile", "[NeedleAligner] 系统{0}无可加载的校准配置文件，已应用默认参数"), SystemNumber));
                 }
                 else
                 {
-                    _logger.Info($"[NeedleAligner] 系统{SystemNumber}已加载: {state.CurrentFilePath}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("NA_Log_ConfigLoaded", "[NeedleAligner] 系统{0}已加载: {1}"), SystemNumber, state.CurrentFilePath));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 自动加载校准配置失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_AutoLoadConfigFailed", "[NeedleAligner] 自动加载校准配置失败: {0}"), ex.Message));
             }
         }
 

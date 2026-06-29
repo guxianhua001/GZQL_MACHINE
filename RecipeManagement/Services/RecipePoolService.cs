@@ -23,6 +23,7 @@ namespace Recipe
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         private readonly IRecipeStorage _recipeStorage;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly IDialogService _dialogService;
         private readonly IEventAggregator _eventAggregator;
         protected readonly IAppSettingService _appConfig;
@@ -77,6 +78,7 @@ namespace Recipe
             IRecipeStorage recipeStorage,
             IDialogService dialogService,
             ILoggerService logger,
+            ILocalizationService localization,
             IEventAggregator eventAggregator,
             IStationRegistry stationRegistry,
             IAppSettingService appConfig,
@@ -84,6 +86,7 @@ namespace Recipe
         {
             _recipeStorage = recipeStorage;
             _logger = logger;
+            _localization = localization;
             _eventAggregator = eventAggregator;
             _stationRegistry = stationRegistry;
             _appConfig = appConfig;
@@ -110,7 +113,7 @@ namespace Recipe
         {
             if (poolName == CurrentPoolName)
             {
-                _logger.Warn($"尝试删除当前正在使用的配方池 '{poolName}'，操作被拒绝。");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RPS_Log_DeleteCurrentPoolRejected", "尝试删除当前正在使用的配方池 '{0}'，操作被拒绝。"), poolName));
                 return false;
             }
             var poolToDelete = await _recipeStorage.LoadRecipePoolAsync(poolName).ConfigureAwait(false);
@@ -124,7 +127,7 @@ namespace Recipe
                     var newDefault = remainingPools.First();
                     newDefault.IsDefault = true;
                     await _recipeStorage.SaveRecipePoolAsync(newDefault).ConfigureAwait(false);
-                    _logger.Info($"默认池已删除，已将 '{newDefault.Name}' 设为新默认池");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_DefaultPoolDeletedNewDefault", "默认池已删除，已将 '{0}' 设为新默认池"), newDefault.Name));
                 }
             }
             return true;
@@ -132,7 +135,7 @@ namespace Recipe
         public void StageStationParameters(string stationIdentifier, object parameters, bool replacePositions = false)
         {
             _stagingArea.Stage(stationIdentifier, parameters, replacePositions);
-            _logger.Info($"[{stationIdentifier}] 参数已暂存{(replacePositions ? "（完整替换 Positions）" : "")}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_ParametersStaged", "[{0}] 参数已暂存{1}"), stationIdentifier, replacePositions ? "（完整替换 Positions）" : ""));
         }
         public bool HasStagedChanges(string stationIdentifier = null)
         {
@@ -144,7 +147,7 @@ namespace Recipe
         {
             if (!_stagingArea.HasAnyDirty())
             {
-                _logger.Info("暂存区没有待提交的参数变更");
+                _logger.Info(_localization.GetResourceOrDefault("RPS_Log_NoStagedChanges", "暂存区没有待提交的参数变更"));
                 return true;
             }
             await _semaphore.WaitAsync().ConfigureAwait(false);
@@ -161,13 +164,13 @@ namespace Recipe
                 {
                     _stagingArea.ClearDirty();
                     _eventAggregator.GetEvent<SaveParametersCompletedEvent>().Publish(recipeName);
-                    _logger.Info($"暂存区参数已提交到配方池: 池 '{poolId}' -> 配方 '{recipeName}', 共 {dirtyParams.Count} 个工站");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_StagedParamsCommitted", "暂存区参数已提交到配方池: 池 '{0}' -> 配方 '{1}', 共 {2} 个工站"), poolId, recipeName, dirtyParams.Count));
                 }
                 return success;
             }
             catch (Exception ex)
             {
-                _logger.Error($"提交暂存区参数失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RPS_Log_CommitStagedParamsFailed", "提交暂存区参数失败: {0}"), ex.Message));
                 return false;
             }
             finally
@@ -185,10 +188,10 @@ namespace Recipe
             var stations = _stationRegistry.GetAllStations();
             if (!stations.Any())
             {
-                _logger.Warn("没有找到任何工站，无法保存参数");
+                _logger.Warn(_localization.GetResourceOrDefault("RPS_Log_NoStationsCannotSave", "没有找到任何工站，无法保存参数"));
                 return false;
             }
-            _logger.Info($"开始保存所有工站参数到配方: {recipeName}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_StartSaveAllStations", "开始保存所有工站参数到配方: {0}"), recipeName));
             foreach (var station in stations)
             {
                 _stagingArea.Stage(station.StationIdentifier, station.CurrentParameters);
@@ -201,7 +204,7 @@ namespace Recipe
             var stations = _stationRegistry.GetAllStations();
             if (!stations.Any())
             {
-                _logger.Warn("没有找到任何工站，无法执行批量切换");
+                _logger.Warn(_localization.GetResourceOrDefault("RPS_Log_NoStationsCannotBatchSwitch", "没有找到任何工站，无法执行批量切换"));
                 return;
             }
             if (showAlert)
@@ -211,7 +214,7 @@ namespace Recipe
                     $"确定要统一切换所有工站到配方 '{newRecipeName}' 吗？");
                 if (!confirmed)
                 {
-                    _logger.Info($"用户取消批量切换配方: {newRecipeName}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_UserCancelledBatchSwitch", "用户取消批量切换配方: {0}"), newRecipeName));
                     return;
                 }
             }
@@ -228,7 +231,7 @@ namespace Recipe
                 }
                 _appConfig?.TryUpdateRecipeName(newRecipeName);
                 _appConfig?.Save();
-                _logger.Info($"所有工站已切换到配方: {newRecipeName} (池: {recipePoolName})");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_AllStationsSwitched", "所有工站已切换到配方: {0} (池: {1})"), newRecipeName, recipePoolName));
             }
             finally
             {
@@ -264,7 +267,7 @@ namespace Recipe
                 throw new ArgumentNullException(nameof(poolName));
             if (poolName == CurrentPoolName)
             {
-                _logger.Info($"已在配方池 '{poolName}' 中，无需切换");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_AlreadyInPool", "已在配方池 '{0}' 中，无需切换"), poolName));
                 return;
             }
             await _semaphore.WaitAsync().ConfigureAwait(false);
@@ -276,13 +279,13 @@ namespace Recipe
                     if (currentPool != null)
                     {
                         await _recipeStorage.SaveRecipePoolAsync(currentPool).ConfigureAwait(false);
-                        _logger.Info($"已保存原配方池 '{CurrentPoolName}' 的状态");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_SavedOriginalPoolState", "已保存原配方池 '{0}' 的状态"), CurrentPoolName));
                     }
                 }
                 var newPool = await _recipeStorage.LoadRecipePoolAsync(poolName).ConfigureAwait(false);
                 if (newPool == null)
                 {
-                    _logger.Warn($"目标配方池 '{poolName}' 不存在，创建默认池");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("RPS_Log_TargetPoolNotExistCreated", "目标配方池 '{0}' 不存在，创建默认池"), poolName));
                     newPool = new RecipePool { Id = poolName, Name = poolName };
                     await _recipeStorage.SaveRecipePoolAsync(newPool).ConfigureAwait(false);
                 }
@@ -301,7 +304,7 @@ namespace Recipe
                 }
                 ((IRecipePoolService)this).CurrentRecipeName = targetRecipeName ?? "Default";
                 _eventAggregator.GetEvent<RecipePoolChangedEvent>().Publish(poolName);
-                _logger.Info($"已切换到配方池 '{poolName}'，当前配方 '{targetRecipeName}'");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_SwitchedToPool", "已切换到配方池 '{0}'，当前配方 '{1}'"), poolName, targetRecipeName));
             }
             finally
             {
@@ -313,7 +316,7 @@ namespace Recipe
             var stations = _stationRegistry.GetAllStations();
             if (!stations.Any())
             {
-                _logger.Warn("没有找到任何工站，无法切换配方");
+                _logger.Warn(_localization.GetResourceOrDefault("RPS_Log_NoStationsCannotSwitch", "没有找到任何工站，无法切换配方"));
                 return;
             }
             var batchContext = new BatchSwitchContext(recipeName, poolId, poolId);
@@ -329,7 +332,7 @@ namespace Recipe
                 }
                 _appConfig?.TryUpdateRecipeName(recipeName);
                 _appConfig?.Save();
-                _logger.Info($"所有工站已切换到配方池 '{poolId}' 的配方 '{recipeName}'");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_AllStationsSwitchedInternal", "所有工站已切换到配方池 '{0}' 的配方 '{1}'"), poolId, recipeName));
             }
             finally
             {
@@ -345,7 +348,7 @@ namespace Recipe
                 pool.IsDefault = shouldBeDefault;
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
             }
-            _logger.Info($"已将配方池 '{defaultPoolId}' 设置为默认池");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_DefaultPoolSet", "已将配方池 '{0}' 设置为默认池"), defaultPoolId));
         }
         public async Task<RecipePool> CopyRecipePoolAsync(string sourcePoolId, string newPoolId, string newName, string Description = "")
         {
@@ -366,7 +369,7 @@ namespace Recipe
                 recipe.ModifiedTime = DateTime.Now;
             }
             await _recipeStorage.SaveRecipePoolAsync(newPool).ConfigureAwait(false);
-            _logger.Info($"已复制配方池 {sourcePoolId} -> {newPoolId}，包含 {newPool.Recipes.Count} 个配方");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_PoolCopied", "已复制配方池 {0} -> {1}，包含 {2} 个配方"), sourcePoolId, newPoolId, newPool.Recipes.Count));
             return newPool;
         }
         private T DeepClone<T>(T source)
@@ -401,7 +404,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Error($"导入配方池失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RPS_Log_ImportPoolFailed", "导入配方池失败: {0}"), ex.Message));
                 return false;
             }
         }
@@ -417,7 +420,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Error($"导出配方池失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RPS_Log_ExportPoolFailed", "导出配方池失败: {0}"), ex.Message));
                 return false;
             }
         }
@@ -438,7 +441,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"获取所有可用配方列表失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RPS_Log_GetAllRecipesFailed", "获取所有可用配方列表失败: {0}"), ex.Message));
                 return new List<string>();
             }
         }
@@ -461,7 +464,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"检查配方存在性失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RPS_Log_CheckRecipeExistFailed", "检查配方存在性失败: {0}"), ex.Message));
                 return (false, null, null);
             }
         }
@@ -482,7 +485,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"加载配方失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RPS_Log_LoadRecipeFailed", "加载配方失败: {0}"), ex.Message));
                 return null;
             }
         }
@@ -512,7 +515,7 @@ namespace Recipe
                 await _recipeStorage.DeleteRecipePoolAsync(oldPoolName).ConfigureAwait(false);
             }
             await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
-            _logger.Info($"配方池已更新: {oldPoolName} -> {newPoolName}，同步更新了 {pool.Recipes.Count} 个配方的 CurrentRecipePoolName");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_PoolUpdated", "配方池已更新: {0} -> {1}，同步更新了 {2} 个配方的 CurrentRecipePoolName"), oldPoolName, newPoolName, pool.Recipes.Count));
         }
         public async Task SaveRecipePoolAsync(RecipePool pool)
         {
@@ -537,11 +540,11 @@ namespace Recipe
                     if (commitSuccess)
                     {
                         _stagingArea.ClearDirty();
-                        _logger.Info($"保存池前已提交位置编辑器暂存参数: 池 '{pool.Name}' -> 配方 '{recipeName}', 共 {dirtyParams.Count} 个工站");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("RPS_Log_StagedParamsCommittedBeforeSave", "保存池前已提交位置编辑器暂存参数: 池 '{0}' -> 配方 '{1}', 共 {2} 个工站"), pool.Name, recipeName, dirtyParams.Count));
                     }
                     else
                     {
-                        _logger.Warn($"保存池前提交位置编辑器暂存参数失败: 池 '{pool.Name}' -> 配方 '{recipeName}'");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("RPS_Log_CommitStagedBeforeSaveFailed", "保存池前提交位置编辑器暂存参数失败: 池 '{0}' -> 配方 '{1}'"), pool.Name, recipeName));
                     }
                 }
 

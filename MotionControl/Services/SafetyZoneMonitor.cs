@@ -204,7 +204,7 @@ namespace MotionControl.Services
         {
             if (config == null)
             {
-                _logger.Warn("[安全互锁] 收到空配置，忽略更新");
+                _logger.Warn(_localization.GetResourceOrDefault("SZM_Log_NullConfigIgnored", "[安全互锁] 收到空配置，忽略更新"));
                 return;
             }
 
@@ -215,7 +215,7 @@ namespace MotionControl.Services
             lock (_configLock)
                 _config = snapshot;
 
-            _logger.Info($"[安全互锁] 配置已热更新 | Enabled={snapshot.Enabled} | 规则={snapshot.Rules?.Count ?? 0} | FailClosed={snapshot.FailClosedOnMissingAxis}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("SZM_Log_ConfigHotUpdated", "[安全互锁] 配置已热更新 | Enabled={0} | 规则={1} | FailClosed={2}"), snapshot.Enabled, snapshot.Rules?.Count ?? 0, snapshot.FailClosedOnMissingAxis));
         }
 
         #region 私有辅助
@@ -247,7 +247,7 @@ namespace MotionControl.Services
                     lock (_configLock)
                     {
                         if (_config.FailClosedOnMissingAxis)
-                            _logger.Warn($"[安全互锁] 配置引用的轴 '{axisName}' 未在硬件配置中找到");
+                            _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZM_Log_AxisNotFoundInHwConfig", "[安全互锁] 配置引用的轴 '{0}' 未在硬件配置中找到"), axisName));
                     }
                     return null;
                 }
@@ -269,7 +269,7 @@ namespace MotionControl.Services
                 Reason = reason,
                 RuleName = ruleName
             });
-            _logger.Warn($"[安全互锁] 违规 | 规则:{ruleName} | 轴:{axisName}(#{axisId}) | {reason}");
+            _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZM_Log_Violation", "[安全互锁] 违规 | 规则:{0} | 轴:{1}(#{2}) | {3}"), ruleName, axisName, axisId, reason));
         }
 
         #endregion

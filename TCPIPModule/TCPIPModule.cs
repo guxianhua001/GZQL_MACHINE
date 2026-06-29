@@ -39,6 +39,7 @@ namespace TCPIPModule
             var appConfig = containerProvider.Resolve<IAppSettingService>();
             var tcpEventService = containerProvider.Resolve<ITCPEventService>();
             var logger = containerProvider.Resolve<ILoggerService>();
+            var localization = containerProvider.Resolve<ILocalizationService>();
 
             // 初始化事件服务
             tcpEventService.Initialize();
@@ -63,26 +64,26 @@ namespace TCPIPModule
                                     EncodingMethod = "UTF-8"
                                 };
                                 tcpEventService.StartServer(serverConfig, clientConfig.ClientName);
-                                logger.Info($"TCP服务器 '{clientConfig.ClientName}' 已启动监听 {serverConfig.ServerIP}:{serverConfig.Port}");
+                                logger.Info(string.Format(localization.GetResourceOrDefault("TCPMod_Log_ServerStarted", "TCP服务器 '{0}' 已启动监听 {1}:{2}"), clientConfig.ClientName, serverConfig.ServerIP, serverConfig.Port));
                             }
                             else
                             {
                                 // 客户端模式：创建TCP客户端连接到远程服务端
                                 await tcpEventService.AddClientAsync(clientConfig.ClientName, clientConfig);
-                                logger.Info($"TCP客户端 '{clientConfig.ClientName}' 已连接 {clientConfig.IP}:{clientConfig.Port}");
+                                logger.Info(string.Format(localization.GetResourceOrDefault("TCPMod_Log_ClientConnected", "TCP客户端 '{0}' 已连接 {1}:{2}"), clientConfig.ClientName, clientConfig.IP, clientConfig.Port));
                             }
                         }
                         catch (System.Exception ex)
                         {
-                            logger.Error($"初始化TCP配置项 '{clientConfig.ClientName}' 失败(Mode={clientConfig.Mode}): {ex.Message}");
+                            logger.Error(string.Format(localization.GetResourceOrDefault("TCPMod_Log_InitConfigItemFailed", "初始化TCP配置项 '{0}' 失败(Mode={1}): {2}"), clientConfig.ClientName, clientConfig.Mode, ex.Message));
                         }
                     }
 
-                    logger.Info($"TCP系统初始化完成，共 {appConfig.Clients.Count(c => c.IsEnabled)} 项配置");
+                    logger.Info(string.Format(localization.GetResourceOrDefault("TCPMod_Log_SystemInitComplete", "TCP系统初始化完成，共 {0} 项配置"), appConfig.Clients.Count(c => c.IsEnabled)));
                 }
                 catch (System.Exception ex)
                 {
-                    logger.Error($"TCP系统初始化失败: {ex.Message}");
+                    logger.Error(string.Format(localization.GetResourceOrDefault("TCPMod_Log_SystemInitFailed", "TCP系统初始化失败: {0}"), ex.Message));
                 }
             });
         }

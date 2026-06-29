@@ -16,10 +16,13 @@ namespace MotionControl.Services
     {
         private readonly ILoggerService _logger;
         private readonly IAppSettingService _appSettings;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
-        public SafetyZoneConfigLoader(ILoggerService logger, IAppSettingService appSettings = null)
+        public SafetyZoneConfigLoader(ILoggerService logger, ILocalizationService localization, IAppSettingService appSettings = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _localization = localization;
             _appSettings = appSettings;
         }
 
@@ -32,7 +35,7 @@ namespace MotionControl.Services
             {
                 if (!File.Exists(ConfigFilePath))
                 {
-                    _logger.Info("[安全互锁] 未找到配置文件，使用默认机型规则");
+                    _logger.Info(_localization.GetResourceOrDefault("SZCfg_Log_ConfigFileNotFound", "[安全互锁] 未找到配置文件，使用默认机型规则"));
                     return SafetyZoneConfig.CreateDefaultForCurrentMachine();
                 }
 
@@ -46,7 +49,7 @@ namespace MotionControl.Services
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[安全互锁] 加载配置失败: {ex.Message}，使用默认规则");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZCfg_Log_LoadConfigFailed", "[安全互锁] 加载配置失败: {0}，使用默认规则"), ex.Message));
                 return SafetyZoneConfig.CreateDefaultForCurrentMachine();
             }
         }
@@ -61,7 +64,7 @@ namespace MotionControl.Services
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
             // 指定 UTF-8 无 BOM 编码，避免 Unicode 下标字符（₁₂₃）被损坏
             File.WriteAllText(ConfigFilePath, json, new System.Text.UTF8Encoding(false));
-            _logger.Info("[安全互锁] 配置已保存");
+            _logger.Info(_localization.GetResourceOrDefault("SZCfg_Log_ConfigSaved", "[安全互锁] 配置已保存"));
         }
 
         public SafetyZoneConfig CreateDefault() => SafetyZoneConfig.CreateDefaultForCurrentMachine();

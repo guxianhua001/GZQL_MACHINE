@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using MotionControl.Interfaces;
@@ -20,6 +21,14 @@ namespace Module.Services
     {
         private readonly IMotionService _motionService;
         private readonly ILoggerService? _logger;
+        private readonly ILocalizationService? _localization;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         private const int CoordId = 0;
         private const int AxisDx = 8;
@@ -42,10 +51,11 @@ namespace Module.Services
 
         public bool IsRunning => Interlocked.CompareExchange(ref _isRunning, 0, 0) == 1;
 
-        public DotDispenseService(IMotionService motionService, ILoggerService? logger = null)
+        public DotDispenseService(IMotionService motionService, ILoggerService? logger = null, ILocalizationService? localization = null)
         {
             _motionService = motionService ?? throw new ArgumentNullException(nameof(motionService));
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>根据针头索引获取对应的点胶Z轴编号（针头1→Dz₂, 针头2→Dz₃）</summary>
@@ -69,7 +79,7 @@ namespace Module.Services
             {
                 var pointList = points.Where(p => p.IsSelected && p.IsEnabled).ToList();
                 int total = pointList.Count;
-                _logger?.Info($"[DotDispense] 开始空跑，针头{needleIndex + 1}/Dz{(needleIndex == 0 ? "₂" : "₃")}(轴{axisDz})，共 {total} 点");
+                _logger?.Info(L("DotDisp_Log_DryRunStart", "[DotDispense] 开始空跑，针头{0}/Dz{1}(轴{2})，共 {3} 点", needleIndex + 1, needleIndex == 0 ? "₂" : "₃", axisDz, total));
 
                 double moveSpeed = processParams.MoveSpeed;
                 double safeHeight = processParams.SafeHeight;
@@ -82,7 +92,7 @@ namespace Module.Services
                     token.ThrowIfCancellationRequested();
 
                     PublishProgress($"空跑 - 点 [{point.PointId}] ({index + 1}/{total})", index + 1, total);
-                    _logger?.Debug($"[DotDispense] 空跑点 [{point.PointId}]");
+                    _logger?.Debug(L("DotDisp_Log_DryRunPoint", "[DotDispense] 空跑点 [{0}]", point.PointId));
 
                     await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
@@ -110,7 +120,7 @@ namespace Module.Services
 
                     // 两段式慢速下降：先移到触发位开胶，再移到目标位
                     await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
-                    _logger?.Debug($"[DotDispense] 空跑 点 [{point.PointId}] 到达触发位，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={dotGlueTriggerOffset:F3}mm");
+                    _logger?.Debug(L("DotDisp_Log_DryRunTriggerPosition", "[DotDispense] 空跑 点 [{0}] 到达触发位，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm", point.PointId, triggerZ, targetZ, dotGlueTriggerOffset));
 
                     // 继续慢速移到目标位
                     await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
@@ -120,20 +130,20 @@ namespace Module.Services
                 await _motionService.MoveAbsAsync(axisDz, safeHeight, moveSpeed, token);
 
                 PublishStatus("Completed");
-                _logger?.Info("[DotDispense] 空跑完成");
+                _logger?.Info(L("DotDisp_Log_DryRunCompleted", "[DotDispense] 空跑完成"));
             }
             catch (OperationCanceledException)
             {
                 await StopAsync();
                 PublishStatus("Canceled");
-                _logger?.Warn("[DotDispense] 空跑已取消");
+                _logger?.Warn(L("DotDisp_Log_DryRunCanceled", "[DotDispense] 空跑已取消"));
                 throw;
             }
             catch (Exception ex)
             {
                 await StopAsync();
                 PublishStatus("Error");
-                _logger?.Error(ex, "[DotDispense] 空跑异常");
+                _logger?.Error(ex, L("DotDisp_Log_DryRunException", "[DotDispense] 空跑异常"));
                 throw;
             }
             finally
@@ -161,7 +171,7 @@ namespace Module.Services
                 int total = selectedPoints.Count;
                 bool allPointsSelected = allPoints.All(p => p.IsSelected && p.IsEnabled);
 
-                _logger?.Info($"[DotDispense] 开始点胶，针头{needleIndex + 1}/Dz{(needleIndex == 0 ? "₂" : "₃")}(轴{axisDz})，共 {total} 点，全选={allPointsSelected}");
+                _logger?.Info(L("DotDisp_Log_DispenseStart", "[DotDispense] 开始点胶，针头{0}/Dz{1}(轴{2})，共 {3} 点，全选={4}", needleIndex + 1, needleIndex == 0 ? "₂" : "₃", axisDz, total, allPointsSelected));
 
                 double moveSpeed = processParams.MoveSpeed;
                 double safeHeight = processParams.SafeHeight;
@@ -179,7 +189,7 @@ namespace Module.Services
                     token.ThrowIfCancellationRequested();
 
                     PublishProgress($"点胶 - 点 [{point.PointId}] ({index + 1}/{total})", index + 1, total);
-                    _logger?.Debug($"[DotDispense] 点胶点 [{point.PointId}]");
+                    _logger?.Debug(L("DotDisp_Log_DispensePoint", "[DotDispense] 点胶点 [{0}]", point.PointId));
 
                     double targetZ = GetPointEffectiveZ(point, needleIndex);
                     if (targetZ == 0)
@@ -212,7 +222,7 @@ namespace Module.Services
                     // 两段式慢速下降：先移到触发位开胶，再移到目标位
                     await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
                     WriteGlueIo(true);
-                    _logger?.Debug($"[DotDispense] 点 [{point.PointId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={dotGlueTriggerOffset:F3}mm");
+                    _logger?.Debug(L("DotDisp_Log_PointTriggerGlueOn", "[DotDispense] 点 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm", point.PointId, triggerZ, targetZ, dotGlueTriggerOffset));
 
                     // 继续慢速移到目标位
                     await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
@@ -232,20 +242,20 @@ namespace Module.Services
                 }
 
                 PublishStatus("Completed");
-                _logger?.Info("[DotDispense] 点胶完成");
+                _logger?.Info(L("DotDisp_Log_DispenseCompleted", "[DotDispense] 点胶完成"));
             }
             catch (OperationCanceledException)
             {
                 await StopAsync();
                 PublishStatus("Canceled");
-                _logger?.Warn("[DotDispense] 点胶已取消");
+                _logger?.Warn(L("DotDisp_Log_DispenseCanceled", "[DotDispense] 点胶已取消"));
                 throw;
             }
             catch (Exception ex)
             {
                 await StopAsync();
                 PublishStatus("Error");
-                _logger?.Error(ex, "[DotDispense] 点胶异常");
+                _logger?.Error(ex, L("DotDisp_Log_DispenseException", "[DotDispense] 点胶异常"));
                 throw;
             }
             finally
@@ -273,7 +283,10 @@ namespace Module.Services
             point.Y = _motionService.GetAxisPosition(AxisY);
 
             double primaryZ = needleIndex == 0 ? dz2 : dz3;
-            _logger?.Info($"[DotDispense] 示教点位 [{point.PointId}] 针头{needleIndex + 1}/Dz{(needleIndex == 0 ? "₂" : "₃")} → ({point.Dx:F3}, {point.Dy:F3}, Dz2={point.Dz2:F3}, Dz3={point.Dz3:F3}, 主Z={primaryZ:F3}, {point.Rx:F3}, {point.Rz:F3}, {point.Y:F3})");
+            _logger?.Info(L("DotDisp_Log_TeachPoint",
+                "[DotDispense] 示教点位 [{0}] 针头{1}/Dz{2} → ({3:F3}, {4:F3}, Dz2={5:F3}, Dz3={6:F3}, 主Z={7:F3}, {8:F3}, {9:F3}, {10:F3})",
+                point.PointId, needleIndex + 1, needleIndex == 0 ? "₂" : "₃",
+                point.Dx, point.Dy, point.Dz2, point.Dz3, primaryZ, point.Rx, point.Rz, point.Y));
 
             return Task.CompletedTask;
         }
@@ -292,7 +305,7 @@ namespace Module.Services
             _motionService.StopAxis(AxisRx);
             _motionService.StopAxis(AxisRz);
             _motionService.StopAxis(AxisY);
-            _logger?.Info("[DotDispense] 执行安全停止");
+            _logger?.Info(L("DotDisp_Log_SafeStop", "[DotDispense] 执行安全停止"));
 
             // 等待所有轴停止运动（轮询位置变化）
             await WaitForAxesStoppedAsync();
@@ -335,7 +348,7 @@ namespace Module.Services
         private void WriteGlueIo(bool value)
         {
             try { _motionService.WriteDo(GlueIoPort, value); }
-            catch (Exception ex) { _logger?.Error(ex, $"[DotDispense] 写出胶IO失败 port={GlueIoPort} value={value}"); }
+            catch (Exception ex) { _logger?.Error(ex, L("DotDisp_Log_WriteIoFailed", "[DotDispense] 写出胶IO失败 port={0} value={1}", GlueIoPort, value)); }
         }
 
         private void SafeGlueOff()

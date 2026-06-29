@@ -230,7 +230,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "[NeedleAligner] 寻针校准异常");
+                _logger.Error(ex, L("NAM_Log_CalibrationException", "[NeedleAligner] 寻针校准异常"));
                 return Fail(ex.Message);
             }
             finally
@@ -249,12 +249,12 @@ namespace Module.Services
         {
             try
             {
-                _logger.Warn("[NeedleAligner] 寻针失败，自动抬升至安全高度");
+                _logger.Warn(L("NAM_Log_RaiseSafeHeightOnFailure", "[NeedleAligner] 寻针失败，自动抬升至安全高度"));
                 await MoveToSafeHeightAsync(parameters, systemNumber, token);
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 失败后抬升安全高度异常: {ex.Message}");
+                _logger.Warn(L("NAM_Log_RaiseSafeHeightOnFailureException", "[NeedleAligner] 失败后抬升安全高度异常: {0}", ex.Message));
             }
         }
 
@@ -269,7 +269,7 @@ namespace Module.Services
             foreach (var id in ids)
             {
                 try { _motion.StopAxis(id); }
-                catch (Exception ex) { _logger.Warn($"[NeedleAligner] 停止轴{id}失败: {ex.Message}"); }
+                catch (Exception ex) { _logger.Warn(L("NAM_Log_StopAxisFailed", "[NeedleAligner] 停止轴{0}失败: {1}", id, ex.Message)); }
             }
         }
 
@@ -347,7 +347,7 @@ namespace Module.Services
                         searchPoints[i], sensorPort, parameters, progress, i, pointProgress, dxId, dyId, token);
                 if (edgePoint == null)
                 {
-                    _logger.Error($"[NeedleAligner] 搜索点{i + 1}边缘搜索失败");
+                    _logger.Error(L("NAM_Log_EdgeSearchFailed", "[NeedleAligner] 搜索点{0}边缘搜索失败", i + 1));
                     return null;
                 }
 
@@ -374,7 +374,9 @@ namespace Module.Services
             if (xEdgePoints.Count < 2 || yEdgePoints.Count < 2)
             {
                 _logger.Error(
-                    $"[NeedleAligner] Halcon 拟合需 X/Y 传感器各至少 2 个边缘点，当前 X={xEdgePoints.Count}(P{string.Join(",", xEdgePointIndices)}) Y={yEdgePoints.Count}(P{string.Join(",", yEdgePointIndices)})");
+                    L("NAM_Log_HalconFitInsufficientPoints",
+                        "[NeedleAligner] Halcon 拟合需 X/Y 传感器各至少 2 个边缘点，当前 X={0}(P{1}) Y={2}(P{3})",
+                        xEdgePoints.Count, string.Join(",", xEdgePointIndices), yEdgePoints.Count, string.Join(",", yEdgePointIndices)));
                 return null;
             }
 
@@ -384,7 +386,9 @@ namespace Module.Services
             if (xEdgePoints.Count > 2 || yEdgePoints.Count > 2)
             {
                 _logger.Warn(
-                    $"[NeedleAligner] X/Y 传感器边缘点超过 2 个，Halcon 拟合使用前两个: X=P{xEdgePointIndices[0]}/P{xEdgePointIndices[1]} Y=P{yEdgePointIndices[0]}/P{yEdgePointIndices[1]}");
+                    L("NAM_Log_EdgePointsExceedTwo",
+                        "[NeedleAligner] X/Y 传感器边缘点超过 2 个，Halcon 拟合使用前两个: X=P{0}/P{1} Y=P{2}/P{3}",
+                        xEdgePointIndices[0], xEdgePointIndices[1], yEdgePointIndices[0], yEdgePointIndices[1]));
             }
 
             var xDetail = string.Join(", ", xLinePoints.Select((p, idx) => $"P{xEdgePointIndices[idx]}=({p.X:F3},{p.Y:F3})"));
@@ -560,16 +564,16 @@ namespace Module.Services
                 {
                     float centerX = (float)intersectionColumn.D;
                     float centerY = (float)intersectionRow.D;
-                    _logger.Info($"[NeedleAligner] Halcon 交点: X={centerX:F3}, Y={centerY:F3}");
+                    _logger.Info(L("NAM_Log_HalconIntersection", "[NeedleAligner] Halcon 交点: X={0:F3}, Y={1:F3}", centerX, centerY));
                     return new PointF(centerX, centerY);
                 }
 
-                _logger.Warn("[NeedleAligner] Halcon 交点失败，直线可能平行或重叠");
+                _logger.Warn(L("NAM_Log_HalconIntersectionFailed", "[NeedleAligner] Halcon 交点失败，直线可能平行或重叠"));
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.Error($"[NeedleAligner] Halcon 直线交点异常: {ex.Message}");
+                _logger.Error(L("NAM_Log_HalconIntersectionException", "[NeedleAligner] Halcon 直线交点异常: {0}", ex.Message));
                 return null;
             }
         }
@@ -721,7 +725,7 @@ namespace Module.Services
                 if (DateTime.UtcNow > deadline)
                 {
                     await StopBoundaryScanAxesAsync(dxId, dyId, axisId, token);
-                    _logger.Warn($"[NeedleAligner] 单路入光扫描超时 DI={sensorPort}");
+                    _logger.Warn(L("NAM_Log_SingleSensorScanTimeout", "[NeedleAligner] 单路入光扫描超时 DI={0}", sensorPort));
                     return double.NaN;
                 }
 
@@ -873,7 +877,7 @@ namespace Module.Services
                     moved));
 
             if (!cleared)
-                _logger.Warn("[NeedleAligner] 双激光预清未完全灭光，继续束内双沿回退");
+                _logger.Warn(L("NAM_Log_DualLaserPreclearIncomplete", "[NeedleAligner] 双激光预清未完全灭光，继续束内双沿回退"));
         }
 
         /// <summary>单方向分步预清，返回累计移离距离（mm）</summary>
@@ -937,7 +941,7 @@ namespace Module.Services
                 if (DateTime.UtcNow > deadline)
                 {
                     await StopBoundaryScanAxesAsync(dxId, dyId, axisId, token);
-                    _logger.Warn("[NeedleAligner] 双激光入光扫描超时");
+                    _logger.Warn(L("NAM_Log_DualLaserScanTimeout", "[NeedleAligner] 双激光入光扫描超时"));
                     return double.NaN;
                 }
 
@@ -1040,7 +1044,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 相对扫描启动失败 DI={sensorPort}: {ex.Message}");
+                _logger.Warn(L("NAM_Log_RelativeScanStartFailed", "[NeedleAligner] 相对扫描启动失败 DI={0}: {1}", sensorPort, ex.Message));
                 return false;
             }
 
@@ -1054,7 +1058,7 @@ namespace Module.Services
                 await Task.Delay(BoundarySensorPollMs, token);
             }
 
-            _logger.Warn($"[NeedleAligner] 相对扫描未启动 DI={sensorPort} 轴{axisId} 距离={searchDistance:F3}");
+            _logger.Warn(L("NAM_Log_RelativeScanNotStarted", "[NeedleAligner] 相对扫描未启动 DI={0} 轴{1} 距离={2:F3}", sensorPort, axisId, searchDistance));
             await StopBoundaryScanAxesAsync(dxId, dyId, axisId, token);
             return false;
         }
@@ -1147,7 +1151,7 @@ namespace Module.Services
                 await Task.Delay(SensorPollMs, token);
             }
 
-            _logger.Warn($"[NeedleAligner] 停轴后等待位置稳定超时({timeoutMs}ms)");
+            _logger.Warn(L("NAM_Log_AxesSettleTimeout", "[NeedleAligner] 停轴后等待位置稳定超时({0}ms)", timeoutMs));
         }
 
         /// <summary>等待轴空闲（CheckDone），短超时避免阻塞过久</summary>
@@ -1241,7 +1245,7 @@ namespace Module.Services
                     zId, dxId, dyId, searchZ, descStartZ, fineTargetZ, parameters, downCoordIncrease, progress, i, token);
                 if (sample == null)
                 {
-                    _logger.Warn($"[NeedleAligner] 第{i + 1}次 Z 高度采样失败");
+                    _logger.Warn(L("NAM_Log_ZSampleFailed", "[NeedleAligner] 第{0}次 Z 高度采样失败", i + 1));
                     continue;
                 }
 
@@ -1356,14 +1360,16 @@ namespace Module.Services
             double descendDistance = fineTargetZ - zBeforeDescend;
             if (Math.Abs(descendDistance) < 0.001)
             {
-                _logger.Warn($"[NeedleAligner] 第{sampleIndex + 1}次 Z 已在下探极限({fineTargetZ:F3})，跳过");
+                _logger.Warn(L("NAM_Log_ZAtDescendLimit", "[NeedleAligner] 第{0}次 Z 已在下探极限({1:F3})，跳过", sampleIndex + 1, fineTargetZ));
                 return null;
             }
 
             if (downCoordIncrease != (descendDistance > 0))
             {
                 _logger.Error(
-                    $"[NeedleAligner] Z下探方向异常: 起始Z={zBeforeDescend:F3} 极限Z={fineTargetZ:F3} ΔZ={descendDistance:F3} downCoordIncrease={downCoordIncrease}");
+                    L("NAM_Log_ZDescendDirectionError",
+                        "[NeedleAligner] Z下探方向异常: 起始Z={0:F3} 极限Z={1:F3} ΔZ={2:F3} downCoordIncrease={3}",
+                        zBeforeDescend, fineTargetZ, descendDistance, downCoordIncrease));
                 return null;
             }
 
@@ -1386,7 +1392,7 @@ namespace Module.Services
                     await WaitForAxesSettledAsync(new[] { zId }, token);
                     LogDualLaserSensorState(
                         L("NeedleAligner_Log_ZSampleTimeout", "Z采样超时"), parameters);
-                    _logger.Warn($"[NeedleAligner] 第{sampleIndex + 1}次 Z 高度搜索超时");
+                    _logger.Warn(L("NAM_Log_ZSearchTimeout", "[NeedleAligner] 第{0}次 Z 高度搜索超时", sampleIndex + 1));
                     return null;
                 }
 
@@ -1448,7 +1454,9 @@ namespace Module.Services
             bool xOn = IsSensorTriggered(parameters.SensorDiX);
             bool yOn = IsSensorTriggered(parameters.SensorDiY);
             _logger.Info(
-                $"[NeedleAligner] {context}: DI{parameters.SensorDiX}(X)={(xOn ? "ON" : "OFF")} DI{parameters.SensorDiY}(Y)={(yOn ? "ON" : "OFF")}");
+                L("NAM_Log_SensorState",
+                    "[NeedleAligner] {0}: DI{1}(X)={2} DI{3}(Y)={4}",
+                    context, parameters.SensorDiX, xOn ? "ON" : "OFF", parameters.SensorDiY, yOn ? "ON" : "OFF"));
         }
 
         /// <summary>对双激光 XY 采样取平均</summary>
@@ -1520,7 +1528,7 @@ namespace Module.Services
         private void StopAxisSafe(int axisId)
         {
             try { _motion.StopAxis(axisId); }
-            catch (Exception ex) { _logger.Warn($"[NeedleAligner] 停止轴{axisId}失败: {ex.Message}"); }
+            catch (Exception ex) { _logger.Warn(L("NAM_Log_StopAxisFailed", "[NeedleAligner] 停止轴{0}失败: {1}", axisId, ex.Message)); }
         }
 
         #endregion
@@ -1554,7 +1562,7 @@ namespace Module.Services
             var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
             if (dxConfig == null)
             {
-                _logger.Warn("[NeedleAligner] 未找到 Dx 轴配置，CoordId 回退 0");
+                _logger.Warn(L("NAM_Log_DxConfigNotFound", "[NeedleAligner] 未找到 Dx 轴配置，CoordId 回退 0"));
                 _coordIdCache = 0;
                 return 0;
             }
@@ -1572,7 +1580,7 @@ namespace Module.Services
                 }
             }
 
-            _logger.Warn($"[NeedleAligner] Dx 不在插补系中，CoordId 回退 0");
+            _logger.Warn(L("NAM_Log_DxNotInInterpolationSystem", "[NeedleAligner] Dx 不在插补系中，CoordId 回退 0"));
             _coordIdCache = 0;
             return 0;
         }
@@ -1620,7 +1628,7 @@ namespace Module.Services
         {
             if (port < 0)
             {
-                _logger.Warn($"[NeedleAligner] 传感器 DI 端口号无效: {port}");
+                _logger.Warn(L("NAM_Log_SensorPortInvalid", "[NeedleAligner] 传感器 DI 端口号无效: {0}", port));
                 return false;
             }
 
@@ -1630,7 +1638,7 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[NeedleAligner] 读取 DI{port} 失败: {ex.Message}");
+                _logger.Warn(L("NAM_Log_ReadDiFailed", "[NeedleAligner] 读取 DI{0} 失败: {1}", port, ex.Message));
                 return false;
             }
         }

@@ -3806,6 +3806,77 @@
     <sys:String x:Key="PSE_SkippedDisabledStep">跳过禁用步骤: [{0}] {1}</sys:String>
     <sys:String x:Key="PSE_SkippedDisabledMethod">跳过禁用方法: {0}</sys:String>
     <sys:String x:Key="PSE_SkippedDisabledTask">跳过禁用任务: {0}</sys:String>
+    <!-- ProcessSequenceService 日志多语言 -->
+    <sys:String x:Key="PSE_Log_LoadRecentFailed">[ProcessSequence] 读取最近文件列表失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SaveRecentFailed">[ProcessSequence] 保存最近文件列表失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_CrossLevelDragNotSupported">[ProcessSequence] 不支持跨层级或跨 IF 分支拖拽排序</sys:String>
+    <sys:String x:Key="PSE_Log_TaskMoved">[ProcessSequence] 任务 [{0}] 已从位置 {1} 移动到 {2}</sys:String>
+    <sys:String x:Key="PSE_Log_OperationRejected">[ProcessSequence] {0} 被拒绝: {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Operation_StartTask">启动任务</sys:String>
+    <sys:String x:Key="PSE_Log_Operation_StartMethod">启动方法 [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Operation_SingleStep">单步执行</sys:String>
+    <sys:String x:Key="PSE_Log_NoStationTaskRegistered">[ProcessSequence] 未找到任何已注册的工站任务</sys:String>
+    <sys:String x:Key="PSE_Log_UseExecutionHost">[ProcessSequence] 使用执行宿主: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_StationRunningForceReset">[ProcessSequence] 工站 [{0}] 状态遗留 Running，强制复位后启动</sys:String>
+    <sys:String x:Key="PSE_Log_PassiveTaskCannotStart">[ProcessSequence] 任务 {0} 为被动模式，不可直接启动，请通过调用任务动作触发</sys:String>
+    <sys:String x:Key="PSE_Log_AlreadyExecutingRejectStart">[ProcessSequence] 已有任务正在执行，拒绝启动新任务</sys:String>
+    <sys:String x:Key="PSE_Log_SelectedMethodDisabled">[ProcessSequence] 选中的方法 [{0}] 已禁用，无法执行</sys:String>
+    <sys:String x:Key="PSE_Log_NoExecutableSteps">[ProcessSequence] 没有可执行步骤，无法启动</sys:String>
+    <sys:String x:Key="PSE_Log_SequenceStarted">[ProcessSequence] 启动: {0}，共 {1} 个步骤，目标工站: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_StartFailed">[ProcessSequence] 启动失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_TaskExecutionEnded">[ProcessSequence] 任务执行结束</sys:String>
+    <sys:String x:Key="PSE_Log_TaskStopped">[ProcessSequence] 任务已停止</sys:String>
+    <sys:String x:Key="PSE_Log_TaskPaused">[ProcessSequence] 任务已暂停</sys:String>
+    <sys:String x:Key="PSE_Log_TaskResumed">[ProcessSequence] 任务已恢复</sys:String>
+    <sys:String x:Key="PSE_Log_StartMethodFailedNull">[ProcessSequence] 启动方法失败：方法为空</sys:String>
+    <sys:String x:Key="PSE_Log_RejectStartMethodBusy">[ProcessSequence] 已有任务/方法正在执行，拒绝启动方法 [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_MethodDisabled">[ProcessSequence] 方法 [{0}] 已禁用，无法执行</sys:String>
+    <sys:String x:Key="PSE_Log_MethodNoSteps">[ProcessSequence] 方法 [{0}] 没有可执行步骤，无法启动</sys:String>
+    <sys:String x:Key="PSE_Log_MethodStarted">[ProcessSequence] 启动方法: [{0}]，共 {1} 个步骤，目标工站: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_StartMethodFailed">[ProcessSequence] 启动方法失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_MethodEnded">[ProcessSequence] 方法 [{0}] 执行结束</sys:String>
+    <sys:String x:Key="PSE_Log_MethodPaused">[ProcessSequence] 方法 [{0}] 已暂停</sys:String>
+    <sys:String x:Key="PSE_Log_MethodResumed">[ProcessSequence] 方法 [{0}] 已恢复</sys:String>
+    <sys:String x:Key="PSE_Log_MethodStopped">[ProcessSequence] 方法 [{0}] 已停止</sys:String>
+    <sys:String x:Key="PSE_Log_MethodStateResetIdle">[ProcessSequence] 方法 [{0}] 运行状态已重置为 Idle</sys:String>
+    <sys:String x:Key="PSE_Log_SingleStepEnabled">[ProcessSequence] 单步模式: 已启用</sys:String>
+    <sys:String x:Key="PSE_Log_SingleStepDisabled">[ProcessSequence] 单步模式: 已关闭</sys:String>
+    <sys:String x:Key="PSE_Log_SingleStepNext">[ProcessSequence] 单步模式：用户确认下一步</sys:String>
+    <sys:String x:Key="PSE_Log_SyncStepUiFailed">[ProcessSequence] 同步执行步骤 UI 失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ResetStepHighlightCalled">[ProcessSequenceService] ResetStepHighlight 被调用</sys:String>
+    <sys:String x:Key="PSE_Log_ResetStepHighlightDone">[ProcessSequenceService] ResetStepHighlight 完成</sys:String>
+    <sys:String x:Key="PSE_Log_NoStationForSingleStep">[ProcessSequenceService] 未找到可用的工站任务，无法单独执行步骤</sys:String>
+    <sys:String x:Key="PSE_Log_RunSingleStepError">[ProcessSequenceService] 单独执行步骤异常: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskNameEmpty">[ProcessSequence] RUNTASK: 目标任务名称为空</sys:String>
+    <sys:String x:Key="PSE_Log_CircularCall">[ProcessSequence] 检测到循环调用: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_CircularCallAlarm">循环调用: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskNotFound">[ProcessSequence] RUNTASK: 未找到被动任务 '{0}'</sys:String>
+    <sys:String x:Key="PSE_Log_SkippedDisabledTask">[ProcessSequence] 跳过禁用任务: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskNoSteps">[ProcessSequence] RUNTASK: 目标任务 '{0}' 没有可执行步骤</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskStarted">[ProcessSequence] RUNTASK: 开始执行被动任务 '{0}'，共 {1} 步</sys:String>
+    <sys:String x:Key="PSE_Log_RunTaskCompleted">[ProcessSequence] RUNTASK: 被动任务 '{0}' 执行完成</sys:String>
+    <sys:String x:Key="PSE_Log_SequencePathSaved">[ProcessSequence] 已保存工序序列路径: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_SaveSequencePathFailed">[ProcessSequence] 保存工序序列路径失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPath">[ProcessSequence] 从配置读取上次工序序列路径: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_LastPathNotFound">[ProcessSequence] 配置中未找到上次工序序列路径 (ExtensionData 中无键或类型非字符串)</sys:String>
+    <sys:String x:Key="PSE_Log_ReadLastPathFailed">[ProcessSequence] 读取上次工序序列路径失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_GripperSpeedLoaded">[ProcessSequence] 已加载电爪速度: {0}%</sys:String>
+    <sys:String x:Key="PSE_Log_AutoLoadSequence">[ProcessSequence] 自动加载上次工序序列: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_AutoLoadSkipped">[ProcessSequence] 未找到上次工序序列文件，跳过自动加载</sys:String>
+    <sys:String x:Key="PSE_Log_AutoLoadFailed">[ProcessSequence] 自动加载工序序列失败: {0}</sys:String>
+    <!-- GotoStepAction 日志多语言 -->
+    <sys:String x:Key="Goto_Log_NoSubMove">GOTO 步骤 [{0}] 没有 SubMove，跳过执行</sys:String>
+    <sys:String x:Key="Goto_Log_RefreshGlobalVarsFailed">SubMove [{0}] 刷新全局变量失败: {1}</sys:String>
+    <sys:String x:Key="Goto_Log_HomeAlreadyHomed">HOME SubMove [{0}]: 轴 {1}({2}) 已回零，跳过</sys:String>
+    <sys:String x:Key="Goto_Log_HomeCardConfig">HOME SubMove [{0}]: 工站={1}, 轴{2}({3}), 使用卡内配置回零</sys:String>
+    <sys:String x:Key="Goto_Log_HomeCustom">HOME SubMove [{0}]: 工站={1}, 轴{2}({3}), 模式={4}, 低速={5}, 高速={6}</sys:String>
+    <sys:String x:Key="Goto_Log_FixedOffset">SubMove [{0}] 固定偏移 = {1}</sys:String>
+    <sys:String x:Key="Goto_Log_VariableOffset">SubMove [{0}] 偏移变量 '{1}' = {2}</sys:String>
+    <sys:String x:Key="Goto_Log_GotoMove">GOTO SubMove [{0}]: 工站={1}, 轴{2}({3}) -> 位置名'{4}'={5:F3}, 偏移{6:F3}, 目标位置={7:F3}, 速度{8}</sys:String>
+    <sys:String x:Key="Goto_Log_StationNotFound">SubMove 指定的工站 '{0}' 未找到，使用默认工站 '{1}'</sys:String>
+    <sys:String x:Key="Goto_Log_AxisIdUnresolved">SubMove [{0}] 无法解析轴ID，AxisId={1}, Axis={2}，使用原始值</sys:String>
+    <sys:String x:Key="Goto_Log_VariableNotFound">全局变量 '{0}' 未找到，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="Goto_Log_VariableParseFailed">全局变量 '{0}' 的值 '{1}' 无法解析为数值，偏移量按 0 处理</sys:String>
     <sys:String x:Key="PSE_TaskProperties">任务属性</sys:String>
     <sys:String x:Key="PSE_MethodProperties">方法属性</sys:String>
     <sys:String x:Key="PSE_ActionProperties">动作属性</sys:String>
@@ -3983,5 +4054,1253 @@
     <sys:String x:Key="TaskMonitor_Collapse">收起步骤</sys:String>
     <sys:String x:Key="TaskMonitor_NoStep">暂无步骤</sys:String>
     <sys:String x:Key="TaskMonitor_Layout">布局密度</sys:String>
+    <!-- 新增多语言资源键 (STB_Log_/MS_Log_/PSE_Log_Exec_/Disp_Log_/Cure_Log_/Pick_Log_/Rel_Log_/Scan3D_Log_/Vis_Log_/Script_Log_/Seek_Log_/Sig_Log_/Wait_Log_/If_Log_/Branch_Log_/DB_Log_/RM_/MSP_/DD_/ACD_/RCD_) -->
+    <sys:String x:Key="ACD_Log_EarlyGlueOff">[{0}] 提前关胶: 路径 {1:F2}mm, 插补 {2:F1}mm/s, 提前 {3}ms</sys:String>
+    <sys:String x:Key="ACD_Log_ShortPathGlueOff">[{0}] 路径较短，运动结束时关胶</sys:String>
+    <sys:String x:Key="ACD_Msg_InterpTimeout">{0} 连续插补运动超时</sys:String>
+    <sys:String x:Key="ACD_Msg_PathPointsEmpty">路径点为空</sys:String>
+    <sys:String x:Key="Branch_Log_ConditionHandledByExecutor">BRANCH 步骤 [{0}] 条件评估由 ProcessStepExecutor 处理</sys:String>
+    <sys:String x:Key="Cure_Log_AxisIdUnresolved">SubMove [{0}] 无法解析轴ID，AxisId={1}, Axis={2}</sys:String>
+    <sys:String x:Key="Cure_Log_HoldDelay">CURE 步骤 [{0}] SubMove [{1}] 固化延时: {2}ms</sys:String>
+    <sys:String x:Key="Cure_Log_HoldDelayCompleted">CURE 步骤 [{0}] SubMove [{1}] 固化延时完成</sys:String>
+    <sys:String x:Key="Cure_Log_LoadGlobalVarsFailed">加载全局变量失败: {0}，偏移变量名将无法解析</sys:String>
+    <sys:String x:Key="Cure_Log_NoCureDetail">CURE 步骤 [{0}] 没有 CureDetail，跳过执行</sys:String>
+    <sys:String x:Key="Cure_Log_StationNotFound">SubMove 指定的工站 '{0}' 未找到，使用默认工站 '{1}'</sys:String>
+    <sys:String x:Key="Cure_Log_SubMoveInfo">CURE SubMove [{0}]: 工站={1}, 轴{2}({3}) → '{4}'={5:F3}, 偏移{6:F3}, 目标位置={7:F3}, 速度{8}</sys:String>
+    <sys:String x:Key="Cure_Log_UnknownAction">CURE 步骤 [{0}] SubMove [{1}] 未知的动作类型: {2}, 跳过执行</sys:String>
+    <sys:String x:Key="Cure_Log_UvOff">CURE 步骤 [{0}] SubMove [{1}] 关闭UV灯，DO端口: {2}</sys:String>
+    <sys:String x:Key="Cure_Log_UvOn">CURE 步骤 [{0}] SubMove [{1}] 打开UV灯，DO端口: {2}</sys:String>
+    <sys:String x:Key="Cure_Log_VariableNotFound">全局变量 '{0}' 未找到，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="Cure_Log_VariableParseFailed">全局变量 '{0}' 的值 '{1}' 无法解析为数值，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="DB_Log_AutoJudgeNG">DASHBOARD 步骤 [{0}] 自动判定NG: {1}，输出结果=false，流程继续</sys:String>
+    <sys:String x:Key="DB_Log_AutoJudgeOK">DASHBOARD 步骤 [{0}] 自动判定OK，输出结果=true</sys:String>
+    <sys:String x:Key="DB_Log_DashboardData">DASHBOARD 步骤 [{0}] 看板数据: {1}</sys:String>
+    <sys:String x:Key="DB_Log_DataCalculated">DASHBOARD 步骤 [{0}] 数据已计算完成</sys:String>
+    <sys:String x:Key="DB_Log_FormulaEvalFailed">DASHBOARD 字段 [{0}] 公式求值失败: {1}</sys:String>
+    <sys:String x:Key="DB_Log_GlobalVarProviderFailed">[DashboardAction] 无法获取全局变量提供者: {0}</sys:String>
+    <sys:String x:Key="DB_Log_NoFields">DASHBOARD 步骤 [{0}] 未配置看板字段，跳过</sys:String>
+    <sys:String x:Key="DB_Log_UserConfirmNG">DASHBOARD 步骤 [{0}] 用户确认NG，输出结果=false，流程继续</sys:String>
+    <sys:String x:Key="DB_Log_UserConfirmOK">DASHBOARD 步骤 [{0}] 用户确认OK，输出结果=true</sys:String>
+    <sys:String x:Key="DD_Log_CadTransformUnavailable">[DispenseDetail] CAD 对齐变换不可用，无法查看旋转后坐标</sys:String>
+    <sys:String x:Key="DD_Log_CoordListBuilt">[DispenseDetail] 坐标对照列表构建完成，共 {0} 个点</sys:String>
+    <sys:String x:Key="DD_Log_DialogClosed">[DispenseDetail] 弹窗已关闭</sys:String>
+    <sys:String x:Key="DD_Log_ImportedSegments">[DispenseDetail] 导入 {0} 段（Step3 已勾选）</sys:String>
+    <sys:String x:Key="DD_Log_LoadGlobalVarsFailed">[DispenseDetail] 加载全局变量失败: {0}</sys:String>
+    <sys:String x:Key="DD_Log_NoCoordPoints">[DispenseDetail] 无可用的段坐标点，请先导入段</sys:String>
+    <sys:String x:Key="DD_Log_OpenRotatedCoordsDialogFailed">[DispenseDetail] 打开旋转后坐标弹窗失败</sys:String>
+    <sys:String x:Key="DD_Log_PreparingDialog">[DispenseDetail] 准备显示弹窗: title={0}, _baseDialogService={1}</sys:String>
+    <sys:String x:Key="DD_Log_RestoreCadSnapshotFailed">[DispenseDetail] 恢复 CAD 对齐变换快照失败: {0}</sys:String>
+    <sys:String x:Key="DD_Log_RefreshGlobalVarsFailed">[DispenseDetail] 刷新全局变量显示值失败: {0}</sys:String>
+    <sys:String x:Key="DD_Log_RotationAngleAndCenter">[DispenseDetail] 旋转角度={0:F3}°, 回转中心=({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="DD_Log_SegmentNotFoundOrNoPoints">[DispenseDetail] 段 {0} 未找到或无点数据</sys:String>
+    <sys:String x:Key="DD_Log_SourceAndRefCount">[DispenseDetail] 源段数={0}, SegmentRefs数={1}</sys:String>
+    <sys:String x:Key="DD_Log_ViewRotatedCoordsClicked">[DispenseDetail] ViewRotatedCoords 按钮已点击，开始构建坐标对照</sys:String>
+    <sys:String x:Key="DD_Msg_SourceDeleted">⚠ 来源已删除</sys:String>
+    <sys:String x:Key="Disp_Log_AffineMatrixNotFound">DISPENSE 步骤 [{0}] 未找到针头{1}仿射矩阵，回退使用点内 MachineX/MachineY</sys:String>
+    <sys:String x:Key="Disp_Log_AffineMatrixUsed">DISPENSE 步骤 [{0}] 使用针头{1}仿射矩阵实时换算坐标 (RMS={2:F4}mm)</sys:String>
+    <sys:String x:Key="Disp_Log_ArcGlueTriggerOn">DISPENSE 弧线: 段[{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="Disp_Log_ArcModeCompleted">DISPENSE 弧线模式完成</sys:String>
+    <sys:String x:Key="Disp_Log_ArcModeStart">DISPENSE 弧线模式开始</sys:String>
+    <sys:String x:Key="Disp_Log_ArcNoArcSegments">DISPENSE 弧线模式: 无已启用的圆弧类分段（请导入 Arc/Circle/Ellipse 或含弧段的多段线）</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentInterrupted">DISPENSE 弧线: 段 '{0}' 暂停时走胶中断，恢复后跳过该段</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentNotFound">DISPENSE 弧线: 源段 '{0}' 未找到，跳过</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentParams">DISPENSE 弧线: 段[{0}] ({1}/{2})，{3} 点，MoveSpeed={4:F1}, InterpSpeed={5:F1}, SafeHeight={6:F1}, EarlyCloseGlueDelay={7:F0}ms, PostDelay={8:F0}ms</sys:String>
+    <sys:String x:Key="Disp_Log_ArcSegmentStartCoords">DISPENSE 步骤 [{0}] 弧线: 段[{1}] 起始点原始坐标 CAD=({2:F4}, {3:F4}), X Comp(校准器)={4:F4}mm, Y Comp(校准器)={5:F4}mm, Z Comp(校准器)={6:F4}mm, Z Comp(3D Camera)={7:F4}mm, 最终起始点 XY=({8:F4}, {9:F4}), Z={10:F4}</sys:String>
+    <sys:String x:Key="Disp_Log_ArcZNotReached">DISPENSE 弧线: 段[{0}] Z轴未到位: 当前={1:F3}, 目标={2:F3}，重新下降</sys:String>
+    <sys:String x:Key="Disp_Log_AxisResolveFailed">DISPENSE 无法从全局轴配置解析轴 '{0}'</sys:String>
+    <sys:String x:Key="Disp_Log_CalibrationCompEnabled">DISPENSE 步骤 [{0}] 校准补偿已启用: X Comp(校准器)={1:F4}mm, Y Comp(校准器)={2:F4}mm, Z Comp(校准器)={3:F4}mm, Z Comp(3D Camera)={4:F4}mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotGlueTriggerOn">DISPENSE 步骤 [{0}] 单点: 段[{1}]点{2} 位置触发开胶，triggerZ={3:F3}, targetZ={4:F3}, offset={5:F3}mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotModeCompleted">DISPENSE 步骤 [{0}] 单点模式完成</sys:String>
+    <sys:String x:Key="Disp_Log_DotModeStart">DISPENSE 步骤 [{0}] 单点模式开始</sys:String>
+    <sys:String x:Key="Disp_Log_DotPointAbandonedAfterPause">DISPENSE 步骤 [{0}] 单点: 段[{1}]点{2} 暂停时已出胶，恢复后跳过该点</sys:String>
+    <sys:String x:Key="Disp_Log_DotPointDetail">DISPENSE 步骤 [{0}] 单点: 段[{1}] 点{2}/{3} [Id={4}] | 原始CAD=({5:F4}, {6:F4}, Z={7:F4}) | 变换来源={8}, 变换后=({9:F4}, {10:F4}) | 人工XY补偿=({11:F4}, {12:F4})mm | 针头偏移=({13:F4}, {14:F4})mm | 校准XY=({15:F4}, {16:F4})mm | 全局XY=({17:F4}, {18:F4})mm | 最终XY=({19:F4}, {20:F4}), Z={21:F4}mm</sys:String>
+    <sys:String x:Key="Disp_Log_DotSegmentNotFound">DISPENSE 步骤 [{0}] 单点: 源段 '{1}' 未找到，跳过</sys:String>
+    <sys:String x:Key="Disp_Log_DotSegmentProcessParams">DISPENSE 步骤 [{0}] 单点: 段[{1}] ({2}/{3})，共 {4} 点 | 参数来源={5}, UseDefaultParams={6} | 工艺参数: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, HeightComp(total)={18:F3}mm, EffectiveZ={19:F3}mm, DispensingPressure={20:F3}MPa, SuckBackTime={21:F0}ms, 人工XY补偿=({22:F4}, {23:F4})mm</sys:String>
+    <sys:String x:Key="Disp_Log_DryRunCompleted">DISPENSE 空跑完成</sys:String>
+    <sys:String x:Key="Disp_Log_DryRunSegmentNotFound">DISPENSE 空跑: 源段 '{0}' 未找到，跳过</sys:String>
+    <sys:String x:Key="Disp_Log_DryRunStart">DISPENSE 开始空跑</sys:String>
+    <sys:String x:Key="Disp_Log_NeedleAxisInfo">DISPENSE 步骤 [{0}] 使用针头{1}/{2}(逻辑轴ID={3}), Dx={4}, Dy={5}, 出胶IO={6}</sys:String>
+    <sys:String x:Key="Disp_Log_NeedleOffsetCompEnabled">DISPENSE 步骤 [{0}] 针头偏移补偿已启用: dX={1:F4}mm, dY={2:F4}mm</sys:String>
+    <sys:String x:Key="Disp_Log_NoDispenseDetail">DISPENSE 步骤 [{0}] 没有 DispenseDetail，跳过执行</sys:String>
+    <sys:String x:Key="Disp_Log_PausedGlueOff">DISPENSE {0} 暂停时已关胶，恢复后将跳过当前点/段</sys:String>
+    <sys:String x:Key="Disp_Log_PausedWaiting">DISPENSE {0} 已暂停，等待恢复后继续当前动作</sys:String>
+    <sys:String x:Key="Disp_Log_ResolveLinkedVarFailed">解析链接全局变量 '{0}' 失败: {1}</sys:String>
+    <sys:String x:Key="Disp_Log_RotationCompEnabled">DISPENSE 步骤 [{0}] 旋转补偿已启用: 旋转角度={1:F3}°, 回转中心=({2:F3}, {3:F3})</sys:String>
+    <sys:String x:Key="Disp_Log_RotationCompNoCadAlign">DISPENSE 步骤 [{0}] 旋转补偿已启用但 CAD 对齐变换不可用，回退使用原始坐标</sys:String>
+    <sys:String x:Key="Disp_Log_SourceSegmentCount">DISPENSE 步骤 [{0}] 源轨迹段 {1} 条</sys:String>
+    <sys:String x:Key="Disp_Log_StepCancelled">DISPENSE 步骤 [{0}] 已取消，已安全关胶</sys:String>
+    <sys:String x:Key="Disp_Log_StepException">DISPENSE 步骤 [{0}] 执行异常，已安全关胶</sys:String>
+    <sys:String x:Key="Disp_Log_UnknownDispenseMode">DISPENSE 步骤 [{0}] 未知点胶模式: {1}</sys:String>
+    <sys:String x:Key="Disp_Log_WriteGlueIoFailed">DISPENSE 写出胶IO失败 port={0} value={1}</sys:String>
+    <sys:String x:Key="Disp_Log_XyCompEnabled">DISPENSE 步骤 [{0}] XY补偿已启用: dX={1:F4}mm, dY={2:F4}mm</sys:String>
+    <sys:String x:Key="If_Log_ConditionHandledByExecutor">IF 步骤 [{0}] 条件评估由 ProcessStepExecutor 处理</sys:String>
+    <sys:String x:Key="MS_Log_ADChannelsLoaded">已加载 {0} 个 AD 通道配置</sys:String>
+    <sys:String x:Key="MS_Log_AxisPanelToggle">轴操作面板{0}，轮询间隔 {1}ms</sys:String>
+    <sys:String x:Key="MS_Log_CardBusError">卡 {0} EtherCAT 总线错误 (0x{1:X})，尝试软复位...</sys:String>
+    <sys:String x:Key="MS_Log_CardConfigLoadFailed">卡 {0} 加载配置 '{1}' 失败，错误码: {2}</sys:String>
+    <sys:String x:Key="MS_Log_CardConfigLoaded">卡 {0} 已加载配置 '{1}'</sys:String>
+    <sys:String x:Key="MS_Log_CardConfigPathEmpty">卡 {0} ConfigPath 为空且 hwcfg.xml 中未找到默认配置。跳过配置加载。</sys:String>
+    <sys:String x:Key="MS_Log_CardNotAvailable">卡号 {0} 不可用（可能缺少硬件）</sys:String>
+    <sys:String x:Key="MS_Log_CardResetFailed">卡 {0} 总线复位失败，状态: 0x{1:X}。跳过配置加载。</sys:String>
+    <sys:String x:Key="MS_Log_InterlockAbsMoveRejected">[安全互锁] 轴{0}绝对移动被拒绝 | 目标位置:{1:F3} | 原因:{2}</sys:String>
+    <sys:String x:Key="MS_Log_InterlockInterpMoveRejected">[安全互锁] 插补移动(坐标系{0})被拒绝 | 原因:{1}</sys:String>
+    <sys:String x:Key="MS_Log_InterlockRelMoveRejected">[安全互锁] 轴{0}相对移动被拒绝 | 目标位置:{1:F3} | 原因:{2}</sys:String>
+    <sys:String x:Key="MS_Log_JogStartFailed">JogStart 失败 | 逻辑轴:{0} 物理轴:{1} 返回值:{2}</sys:String>
+    <sys:String x:Key="MS_Log_NoHardwareCards">未找到硬件卡，添加虚拟卡用于模拟。</sys:String>
+    <sys:String x:Key="MS_Log_PanelClosed">关闭</sys:String>
+    <sys:String x:Key="MS_Log_PanelOpen">打开</sys:String>
+    <sys:String x:Key="MSP_Log_BuildSaveNodeFailed">构建工站保存节点失败: {0}，将仅保存位置数据</sys:String>
+    <sys:String x:Key="MSP_Log_LoadStationFailed">加载工站 '{0}' 位置数据失败: {1}</sys:String>
+    <sys:String x:Key="MSP_Log_PositionStaged">[{0}] 位置参数已暂存（由 Save Pool 触发）</sys:String>
+    <sys:String x:Key="MSP_Log_StageParamsFailed">暂存位置编辑器参数失败: {0}</sys:String>
+    <sys:String x:Key="MSP_Log_TeachReadPosFailed">Teach: 读取轴 {0}(ID={1}) 位置失败: {2}</sys:String>
+    <sys:String x:Key="MSP_Msg_NoStationSelected">未选择工站，无法保存。</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConfigDisabled">[Branch] 步骤 [{0}] BranchConfig 未启用，继续下一步</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionEmpty">[Branch] 条件[{0}] ConditionExpression为空，跳过 (Desc={1}, TargetSeq={2})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionEvalFailed">[Branch] 条件表达式评估失败: '{0}' - {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionMatched">[Branch] ✓ 条件匹配! 跳转到步骤 [{0}] ({1})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchConditionResult">[Branch] 条件 '{0}' = {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchEvalStart">[Branch] 步骤 [{0}] 开始评估条件分支, BranchConfig.IsEnabled={1}, 条件数={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchInvalidTargetSafetyWarn">[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={0} 不存在！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchInvalidTargetSeqSafetyWarn">[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={0} 无效！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchNoMatchDefault">[Branch] 无条件匹配，执行默认动作: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_BranchStart">[ProcessStepExecutor] 开始执行 BRANCH 步骤 [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckAlarmTriggered">CHECK步骤 [{0}] 已触发报警 CHECK_MAX_RETRIES</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckItemFailed">检查项 [{0}] 不通过: 值={1}, 范围=[{2}, {3}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckRetryExceededContinue">CHECK步骤 [{0}] 重试超限，继续执行下一步</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckRetryExceededStop">CHECK步骤 [{0}] 重试超限，终止执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckRetryExhausted">CHECK 步骤 [{0}] 重试{1}次仍未通过，执行 OnMaxExceeded={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_CheckStepResult">CHECK 步骤 [{0}] 第{1}次检查结果: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_DefaultActionContinue">[Branch] 默认动作: Continue → 继续下一步</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_DefaultActionSkipTo">[Branch] 默认动作: 跳转到步骤 [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_DefaultActionStop">[Branch] 默认动作: 终止序列执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ExecuteStepBegin">=== 执行步骤 [{0}] {1} ({2} → {3}) ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ExpressionEvalException">[Branch] 表达式评估异常: '{0}' - {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_GlobalVarNotFound">[Branch] 全局变量 '{0}' 不存在，跳过写入</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_GlobalVarsSaved">[Branch] 全局变量已保存</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfBranchExecute">[IF] 步骤 [{0}] 执行 {1} 分支，子步骤数={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfBranchNotFound">[IF] 步骤 [{0}] 未找到 {1} 分支，跳过执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfBranchOuterJump">[ProcessStepExecutor] IF 步骤 [{0}] 因子步骤 BRANCH 块外跳转，继续索引={1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfCompleted">[ProcessStepExecutor] IF 步骤 [{0}] 完成</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfConditionEmpty">[IF] 步骤 [{0}] 条件表达式为空，按 false 处理</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfConditionEvalException">[IF] 步骤 [{0}] 条件评估异常: {1}，按 false 处理</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfConditionResult">[IF] 步骤 [{0}] 条件 '{1}' = {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfDetailNull">[IF] 步骤 [{0}] IfDetail 为 null，跳过执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfLoadGlobalVarsFailed">[IF] 加载全局变量失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfStart">[ProcessStepExecutor] 开始执行 IF 步骤 [{0}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchConditionEvalFailed">[IF-Sub] BRANCH 条件评估失败: '{0}' - {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchConditionMatched">[IF-Sub] BRANCH 条件匹配，块外跳转到步骤 Seq={0} ({1})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchConditionResult">[IF-Sub] BRANCH 条件 '{0}' = {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchDefaultContinue">[IF-Sub] BRANCH 步骤 [{0}] 默认 Continue，继续块内下一步</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchDefaultSkipTo">[IF-Sub] BRANCH 默认动作 SkipTo 步骤 Seq={0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchDefaultStop">[IF-Sub] BRANCH 默认动作 Stop，终止序列</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubBranchOuterJump">[IF-Sub] BRANCH 步骤 [{0}] 块外跳转，目标索引={1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubSkipDisabledStep">[IF-Sub] 跳过禁用步骤: [{0}] {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubStepBegin">[IF-Sub] === 执行子步骤 [{0}] {1} ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_IfSubStepException">[IF-Sub] 子步骤 [{0}] {1} 执行异常: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_JumpTargetNotFoundSafetyWarn">[Branch] ⚠️ 安全警告: 跳转目标步骤 Seq={0} 在当前序列中不存在！可能已被删除或序号错误。为避免设备碰撞风险，已自动终止序列。</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_JumpTargetResolved">[Branch] 成功解析跳转目标: Seq={0} → Index={1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_JumpToStep">跳转到步骤 Seq={0} (索引={1})</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_LoadGlobalVarsFailed">[Branch] 加载全局变量失败: {0}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_NoRegisteredAction">步骤 [{0}] 类型 {1} 没有注册的 Action，跳过</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_NoRegisteredActionStandalone">步骤 [{0}] 类型 {1} 没有注册的 Action，无法单独执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_OutputTypeMismatch">[Branch] 类型不匹配: 输出参数 '{0}' 类型={1}, 全局变量 '{2}' 类型={3}，跳过写入</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_OutputWrittenToGlobalVar">[Branch] 输出参数写入全局变量: {0}={1} → {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ProcessSequenceCompleted">=== 工艺步骤序列执行完成 ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_ProcessStepListEmpty">工艺步骤列表为空，跳过执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskCompleted">[ProcessStepExecutor] RUNTASK 步骤 [{0}] 完成</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskNoExecutor">[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未注入 IRunTaskExecutor，跳过</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskNoTarget">[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未配置目标任务，跳过</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskNotStandalone">步骤 [{0}] RUNTASK 类型不支持单独执行，请在任务序列中运行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_RunTaskStart">[ProcessStepExecutor] 开始执行 RUNTASK 步骤 [{0}], 目标任务: {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_SkipDisabledStep">[ProcessStepExecutor] 跳过禁用步骤: [{0}] {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StandaloneStepBegin">=== 单独执行步骤 [{0}] {1} ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StandaloneStepCompleted">=== 单独执行步骤 [{0}] {1} 完成 ===</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepCanceledException">[ProcessStepExecutor] 步骤 [{0}] {1} 捕获 OperationCanceledException, LastFaultStepName: {2}, IsEnabled: {3}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepCaughtException">[ProcessStepExecutor] 步骤 [{0}] {1} 捕获 Exception: {2}, IsEnabled: {3}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepCompleted">[ProcessStepExecutor] 步骤 [{0}] {1} 完成, LastFaultStepName: {2}, IsEnabled: {3}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepErrorEvent">[ProcessStepExecutor] 步骤错误事件: [{0}] {1} ErrorCode={2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepExecutionException">[ProcessSequence] 步骤 [{0}] {1} 执行异常: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepFaultedEventTriggered">[ProcessStepExecutor] 事件触发: 步骤 [{0}] {1} 立即设置 HasActiveAlarm = true</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepModeReceivedNextConfirm">[ProcessStepExecutor] 单步模式收到下一步确认</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepModeWaitNextConfirm">[ProcessStepExecutor] 单步模式等待下一步确认 (下一步骤 [{0}])</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSeqNotFound">未找到 Seq={0} 的步骤，继续顺序执行</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSetAlarmCanceledPath">[ProcessStepExecutor] 步骤 [{0}] {1} 设置 HasActiveAlarm = true (OperationCanceledException 路径)</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSetAlarmExceptionPath">[ProcessStepExecutor] 步骤 [{0}] {1} 设置 HasActiveAlarm = true (Exception 路径)</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepSetAlarmLastFaultMatch">[ProcessStepExecutor] 步骤 [{0}] {1} 设置 HasActiveAlarm = true (LastFaultStepName 匹配路径)</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepStart">[ProcessStepExecutor] 开始执行步骤 [{0}] {1}, stepLabel: {2}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_StepTypeNotImplemented">步骤类型 {0} 尚未实现执行器，跳过步骤 [{1}]</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_VariablePoolAdd">[Branch] 变量池 += {0} = {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_VariablePoolSummary">[Branch] 变量池共 {0} 项: {1}</sys:String>
+    <sys:String x:Key="PSE_Log_Exec_WriteGlobalVarsFailed">[Branch] 写入全局变量失败: {0}</sys:String>
+    <sys:String x:Key="Pick_Log_AxisIdUnresolved">SubMove [{0}] 无法解析轴ID，AxisId={1}, Axis={2}</sys:String>
+    <sys:String x:Key="Pick_Log_ClampDone">PICK 步骤 [{0}] SubMove [{1}] 夹紧完成</sys:String>
+    <sys:String x:Key="Pick_Log_ClampStart">PICK 步骤 [{0}] SubMove [{1}] 执行夹紧动作, 目标位置: {2}, 速度: {3}%</sys:String>
+    <sys:String x:Key="Pick_Log_HoldDone">PICK 步骤 [{0}] SubMove [{1}] 延时完成</sys:String>
+    <sys:String x:Key="Pick_Log_HoldStart">PICK 步骤 [{0}] SubMove [{1}] 执行延时等待: {2}ms</sys:String>
+    <sys:String x:Key="Pick_Log_LoadGlobalVarsFailed">加载全局变量失败: {0}，偏移变量名将无法解析</sys:String>
+    <sys:String x:Key="Pick_Log_NoPickDetail">PICK 步骤 [{0}] 没有 PickDetail，跳过执行</sys:String>
+    <sys:String x:Key="Pick_Log_PickMove">PICK SubMove [{0}]: 工站={1}, 轴{2}({3}) → '{4}'={5:F3}, 偏移{6:F3}, 目标位置={7:F3}, 速度{8}</sys:String>
+    <sys:String x:Key="Pick_Log_ReleaseDone">PICK 步骤 [{0}] SubMove [{1}] 释放完成</sys:String>
+    <sys:String x:Key="Pick_Log_ReleaseStart">PICK 步骤 [{0}] SubMove [{1}] 执行释放动作, 目标位置: {2}, 速度: {3}%</sys:String>
+    <sys:String x:Key="Pick_Log_StationNotFound">SubMove 指定的工站 '{0}' 未找到，使用默认工站 '{1}'</sys:String>
+    <sys:String x:Key="Pick_Log_UnknownAction">PICK 步骤 [{0}] SubMove [{1}] 未知的动作类型: {2}, 跳过执行</sys:String>
+    <sys:String x:Key="Pick_Log_VacuumOff">PICK 步骤 [{0}] SubMove [{1}] 关真空</sys:String>
+    <sys:String x:Key="Pick_Log_VacuumOn">PICK 步骤 [{0}] SubMove [{1}] 开真空</sys:String>
+    <sys:String x:Key="Pick_Log_VariableNotFound">全局变量 '{0}' 未找到，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="Pick_Log_VariableParseFailed">全局变量 '{0}' 的值 '{1}' 无法解析为数值，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="RCD_Title_ConfirmOperation">确认操作</sys:String>
+    <sys:String x:Key="Rel_Log_AxisIdUnresolved">SubMove [{0}] 无法解析轴ID，AxisId={1}, Axis={2}</sys:String>
+    <sys:String x:Key="Rel_Log_ClampDone">RELEASE 步骤 [{0}] SubMove [{1}] 夹紧完成</sys:String>
+    <sys:String x:Key="Rel_Log_ClampStart">RELEASE 步骤 [{0}] SubMove [{1}] 执行夹紧动作, 目标位置: {2}, 速度: {3}%</sys:String>
+    <sys:String x:Key="Rel_Log_HoldDone">RELEASE 步骤 [{0}] SubMove [{1}] 延时完成</sys:String>
+    <sys:String x:Key="Rel_Log_HoldStart">RELEASE 步骤 [{0}] SubMove [{1}] 执行延时等待: {2}ms</sys:String>
+    <sys:String x:Key="Rel_Log_LoadGlobalVarsFailed">加载全局变量失败: {0}，偏移变量名将无法解析</sys:String>
+    <sys:String x:Key="Rel_Log_NoReleaseDetail">RELEASE 步骤 [{0}] 没有 ReleaseDetail，跳过执行</sys:String>
+    <sys:String x:Key="Rel_Log_ReleaseDone">RELEASE 步骤 [{0}] SubMove [{1}] 释放完成</sys:String>
+    <sys:String x:Key="Rel_Log_ReleaseMove">RELEASE SubMove [{0}]: 工站={1}, 轴{2}({3}) → '{4}'={5:F3}, 偏移{6:F3}, 目标位置={7:F3}, 速度{8}</sys:String>
+    <sys:String x:Key="Rel_Log_ReleaseStart">RELEASE 步骤 [{0}] SubMove [{1}] 执行释放动作, 目标位置: {2}, 速度: {3}%</sys:String>
+    <sys:String x:Key="Rel_Log_StationNotFound">SubMove 指定的工站 '{0}' 未找到，使用默认工站 '{1}'</sys:String>
+    <sys:String x:Key="Rel_Log_UnknownAction">RELEASE 步骤 [{0}] SubMove [{1}] 未知的动作类型: {2}, 跳过执行</sys:String>
+    <sys:String x:Key="Rel_Log_VacuumOff">RELEASE 步骤 [{0}] SubMove [{1}] 关真空</sys:String>
+    <sys:String x:Key="Rel_Log_VacuumOn">RELEASE 步骤 [{0}] SubMove [{1}] 开真空</sys:String>
+    <sys:String x:Key="Rel_Log_VariableNotFound">全局变量 '{0}' 未找到，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="Rel_Log_VariableParseFailed">全局变量 '{0}' 的值 '{1}' 无法解析为数值，偏移量按 0 处理</sys:String>
+    <sys:String x:Key="RM_Log_CopyRecipePoolFail">复制配方池失败</sys:String>
+    <sys:String x:Key="RM_Log_CreateRecipeFail">创建配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Log_DeleteRecipeFail">删除配方失败</sys:String>
+    <sys:String x:Key="RM_Log_EditRecipeFail">编辑配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Log_LoadPoolRecipesFail">加载池 '{0}' 的配方失败: {1}</sys:String>
+    <sys:String x:Key="RM_Log_LoadRecipePoolsFail">加载配方池失败</sys:String>
+    <sys:String x:Key="RM_Log_LoadRecipesFail">加载配方失败</sys:String>
+    <sys:String x:Key="RM_Log_LoadStationParamsFail">加载工站参数失败: {0}</sys:String>
+    <sys:String x:Key="RM_Log_OpenStationEditorFail">打开工站参数编辑器失败: {0}</sys:String>
+    <sys:String x:Key="RM_Log_RecipeCreated">新配方已创建: {0}</sys:String>
+    <sys:String x:Key="RM_Log_RecipeDeleted">配方 '{0}' 已删除</sys:String>
+    <sys:String x:Key="RM_Log_RecipeParamsManualSaved">配方 '{0}' 的参数已手动保存</sys:String>
+    <sys:String x:Key="RM_Log_RecipePoolAndGlobalsSaved">配方池 '{0}' 及全局变量已保存</sys:String>
+    <sys:String x:Key="RM_Log_RecipeUpdated">配方已更新: {0} -> {1}</sys:String>
+    <sys:String x:Key="RM_Log_SaveFail">保存失败</sys:String>
+    <sys:String x:Key="RM_Log_SaveRecipeParamsFail">保存配方参数失败</sys:String>
+    <sys:String x:Key="RM_Log_SaveRecipePoolFail">保存配方池 '{0}' 失败</sys:String>
+    <sys:String x:Key="RM_Log_StartSaveRecipePool">开始保存配方池 '{0}'</sys:String>
+    <sys:String x:Key="RM_Log_StationParamsSaveFail">工站 '{0}' 参数保存到配方文件失败: {1}</sys:String>
+    <sys:String x:Key="RM_Log_StationParamsSynced">工站 '{0}' 参数已同步保存到配方文件</sys:String>
+    <sys:String x:Key="RM_Log_SwitchRecipeFail">切换配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Log_SwitchRecipePoolFail">切换配方池失败</sys:String>
+    <sys:String x:Key="RM_Msg_CannotDelete">无法删除</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmDeleteRecipe">确定要删除配方 '{0}' 吗？此操作不可恢复。</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmDeleteRecipePool">确定要删除配方池 '{0}' 及其所有配方吗？此操作不可恢复。</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipeMsg">确定要切换到配方 '{0}' 吗？\n所有工站将统一切换到该配方。</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipePoolMsg">确定要切换到配方池 '{0}' 吗？\n当前系统将加载该配方池的配方数据。</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipePoolTitle">确认切换配方池</sys:String>
+    <sys:String x:Key="RM_Msg_ConfirmSwitchRecipeTitle">确认切换配方</sys:String>
+    <sys:String x:Key="RM_Msg_CopyRecipePoolFail">复制配方池失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_CreateNewRecipe">创建新配方</sys:String>
+    <sys:String x:Key="RM_Msg_CreateRecipeFail">创建配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_DeleteRecipeFail">删除配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_DeleteRecipePoolTitle">删除配方池</sys:String>
+    <sys:String x:Key="RM_Msg_DeleteRecipeTitle">删除配方</sys:String>
+    <sys:String x:Key="RM_Msg_EditRecipe">编辑配方</sys:String>
+    <sys:String x:Key="RM_Msg_EditRecipeFail">编辑配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_EditRecipePool">编辑配方池</sys:String>
+    <sys:String x:Key="RM_Msg_LoadingRecipes">正在加载配方池 '{0}' 的配方...</sys:String>
+    <sys:String x:Key="RM_Msg_LoadRecipesFail">加载配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_NewRecipePoolTitle">新建配方池（复制当前池）</sys:String>
+    <sys:String x:Key="RM_Msg_Prompt">提示</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeCreated">已创建配方: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeDeleted">已删除配方: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeInUse">配方 '{0}' 正在使用中，无法删除。请先切换到其他配方。</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeNotExist">配方 '{0}' 不存在</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeNotExistInPool">配方 '{0}' 不存在于当前池中</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeNotExistShort">配方不存在</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeParamsSaved">配方 '{0}' 的参数已保存</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolAndGlobalsSaved">配方池 '{0}' 及全局变量已保存</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolCopied">已复制配方池 '{0}' 为 '{1}'</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolInUse">配方池 '{0}' 当前正在使用中，无法删除。</sys:String>
+    <sys:String x:Key="RM_Msg_RecipePoolUpdated">配方池 '{0}' 已更新</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeSelected">已选择配方: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipeUpdated">配方已更新: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_RecipesLoaded">已加载 {0} 个配方</sys:String>
+    <sys:String x:Key="RM_Msg_SaveFailShort">保存失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SaveRecipeParamsFail">保存配方 '{0}' 的参数失败</sys:String>
+    <sys:String x:Key="RM_Msg_SaveRecipeParamsFailShort">保存配方参数失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SelectPoolAndRecipeFirst">请先选择配方池和配方</sys:String>
+    <sys:String x:Key="RM_Msg_SelectPoolAsSourceFirst">请先选择一个配方池作为复制源</sys:String>
+    <sys:String x:Key="RM_Msg_SelectPoolFirst">请先选择一个配方池</sys:String>
+    <sys:String x:Key="RM_Msg_SelectRecipeFirst">请先选择一个配方</sys:String>
+    <sys:String x:Key="RM_Msg_StationNotSupportEdit">工站 '{0}' 暂不支持参数编辑</sys:String>
+    <sys:String x:Key="RM_Msg_StationParamEditTitle">{0} - 参数编辑</sys:String>
+    <sys:String x:Key="RM_Msg_StationParamsLoaded">已加载 {0} 个工站的参数</sys:String>
+    <sys:String x:Key="RM_Msg_SavingRecipeParams">正在保存配方 '{0}' 的参数...</sys:String>
+    <sys:String x:Key="RM_Msg_SavingRecipePool">正在保存配方池 '{0}'...</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchRecipeFail">切换配方失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchRecipePoolFail">切换配方池失败: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchRecipePoolTitle">切换配方池</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchedRecipePool">已切换到配方池 '{0}'</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchingRecipe">正在切换到配方: {0}</sys:String>
+    <sys:String x:Key="RM_Msg_SwitchingRecipePool">正在切换到配方池 '{0}'...</sys:String>
+    <sys:String x:Key="RM_Msg_UserCancelSwitchRecipe">用户取消切换配方</sys:String>
+    <sys:String x:Key="RM_Msg_UserCancelSwitchRecipePool">用户取消切换配方池</sys:String>
+    <sys:String x:Key="Scan3D_Log_GlobalVarsSaved">SCAN 全局变量已保存</sys:String>
+    <sys:String x:Key="Scan3D_Log_IOAutoReset">IO[{0}] 已自动复位（延时{1}ms）</sys:String>
+    <sys:String x:Key="Scan3D_Log_IOAutoResetFailed">IO[{0}] 自动复位失败: {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapDeviation">SCAN 映射: {0}({1:F3}-{2:F3})={3:F3} → '{4}'(偏差)</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapOriginal">SCAN 映射: {0}={1:F3} → '{2}'(原始值)</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapSkipNoCompVar">SCAN 映射跳过: 偏差全局变量 '{0}' 不存在</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapSkipNoKey">SCAN 映射跳过: 解析结果中不存在键 '{0}'</sys:String>
+    <sys:String x:Key="Scan3D_Log_MapSkipNoVar">SCAN 映射跳过: 全局变量 '{0}' 不存在</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoDataReceived">SCAN [{0}] 未收到3D相机数据</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoScanDetail">SCAN 步骤 [{0}] 没有 ScanDetail 配置，跳过执行</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoTCPIPMode">SCAN 通讯方式未配置或非TCPIP模式，仅执行移动</sys:String>
+    <sys:String x:Key="Scan3D_Log_NoVariableMapping">SCAN 未配置变量映射，跳过全局变量写入</sys:String>
+    <sys:String x:Key="Scan3D_Log_ParseFailed">SCAN 数据解析失败: {0}</sys:String>
+    <sys:String x:Key="Scan3D_Log_ParseResult">SCAN [{0}] 解析结果: {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_RealtimeTCPData">SCAN 实时收到TCP数据: {0}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step1_ZUp">SCAN [{0}] 步骤1: Z轴抬升至 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step2_YStart">SCAN [{0}] 步骤2: Y轴移动至 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step3_XStart">SCAN [{0}] 步骤3: X轴移动至 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step4_ZDown">SCAN [{0}] 步骤4: Z轴下降至 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step5_TriggerIO">SCAN [{0}] 步骤5: 触发IO[{1}]拍照信号，复位延时{2}ms</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step6_XMoveRecv">SCAN [{0}] 步骤6: X轴移动至 {1}，同时接收TCP数据</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step7_ZSafe">SCAN [{0}] 步骤7: Z轴抬升至 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step8_XStandby">SCAN [{0}] 步骤8: X轴返回 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_Step9_YStandby">SCAN [{0}] 步骤9: Y轴返回 {1}</sys:String>
+    <sys:String x:Key="Scan3D_Log_TCPDataProcessFailed">SCAN TCP数据处理失败: {0}</sys:String>
+    <sys:String x:Key="Scan3D_Log_TCPTimeout">SCAN 等待TCP数据超时（{0}ms）</sys:String>
+    <sys:String x:Key="Script_Log_CompileFailed">SCRIPT 脚本编译失败: {0}</sys:String>
+    <sys:String x:Key="Script_Log_CompileSuccess">SCRIPT 脚本编译并绑定成功</sys:String>
+    <sys:String x:Key="Script_Log_CompletedNoOutput">SCRIPT 步骤 [{0}] 执行完成，无输出</sys:String>
+    <sys:String x:Key="Script_Log_CompletedWithOutput">SCRIPT 步骤 [{0}] 执行完成，输出 {1} 个参数</sys:String>
+    <sys:String x:Key="Script_Log_GlobalVarUpdated">SCRIPT 步骤 [{0}] 全局变量 [{1}] = {2}</sys:String>
+    <sys:String x:Key="Script_Log_NoScriptCode">SCRIPT 步骤 [{0}] 无脚本代码，跳过</sys:String>
+    <sys:String x:Key="Script_Log_OutputNoMatch">SCRIPT 步骤 [{0}] 输出参数 [{1}] 未匹配到全局变量，跳过回写</sys:String>
+    <sys:String x:Key="Script_Log_StartExecute">SCRIPT 步骤 [{0}] 开始执行，全局变量数: {1}，步骤输出数: {2}</sys:String>
+    <sys:String x:Key="Seek_Log_ChannelOutOfRange">SEEK 步骤 [{0}] 通道 {1} 超出有效范围(0-7)，跳过</sys:String>
+    <sys:String x:Key="Seek_Log_ChannelReadFailed">SEEK 步骤 [{0}] 通道 {1} 读取失败: {2}，跳过</sys:String>
+    <sys:String x:Key="Seek_Log_ForceOutOfRange">SEEK 步骤 [{0}] 通道 {1} 力值超限: {2:F3}N, 范围=[{3}, {4}]</sys:String>
+    <sys:String x:Key="Seek_Log_ForceValue">SEEK 步骤 [{0}] 通道 {1}: 力值={2:F3}N</sys:String>
+    <sys:String x:Key="Seek_Log_GlobalVarUpdated">SEEK 步骤 [{0}] 全局变量 [{1}] = {2:F3}</sys:String>
+    <sys:String x:Key="Seek_Log_GlobalVarsSaved">SEEK 步骤 [{0}] 全局变量已保存</sys:String>
+    <sys:String x:Key="Seek_Log_NoChannelConfig">SEEK 步骤 [{0}] 无通道配置，跳过</sys:String>
+    <sys:String x:Key="Sig_Log_Send_NoSignalName">[SignalSend] 步骤 [{0}] 未配置信号名称，跳过发送</sys:String>
+    <sys:String x:Key="Sig_Log_Send_SignalSent">[SignalSend] 步骤 [{0}] 已发送信号: {1}</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_Infinite">无限</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_NoSignalName">[SignalWait] 步骤 [{0}] 未配置信号名称，跳过等待</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_SignalReceived">[SignalWait] 步骤 [{0}] 收到信号: {1}，已自动复位（消费）</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_StartWait">[SignalWait] 步骤 [{0}] 开始等待信号: {1}, 超时: {2}</sys:String>
+    <sys:String x:Key="Sig_Log_Wait_TimeoutError">[SignalWait] 步骤 [{0}] {1}</sys:String>
+    <sys:String x:Key="STB_Log_AxesDiscovered">[{0}] 从硬件配置发现 {1} 个轴: {2}</sys:String>
+    <sys:String x:Key="STB_Log_AxisConfigByNameNotFound">未找到名称为 '{0}' 的轴配置</sys:String>
+    <sys:String x:Key="STB_Log_AxisConfigNotFound">[{0}] 未找到轴 '{1}' 的配置</sys:String>
+    <sys:String x:Key="STB_Log_AxisNameNotFound">未找到轴 {0} 的名称配置，将使用 ID 作为配方 Key。</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceCancelled">[{0}] 自定义序列已取消</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceCompleted">[{0}] 自定义序列完成</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceError">[{0}] 自定义序列执行错误: {1}</sys:String>
+    <sys:String x:Key="STB_Log_CustomSequenceStarted">[{0}] 自定义序列启动</sys:String>
+    <sys:String x:Key="STB_Log_DIPortNotFound">[{0}] 未找到 DI 端口配置 '{1}'</sys:String>
+    <sys:String x:Key="STB_Log_DOPortNotFound">[{0}] 未找到 DO 端口配置 '{1}'</sys:String>
+    <sys:String x:Key="STB_Log_ExecutingStep">[{0}] 执行步骤: {1}</sys:String>
+    <sys:String x:Key="STB_Log_FatalStepCrash">致命故障，任务 [{0}] 在 [{1}] 步骤崩溃。内部异常: {2}</sys:String>
+    <sys:String x:Key="STB_Log_LastFaultStepSet">[StationTaskBase] LastFaultStepName 设置为: {0}, alarmConfig.IsEnabled: {1}</sys:String>
+    <sys:String x:Key="STB_Log_ManualOpFaultPropagated">步骤 [{0}] 手动操作故障，异常向上传播至 ViewModel 处理</sys:String>
+    <sys:String x:Key="STB_Log_OperatorStopTask">步骤 [{0}] 操作员选择停止任务</sys:String>
+    <sys:String x:Key="STB_Log_RecoverableFault">步骤 [{0}] 发生可恢复故障。原因: {1} | 建议: {2}</sys:String>
+    <sys:String x:Key="STB_Log_ResumedRetryStep">步骤 [{0}] 已恢复运行，将重新执行当前步骤...</sys:String>
+    <sys:String x:Key="STB_Log_SingleStepWait">[{0}] 单步等待: {1}</sys:String>
+    <sys:String x:Key="STB_Log_StepCompleted">[{0}] 完成步骤: {1} (耗时: {2}ms)</sys:String>
+    <sys:String x:Key="STB_Log_StepFatalError">[{0}] 步骤 [{1}] 致命异常: {2}</sys:String>
+    <sys:String x:Key="STB_Log_StepInterruptedByPause">步骤 [{0}] 因暂停中断，等待恢复后重试</sys:String>
+    <sys:String x:Key="STB_Log_StationTypeNotFound">[{0}] 未在硬件配置中找到工站类型 '{1}'</sys:String>
+    <sys:String x:Key="STB_Log_TaskNotResumedCancelStep">步骤 [{0}] 任务未恢复运行，取消当前步骤</sys:String>
+    <sys:String x:Key="STB_Log_WaitingNextStep">[{0}] waiting for next step...</sys:String>
+    <sys:String x:Key="Vis_Log_AllRetriesTimeout">VISION 步骤 [{0}] 已重试{1}次，均超时</sys:String>
+    <sys:String x:Key="Vis_Log_EmptyData">VISION 收到空数据，无法解析</sys:String>
+    <sys:String x:Key="Vis_Log_GlobalVarsSaved">VISION 全局变量已保存</sys:String>
+    <sys:String x:Key="Vis_Log_MapApplied">VISION 映射: {0}={1:F3} → 全局变量 '{2}'</sys:String>
+    <sys:String x:Key="Vis_Log_MapSkipNoKey">VISION 映射跳过: 解析结果中不存在键 '{0}'</sys:String>
+    <sys:String x:Key="Vis_Log_MapSkipNoVar">VISION 映射跳过: 全局变量 '{0}' 不存在</sys:String>
+    <sys:String x:Key="Vis_Log_NoTCPIPMode">VISION 步骤 [{0}] 通讯方式未配置或非TCPIP模式</sys:String>
+    <sys:String x:Key="Vis_Log_NoTriggerCmd">VISION 步骤 [{0}] 未配置触发命令</sys:String>
+    <sys:String x:Key="Vis_Log_NoVariableMapping">VISION 未配置变量映射，跳过全局变量写入</sys:String>
+    <sys:String x:Key="Vis_Log_NoVisionDetail">VISION 步骤 [{0}] 没有 VisionDetail 配置，跳过执行</sys:String>
+    <sys:String x:Key="Vis_Log_ParseFailed">VISION 数据解析失败: {0}</sys:String>
+    <sys:String x:Key="Vis_Log_ParseResult">VISION 步骤 [{0}] 解析结果: {1}</sys:String>
+    <sys:String x:Key="Vis_Log_ReceivedResponse">VISION 步骤 [{0}] 收到响应: {1}</sys:String>
+    <sys:String x:Key="Vis_Log_ResponseTimeout">VISION 步骤 [{0}] 第{1}次等待响应超时（{2}ms）: {3}</sys:String>
+    <sys:String x:Key="Vis_Log_RetrySend">VISION 步骤 [{0}] 将重新发送拍照命令并等待返回信号...</sys:String>
+    <sys:String x:Key="Vis_Log_SendCmdFailed">VISION 步骤 [{0}] 发送命令失败: {1}</sys:String>
+    <sys:String x:Key="Vis_Log_SendTrigger">VISION 步骤 [{0}] 发送触发命令（第{1}次）: '{2}' → {3}, 超时={4}ms</sys:String>
+    <sys:String x:Key="Wait_Log_DelayCompleted">WAIT 步骤 [{0}] 延时完成: {1} ms</sys:String>
+    <sys:String x:Key="Wait_Log_StartDelay">WAIT 步骤 [{0}] 开始延时: {1} ms</sys:String>
+    <!-- RecipeService 日志键 -->
+    <sys:String x:Key="RS_Log_InitCurrentRecipeStart">[{0}] 正在从当前配方池 '{1}' 初始化当前配方...</sys:String>
+    <sys:String x:Key="RS_Log_PoolNotExistUseDefault">[{0}] 配方池 '{1}' 不存在，使用默认配方</sys:String>
+    <sys:String x:Key="RS_Log_NoValidCurrentRecipe">[{0}] 没有有效的当前配方记录，使用默认配方</sys:String>
+    <sys:String x:Key="RS_Log_LoadedLastRecipe">[{0}] 从配方池 '{1}' 成功加载上次选择的配方: {2}</sys:String>
+    <sys:String x:Key="RS_Log_InitCurrentRecipeFailed">[{0}] 从配方池 '{1}' 初始化当前配方失败: {2}</sys:String>
+    <sys:String x:Key="RS_Log_OpenEditWindow">[{0}] 打开参数编辑窗口，当前配方: {1}</sys:String>
+    <sys:String x:Key="RS_Log_OpenEditWindowFailed">[{0}] 打开参数编辑窗口失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParametersSavedAndApplied">[{0}] 参数已保存并应用</sys:String>
+    <sys:String x:Key="RS_Log_SaveCallbackFailed">[{0}] 参数保存回调处理失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_LoadedStationParamsFromRecipe">[{0}] 从配方 '{1}' (池: {2}) 加载了工站参数</sys:String>
+    <sys:String x:Key="RS_Log_LoadedParamsFromFile">[{0}] 从文件加载了配方 '{1}' 的参数</sys:String>
+    <sys:String x:Key="RS_Log_LoadParamsFromRecipeFailed">[{0}] 从配方 '{1}' 加载参数失败: {2}</sys:String>
+    <sys:String x:Key="RS_Log_GetRecipeParamsFailed">[{0}] 获取配方参数失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_SavingRecipeToPool">[{0}] 正在将当前配方 '{1}' 保存到配方池 {2}</sys:String>
+    <sys:String x:Key="RS_Log_RecipeSavedToPoolTopLevel">[{0}] 当前配方 '{1}' 已保存到配方池{2}顶层属性</sys:String>
+    <sys:String x:Key="RS_Log_SaveRecipeToPoolFailed">[{0}] 保存当前配方到配方池{1}失败: {2}</sys:String>
+    <sys:String x:Key="RS_Log_SaveParamsToSystemFailed">[{0}] 保存参数到配方系统失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParamsSavedToLocalFile">[{0}] 参数已保存到本地文件: {1}</sys:String>
+    <sys:String x:Key="RS_Log_SaveParamsToLocalFileFailed">[{0}] 保存参数到本地文件失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParametersNullCannotSave">[{0}] 参数为空，无法保存</sys:String>
+    <sys:String x:Key="RS_Log_StartSaveParamsToRecipeCurrent">[{0}] 开始保存参数到配方: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParamsSavedToRecipeCurrent">[{0}] 参数已保存到配方 '{1}'</sys:String>
+    <sys:String x:Key="RS_Log_SaveParamsToRecipeFailed">[{0}] 保存参数到配方失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_StartSaveParamsToRecipe">[{0}] 开始保存参数到配方: {1}</sys:String>
+    <sys:String x:Key="RS_Log_ParamsSavedToRecipe">[{0}] 参数已保存到配方 '{1}'</sys:String>
+    <sys:String x:Key="RS_Log_LoadedParamsFromLocalFile">[{0}] 从本地文件加载了配方 '{1}' 的参数</sys:String>
+    <sys:String x:Key="RS_Log_LoadedParamsFromDefaultFile">[{0}] 从默认文件加载了参数</sys:String>
+    <sys:String x:Key="RS_Log_LoadParamsFromFileFailed">[{0}] 从文件加载参数失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_GetCurrentRecipeNameFromPoolFailed">[{0}] 从默认配方池获取当前配方名称失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_GetCurrentRecipeInfoFailed">[{0}] 获取当前配方信息失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_StartManualSwitchRecipe">[{0}] 开始手动切换配方</sys:String>
+    <sys:String x:Key="RS_Log_UserCancelledSwitch">[{0}] 用户取消配方切换</sys:String>
+    <sys:String x:Key="RS_Log_UserCancelledSwitchConfirm">[{0}] 用户取消配方切换确认</sys:String>
+    <sys:String x:Key="RS_Log_ManualSwitchCompleted">[{0}] 手动切换配方完成: {1} -> {2}</sys:String>
+    <sys:String x:Key="RS_Log_ManualSwitchFailed">[{0}] 手动切换配方失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_StartSwitchToRecipe">[{0}] 开始切换到配方: {1} (池: {2})</sys:String>
+    <sys:String x:Key="RS_Log_SwitchToRecipeSuccess">[{0}] 成功切换到配方: {1} (池: {2})</sys:String>
+    <sys:String x:Key="RS_Log_SwitchRecipeFailed">[{0}] 切换配方失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_BackupFileCreated">已备份参数文件: {0}</sys:String>
+    <sys:String x:Key="RS_Log_BackupFileFailed">备份参数文件失败: {0}</sys:String>
+    <sys:String x:Key="RS_Log_LoadingDefaultParams">[{0}] 正在加载默认参数</sys:String>
+    <sys:String x:Key="RS_Log_DefaultParamsLoaded">[{0}] 默认参数加载完成</sys:String>
+    <sys:String x:Key="RS_Log_LoadDefaultParamsFailed">[{0}] 加载默认参数失败: {1}</sys:String>
+    <sys:String x:Key="RS_Log_DefaultParamsSet">[{0}] 参数默认值已设置</sys:String>
+    <!-- RecipePoolService 日志键 -->
+    <sys:String x:Key="RPS_Log_DeleteCurrentPoolRejected">尝试删除当前正在使用的配方池 '{0}'，操作被拒绝。</sys:String>
+    <sys:String x:Key="RPS_Log_DefaultPoolDeletedNewDefault">默认池已删除，已将 '{0}' 设为新默认池</sys:String>
+    <sys:String x:Key="RPS_Log_ParametersStaged">[{0}] 参数已暂存{1}</sys:String>
+    <sys:String x:Key="RPS_Log_NoStagedChanges">暂存区没有待提交的参数变更</sys:String>
+    <sys:String x:Key="RPS_Log_StagedParamsCommitted">暂存区参数已提交到配方池: 池 '{0}' -> 配方 '{1}', 共 {2} 个工站</sys:String>
+    <sys:String x:Key="RPS_Log_CommitStagedParamsFailed">提交暂存区参数失败: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_NoStationsCannotSave">没有找到任何工站，无法保存参数</sys:String>
+    <sys:String x:Key="RPS_Log_StartSaveAllStations">开始保存所有工站参数到配方: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_NoStationsCannotBatchSwitch">没有找到任何工站，无法执行批量切换</sys:String>
+    <sys:String x:Key="RPS_Log_UserCancelledBatchSwitch">用户取消批量切换配方: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_AllStationsSwitched">所有工站已切换到配方: {0} (池: {1})</sys:String>
+    <sys:String x:Key="RPS_Log_AlreadyInPool">已在配方池 '{0}' 中，无需切换</sys:String>
+    <sys:String x:Key="RPS_Log_SavedOriginalPoolState">已保存原配方池 '{0}' 的状态</sys:String>
+    <sys:String x:Key="RPS_Log_TargetPoolNotExistCreated">目标配方池 '{0}' 不存在，创建默认池</sys:String>
+    <sys:String x:Key="RPS_Log_SwitchedToPool">已切换到配方池 '{0}'，当前配方 '{1}'</sys:String>
+    <sys:String x:Key="RPS_Log_NoStationsCannotSwitch">没有找到任何工站，无法切换配方</sys:String>
+    <sys:String x:Key="RPS_Log_AllStationsSwitchedInternal">所有工站已切换到配方池 '{0}' 的配方 '{1}'</sys:String>
+    <sys:String x:Key="RPS_Log_DefaultPoolSet">已将配方池 '{0}' 设置为默认池</sys:String>
+    <sys:String x:Key="RPS_Log_PoolCopied">已复制配方池 {0} -> {1}，包含 {2} 个配方</sys:String>
+    <sys:String x:Key="RPS_Log_ImportPoolFailed">导入配方池失败: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_ExportPoolFailed">导出配方池失败: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_GetAllRecipesFailed">获取所有可用配方列表失败: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_CheckRecipeExistFailed">检查配方存在性失败: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_LoadRecipeFailed">加载配方失败: {0}</sys:String>
+    <sys:String x:Key="RPS_Log_PoolUpdated">配方池已更新: {0} -> {1}，同步更新了 {2} 个配方的 CurrentRecipePoolName</sys:String>
+    <sys:String x:Key="RPS_Log_StagedParamsCommittedBeforeSave">保存池前已提交位置编辑器暂存参数: 池 '{0}' -> 配方 '{1}', 共 {2} 个工站</sys:String>
+    <sys:String x:Key="RPS_Log_CommitStagedBeforeSaveFailed">保存池前提交位置编辑器暂存参数失败: 池 '{0}' -> 配方 '{1}'</sys:String>
+    <!-- RecipeStorage 日志键 -->
+    <sys:String x:Key="RStor_Log_PoolDeleted">配方池 '{0}' 已删除。</sys:String>
+    <sys:String x:Key="RStor_Log_PoolFileBackedUp">已备份配方池文件: {0}</sys:String>
+    <sys:String x:Key="RStor_Log_BackupPoolFileFailed">备份配方池文件失败: {0}</sys:String>
+    <!-- ConfigurationViewModel 日志键 -->
+    <sys:String x:Key="CfgVM_Log_InitComplete">ConfigurationViewModel 初始化完成</sys:String>
+    <sys:String x:Key="CfgVM_Log_StartLoadConfig">开始加载配置</sys:String>
+    <sys:String x:Key="CfgVM_Log_ConfigLoaded">配置加载完成，共 {0} 个客户端</sys:String>
+    <sys:String x:Key="CfgVM_Log_LoadConfigFailed">加载配置失败</sys:String>
+    <sys:String x:Key="CfgVM_Log_StartSaveConfig">开始保存配置</sys:String>
+    <sys:String x:Key="CfgVM_Log_ServerIPInvalid">服务器IP地址格式无效</sys:String>
+    <sys:String x:Key="CfgVM_Log_ServerPortInvalid">服务器端口号无效</sys:String>
+    <sys:String x:Key="CfgVM_Log_ConfigSaved">配置保存成功</sys:String>
+    <sys:String x:Key="CfgVM_Log_SaveConfigFailed">保存配置失败</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientNameEmpty">客户端名称不能为空</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientNameExists">客户端名称 '{0}' 已存在</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientIPInvalid">客户端IP地址格式无效</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientPortInvalid">客户端端口号无效</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientAdded">添加客户端: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_AddClientFailed">添加客户端失败</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientRemoved">移除客户端: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_RemoveClientFailed">移除客户端失败: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientMovedUp">客户端 '{0}' 上移</sys:String>
+    <sys:String x:Key="CfgVM_Log_MoveClientUpFailed">上移客户端失败: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_ClientMovedDown">客户端 '{0}' 下移</sys:String>
+    <sys:String x:Key="CfgVM_Log_MoveClientDownFailed">下移客户端失败: {0}</sys:String>
+    <sys:String x:Key="CfgVM_Log_ConfigRefreshed">配置已刷新</sys:String>
+    <!-- RecipeSelectionDialogViewModel 日志键 -->
+    <sys:String x:Key="RSD_Log_DialogClosed">配方选择对话框已关闭</sys:String>
+    <sys:String x:Key="RSD_Log_DialogOpened">配方选择对话框已打开，共 {0} 个配方</sys:String>
+    <!-- ===== Auto-added missing log keys (zh-CN) ===== -->
+    <sys:String x:Key="Alarm_Log_ActiveListRefreshed">活跃报警列表已刷新，共{0}条</sys:String>
+    <sys:String x:Key="Alarm_Log_ConfirmAll">批量确认所有未确认报警，操作人={0}</sys:String>
+    <sys:String x:Key="Alarm_Log_Confirmed">报警确认：Id={0}，操作人={1}</sys:String>
+    <sys:String x:Key="Alarm_Log_DebounceSuppressed">报警防抖抑制：{0}@{1}，更新时间而非重复创建</sys:String>
+    <sys:String x:Key="Alarm_Log_Eliminated">报警消除：Id={0}</sys:String>
+    <sys:String x:Key="Alarm_Log_ExportedToExcel">报警数据已导出到Excel：{0}，共{1}条记录</sys:String>
+    <sys:String x:Key="Alarm_Log_InitActiveListFailed">初始化活跃报警列表失败：{0}</sys:String>
+    <sys:String x:Key="Alarm_Log_Reset">报警复位：Id={0}，操作人={1}</sys:String>
+    <sys:String x:Key="Alarm_Log_ResetAll">批量复位所有已确认报警，操作人={0}</sys:String>
+    <sys:String x:Key="Alarm_Log_Triggered">报警触发：[{0}] {1}@{2} - {3}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_Exported">报警数据已导出到：{0}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_ExportFailed">导出Excel失败：{0}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_PaginationFailed">翻页失败：{0}</sys:String>
+    <sys:String x:Key="AlarmHist_Log_QueryFailed">查询报警历史失败：{0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ConfirmAll">已确认全部未确认报警</sys:String>
+    <sys:String x:Key="AlarmList_Log_ConfirmAllFailed">批量确认失败：{0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_Confirmed">已确认报警：{0}@{1}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ConfirmFailed">确认报警失败：{0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_Eliminated">已消除报警：{0}@{1}</sys:String>
+    <sys:String x:Key="AlarmList_Log_EliminateFailed">消除报警失败：{0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_RefreshFailed">刷新报警列表失败：{0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_Reset">已复位报警：{0}@{1}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ResetAll">已复位全部已确认报警</sys:String>
+    <sys:String x:Key="AlarmList_Log_ResetAllFailed">批量复位失败：{0}</sys:String>
+    <sys:String x:Key="AlarmList_Log_ResetFailed">复位报警失败：{0}</sys:String>
+    <sys:String x:Key="AlarmStats_Log_RefreshFailed">刷新报警统计失败：{0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDeleted">批量删除 {0} 项阈值配置</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDeleteFailed">批量删除失败：{0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDisabled">批量禁用 {0} 项阈值配置</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchDisableFailed">批量禁用失败：{0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchEnabled">批量启用 {0} 项阈值配置</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_BatchEnableFailed">批量启用失败：{0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_Deleted">已删除阈值配置：{0}@{1}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_DeleteFailed">删除阈值配置失败：{0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_RefreshFailed">刷新阈值配置失败：{0}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_Saved">已保存阈值配置：{0}@{1}</sys:String>
+    <sys:String x:Key="AlarmThresh_Log_SaveFailed">保存阈值配置失败：{0}</sys:String>
+    <sys:String x:Key="App_Log_BackgroundThread">后台线程</sys:String>
+    <sys:String x:Key="App_Log_CallStack">调用堆栈: {0}</sys:String>
+    <sys:String x:Key="App_Log_ConfigInitFailed">配置初始化失败: {0}</sys:String>
+    <sys:String x:Key="App_Log_ConfigLoaded">应用程序配置加载完成</sys:String>
+    <sys:String x:Key="App_Log_ConfigServiceRegistered">配置服务注册完成</sys:String>
+    <sys:String x:Key="App_Log_ConfigServiceRegisterFailed">配置服务注册失败: {0}</sys:String>
+    <sys:String x:Key="App_Log_CurrentMemoryUsage">当前内存使用量: {0:F2} MB</sys:String>
+    <sys:String x:Key="App_Log_DumpGenerationError">生成崩溃转储文件时出错</sys:String>
+    <sys:String x:Key="App_Log_DumpGenerationFailed">生成转储文件失败，错误代码: {0}</sys:String>
+    <sys:String x:Key="App_Log_ErrorMessage">错误消息: {0}</sys:String>
+    <sys:String x:Key="App_Log_ErrorTime">错误时间: {0}</sys:String>
+    <sys:String x:Key="App_Log_ErrorType">错误类型: {0}</sys:String>
+    <sys:String x:Key="App_Log_FatalErrorMessage">应用程序遇到严重错误并将关闭。错误报告已保存到程序目录下的ErrorReports文件夹中。</sys:String>
+    <sys:String x:Key="App_Log_FatalErrorTitle">系统崩溃</sys:String>
+    <sys:String x:Key="App_Log_LoadedModules">已加载模块:</sys:String>
+    <sys:String x:Key="App_Log_NormalExit">应用程序正常退出</sys:String>
+    <sys:String x:Key="App_Log_ServiceDepsInitDone">服务依赖初始化完成</sys:String>
+    <sys:String x:Key="App_Log_ServiceDepsInitFailed">服务依赖初始化失败: {0}</sys:String>
+    <sys:String x:Key="App_Log_ServiceDepsInitStart">开始初始化服务依赖...</sys:String>
+    <sys:String x:Key="App_Log_TerminatingSuffix">【将导致应用终止】</sys:String>
+    <sys:String x:Key="App_Log_UIThread">UI线程</sys:String>
+    <sys:String x:Key="App_Log_UnhandledException">{0}未处理异常{1}</sys:String>
+    <sys:String x:Key="App_Log_UnmanagedException">未处理非托管异常! 崩溃信息已保存: {0}</sys:String>
+    <sys:String x:Key="App_Log_UnobservedTaskException">未观察到的任务异常</sys:String>
+    <sys:String x:Key="App_Log_VisionDataServiceRegistered">视觉数据服务注册完成</sys:String>
+    <sys:String x:Key="App_Log_VisionDataServiceRegisterFailed">视觉数据服务注册失败: {0}</sys:String>
+    <sys:String x:Key="AT_Log_AuxAxisHoming">[{0}] {1} 轴回零中...</sys:String>
+    <sys:String x:Key="AT_Log_DispensingHomingDone">[{0}] 点胶工站回零完成，开始组装主轴回零。</sys:String>
+    <sys:String x:Key="AT_Log_DispensingZDone">[{0}] 点胶Z轴已完成，开始组装辅助轴回零。</sys:String>
+    <sys:String x:Key="AT_Log_InitCanceled">[{0}] 组装系统初始化被取消。</sys:String>
+    <sys:String x:Key="AT_Log_InitComplete">[{0}] 组装系统初始化完成，进入待机。</sys:String>
+    <sys:String x:Key="AT_Log_InitFailed">[{0}] 组装系统初始化失败: {1}</sys:String>
+    <sys:String x:Key="AT_Log_InitFailedSignalTimeout">[{0}] 组装系统初始化失败（等待信号超时）: {1}</sys:String>
+    <sys:String x:Key="AT_Log_InitStart">[{0}] 开始组装系统初始化...</sys:String>
+    <sys:String x:Key="AT_Log_MainAxisHoming">[{0}] {1} 轴回零中...</sys:String>
+    <sys:String x:Key="AT_Log_NotifyZComplete">[{0}] 已通知点胶/上下料：组装Z轴回零完成。</sys:String>
+    <sys:String x:Key="AT_Log_Phase1ZHoming">[{0}] 阶段1：组装Z轴回零...</sys:String>
+    <sys:String x:Key="AT_Log_ZHoming">[{0}] Z 轴回零中...</sys:String>
+    <sys:String x:Key="Bezier_Log_ArcCoordInfo">[BezierArcDispense] Arc坐标: </sys:String>
+    <sys:String x:Key="Bezier_Log_ArcDispenseCompleted">[BezierArcDispense] Arc点胶完成，{0}段插补</sys:String>
+    <sys:String x:Key="Bezier_Log_ArcDryRunCompleted">[BezierArcDispense] Arc空跑模式，跳过出胶，{0}段插补运动完成</sys:String>
+    <sys:String x:Key="Bezier_Log_DotCoordTransform">[BezierArcDispense] Dot坐标转换: photo({0:F3},{1:F3}) </sys:String>
+    <sys:String x:Key="Bezier_Log_DotDispenseExecuted">[BezierArcDispense] Dot点胶执行于 ({0:F3}, {1:F3})</sys:String>
+    <sys:String x:Key="Bezier_Log_DotDryRun">[BezierArcDispense] Dot空跑模式，跳过出胶，位置 ({0:F3}, {1:F3})</sys:String>
+    <sys:String x:Key="Cam3D_Log_DataEmpty">3D相机数据为空，无法解析</sys:String>
+    <sys:String x:Key="Cam3D_Log_NoValues">VISION_RESULT 成功但无数值数据</sys:String>
+    <sys:String x:Key="Cam3D_Log_ParseCompleted">3D相机数据解析完成: {0} 个Tab高度值</sys:String>
+    <sys:String x:Key="Cam3D_Log_ParseException">3D相机数据解析异常: {0}</sys:String>
+    <sys:String x:Key="Cam3D_Log_TabParseFailed">Tab{0} 数值解析失败: '{1}'</sys:String>
+    <sys:String x:Key="Cam3D_Log_VisionResultSegmentInvalid">VISION_RESULT 段格式不正确: {0}</sys:String>
+    <sys:String x:Key="Cam3D_Log_VisionResultSegmentNotFound">3D相机数据中未找到 VISION_RESULT 段: {0}</sys:String>
+    <sys:String x:Key="CfgRet_Log_BasePathInvalid">[ConfigRetention] BasePath 无效，回退到默认 Config 目录: {0}</sys:String>
+    <sys:String x:Key="CfgRet_Log_CleanedOldFile">[ConfigRetention] 已清理旧配置文件: {0} (超出最大数量{1})</sys:String>
+    <sys:String x:Key="CfgRet_Log_CleanFileFailed">[ConfigRetention] 清理旧配置文件失败: {0}, {1}</sys:String>
+    <sys:String x:Key="CfgRet_Log_CleanupFolderException">[ConfigRetention] 清理文件夹 {0} 旧文件异常: {1}</sys:String>
+    <sys:String x:Key="CfgRet_Log_FolderCleanupSummary">[ConfigRetention] 文件夹 {0} 本次清理了 {1} 个旧文件 (保留最大{2}个)</sys:String>
+    <sys:String x:Key="CfgRet_Log_LoadSettingsFailed">[ConfigRetention] 加载保留策略设置失败，使用默认值: {0}</sys:String>
+    <sys:String x:Key="CondBr_Log_ConditionDetail">[ConditionBranch]   条件: Expression='{0}', Target={1}, Desc={2}</sys:String>
+    <sys:String x:Key="CondBr_Log_ConfigSaved">[ConditionBranch] 保存条件分支配置: IsEnabled={0}, 条件数={1}</sys:String>
+    <sys:String x:Key="CondBr_Log_ExpressionChecked">[ConditionBranch] 表达式检测: '{0}' =&gt; {1}</sys:String>
+    <sys:String x:Key="CondBr_Log_ExpressionCheckFailed">[ConditionBranch] 表达式检测失败: {0}</sys:String>
+    <sys:String x:Key="CondBr_Log_ExpressionErrorsExist">[ConditionBranch] 存在表达式错误，无法保存: 行 [{0}]</sys:String>
+    <sys:String x:Key="DefaultStationName">All Axes</sys:String>
+    <sys:String x:Key="DefVis_Log_DataEmpty">视觉数据为空，无法解析</sys:String>
+    <sys:String x:Key="DefVis_Log_UnrecognizedFormat">无法识别的视觉数据格式: {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_AutoLoadFailed">双龙门标定: 自动加载失败 - {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam1CommonRefCanceled">双龙门标定: Cam1公共基准采集已取消</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam1CommonRefFailed">双龙门标定: Cam1公共基准采集失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam2CommonRefCanceled">双龙门标定: Cam2公共基准采集已取消</sys:String>
+    <sys:String x:Key="DGCVM_Log_Cam2CommonRefFailed">双龙门标定: Cam2公共基准采集失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_CrossGantryAlignFailed">双龙门标定: 跨龙门对齐失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_ExportFailed">双龙门标定: 导出失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1AutoCalibCanceled">双龙门标定: 龙门1自动标定已取消</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1AutoCalibStartFailed">双龙门标定: 龙门1自动标定启动失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1CalcFailed">双龙门标定: 龙门1计算失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1MoveFailed">双龙门标定: 龙门1移动失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry1TeachFailed">双龙门标定: 龙门1示教失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2AutoCalibCanceled">双龙门标定: 龙门2自动标定已取消</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2AutoCalibStartFailed">双龙门标定: 龙门2自动标定启动失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2CalcFailed">双龙门标定: 龙门2计算失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2MoveFailed">双龙门标定: 龙门2移动失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_Gantry2TeachFailed">双龙门标定: 龙门2示教失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_GetAxisListFailed">双龙门标定: 获取轴列表失败 - {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_ImportFailed">双龙门标定: 导入失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_LoadTcpConnectionsFailed">双龙门标定: 加载TCP连接列表失败 - {0}</sys:String>
+    <sys:String x:Key="DGCVM_Log_NoAxesConfig">双龙门标定: 未读取到任何轴配置</sys:String>
+    <sys:String x:Key="DGCVM_Log_SaveAsFailed">双龙门标定: 另存为失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_SaveFailed">双龙门标定: 保存失败</sys:String>
+    <sys:String x:Key="DGCVM_Log_TransformVerifyFailed">双龙门标定: 坐标变换验证失败</sys:String>
+    <sys:String x:Key="DSS_Log_ReadStationParamsFailed">[DispenseSegmentSource] 读取工站参数失败: {0}</sys:String>
+    <sys:String x:Key="DSS_Log_SegmentsLoadedFromFile">[DispenseSegmentSource] 从配置文件加载 {0} 段: {1}</sys:String>
+    <sys:String x:Key="DT_Log_AssemblyZDone">[{0}] 组装Z轴已完成，开始点胶XY轴回零。</sys:String>
+    <sys:String x:Key="DT_Log_AxisHoming">[{0}] {1} 轴回零中...</sys:String>
+    <sys:String x:Key="DT_Log_DxConfigNotFound">[{0}] 未找到Dx轴配置，CoordId 回退到 0</sys:String>
+    <sys:String x:Key="DT_Log_DxMatchedCoordId">[{0}] Dx(actAxisId={1}) 匹配插补系 CoordId={2}</sys:String>
+    <sys:String x:Key="DT_Log_DxNotInInterpSystem">[{0}] Dx 不在任何插补系中，CoordId 回退到 0</sys:String>
+    <sys:String x:Key="DT_Log_InitCanceled">[{0}] 点胶系统初始化被取消。</sys:String>
+    <sys:String x:Key="DT_Log_InitComplete">[{0}] 点胶系统初始化完成，进入待机。</sys:String>
+    <sys:String x:Key="DT_Log_InitFailed">[{0}] 点胶系统初始化失败: {1}</sys:String>
+    <sys:String x:Key="DT_Log_InitFailedSignalTimeout">[{0}] 点胶系统初始化失败（等待信号超时）: {1}</sys:String>
+    <sys:String x:Key="DT_Log_InitStart">[{0}] 开始点胶系统初始化...</sys:String>
+    <sys:String x:Key="DT_Log_IOPortNotFound">[{0}] 未找到 IO 端口 '{1}'，跳过相机触发</sys:String>
+    <sys:String x:Key="DT_Log_IOTriggerReset">[{0}] IO 触发信号已复位: {1}</sys:String>
+    <sys:String x:Key="DT_Log_IOTriggerSet">[{0}] IO 触发信号已置位: {1} (LogicalId={2})</sys:String>
+    <sys:String x:Key="DT_Log_NotifyDispensingComplete">[{0}] 已通知组装：点胶回零完成。</sys:String>
+    <sys:String x:Key="DT_Log_NotifyZComplete">[{0}] 已通知组装/上下料：点胶Z轴回零完成。</sys:String>
+    <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] 阶段1：点胶Z轴回零...</sys:String>
+    <sys:String x:Key="DT_Log_PositionLookupFailed">[{0}] 位置查找失败: {1}</sys:String>
+    <sys:String x:Key="DT_Log_ReturnedToStandby">[{0}] 已返回待机位置</sys:String>
+    <sys:String x:Key="DT_Log_ReturnToStandbySpeedParams">[{0}] ReturnToStandby 速度参数: Dz1={1:F1}, Dz2={2:F1}, Dz3={3:F1}, 插补={4:F1}</sys:String>
+    <sys:String x:Key="DT_Log_ZScanPositionResolved">[{0}] ZScan 位置解析: SafeZ(Dz1={1:F3}, Dz2={2:F3}, Dz3={3:F3}), Start(Dx={4:F3}, Dy={5:F3}), End(Dx={6:F3}), Standby(Dx={7:F3}, Dy={8:F3})</sys:String>
+    <sys:String x:Key="DT_Log_ZScanSequenceComplete">[{0}] Z-Scan 3D扫描运动序列完成</sys:String>
+    <sys:String x:Key="DT_Log_ZScanSpeedParams">[{0}] ZScan 速度参数: Dx扫描={1:F1}mm/s, Dz1={2:F1}, Dz2={3:F1}, Dz3={4:F1}, 插补={5:F1}</sys:String>
+    <sys:String x:Key="IfDetail_Log_ExpressionChecked">[IfDetail] 表达式检测: '{0}' =&gt; {1}</sys:String>
+    <sys:String x:Key="IfDetail_Log_ExpressionCheckFailed">[IfDetail] 表达式检测失败: {0}</sys:String>
+    <sys:String x:Key="IfDetail_Log_GlobalVarsLoaded">[IfDetail] 已加载 {0} 个全局变量</sys:String>
+    <sys:String x:Key="IfDetail_Log_LoadGlobalVarsFailed">[IfDetail] 加载全局变量失败: {0}</sys:String>
+    <sys:String x:Key="IfDetail_Log_PrevOutputsCollected">[IfDetail] 已收集 {0} 个前序步骤输出参数</sys:String>
+    <sys:String x:Key="LoadUnload_Step_GripperPanelClosed">Gripper panel closed</sys:String>
+    <sys:String x:Key="Login_Log_AuthConfigSaved">认证配置已保存: 自动注销时间 = {0}分钟</sys:String>
+    <sys:String x:Key="Login_Log_BackupCorruptedConfigFailed">备份损坏配置文件失败: {0}</sys:String>
+    <sys:String x:Key="Login_Log_CorruptedConfigBackedUp">检测到损坏的配置文件，已备份到: {0}</sys:String>
+    <sys:String x:Key="Login_Log_SaveAuthConfigFailed">保存认证配置失败: {0}</sys:String>
+    <sys:String x:Key="LT_Log_AssemblyZDoneStartHoming">[{0}] 组装Z轴已完成，开始上下料轴回零。</sys:String>
+    <sys:String x:Key="LT_Log_AutoPickupComplete">[{0}] 自动取料流程完成</sys:String>
+    <sys:String x:Key="LT_Log_AutoScanComplete">[{0}] 自动扫描流程完成</sys:String>
+    <sys:String x:Key="LT_Log_AutoUnloadComplete">[{0}] 自动下料流程完成</sys:String>
+    <sys:String x:Key="LT_Log_AxisHoming">[{0}] {1} 轴回零中...</sys:String>
+    <sys:String x:Key="LT_Log_CycleCompleteRestart">=== 上下料循环完成，稍后重启 ===</sys:String>
+    <sys:String x:Key="LT_Log_DispensingZDone">[{0}] 点胶Z轴已完成。</sys:String>
+    <sys:String x:Key="LT_Log_GripperVacuumOff">[{0}] 夹爪真空已关闭</sys:String>
+    <sys:String x:Key="LT_Log_GripperVacuumOn">[{0}] 夹爪真空已开启</sys:String>
+    <sys:String x:Key="LT_Log_InitCanceled">[{0}] 上下料系统初始化被取消。</sys:String>
+    <sys:String x:Key="LT_Log_InitCompleteStandby">[{0}] 上下料系统初始化完成，进入待机。</sys:String>
+    <sys:String x:Key="LT_Log_InitFailed">[{0}] 上下料系统初始化失败: {1}</sys:String>
+    <sys:String x:Key="LT_Log_InitFailedSignalTimeout">[{0}] 上下料系统初始化失败（等待信号超时）: {1}</sys:String>
+    <sys:String x:Key="LT_Log_InitStart">[{0}] 开始上下料系统初始化...</sys:String>
+    <sys:String x:Key="LT_Log_StageVacuumOff">[{0}] 平台真空已关闭</sys:String>
+    <sys:String x:Key="LT_Log_StageVacuumOn">[{0}] 平台真空已开启</sys:String>
+    <sys:String x:Key="LT_Log_WaitZAxesHoming">[{0}] 等待所有Z轴归零完成...</sys:String>
+    <sys:String x:Key="MacInit_Log_AlreadyInProgress">[MachineInit] 初始化已在进行中，忽略重复请求。</sys:String>
+    <sys:String x:Key="MacInit_Log_BusError">[MachineInit] 控制卡连接异常：EtherCAT 总线错误码 0x{0:X}。</sys:String>
+    <sys:String x:Key="MacInit_Log_CardNotConnectedAbort">[MachineInit] 控制卡未连接或总线异常，放弃整机初始化。</sys:String>
+    <sys:String x:Key="MacInit_Log_InitCancelled">[MachineInit] 整机初始化被取消（用户停止或急停）。</sys:String>
+    <sys:String x:Key="MacInit_Log_InitCompleted">[MachineInit] ===== 整机初始化完成 =====</sys:String>
+    <sys:String x:Key="MacInit_Log_InitFailed">[MachineInit] 整机初始化失败: {0}</sys:String>
+    <sys:String x:Key="MacInit_Log_InitStart">[MachineInit] ===== 整机初始化开始 =====</sys:String>
+    <sys:String x:Key="MacInit_Log_SimulationModeNoCard">[MachineInit] 控制卡未连接：当前为模拟模式，无真实硬件。</sys:String>
+    <sys:String x:Key="MCF_Log_InitCardFailed">MotionCardFactory: 初始化卡 {0} 失败，错误码：{1}</sys:String>
+    <sys:String x:Key="MW_Log_AppClosing">应用程序正在关闭...</sys:String>
+    <sys:String x:Key="MW_Log_AxisPanelInitFailed">[MainWindow] 轴控制面板初始化失败: {0}\n{1}</sys:String>
+    <sys:String x:Key="MW_Log_AxisPanelInitSuccess">[MainWindow] 轴控制面板初始化成功</sys:String>
+    <sys:String x:Key="MW_Log_EStopButtonClicked">【MainWindow】用户点击急停按钮</sys:String>
+    <sys:String x:Key="MW_Log_InitButtonClicked">【MainWindow】用户点击初始化按钮</sys:String>
+    <sys:String x:Key="MW_Log_PauseButtonClicked">【MainWindow】用户点击暂停按钮</sys:String>
+    <sys:String x:Key="MW_Log_RecipeInfo">配方: {0}</sys:String>
+    <sys:String x:Key="MW_Log_ResumeButtonClicked">【MainWindow】用户点击恢复按钮</sys:String>
+    <sys:String x:Key="MW_Log_StartButtonClicked">【MainWindow】用户点击启动按钮</sys:String>
+    <sys:String x:Key="MW_Log_StopButtonClicked">【MainWindow】用户点击停止按钮</sys:String>
+    <sys:String x:Key="MW_Log_SystemStartup">系统启动 - 版本 {0}</sys:String>
+    <sys:String x:Key="MW_Log_UserCancelInit">用户选择取消初始化操作</sys:String>
+    <sys:String x:Key="MW_Log_UserConfirmInit">用户选择执行初始化操作</sys:String>
+    <sys:String x:Key="MW_Log_WarningDialog">【WarningDialog】{0}</sys:String>
+    <sys:String x:Key="NA_Log_ApplyCompensationFailed">应用针头补偿值失败</sys:String>
+    <sys:String x:Key="NA_Log_AutoLoadConfigFailed">[NeedleAligner] 自动加载校准配置失败: {0}</sys:String>
+    <sys:String x:Key="NA_Log_ConfigLoaded">[NeedleAligner] 系统{0}已加载: {1}</sys:String>
+    <sys:String x:Key="NA_Log_CreateDefaultCompVarsFailed">[NeedleAligner] 创建默认补偿全局变量失败: {0}</sys:String>
+    <sys:String x:Key="NA_Log_DefaultCompVarsCreated">[NeedleAligner] 已创建默认补偿全局变量</sys:String>
+    <sys:String x:Key="NA_Log_EnsureLinkedVarFailed">[NeedleAligner] 确保链接变量存在失败: {0}</sys:String>
+    <sys:String x:Key="NA_Log_GenericMessage">[NeedleAligner] {0}</sys:String>
+    <sys:String x:Key="NA_Log_GlobalVarSyncFailed">[NeedleAligner] 全局变量变更同步失败: {0}</sys:String>
+    <sys:String x:Key="NA_Log_LoadGlobalVarsFailed">[NeedleAligner] 加载全局变量失败: {0}</sys:String>
+    <sys:String x:Key="NA_Log_LoadSystemParamsFailed">[NeedleAligner] 加载系统{0}参数失败: {1}</sys:String>
+    <sys:String x:Key="NA_Log_MoveToSearchPointFailed">[NeedleAligner] 移动到搜索点 P{0} 失败: {1}</sys:String>
+    <sys:String x:Key="NA_Log_NoConfigFile">[NeedleAligner] 系统{0}无可加载的校准配置文件，已应用默认参数</sys:String>
+    <sys:String x:Key="NA_Log_SaveFileToPoolFailed">[NeedleAligner] 保存文件记录到配方池失败: {0}</sys:String>
+    <sys:String x:Key="NA_Log_SwitchSystemFailed">[NeedleAligner] 切换系统失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CalculateCalibrationDeltaException">CalculateCalibrationDelta异常: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanedExpiredConfigFile">[NeedleCamera] 已清理过期配置文件: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanFileFailed">[NeedleCamera] 清理文件失败: {0}, {1}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanupOldConfigFilesException">[NeedleCamera] 清理旧配置文件异常: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_CleanupSummary">[NeedleCamera] 本次清理了 {0} 个过期配置文件 (保留{1}天)</sys:String>
+    <sys:String x:Key="NCA_Log_ConfigLoaded">[NeedleCamera] 系统{0}配置已加载: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_CreateDefaultCompGlobalVarsFailed">[NeedleCamera] 创建默认补偿全局变量失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_DefaultCompGlobalVarsCreated">[NeedleCamera] 已创建默认补偿全局变量</sys:String>
+    <sys:String x:Key="NCA_Log_EnsureLinkedVarsExistFailed">[NeedleCamera] 确保链接变量存在失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_GlobalVarChangeSyncFailed">[NeedleCamera] 全局变量变更同步失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadFromRecipePool">[NeedleCamera] 系统{0}从配方池记录加载: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadGlobalVarsFailed">[NeedleCamera] 加载全局变量失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadLatestFile">[NeedleCamera] 系统{0}加载最新文件: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadParametersException">[NeedleCamera] 加载参数异常: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_LoadSystemConfigFailed">[NeedleCamera] 加载系统{0}配置失败: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_NeedleTipZAxisNotFound">[NeedleCamera] 系统{0}未读取到针尖Z轴 ({1})</sys:String>
+    <sys:String x:Key="NCA_Log_NoConfigUseDefault">[NeedleCamera] 系统{0}无可加载的配置文件，使用默认参数</sys:String>
+    <sys:String x:Key="NCA_Log_ParametersReset">[NeedleCamera] 系统{0}参数已重置</sys:String>
+    <sys:String x:Key="NCA_Log_ParametersSaved">[NeedleCamera] 系统{0}参数保存: {1}</sys:String>
+    <sys:String x:Key="NCA_Log_SaveFileRecordToRecipePoolFailed">[NeedleCamera] 保存文件记录到配方池失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_SaveParametersException">[NeedleCamera] 保存参数异常: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_SwitchSystemFailed">[NeedleCamera] 切换系统失败: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_TeachCameraCenterException">TeachCameraCenter异常: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_TeachNeedleTipException">TeachNeedleTip异常: {0}</sys:String>
+    <sys:String x:Key="NCA_Log_WriteCompToGlobalVarsFailed">[NeedleCamera] 写入补偿值到全局变量失败: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_AutoLoadFailed">[NeedleVerify] 自动加载验证记录失败: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_CancelFailed">[NeedleVerify] 取消验证异常: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_Cancelled">[NeedleVerify] 系统{0} 验证已取消，运动轴已停止</sys:String>
+    <sys:String x:Key="NCV_Log_CleanedFile">[NeedleVerify] 已清理过期验证记录: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_CleanFileFailed">[NeedleVerify] 清理文件失败: {0}, {1}</sys:String>
+    <sys:String x:Key="NCV_Log_CleanupFailed">[NeedleVerify] 清理过期文件异常: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_CleanupSummary">[NeedleVerify] 本次清理了 {0} 个过期文件 (保留{1}天)</sys:String>
+    <sys:String x:Key="NCV_Log_LoadFromPool">[NeedleVerify] 从配方池记录加载: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_LoadLatest">[NeedleVerify] 配方池无记录，加载最新文件: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_LoadParamsFailed">[NeedleVerify] 加载校准参数失败: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordLoaded">[NeedleVerify] 系统{0}验证记录已加载: {1}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordLoadFailed">[NeedleVerify] 加载验证记录失败: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordSaved">[NeedleVerify] 系统{0}验证记录已保存: {1}</sys:String>
+    <sys:String x:Key="NCV_Log_RecordSaveFailed">[NeedleVerify] 验证记录保存失败: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_SaveToPoolFailed">[NeedleVerify] 保存文件记录到配方池失败: {0}</sys:String>
+    <sys:String x:Key="NCV_Log_VerifyCompleted">[NeedleVerify] 系统{0}验证完成: Measured=({1:F4},{2:F4},{3:F4}) ActiveTcp=({4:F4},{5:F4},{6:F4}) Effective=({7:F4},{8:F4},{9:F4}) Ref=({10:F4},{11:F4},{12:F4}) Dev=({13:F4},{14:F4},{15:F4}) Overall={16}</sys:String>
+    <sys:String x:Key="NCV_Log_VerifyFailed">[NeedleVerify] 验证失败: {0}</sys:String>
+    <sys:String x:Key="NPCVM_Log_AutoCalibStartFailed">N点标定: 自动标定启动失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_AutoLoadFailed">N点标定: 自动加载失败 - {0}</sys:String>
+    <sys:String x:Key="NPCVM_Log_ComputeFailed">N点标定: 计算失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_ExportFailed">N点标定: 导出失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_GetAxesFailed">N点标定: 获取工站 {0} 轴列表失败 - {1}</sys:String>
+    <sys:String x:Key="NPCVM_Log_ImportFailed">N点标定: 导入失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_LoadTcpListFailed">N点标定: 加载TCP连接列表失败 - {0}</sys:String>
+    <sys:String x:Key="NPCVM_Log_MoveFailed">N点标定: 移动失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_NoAvailableAxes">N点标定: 工站 {0} 无可用轴</sys:String>
+    <sys:String x:Key="NPCVM_Log_SaveAsFailed">N点标定: 另存为失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_SaveFailed">N点标定: 保存失败</sys:String>
+    <sys:String x:Key="NPCVM_Log_TeachFailed">N点标定: 示教失败</sys:String>
+    <sys:String x:Key="PMC_Log_StopAxisFailed">Stop: 停止轴 {0}(ID={1}) 失败: {2}</sys:String>
+    <sys:String x:Key="PMC_Log_TeachReadPositionFailed">Teach: 读取轴 {0}(ID={1}) 位置失败: {2}</sys:String>
+    <sys:String x:Key="ProdCal_Log_AutoLoadFailed">载台校准: 自动加载失败 - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_AutoReceiveTargetSet">载台校准: 自动接收目标已设置为拍照位{0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_Capture1Failed">载台校准: 拍照位1拍照失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_Capture2Failed">载台校准: 拍照位2拍照失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_Destroyed">载台校准: ViewModel已销毁，资源已释放</sys:String>
+    <sys:String x:Key="ProdCal_Log_DestroyFailed">载台校准: Destroy失败 - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_ExportFailed">载台校准: 导出失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_HalconCalcFailed">载台校准: Halcon计算失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_ImportFailed">载台校准: 导入失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_LoadFailed">载台校准: 加载失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_LoadGlobalVarsFailed">载台校准: 加载全局变量失败 - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_LoadTcpListFailed">载台校准: 加载TCP连接列表失败 - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_MoveToPhoto1Failed">载台校准: 移动到拍照位1失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_MoveToPhoto2Failed">载台校准: 移动到拍照位2失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_MoveToRefFailed">载台校准: 移动到基准位失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_RotateFailed">载台校准: 旋转校正失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_SaveFailed">载台校准: 保存失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_SubscribedAutoReceive">载台校准: 已订阅相机自动接收，连接={0}，目标=拍照位{1}</sys:String>
+    <sys:String x:Key="ProdCal_Log_TeachPhoto1Failed">载台校准: 示教拍照位1失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_TeachPhoto2Failed">载台校准: 示教拍照位2失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_TeachRefFailed">载台校准: 示教基准位失败</sys:String>
+    <sys:String x:Key="ProdCal_Log_UnsubscribedAutoReceive">载台校准: 已取消相机自动接收订阅</sys:String>
+    <sys:String x:Key="ProdCal_Log_UnsubscribeFailed">载台校准: 取消自动接收订阅失败 - {0}</sys:String>
+    <sys:String x:Key="ProdCal_Log_WriteGlobalVarsFailed">载台校准: 写入全局变量失败 - {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_AutoSaveSequenceFailed">自动保存序列失败: {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_BranchConfigUpdated">[ProcessSequenceEditor] 已更新步骤 [{0}] 的条件分支配置</sys:String>
+    <sys:String x:Key="PSEdit_Log_BranchStepInserted">[ProcessSequenceEditor] 已插入 BRANCH 条件分支步骤 [Seq={0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallNavigateToDetailView">[OpenStepDetailForStep] → 调用 NavigateToDetailView (类型={0})</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallOnOpenBranchConfig">[OpenStepDetailForStep] → 调用 OnOpenBranchConfig</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallOnOpenDashboard">[OpenStepDetailForStep] → 调用 OnOpenDashboard</sys:String>
+    <sys:String x:Key="PSEdit_Log_CallShowStepDetailDialog">[OnOpenDashboard] 调用 ShowStepDetailDialog (BaseDialogWindow)...</sys:String>
+    <sys:String x:Key="PSEdit_Log_CreateDataDashboardView">[OnOpenDashboard] 创建 DataDashboardView...</sys:String>
+    <sys:String x:Key="PSEdit_Log_DashboardDetailNullCreateDefault">[OnOpenDashboard] DashboardDetail为null，创建默认配置</sys:String>
+    <sys:String x:Key="PSEdit_Log_DashboardOpened">[OnOpenDashboard] 已打开步骤 [{0}] 的数据看板</sys:String>
+    <sys:String x:Key="PSEdit_Log_DashboardStepInserted">[ProcessSequenceEditor] 已插入 DASHBOARD 步骤 [Seq={0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_IfConfigUpdated">[ProcessSequenceEditor] 已更新 IF 步骤 [{0}] 的条件配置</sys:String>
+    <sys:String x:Key="PSEdit_Log_IfStepInserted">[ProcessSequenceEditor] 已插入 IF 条件块步骤 [Seq={0}]</sys:String>
+    <sys:String x:Key="PSEdit_Log_IfSubStepAdded">[ProcessSequenceEditor] 已在 IF {0} 分支下添加子步骤 [{1}] {2}</sys:String>
+    <sys:String x:Key="PSEdit_Log_LoadDashboardData">[OnOpenDashboard] 加载看板数据, Fields数量={0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OnOpenDashboardStart">[OnOpenDashboard] 开始, step={0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenBranchConfigFailed">[ProcessSequenceEditor] 打开条件分支配置失败: {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenDashboardFailed">[OnOpenDashboard] ❌ 打开数据看板失败: {0}\n{1}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenIfConfigFailed">[ProcessSequenceEditor] 打开 IF 配置对话框失败: {0}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenStepDetailForStepInfo">[OpenStepDetailForStep] 步骤类型={0}, Seq={1}</sys:String>
+    <sys:String x:Key="PSEdit_Log_OpenStepDetailInfo">[OpenStepDetail] 步骤: Seq={0}, Step={1}, CompFeature={2}</sys:String>
+    <sys:String x:Key="PSEdit_Log_ResolveDataDashboardViewModel">[OnOpenDashboard] 解析 DataDashboardViewModel...</sys:String>
+    <sys:String x:Key="PSEdit_Log_RunSingleStepFailed">单独执行步骤 [{0}] 失败: {1}</sys:String>
+    <sys:String x:Key="PSEdit_Log_SelectedStepNullSkip">[OpenStepDetail] SelectedStep为null，跳过</sys:String>
+    <sys:String x:Key="PSEdit_Log_SeqValue">Seq={0}</sys:String>
+    <sys:String x:Key="RSB_Log_BatchSwitchCompleted">[{0}] 批量切换完成: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_BatchSwitchFailed">[{0}] 批量切换配方失败: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_BatchSwitchToRecipe">[{0}] 批量切换到配方: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_ParamsStagedAndSaved">[{0}] 参数已暂存并保存</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsApplied">[{0}] 配方参数已应用: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsInitCompleted">[{0}] 配方参数初始化完成: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsInitFailed">[{0}] 配方参数初始化失败: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeParamsLoaded">[{0}] 配方参数已加载: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RecipeSwitched">[{0}] 配方已切换: {1}</sys:String>
+    <sys:String x:Key="RSB_Log_RegisteredToStationRegistry">[{0}] 已注册到工站注册表</sys:String>
+    <sys:String x:Key="RSB_Log_SaveParamsFailed">[{0}] 保存参数失败: {1}</sys:String>
+    <sys:String x:Key="RSF_Log_UnknownStationIdentifier">未知的工站标识符: {0}，使用默认参数类型</sys:String>
+    <sys:String x:Key="Scan_Log_ConfigSaved">SCAN 步骤配置已保存: {0} - {1}（含{2}条扫描结果）</sys:String>
+    <sys:String x:Key="Scan_Log_CopiedVarName">已复制全局变量名到剪贴板: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_CopyVarNameFailed">复制全局变量名失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_FilledSampleData">已填充3D相机示例数据、变量映射和扫描结果</sys:String>
+    <sys:String x:Key="Scan_Log_InitRefreshMappingFailed">初始化刷新变量映射 DisplayValue 失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadedLastResults">已加载上次保存的扫描结果: {0}条记录, 最后解析时间={1}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadGlobalVarsFailed">加载全局变量列表失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadPositionsFailed">加载位置列表失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_LoadTcpListFailed">加载TCP连接列表失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_NoSyncNeeded">SCAN 全局变量无需更新: 无匹配的变量映射或解析数据</sys:String>
+    <sys:String x:Key="Scan_Log_ParseFailed">SCAN 数据解析失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_PassiveDataFailed">SCAN 被动数据处理失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_PassiveDataReceived">SCAN 被动接收到相机数据 [{0}]: {1}</sys:String>
+    <sys:String x:Key="Scan_Log_RefreshMappingFailed">刷新变量映射 DisplayValue 失败: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_StartSyncVars">SCAN 开始同步全局变量: PoolId={0}, 解析数据项数={1}</sys:String>
+    <sys:String x:Key="Scan_Log_SubscribedTcp">SCAN 已订阅TCP数据接收: 监听连接 '{0}'</sys:String>
+    <sys:String x:Key="Scan_Log_SyncVarsCompleted">SCAN 全局变量同步完成: PoolId={0}, 更新了{1}个变量</sys:String>
+    <sys:String x:Key="Scan_Log_UnlinkedMapping">已解除变量映射链接: {0}</sys:String>
+    <sys:String x:Key="Scan_Log_UnsubscribedTcp">SCAN 已取消订阅TCP数据接收</sys:String>
+    <sys:String x:Key="ScriptVis_Log_CompileFailed">视觉脚本编译失败: {0}</sys:String>
+    <sys:String x:Key="ScriptVis_Log_CompileSuccess">视觉解析脚本编译并绑定成功</sys:String>
+    <sys:String x:Key="ScriptVis_Log_RuntimeError">视觉脚本运行时错误: {0}</sys:String>
+    <sys:String x:Key="STMgr_Log_HomeAllPartialFailed">部分工站回零失败！+ {0}</sys:String>
+    <sys:String x:Key="SysState_Log_BuzzerConfigNotFound">WriteBuzzer: 未找到蜂鸣器配置, 可用类型=[{0}]</sys:String>
+    <sys:String x:Key="SysState_Log_CardConnectionError">控制卡连接异常：EtherCAT 总线错误码 0x{0:X}。</sys:String>
+    <sys:String x:Key="SysState_Log_CardNotConnectedResetDisabled">控制卡未连接，复位按钮长按检测已禁用，避免误触发整机初始化。</sys:String>
+    <sys:String x:Key="SysState_Log_DebugModeSkipInit">调试模式：已关闭「重开需初始化」，设备状态直接进入 WAITRUN。</sys:String>
+    <sys:String x:Key="SysState_Log_LightConfigNotFound">WriteLight: 未找到灯光配置 LightType='{0}', 可用类型=[{1}]</sys:String>
+    <sys:String x:Key="SysState_Log_ResetButtonLongPressTrigger">复位按钮长按5秒 -&gt; 触发整机初始化。</sys:String>
+    <sys:String x:Key="SysState_Log_ResetButtonPressed">复位按钮已按下，长按5秒将触发整机初始化...</sys:String>
+    <sys:String x:Key="SysState_Log_TowerLightsConfigLoaded">TowerLights 配置加载完成: [{0}], 共{1}项</sys:String>
+    <sys:String x:Key="SZCfg_Log_ConfigFileNotFound">[安全互锁] 未找到配置文件，使用默认机型规则</sys:String>
+    <sys:String x:Key="SZCfg_Log_ConfigSaved">[安全互锁] 配置已保存</sys:String>
+    <sys:String x:Key="SZCfg_Log_LoadConfigFailed">[安全互锁] 加载配置失败: {0}，使用默认规则</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_ConfigSaved">[安全区域] 配置已保存</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_RefreshStatusFailed">[安全区域] 刷新状态失败: {0}</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_SaveConfigFailed">[安全区域] 保存配置失败</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_SyncConfigFailed">[安全区域] 同步配置失败: {0}</sys:String>
+    <sys:String x:Key="SZCfgVM_Log_Violation">[安全区域] 违规 | 轴:{0}(#{1}) | {2}</sys:String>
+    <sys:String x:Key="SZM_Log_AxisNotFoundInHwConfig">[安全互锁] 配置引用的轴 '{0}' 未在硬件配置中找到</sys:String>
+    <sys:String x:Key="SZM_Log_ConfigHotUpdated">[安全互锁] 配置已热更新 | Enabled={0} | 规则={1} | FailClosed={2}</sys:String>
+    <sys:String x:Key="SZM_Log_NullConfigIgnored">[安全互锁] 收到空配置，忽略更新</sys:String>
+    <sys:String x:Key="SZM_Log_Violation">[安全互锁] 违规 | 规则:{0} | 轴:{1}(#{2}) | {3}</sys:String>
+    <sys:String x:Key="TCP_Log_BroadcastFailed">广播命令失败: {0}</sys:String>
+    <sys:String x:Key="TCP_Log_BroadcastViaServer">通过服务器[{0}]广播消息到所有已连接客户端</sys:String>
+    <sys:String x:Key="TCP_Log_ClientAdded">TCP客户端 [{0}] 已添加: {1}:{2}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientConnected">TCP客户端 [{0}] 已连接: {1}:{2}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientDisconnected">TCP客户端 [{0}] 已断开: {1}:{2}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientError">TCP客户端 [{0}] 错误: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ClientNotConnected">TCP客户端 [{0}] 未连接</sys:String>
+    <sys:String x:Key="TCP_Log_ClientRemoved">TCP客户端 [{0}] 已移除</sys:String>
+    <sys:String x:Key="TCP_Log_ClientRemovedFromManager">TCP客户端 [{0}] 已从管理器移除</sys:String>
+    <sys:String x:Key="TCP_Log_Initialized">TCP事件服务初始化完成</sys:String>
+    <sys:String x:Key="TCP_Log_NoConnectionForBroadcast">没有可用的TCP连接进行广播</sys:String>
+    <sys:String x:Key="TCP_Log_PublishStatusFailed">发布TCP状态变更事件失败: {0}</sys:String>
+    <sys:String x:Key="TCP_Log_ReplayConnection">回放连接状态: 服务器[{0}] 客户端已连接 ({1}:{2})</sys:String>
+    <sys:String x:Key="TCP_Log_SendCommandFailed">发送命令到 [{0}] 失败: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerClientConnected">TCP服务器[{0}]接受客户端连接: {1} ({2}:{3})</sys:String>
+    <sys:String x:Key="TCP_Log_ServerClientDisconnected">TCP服务器[{0}]客户端断开: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerDataReceived">TCP服务器收到数据: 服务器={0}, 客户端={1}, 消息={2}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerError">TCP服务器[{0}]错误: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerExistsStopOld">TCP服务器 '{0}' 已存在，先停止旧实例</sys:String>
+    <sys:String x:Key="TCP_Log_ServerNotFound">TCP服务器[{0}]不存在或已停止</sys:String>
+    <sys:String x:Key="TCP_Log_ServerResponseReceived">Server模式[{0}]收到响应: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerResponseTimeout">Server模式等待[{0}]响应超时({1}ms)</sys:String>
+    <sys:String x:Key="TCP_Log_ServerStarted">TCP服务器[{0}]启动成功: {1}:{2} (当前共{3}个服务器)</sys:String>
+    <sys:String x:Key="TCP_Log_ServerStartFailed">TCP服务器[{0}]启动失败: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_ServerStopped">TCP服务器[{0}]已停止</sys:String>
+    <sys:String x:Key="TCP_Log_StopServerFailed">停止TCP服务器[{0}]失败: {1}</sys:String>
+    <sys:String x:Key="TCP_Log_TargetNotFound">TCP [{0}] 不存在：既不是Client模式的客户端，也不是Server模式的服务器</sys:String>
+    <sys:String x:Key="TcpCfg_Log_AddConfig">添加TCP配置项: {0}</sys:String>
+    <sys:String x:Key="TcpCfg_Log_DeleteConfig">删除TCP配置项: {0}</sys:String>
+    <sys:String x:Key="TcpCfg_Log_LoadFailed">加载TCP配置失败</sys:String>
+    <sys:String x:Key="TcpCfg_Log_LoadSuccess">加载TCP配置成功，共 {0} 项</sys:String>
+    <sys:String x:Key="TcpCfg_Log_SaveFailed">保存TCP配置失败</sys:String>
+    <sys:String x:Key="TcpCfg_Log_SaveSuccess">TCP配置保存成功，共 {0} 项</sys:String>
+    <sys:String x:Key="TcpCfg_Log_ServerStarted">TCP服务器 [{0}] 已启动监听 {1}:{2}</sys:String>
+    <sys:String x:Key="TcpCfg_Log_TestConnectionFailed">TCP连接测试失败: {0} ({1}:{2})</sys:String>
+    <sys:String x:Key="TcpCfg_Log_TestConnectionSuccess">TCP连接测试成功: {0} ({1}:{2})</sys:String>
+    <sys:String x:Key="TcpClient_Log_ClientConnected">TCP客户端 [{0}] 已连接到 {1}:{2}</sys:String>
+    <sys:String x:Key="TcpClient_Log_ClientExists">TCP客户端 [{0}] 已存在，跳过添加</sys:String>
+    <sys:String x:Key="TcpClient_Log_ClientRemoved">TCP客户端 [{0}] 已移除</sys:String>
+    <sys:String x:Key="TcpClient_Log_ConnectFailed">TCP客户端 [{0}] 连接 {1}:{2} 失败: {3}，自动重连已启用</sys:String>
+    <sys:String x:Key="TcpClient_Log_Initialized">TCP客户端管理器初始化完成，已加载 {0} 个客户端</sys:String>
+    <sys:String x:Key="TCPMod_Log_ClientConnected">TCP客户端 '{0}' 已连接 {1}:{2}</sys:String>
+    <sys:String x:Key="TCPMod_Log_InitConfigItemFailed">初始化TCP配置项 '{0}' 失败(Mode={1}): {2}</sys:String>
+    <sys:String x:Key="TCPMod_Log_ServerStarted">TCP服务器 '{0}' 已启动监听 {1}:{2}</sys:String>
+    <sys:String x:Key="TCPMod_Log_SystemInitComplete">TCP系统初始化完成，共 {0} 项配置</sys:String>
+    <sys:String x:Key="TCPMod_Log_SystemInitFailed">TCP系统初始化失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ArcMachineCoordComplete">[VisionCapture] 新格式弧线机械坐标完成: P1({0:F3},{1:F3}) P2中点({2:F3},{3:F3}) P3({4:F3},{5:F3})，弧高={6:F3} 方向={7:F3} 贝塞尔{8}点</sys:String>
+    <sys:String x:Key="VisCap_Log_AutoCalcArcCoordFailed">[VisionCapture] 自动计算弧线机械坐标失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_AutoLoadConfigException">[VisionCapture] 自动加载配置异常: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_AutoLoadConfigFailed">[VisionCapture] 自动加载配置失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ConfigLoaded">[VisionCapture] 配置已加载: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ConfigSaved">[VisionCapture] 配置已保存: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_DispenseFailed">[VisionCapture] 点胶失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_DxAxisConfigNotFound">[VisionCapture] 未找到Dx轴配置，CoordId 回退到 0</sys:String>
+    <sys:String x:Key="VisCap_Log_DxMatchedInterpSystem">[VisionCapture] Dx(actAxisId={0}) 匹配插补系 CoordId={1}</sys:String>
+    <sys:String x:Key="VisCap_Log_DxNotInInterpSystem">[VisionCapture] Dx(actAxisId={0}) 不在任何插补系中，CoordId 回退到 0</sys:String>
+    <sys:String x:Key="VisCap_Log_ExecuteFailed">[VisionCapture] 执行失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_GlobalVarChangeSyncFailed">[VisionCapture] 全局变量变更同步失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_IgnoreInvalidNeedleOffsetXLink">[VisionCapture] 忽略无效的 NeedleOffsetX 链接变量: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_IgnoreInvalidNeedleOffsetYLink">[VisionCapture] 忽略无效的 NeedleOffsetY 链接变量: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_InitComplete">[VisionCapture] 初始化完成</sys:String>
+    <sys:String x:Key="VisCap_Log_InitGroupFailed">[VisionCapture] 初始化Group失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_InitStart">[VisionCapture] 开始初始化...</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadConfigFailed">[VisionCapture] 加载配置失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadConfigFromDefault">[VisionCapture] 配方池无记录，从默认路径加载: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadConfigFromRecipePool">[VisionCapture] 从配方池记录加载配置: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadGroupListFailed">[VisionCapture] 加载Group列表失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadSiteFeatureFailed">[VisionCapture] 加载SiteFeature失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_LoadTransformParamsFailed">[VisionCapture] 加载坐标转换参数失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_MoveComplete">[VisionCapture] 移动完成 [{0}]: ({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="VisCap_Log_MoveFailed">[VisionCapture] 移动失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_NoConfigToLoad">[VisionCapture] 无可加载的配置文件</sys:String>
+    <sys:String x:Key="VisCap_Log_PositionDataSynced">[VisionCapture] 位置数据已同步更新 (recipe={0}), _allPositions count={1}, SafePositionName={2}, Dx={3}, Dy={4}, Dz1={5}</sys:String>
+    <sys:String x:Key="VisCap_Log_PositionDataSyncFailed">[VisionCapture] 位置数据同步失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_PreviewFailed">[VisionCapture] 预览失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_ReturnedToSafePos">[VisionCapture] 已返回安全位</sys:String>
+    <sys:String x:Key="VisCap_Log_ReturnToSafePosDataIncomplete">[VisionCapture] 返回安全位失败: 安全位 '{0}' 位置数据不完整 (Dz={1}, Dx={2}, Dy={3})</sys:String>
+    <sys:String x:Key="VisCap_Log_SafePosMissingAxis">[VisionCapture] 安全位 '{0}' 缺少轴: {1}，请选择包含Dx/Dy/Dz₁轴工站的位置</sys:String>
+    <sys:String x:Key="VisCap_Log_SaveConfigFailed">[VisionCapture] 保存配置失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_SaveFileRecordToRecipePoolFailed">[VisionCapture] 保存文件记录到配方池失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_SaveTransformParamsFailed">[VisionCapture] 保存坐标转换参数失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_StationPositionSaved">[VisionCapture] 工站 [{0}] 位置已保存, _allPositions count={1}, SafePositionName={2}, Dx={3}, Dy={4}, Dz1={5}</sys:String>
+    <sys:String x:Key="VisCap_Log_StationPosSaveSyncFailed">[VisionCapture] 工站位置保存后同步失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_SyncCaptureFailed">[VisionCapture] 同步拍照失败: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_TransformParamsSaved">[VisionCapture] 坐标转换参数已保存到全局变量</sys:String>
+    <sys:String x:Key="VisCap_Log_UpdateGlobalVarFailed">[VisionCapture] 更新全局变量值失败: {0}</sys:String>
+    <sys:String x:Key="VisCapSvc_Log_ParseCompleted">[VisionCapture] 数据解析完成，共 {0} 个键值对, 原始数据: {1}</sys:String>
+    <sys:String x:Key="VisCapSvc_Log_SendTriggerCommand">[VisionCapture] 发送触发命令: {0} → {1}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_ConfigFileNotFound">配置文件不存在: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_ConfigSaved">配置已保存: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_CreateDefaultConfigFailed">创建默认配置失败: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_DefaultConfigCreated">默认配置文件已创建</sys:String>
+    <sys:String x:Key="XmlCfg_Log_LoadConfigFailed">加载配置失败: {0}</sys:String>
+    <sys:String x:Key="XmlCfg_Log_MigratedFromLegacy">已从旧配置格式迁移到新格式</sys:String>
+    <sys:String x:Key="XmlCfg_Log_SaveConfigFailed">保存配置失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_AddRowFailed">Z-SCAN 添加行失败: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_AutoLoadLatestConfig">Z-SCAN 自动加载最新配置: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_AutoSavedAfterScan">Z-SCAN 扫描后自动保存: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_BaseZHeight">Z-SCAN [Dz{0}] 基准Z高度: {1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_CalcDispenseHeightFailed">Z-SCAN [Dz{0}] 计算点胶高度失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CalibrationReset">Z-SCAN [Dz{0}] 标定已重置</sys:String>
+    <sys:String x:Key="ZScan_Log_CalibrationResetFailed">Z-SCAN [Dz{0}] 标定重置失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataFilteredByConnName">Z-SCAN 相机数据被连接名过滤忽略: 来源={0}, 期望={1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataFormatError">Z-SCAN 相机数据格式错误: 未找到'{0}'标记</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataParseException">Z-SCAN 相机数据解析异常: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataParseSuccess">Z-SCAN 相机数据解析成功: {0} 个数值</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataProcessFailed">Z-SCAN 相机数据处理失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataReceived">Z-SCAN 收到相机数据 [{0}]: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraDataTimeout">Z-SCAN 相机数据接收超时 ({0}ms)</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraZCalibrationDone">Z-SCAN [Dz{0}] 相机Z标定完成: CameraZOffset={1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_CameraZCalibrationFailed">Z-SCAN [Dz{0}] 相机Z标定失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CannotParseValue">Z-SCAN 无法解析数值: '{0}'</sys:String>
+    <sys:String x:Key="ZScan_Log_CollectionChangedHandlerException">Z-SCAN 集合变更事件处理异常: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigAutoSaved">Z-SCAN 配置已自动保存: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigLoaded">Z-SCAN 配置已加载: 共享表格={0}个, Z标定分针头独立</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigLoadFailed">Z-SCAN 配置加载失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ConfigSaveFailed">Z-SCAN 配置保存失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CreateTableFailed">Z-SCAN 新建表格失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvExportCompleted">Z-SCAN CSV 导出完成: {0} 行 → {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvExportException">Z-SCAN CSV 导出异常: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvExportPermissionError">Z-SCAN CSV 导出权限错误: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvFileNotFound">Z-SCAN CSV 文件未找到: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvFileReadError">Z-SCAN CSV 文件读取错误: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvFileWriteError">Z-SCAN CSV 文件写入错误: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvHeaderDetected">Z-SCAN 检测到CSV标题行，将从第2行开始解析数据</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvImportCompleted">Z-SCAN CSV 导入完成: {0} 行成功, {1} 行警告</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvImportException">Z-SCAN CSV 导入异常: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvRowFieldCountInsufficient">Z-SCAN CSV 第{0}行字段数不足（{1}个），已跳过</sys:String>
+    <sys:String x:Key="ZScan_Log_CsvRowParseFailed">Z-SCAN CSV 第{0}行解析失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_DeleteTableFailed">Z-SCAN 删除表格失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_EmbeddedModeInitDone">Z-SCAN Detail 嵌入模式初始化完成</sys:String>
+    <sys:String x:Key="ZScan_Log_FindLatestFileFailed">Z-SCAN 查找最新文件失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_GlobalVarLinkNotFound">Z-SCAN 全局变量链接未找到: {0} (行{1})</sys:String>
+    <sys:String x:Key="ZScan_Log_GlobalVarListSynced">Z-SCAN 已同步全局变量列表（池={0}，共 {1} 项）</sys:String>
+    <sys:String x:Key="ZScan_Log_GlobalVarSync">Z-SCAN 全局变量同步: {0} = {1:F6} (行{2})</sys:String>
+    <sys:String x:Key="ZScan_Log_LinkedGlobalVarsSynced">Z-SCAN 已同步 {0} 个链接全局变量</sys:String>
+    <sys:String x:Key="ZScan_Log_LoadGlobalVarListFailed">Z-SCAN 加载全局变量列表失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_LoadTcpConnectionsFailed">Z-SCAN 加载TCP连接列表失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_MoveNeedleToBaseZFailed">Z-SCAN [Dz{0}] 移动针头到基准Z失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleCompensationApplied">Z-SCAN [Dz{0}] 换针补偿已应用: NeedleZOffset={1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleCompensationFailed">Z-SCAN [Dz{0}] 换针补偿应用失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleMovedToBaseZ">Z-SCAN [Dz{0}] 针头已移动到基准Z高度: {1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleTeachFailed">Z-SCAN [Dz{0}] 针头示教失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_NeedleTeachMZ">Z-SCAN [Dz{0}] 针头示教MZ: {1:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_PointDetailsEventsSubscribed">Z-SCAN 已注册 PointDetails 事件监听</sys:String>
+    <sys:String x:Key="ZScan_Log_PointDetailsEventsUnsubscribed">Z-SCAN 已取消 PointDetails 事件监听</sys:String>
+    <sys:String x:Key="ZScan_Log_PointDetailsNullCannotAddRow">Z-SCAN PointDetails 为空，无法添加行</sys:String>
+    <sys:String x:Key="ZScan_Log_PointsUpdatedWithCalibration">Z-SCAN 已更新 {0} 个测量点（含标定偏移={1:F3}，数据格式={2}，数据点数={3}）</sys:String>
+    <sys:String x:Key="ZScan_Log_PopupClosed">Z-SCAN Detail 弹窗关闭</sys:String>
+    <sys:String x:Key="ZScan_Log_PopupOpened">Z-SCAN Detail 弹窗打开</sys:String>
+    <sys:String x:Key="ZScan_Log_PropertyChangedCalcException">Z-SCAN 属性变更计算异常: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_PropertyChangedHandlerException">Z-SCAN 属性变更事件处理异常: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ReceivedPointCount">Z-SCAN 接收到 {0} 个测量点数据</sys:String>
+    <sys:String x:Key="ZScan_Log_RecipePoolSwitched">Z-SCAN 配方池切换，已重新加载全局变量（池={0}）</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnedToStandby">Z-SCAN 已返回待机位置</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnToStandbyFailed">Z-SCAN 返回待机失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnToStandbyInterrupted">Z-SCAN 返回待机被中断</sys:String>
+    <sys:String x:Key="ZScan_Log_ReturnToStandbyStart">Z-SCAN 开始返回待机位置</sys:String>
+    <sys:String x:Key="ZScan_Log_RowAdded">Z-SCAN 已添加新行: 点号={0}, 总点数={1}</sys:String>
+    <sys:String x:Key="ZScan_Log_RowRecalculated">Z-SCAN 行重算完成: 点[{0}] DeltaZ={1:F3}, Status={2}</sys:String>
+    <sys:String x:Key="ZScan_Log_RowUnlinkedGlobalVar">Z-SCAN 行{0}已取消全局变量链接: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanCompleted">Z-SCAN 3D扫描完成</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanDataReceivedTcsSet">Z-SCAN 扫描数据已接收（来源={0}，{1}个点），TCS 已设置</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanException">Z-SCAN 扫描异常: {0}\n{1}</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanStart">Z-SCAN 开始3D扫描</sys:String>
+    <sys:String x:Key="ZScan_Log_ScanStoppedByUser">Z-SCAN 扫描被用户停止</sys:String>
+    <sys:String x:Key="ZScan_Log_SetBaseZFailed">Z-SCAN [Dz{0}] 设置基准Z失败: {1}</sys:String>
+    <sys:String x:Key="ZScan_Log_StatisticsUpdated">Z-SCAN 统计更新: 总点={0}, Z范围={1}, 最大ΔZ={2:F3}, 状态={3} (Pass={4}, Fail={5}, Pending={6})</sys:String>
+    <sys:String x:Key="ZScan_Log_Step4CalcDispenseHeight">Z-SCAN [Dz{0}] Step4: 基准Z={1:F3}, 当前Z={2:F3}, Z高度差={3:F3}, 基准点胶高度(MZ)={4:F3}, 补偿={5:F3}, 点胶高度={6:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_StopCommandExecuted">Z-SCAN 停止命令已执行</sys:String>
+    <sys:String x:Key="ZScan_Log_StopFailed">Z-SCAN 停止失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_SyncGlobalVarsFailed">Z-SCAN 同步全局变量失败: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TableCreated">Z-SCAN 新建表格: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TableDeleted">Z-SCAN 删除表格: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TableSwitched">Z-SCAN 切换表格: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_TcpConnectionsLoaded">Z-SCAN TCP连接列表已加载: {0} 个</sys:String>
+    <sys:String x:Key="ZScan_Log_TcpDataSubscribed">Z-SCAN 已订阅TCP数据接收: 监听连接 '{0}'</sys:String>
+    <sys:String x:Key="ZScan_Log_TcpDataUnsubscribed">Z-SCAN 已取消订阅TCP数据接收</sys:String>
+    <sys:String x:Key="ZScan_Log_UpdatePoint">Z-SCAN 更新点[{0}]: ZMeasured={1:F3}, DeltaZ={2:F3}</sys:String>
+    <sys:String x:Key="ZScan_Log_UserLoadConfig">Z-SCAN 用户选择加载配置: {0}</sys:String>
+    <sys:String x:Key="ZScan_Log_UserTriggeredStop">Z-SCAN 用户触发停止</sys:String>
+    <sys:String x:Key="ZScan_Log_WaitingCameraData">Z-SCAN 等待3D相机数据返回（超时={0}ms）...</sys:String>
+    <sys:String x:Key="CadAT_Log_NoValidSnapshot">[CadAlignTransform] 持久化配置无有效变换快照，保持当前状态</sys:String>
+    <sys:String x:Key="CadAT_Log_RestoreFailed">[CadAlignTransform] 恢复变换快照失败: {0}</sys:String>
+    <sys:String x:Key="CadAT_Log_SnapshotRestored">[CadAlignTransform] 已从持久化配置恢复变换快照，回转中心=({0:F3}, {1:F3})</sys:String>
+    <sys:String x:Key="DashDlg_Log_DialogClosed">[DashboardDialog] 弹窗已关闭, result={0}</sys:String>
+    <sys:String x:Key="DashDlg_Log_DialogException">[DashboardDialog] 看板弹窗异常: {0}</sys:String>
+    <sys:String x:Key="DashDlg_Log_ReceivedRequest">[DashboardDialog] 收到看板请求, IsExecutionMode={0}</sys:String>
+    <sys:String x:Key="DGC_Log_AutoCalibrationCanceled">双龙门标定: 龙门{0}自动标定已取消</sys:String>
+    <sys:String x:Key="DGC_Log_AutoCalibrationException">双龙门标定: 龙门{0}自动标定异常</sys:String>
+    <sys:String x:Key="DGC_Log_CalibrationCompleted">双龙门标定: 龙门{0}标定完成，RMS={1}mm，点数={2}</sys:String>
+    <sys:String x:Key="DGC_Log_Cam1VisionDataTimeout">双龙门标定: 等待Cam1视觉数据超时</sys:String>
+    <sys:String x:Key="DGC_Log_Cam2VisionDataTimeout">双龙门标定: 等待Cam2视觉数据超时</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry1Done">双龙门标定: Cam1公共基准采集完成，视觉=({0},{1})</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry1Start">双龙门标定: 采集Cam1公共基准，CommonY1={0}</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry2Done">双龙门标定: Cam2公共基准采集完成，视觉=({0},{1})</sys:String>
+    <sys:String x:Key="DGC_Log_CaptureRefGantry2Start">双龙门标定: 采集Cam2公共基准，CommonY2={0}</sys:String>
+    <sys:String x:Key="DGC_Log_GantryTransformComputed">双龙门标定: 跨龙门对齐完成，Offset=({0},{1})，旋转={2}°，残差={3}mm</sys:String>
+    <sys:String x:Key="DGC_Log_InsufficientPoints">双龙门标定: 龙门{0}已标定点数不足3个，无法计算仿射</sys:String>
+    <sys:String x:Key="DGC_Log_ParseVisionDataFailed">双龙门标定: 龙门{0}解析视觉数据失败 - {1}, 原始数据: {2}</sys:String>
+    <sys:String x:Key="DGC_Log_SendTriggerCommandFailed">双龙门标定: 龙门{0}发送触发命令失败 - {1}</sys:String>
+    <sys:String x:Key="DGC_Log_StartAutoCalibration">双龙门标定: 启动龙门{0}自动标定，共 {1} 个点位</sys:String>
+    <sys:String x:Key="DGC_Log_StoppedAllAutoCalibration">双龙门标定: 已停止所有自动标定流程</sys:String>
+    <sys:String x:Key="DGC_Log_SubscribeConnectionNameEmpty">双龙门标定: 龙门{0}订阅连接名为空，跳过订阅</sys:String>
+    <sys:String x:Key="DGC_Log_SubscribedTcpVisionData">双龙门标定: 龙门{0}已订阅TCP视觉数据，连接名: {1}</sys:String>
+    <sys:String x:Key="DGC_Log_TriggerCam1Failed">双龙门标定: 触发Cam1失败 - {0}</sys:String>
+    <sys:String x:Key="DGC_Log_TriggerCam2Failed">双龙门标定: 触发Cam2失败 - {0}</sys:String>
+    <sys:String x:Key="DGC_Log_UnsubscribedTcpVisionData">双龙门标定: 龙门{0}已取消订阅TCP视觉数据，连接名: {1}</sys:String>
+    <sys:String x:Key="DGC_Log_VisionDataTimeout">双龙门标定: 龙门{0}点位 {1} 等待视觉数据超时</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseCanceled">[DotDispense] 点胶已取消</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseCompleted">[DotDispense] 点胶完成</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseException">[DotDispense] 点胶异常</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispensePoint">[DotDispense] 点胶点 [{0}]</sys:String>
+    <sys:String x:Key="DotDisp_Log_DispenseStart">[DotDispense] 开始点胶，针头{0}/Dz{1}(轴{2})，共 {3} 点，全选={4}</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunCanceled">[DotDispense] 空跑已取消</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunCompleted">[DotDispense] 空跑完成</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunException">[DotDispense] 空跑异常</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunPoint">[DotDispense] 空跑点 [{0}]</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunStart">[DotDispense] 开始空跑，针头{0}/Dz{1}(轴{2})，共 {3} 点</sys:String>
+    <sys:String x:Key="DotDisp_Log_DryRunTriggerPosition">[DotDispense] 空跑 点 [{0}] 到达触发位，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointTriggerGlueOn">[DotDispense] 点 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
+    <sys:String x:Key="DotDisp_Log_SafeStop">[DotDispense] 执行安全停止</sys:String>
+    <sys:String x:Key="DotDisp_Log_TeachPoint">[DotDispense] 示教点位 [{0}] 针头{1}/Dz{2} → ({3:F3}, {4:F3}, Dz2={5:F3}, Dz3={6:F3}, 主Z={7:F3}, {8:F3}, {9:F3}, {10:F3})</sys:String>
+    <sys:String x:Key="DotDisp_Log_WriteIoFailed">[DotDispense] 写出胶IO失败 port={0} value={1}</sys:String>
+    <sys:String x:Key="DualGantryCalib_CalibrationRequired">请先完成双龙门标定</sys:String>
+    <sys:String x:Key="DualGantryCalib_CapturingReference">采集公共基准点...</sys:String>
+    <sys:String x:Key="DualGantryCalib_MinReferenceRequired">跨龙门对齐至少需要2个公共基准点</sys:String>
+    <sys:String x:Key="DualGantryCalib_PointTaught">龙门1点位 {0} 示教完成</sys:String>
+    <sys:String x:Key="DualGantryCalib_ReferenceCaptured">公共基准点 {0} 采集完成</sys:String>
+    <sys:String x:Key="DualGantryCalib_VerifyResult">验证结果: ({0:F4}, {1:F4})</sys:String>
+    <sys:String x:Key="LUL_Log_StopAxisFailed">StopMotion: 停止轴 {0} 失败: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_AxesSettleTimeout">[NeedleAligner] 停轴后等待位置稳定超时({0}ms)</sys:String>
+    <sys:String x:Key="NAM_Log_CalibrationException">[NeedleAligner] 寻针校准异常</sys:String>
+    <sys:String x:Key="NAM_Log_DualLaserPreclearIncomplete">[NeedleAligner] 双激光预清未完全灭光，继续束内双沿回退</sys:String>
+    <sys:String x:Key="NAM_Log_DualLaserScanTimeout">[NeedleAligner] 双激光入光扫描超时</sys:String>
+    <sys:String x:Key="NAM_Log_DxConfigNotFound">[NeedleAligner] 未找到 Dx 轴配置，CoordId 回退 0</sys:String>
+    <sys:String x:Key="NAM_Log_DxNotInInterpolationSystem">[NeedleAligner] Dx 不在插补系中，CoordId 回退 0</sys:String>
+    <sys:String x:Key="NAM_Log_EdgePointsExceedTwo">[NeedleAligner] X/Y 传感器边缘点超过 2 个，Halcon 拟合使用前两个: X=P{0}/P{1} Y=P{2}/P{3}</sys:String>
+    <sys:String x:Key="NAM_Log_EdgeSearchFailed">[NeedleAligner] 搜索点{0}边缘搜索失败</sys:String>
+    <sys:String x:Key="NAM_Log_HalconFitInsufficientPoints">[NeedleAligner] Halcon 拟合需 X/Y 传感器各至少 2 个边缘点，当前 X={0}(P{1}) Y={2}(P{3})</sys:String>
+    <sys:String x:Key="NAM_Log_HalconIntersection">[NeedleAligner] Halcon 交点: X={0:F3}, Y={1:F3}</sys:String>
+    <sys:String x:Key="NAM_Log_HalconIntersectionException">[NeedleAligner] Halcon 直线交点异常: {0}</sys:String>
+    <sys:String x:Key="NAM_Log_HalconIntersectionFailed">[NeedleAligner] Halcon 交点失败，直线可能平行或重叠</sys:String>
+    <sys:String x:Key="NAM_Log_RaiseSafeHeightOnFailure">[NeedleAligner] 寻针失败，自动抬升至安全高度</sys:String>
+    <sys:String x:Key="NAM_Log_RaiseSafeHeightOnFailureException">[NeedleAligner] 失败后抬升安全高度异常: {0}</sys:String>
+    <sys:String x:Key="NAM_Log_ReadDiFailed">[NeedleAligner] 读取 DI{0} 失败: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_RelativeScanNotStarted">[NeedleAligner] 相对扫描未启动 DI={0} 轴{1} 距离={2:F3}</sys:String>
+    <sys:String x:Key="NAM_Log_RelativeScanStartFailed">[NeedleAligner] 相对扫描启动失败 DI={0}: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_SensorPortInvalid">[NeedleAligner] 传感器 DI 端口号无效: {0}</sys:String>
+    <sys:String x:Key="NAM_Log_SingleSensorScanTimeout">[NeedleAligner] 单路入光扫描超时 DI={0}</sys:String>
+    <sys:String x:Key="NAM_Log_StopAxisFailed">[NeedleAligner] 停止轴{0}失败: {1}</sys:String>
+    <sys:String x:Key="NAM_Log_ZAtDescendLimit">[NeedleAligner] 第{0}次 Z 已在下探极限({1:F3})，跳过</sys:String>
+    <sys:String x:Key="NAM_Log_ZDescendDirectionError">[NeedleAligner] Z下探方向异常: 起始Z={0:F3} 极限Z={1:F3} ΔZ={2:F3} downCoordIncrease={3}</sys:String>
+    <sys:String x:Key="NAM_Log_ZSampleFailed">[NeedleAligner] 第{0}次 Z 高度采样失败</sys:String>
+    <sys:String x:Key="NAM_Log_ZSearchTimeout">[NeedleAligner] 第{0}次 Z 高度搜索超时</sys:String>
+    <sys:String x:Key="NCCP_Log_GetOffsetFailed">[NeedleCameraCalibProvider] 获取系统{0}针头偏移失败: {1}</sys:String>
+    <sys:String x:Key="NCCP_Log_NoCalibrationFile">[NeedleCameraCalibProvider] 系统{0}无可用标定文件，偏移取0</sys:String>
+    <sys:String x:Key="NCCP_Log_ReadRecipePoolRecordFailed">[NeedleCameraCalibProvider] 读取配方池记录失败: {0}</sys:String>
+    <sys:String x:Key="Needle_Log_CountIncremented">NeedleService: 针头 {0} 使用次数递增至 {1}</sys:String>
+    <sys:String x:Key="Needle_Log_CountReset">NeedleService: 针头 {0} 使用计数已重置</sys:String>
+    <sys:String x:Key="Needle_Log_LifeWarningThreshold">NeedleService: 针头 {0} 使用次数已达预警阈值 ({1:P0})，当前 {2}/{3}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_CancelRequest">用户请求取消验证...</sys:String>
+    <sys:String x:Key="NPC_Log_AutoCalibrationCanceled">N点标定: 自动标定已取消</sys:String>
+    <sys:String x:Key="NPC_Log_AutoCalibrationException">N点标定: 自动标定异常</sys:String>
+    <sys:String x:Key="NPC_Log_ParseVisionDataFailed">N点标定: 解析视觉数据失败 - {0}, 原始数据: {1}</sys:String>
+    <sys:String x:Key="NPC_Log_SendTriggerCommandFailed">N点标定: 发送触发命令失败 - {0}</sys:String>
+    <sys:String x:Key="NPC_Log_SubscribedTcpVisionData">N点标定: 已订阅TCP视觉数据，连接名: {0}</sys:String>
+    <sys:String x:Key="NPC_Log_UnsubscribedTcpVisionData">N点标定: 已取消订阅TCP视觉数据</sys:String>
+    <sys:String x:Key="NPC_Log_VisionDataTimeout">N点标定: 点位 {0} 等待视觉数据超时</sys:String>
+    <sys:String x:Key="StageCal_Log_AutoReceivedData">StageCalibration: 自动接收数据 特征点{0} X:{1:F3} Y:{2:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_CameraPhotoPositionReached">StageCalibration: 相机已到达拍照位</sys:String>
+    <sys:String x:Key="StageCal_Log_CaptureFailed">StageCalibration: 视觉拍照失败 - {0}</sys:String>
+    <sys:String x:Key="StageCal_Log_CaptureTimeout">StageCalibration: 视觉拍照超时 ({0}ms)</sys:String>
+    <sys:String x:Key="StageCal_Log_HalconCalcDone">StageCalibration: Halcon计算完成 中心({0:F3},{1:F3}) 角度:{2:F3}° 距离:{3:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_HalconCalcStart">StageCalibration: Halcon计算 中心点/角度 P1({0:F3},{1:F3}) P2({2:F3},{3:F3})</sys:String>
+    <sys:String x:Key="StageCal_Log_MoveCameraToPhotoPosition">StageCalibration: 移动相机到拍照位 Dx:{0:F3}, Dy:{1:F3}, Dz:{2:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_MoveToReferencePosition">StageCalibration: 移动载台到基准位 Rx:{0:F3}, Rz:{1:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_ParseAutoReceivedDataFailed">StageCalibration: 解析自动接收数据失败 - {0}, 原始消息:{1}</sys:String>
+    <sys:String x:Key="StageCal_Log_ReadCurrentPositions">StageCalibration: 读取当前轴位置</sys:String>
+    <sys:String x:Key="StageCal_Log_ReferencePositionReached">StageCalibration: 载台已到达基准位</sys:String>
+    <sys:String x:Key="StageCal_Log_RotateToReferenceAngle">StageCalibration: 旋转Rz轴到基准角度，当前:{0:F3}, 偏差:{1:F3}, 目标:{2:F3}</sys:String>
+    <sys:String x:Key="StageCal_Log_RotationCompleted">StageCalibration: Rz轴旋转完成</sys:String>
+    <sys:String x:Key="StageCal_Log_SubscribedCameraData">StageCalibration: 已订阅相机数据自动接收，连接:{0}</sys:String>
+    <sys:String x:Key="StageCal_Log_TriggerCapture">StageCalibration: 触发视觉拍照，连接:{0}, 命令:{1}</sys:String>
+    <sys:String x:Key="StageCal_Log_UnsubscribedCameraData">StageCalibration: 已取消订阅相机数据</sys:String>
+    <sys:String x:Key="TB_Log_FatalStepFailure">致命故障，任务 [{0}] 在 [{1}] 步骤崩溃。内部异常: {2}</sys:String>
+    <sys:String x:Key="TB_Log_UnknownFatalError">[{0}] 未知严重错误: {1}</sys:String>
+    <sys:String x:Key="App_Log_ShutdownExitCode">App_Log_ShutdownExitCode</sys:String>
+    <sys:String x:Key="App_Log_ShutdownInfoHeader">App_Log_ShutdownInfoHeader</sys:String>
+    <sys:String x:Key="App_Log_ShutdownMemory">App_Log_ShutdownMemory</sys:String>
+    <sys:String x:Key="App_Log_ShutdownThreadCount">App_Log_ShutdownThreadCount</sys:String>
+    <sys:String x:Key="App_Log_ShutdownTime">App_Log_ShutdownTime</sys:String>
+    <sys:String x:Key="App_Log_StartupCmdArgs">App_Log_StartupCmdArgs</sys:String>
+    <sys:String x:Key="App_Log_StartupInfoHeader">App_Log_StartupInfoHeader</sys:String>
+    <sys:String x:Key="App_Log_StartupMemory">App_Log_StartupMemory</sys:String>
+    <sys:String x:Key="App_Log_StartupOSVersion">App_Log_StartupOSVersion</sys:String>
+    <sys:String x:Key="App_Log_StartupProcessorCount">App_Log_StartupProcessorCount</sys:String>
+    <sys:String x:Key="App_Log_StartupVersion">App_Log_StartupVersion</sys:String>
+    <sys:String x:Key="App_Log_StartupWorkDir">App_Log_StartupWorkDir</sys:String>
+    <sys:String x:Key="CAD_AutoRecommend_Confirm">CAD_AutoRecommend_Confirm</sys:String>
+    <sys:String x:Key="CAD_Baseline_Done_Status">CAD_Baseline_Done_Status</sys:String>
+    <sys:String x:Key="CAD_Baseline_Start_Status">CAD_Baseline_Start_Status</sys:String>
+    <sys:String x:Key="CAD_Rotation_Need4Points">CAD_Rotation_Need4Points</sys:String>
+    <sys:String x:Key="CAD_ShowBaseline_Status">CAD_ShowBaseline_Status</sys:String>
+    <sys:String x:Key="CAD_ShowTarget_Status">CAD_ShowTarget_Status</sys:String>
+    <sys:String x:Key="CAD_SmartRecommend_NotEnough">CAD_SmartRecommend_NotEnough</sys:String>
+    <sys:String x:Key="CAD_Target_Done_Status">CAD_Target_Done_Status</sys:String>
+    <sys:String x:Key="CAD_Target_Start_Status">CAD_Target_Start_Status</sys:String>
+    <sys:String x:Key="CAD_Transform_IndexOutOfRange">CAD_Transform_IndexOutOfRange</sys:String>
+    <sys:String x:Key="DataDetail_DefaultFieldName">DataDetail_DefaultFieldName</sys:String>
+    <sys:String x:Key="DataDetail_Log_DataLoaded">DataDetail_Log_DataLoaded</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramLoadFailed">DataDetail_Log_DiagramLoadFailed</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramNotExist">DataDetail_Log_DiagramNotExist</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramSuccess">DataDetail_Log_DiagramSuccess</sys:String>
+    <sys:String x:Key="DataDetail_Log_EvalFailed">DataDetail_Log_EvalFailed</sys:String>
+    <sys:String x:Key="DataDetail_Log_GetVarFailed">DataDetail_Log_GetVarFailed</sys:String>
+    <sys:String x:Key="DataDetail_Log_PoolIdEmpty">DataDetail_Log_PoolIdEmpty</sys:String>
+    <sys:String x:Key="DataDetail_Log_UserConfirmedNG">DataDetail_Log_UserConfirmedNG</sys:String>
+    <sys:String x:Key="DataDetail_Log_VarLoaded">DataDetail_Log_VarLoaded</sys:String>
+    <sys:String x:Key="DataDetail_Log_VarLoadFailed">DataDetail_Log_VarLoadFailed</sys:String>
+    <sys:String x:Key="DispExec_Log_SegmentDebug">DispExec_Log_SegmentDebug</sys:String>
+    <sys:String x:Key="DispExec_Log_SegmentStart">DispExec_Log_SegmentStart</sys:String>
+    <sys:String x:Key="DSS_Log_AlignDataLoadFailed">DSS_Log_AlignDataLoadFailed</sys:String>
+    <sys:String x:Key="DSS_Log_ConfigFileNotFound">DSS_Log_ConfigFileNotFound</sys:String>
+    <sys:String x:Key="DSS_Log_DeserializeFailed">DSS_Log_DeserializeFailed</sys:String>
+    <sys:String x:Key="Gripper_Dialog_OperationFailed_Title">Gripper_Dialog_OperationFailed_Title</sys:String>
+    <sys:String x:Key="Gripper_Error_Status">Gripper_Error_Status</sys:String>
+    <sys:String x:Key="Gripper_Log_DialogOpened">Gripper_Log_DialogOpened</sys:String>
+    <sys:String x:Key="Gripper_Log_OperationFailed">Gripper_Log_OperationFailed</sys:String>
+    <sys:String x:Key="Init_Loading_AxesStandby">Init_Loading_AxesStandby</sys:String>
+    <sys:String x:Key="Log_AlarmAcknowledged">Log_AlarmAcknowledged</sys:String>
+    <sys:String x:Key="Log_AlarmTriggered">Log_AlarmTriggered</sys:String>
+    <sys:String x:Key="Log_AxisHomingDone">Log_AxisHomingDone</sys:String>
+    <sys:String x:Key="Log_CameraTriggered">Log_CameraTriggered</sys:String>
+    <sys:String x:Key="Log_DiStatusChanged">Log_DiStatusChanged</sys:String>
+    <sys:String x:Key="Log_DoToggled">Log_DoToggled</sys:String>
+    <sys:String x:Key="Log_DoToggleFailed">Log_DoToggleFailed</sys:String>
+    <sys:String x:Key="Log_EmergencyStopTriggered">Log_EmergencyStopTriggered</sys:String>
+    <sys:String x:Key="Log_ProcessCompleted">Log_ProcessCompleted</sys:String>
+    <sys:String x:Key="Log_ProcessStarted">Log_ProcessStarted</sys:String>
+    <sys:String x:Key="Log_StepCompleted">Log_StepCompleted</sys:String>
+    <sys:String x:Key="Log_VisionDataReceived">Log_VisionDataReceived</sys:String>
+    <sys:String x:Key="MainWindow_InitConfirmMsg">MainWindow_InitConfirmMsg</sys:String>
+    <sys:String x:Key="MainWindow_InitConfirmNo">MainWindow_InitConfirmNo</sys:String>
+    <sys:String x:Key="MainWindow_InitConfirmYes">MainWindow_InitConfirmYes</sys:String>
+    <sys:String x:Key="MainWindow_TcpNoConfig">MainWindow_TcpNoConfig</sys:String>
+    <sys:String x:Key="NAM_Log_SensorState">NAM_Log_SensorState</sys:String>
+    <sys:String x:Key="PickDetail_Alert_ClampFailed">PickDetail_Alert_ClampFailed</sys:String>
+    <sys:String x:Key="PickDetail_Alert_ReleaseFailed">PickDetail_Alert_ReleaseFailed</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmClamp_Msg">PickDetail_ConfirmClamp_Msg</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmClamp_Title">PickDetail_ConfirmClamp_Title</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmRelease_Msg">PickDetail_ConfirmRelease_Msg</sys:String>
+    <sys:String x:Key="PickDetail_ConfirmRelease_Title">PickDetail_ConfirmRelease_Title</sys:String>
+    <sys:String x:Key="PickDetail_Log_ClampDone">PickDetail_Log_ClampDone</sys:String>
+    <sys:String x:Key="PickDetail_Log_ClampFailed">PickDetail_Log_ClampFailed</sys:String>
+    <sys:String x:Key="PickDetail_Log_ReleaseDone">PickDetail_Log_ReleaseDone</sys:String>
+    <sys:String x:Key="PickDetail_Log_ReleaseFailed">PickDetail_Log_ReleaseFailed</sys:String>
+    <sys:String x:Key="ReleaseDetail_Alert_ReleaseFailed">ReleaseDetail_Alert_ReleaseFailed</sys:String>
+    <sys:String x:Key="ReleaseDetail_ConfirmRelease_Msg">ReleaseDetail_ConfirmRelease_Msg</sys:String>
+    <sys:String x:Key="ReleaseDetail_ConfirmRelease_Title">ReleaseDetail_ConfirmRelease_Title</sys:String>
+    <sys:String x:Key="ReleaseDetail_Log_ReleaseDone">ReleaseDetail_Log_ReleaseDone</sys:String>
+    <sys:String x:Key="ReleaseDetail_Log_ReleaseFailed">ReleaseDetail_Log_ReleaseFailed</sys:String>
+    <sys:String x:Key="ScriptDetail_CompileSuccess">ScriptDetail_CompileSuccess</sys:String>
+    <sys:String x:Key="ScriptDetail_EmptyCode">ScriptDetail_EmptyCode</sys:String>
+    <sys:String x:Key="ScriptDetail_ErrClassNotFound">ScriptDetail_ErrClassNotFound</sys:String>
+    <sys:String x:Key="ScriptDetail_ErrMethodNotFound">ScriptDetail_ErrMethodNotFound</sys:String>
+    <sys:String x:Key="ScriptDetail_ErrReturnType">ScriptDetail_ErrReturnType</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecFailed">ScriptDetail_ExecFailed</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecNoOutput">ScriptDetail_ExecNoOutput</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecResultHeader">ScriptDetail_ExecResultHeader</sys:String>
+    <sys:String x:Key="ScriptDetail_ExecReturnFalse">ScriptDetail_ExecReturnFalse</sys:String>
+    <sys:String x:Key="ScriptDetail_Executing">ScriptDetail_Executing</sys:String>
+    <sys:String x:Key="ScriptDetail_Log_VarLoadFail">ScriptDetail_Log_VarLoadFail</sys:String>
+    <sys:String x:Key="SeekDetail_DefaultDesc">SeekDetail_DefaultDesc</sys:String>
+    <sys:String x:Key="SeekDetail_Error_ExportFailed">SeekDetail_Error_ExportFailed</sys:String>
+    <sys:String x:Key="SeekDetail_ExportDialogTitle">SeekDetail_ExportDialogTitle</sys:String>
+    <sys:String x:Key="SeekDetail_ImportDialogTitle">SeekDetail_ImportDialogTitle</sys:String>
+    <sys:String x:Key="SeekDetail_JsonFileFilter">SeekDetail_JsonFileFilter</sys:String>
+    <sys:String x:Key="STM_Log_TasksResolvedAndRegistered">STM_Log_TasksResolvedAndRegistered</sys:String>
+    <sys:String x:Key="CAD_Rotation_Done">CAD_Rotation_Done</sys:String>
+    <sys:String x:Key="DataDetail_ImageFileFilter">DataDetail_ImageFileFilter</sys:String>
+    <sys:String x:Key="DataDetail_Log_DiagramSaved">DataDetail_Log_DiagramSaved</sys:String>
+    <sys:String x:Key="DataDetail_Log_UserConfirmed">DataDetail_Log_UserConfirmed</sys:String>
+    <sys:String x:Key="DataDetail_Log_ValuesRefreshed">DataDetail_Log_ValuesRefreshed</sys:String>
+    <sys:String x:Key="DataDetail_SelectDiagramTitle">DataDetail_SelectDiagramTitle</sys:String>
+    <sys:String x:Key="LanguageSelector.Title">LanguageSelector.Title</sys:String>
+    <sys:String x:Key="LanguageSelector.Tooltip">LanguageSelector.Tooltip</sys:String>
+    <sys:String x:Key="Log_AxisMovedToTarget">Log_AxisMovedToTarget</sys:String>
+    <sys:String x:Key="ScriptDetail_CompileFailed">ScriptDetail_CompileFailed</sys:String>
+    <sys:String x:Key="SeekDetail_Error_ImportFailed">SeekDetail_Error_ImportFailed</sys:String>
+    <!-- ===== End auto-added missing log keys ===== -->
 </ResourceDictionary>
 

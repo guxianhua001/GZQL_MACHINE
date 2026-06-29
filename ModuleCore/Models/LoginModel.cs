@@ -1,6 +1,7 @@
 using Framework.Mvvm;
 using Core.Utilities;
 using Core.Services;
+using Core.Abstraction;
 using ModuleCore.Common.Authority;
 using Prism.Mvvm;
 using Prism.Services.Dialogs;
@@ -29,10 +30,11 @@ namespace ModuleCore.Models
         }
         public event Action OnConfigChanged;
 
-        public LoginModel(IDialogService dialogService, ILoggerService logger)
+        public LoginModel(IDialogService dialogService, ILoggerService logger, ILocalizationService localization)
         {
             _dialogService = dialogService;
             _logger = logger;
+            _localization = localization;
             //权限列表
             var authorityListString = Enum.GetNames(typeof(Authority));
             var i = 0;
@@ -47,6 +49,7 @@ namespace ModuleCore.Models
         }
         private readonly IDialogService _dialogService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         #region 登录
 
         //登录的用户
@@ -257,11 +260,11 @@ namespace ModuleCore.Models
 
                 // 移动损坏的文件
                 File.Move(configPath, backupPath);
-                _logger.Warn($"检测到损坏的配置文件，已备份到: {backupPath}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("Login_Log_CorruptedConfigBackedUp", "检测到损坏的配置文件，已备份到: {0}"), backupPath));
             }
             catch (Exception ex)
             {
-                _logger.Error($"备份损坏配置文件失败: {ex}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("Login_Log_BackupCorruptedConfigFailed", "备份损坏配置文件失败: {0}"), ex));
             }
             finally
             {
@@ -290,12 +293,12 @@ namespace ModuleCore.Models
                 string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AuthConfigFile);
                 JsonService.DataTableToEncryptFile(configPath, authTable);
 
-                _logger.Info($"认证配置已保存: 自动注销时间 = {_autoLogoutMinutes}分钟");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Login_Log_AuthConfigSaved", "认证配置已保存: 自动注销时间 = {0}分钟"), _autoLogoutMinutes));
                 OnConfigChanged?.Invoke();
             }
             catch (Exception ex)
             {
-                _logger.Error($"保存认证配置失败: {ex}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("Login_Log_SaveAuthConfigFailed", "保存认证配置失败: {0}"), ex));
             }
         }
 

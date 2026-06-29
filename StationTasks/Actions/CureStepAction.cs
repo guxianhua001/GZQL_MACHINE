@@ -23,6 +23,7 @@ namespace StationTasks.Actions
         private readonly ILoggerService _logger;
         private readonly IStationRegistry _stationRegistry;
         private readonly IMotionService _motionService;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.CURE;
 
@@ -30,12 +31,14 @@ namespace StationTasks.Actions
             IRecipePoolService recipePoolService,
             ILoggerService logger,
             IStationRegistry stationRegistry,
-            IMotionService motionService)
+            IMotionService motionService,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _stationRegistry = stationRegistry;
             _motionService = motionService;
+            _localization = localization;
         }
 
         /// <summary>
@@ -46,7 +49,9 @@ namespace StationTasks.Actions
             var cureDetail = step.CureDetail;
             if (cureDetail == null)
             {
-                _logger.Warn($"CURE 步骤 [{step.Seq}] 没有 CureDetail，跳过执行");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Cure_Log_NoCureDetail", "CURE 步骤 [{0}] 没有 CureDetail，跳过执行"),
+                    step.Seq));
                 return;
             }
 
@@ -59,7 +64,9 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Warn($"加载全局变量失败: {ex.Message}，偏移变量名将无法解析");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Cure_Log_LoadGlobalVarsFailed", "加载全局变量失败: {0}，偏移变量名将无法解析"),
+                    ex.Message));
             }
 
             // 执行固化运动序列（包含内嵌的UV灯控制等动作）
@@ -89,7 +96,9 @@ namespace StationTasks.Actions
                         double posValue = await targetTask.GetPositionValueAsync(subMove.PositionName, axisName);
                         double targetPos = posValue + totalOffset;
                         // 记录配方位置值、偏移量和最终目标位置
-                        _logger.Info($"CURE SubMove [{subMove.SubSeq}]: 工站={targetTask.StationIdentifierValue}, 轴{axisId}({axisName}) → '{subMove.PositionName}'={posValue:F3}, 偏移{totalOffset:F3}, 目标位置={targetPos:F3}, 速度{speed}");
+                        _logger.Info(string.Format(
+                            _localization.GetResourceOrDefault("Cure_Log_SubMoveInfo", "CURE SubMove [{0}]: 工站={1}, 轴{2}({3}) → '{4}'={5:F3}, 偏移{6:F3}, 目标位置={7:F3}, 速度{8}"),
+                            subMove.SubSeq, targetTask.StationIdentifierValue, axisId, axisName, subMove.PositionName, posValue, totalOffset, targetPos, speed));
 
                         TaskState? overrideState = targetTask != task ? task.State : null;
                         string moveLabel = $"[{step.Seq}] {axisName} → {subMove.PositionName} ({posValue:F3})+{totalOffset:F3}={targetPos:F3}";
@@ -113,7 +122,9 @@ namespace StationTasks.Actions
             if (station is StationTaskBase task)
                 return task;
 
-            _logger.Warn($"SubMove 指定的工站 '{stationId}' 未找到，使用默认工站 '{defaultTask.TaskName}'");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Cure_Log_StationNotFound", "SubMove 指定的工站 '{0}' 未找到，使用默认工站 '{1}'"),
+                stationId, defaultTask.TaskName));
             return defaultTask;
         }
 
@@ -129,7 +140,9 @@ namespace StationTasks.Actions
                     return resolvedId;
             }
 
-            _logger.Warn($"SubMove [{subMove.SubSeq}] 无法解析轴ID，AxisId={subMove.AxisId}, Axis={subMove.Axis}");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Cure_Log_AxisIdUnresolved", "SubMove [{0}] 无法解析轴ID，AxisId={1}, Axis={2}"),
+                subMove.SubSeq, subMove.AxisId, subMove.Axis));
             return subMove.AxisId;
         }
 
@@ -138,14 +151,18 @@ namespace StationTasks.Actions
             var gv = globalVars.FirstOrDefault(v => v.Name == variableName);
             if (gv == null)
             {
-                _logger.Warn($"全局变量 '{variableName}' 未找到，偏移量按 0 处理");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Cure_Log_VariableNotFound", "全局变量 '{0}' 未找到，偏移量按 0 处理"),
+                    variableName));
                 return 0;
             }
 
             if (double.TryParse(gv.Value, out var result))
                 return result;
 
-            _logger.Warn($"全局变量 '{variableName}' 的值 '{gv.Value}' 无法解析为数值，偏移量按 0 处理");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Cure_Log_VariableParseFailed", "全局变量 '{0}' 的值 '{1}' 无法解析为数值，偏移量按 0 处理"),
+                variableName, gv.Value));
             return 0;
         }
 
@@ -165,14 +182,18 @@ namespace StationTasks.Actions
                 case SubMoveAction.UvOn:
                     // 打开UV灯：根据固化头选择对应的DO端口
                     int uvDoPort = cureDetail.UvHeadIndex == 1 ? cureDetail.UvHead1DoPort : cureDetail.UvHead2DoPort;
-                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 打开UV灯，DO端口: {uvDoPort}");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Cure_Log_UvOn", "CURE 步骤 [{0}] SubMove [{1}] 打开UV灯，DO端口: {2}"),
+                        stepSeq, subMove.SubSeq, uvDoPort));
                     _motionService.WriteDo(uvDoPort, true);
                     break;
 
                 case SubMoveAction.UvOff:
                     // 关闭UV灯
                     int uvDoPortOff = cureDetail.UvHeadIndex == 1 ? cureDetail.UvHead1DoPort : cureDetail.UvHead2DoPort;
-                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 关闭UV灯，DO端口: {uvDoPortOff}");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Cure_Log_UvOff", "CURE 步骤 [{0}] SubMove [{1}] 关闭UV灯，DO端口: {2}"),
+                        stepSeq, subMove.SubSeq, uvDoPortOff));
                     _motionService.WriteDo(uvDoPortOff, false);
                     break;
 
@@ -180,13 +201,19 @@ namespace StationTasks.Actions
                 case SubMoveAction.UvDelay:
                     // 延时等待：优先使用行内参数，若无则使用 CureDetail.CureTimeMs（固化时间）
                     int holdMs = subMove.ActionParameter > 0 ? (int)subMove.ActionParameter : cureDetail.CureTimeMs;
-                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 固化延时: {holdMs}ms");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Cure_Log_HoldDelay", "CURE 步骤 [{0}] SubMove [{1}] 固化延时: {2}ms"),
+                        stepSeq, subMove.SubSeq, holdMs));
                     await Task.Delay(holdMs, token);
-                    _logger.Info($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 固化延时完成");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Cure_Log_HoldDelayCompleted", "CURE 步骤 [{0}] SubMove [{1}] 固化延时完成"),
+                        stepSeq, subMove.SubSeq));
                     break;
 
                 default:
-                    _logger.Warn($"CURE 步骤 [{stepSeq}] SubMove [{subMove.SubSeq}] 未知的动作类型: {subMove.Action}, 跳过执行");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Cure_Log_UnknownAction", "CURE 步骤 [{0}] SubMove [{1}] 未知的动作类型: {2}, 跳过执行"),
+                        stepSeq, subMove.SubSeq, subMove.Action));
                     break;
             }
         }

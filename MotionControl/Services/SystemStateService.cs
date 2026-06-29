@@ -95,7 +95,7 @@ namespace MotionControl.Services
         {
             if (!_appSettings.Settings.RequireInitOnRestart && _currentState == StationState.WAITRESET)
             {
-                _logger.Info("调试模式：已关闭「重开需初始化」，设备状态直接进入 WAITRUN。");
+                _logger.Info(_localization.GetResourceOrDefault("SysState_Log_DebugModeSkipInit", "调试模式：已关闭「重开需初始化」，设备状态直接进入 WAITRUN。"));
                 TransitionTo(StationState.WAITRUN);
             }
         }
@@ -154,7 +154,7 @@ namespace MotionControl.Services
                     if (!string.IsNullOrEmpty(light.LightType)) _lightByType[light.LightType] = light;
                 }
             }
-            _logger.Info($"TowerLights 配置加载完成: [{string.Join(", ", _lightByType.Keys)}], 共{_lightByType.Count}项");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("SysState_Log_TowerLightsConfigLoaded", "TowerLights 配置加载完成: [{0}], 共{1}项"), string.Join(", ", _lightByType.Keys), _lightByType.Count));
             foreach (var kv in _signalLookup) _previousDiStates[kv.Key] = false;
         }
         private void OnTimerTick(object state) => UpdateSignalStates();
@@ -294,7 +294,7 @@ namespace MotionControl.Services
             {
                 if (_resetButtonPressedTime != null || _resetLongPressHandled)
                 {
-                    _logger.Warn("控制卡未连接，复位按钮长按检测已禁用，避免误触发整机初始化。");
+                    _logger.Warn(_localization.GetResourceOrDefault("SysState_Log_CardNotConnectedResetDisabled", "控制卡未连接，复位按钮长按检测已禁用，避免误触发整机初始化。"));
                     _resetButtonPressedTime = null;
                     _resetLongPressHandled = false;
                 }
@@ -319,11 +319,11 @@ namespace MotionControl.Services
             {
                 _resetButtonPressedTime = DateTime.Now;
                 _resetLongPressHandled = false;
-                _logger.Info("复位按钮已按下，长按5秒将触发整机初始化...");
+                _logger.Info(_localization.GetResourceOrDefault("SysState_Log_ResetButtonPressed", "复位按钮已按下，长按5秒将触发整机初始化..."));
             }
             else if (!_resetLongPressHandled && (DateTime.Now - _resetButtonPressedTime.Value).TotalSeconds >= 5)
             {
-                _logger.Warn("复位按钮长按5秒 -> 触发整机初始化。");
+                _logger.Warn(_localization.GetResourceOrDefault("SysState_Log_ResetButtonLongPressTrigger", "复位按钮长按5秒 -> 触发整机初始化。"));
                 _resetLongPressHandled = true;
                 // 先驱动状态机 WAITRESET → RESETING（复位条件不满足时仅记录警告，不阻塞初始化）
                 RequestReset();
@@ -348,7 +348,7 @@ namespace MotionControl.Services
             int busError = _motion.GetEtherCatBusErrorCode();
             if (busError != 0)
             {
-                _logger.Warn($"控制卡连接异常：EtherCAT 总线错误码 0x{busError:X}。");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("SysState_Log_CardConnectionError", "控制卡连接异常：EtherCAT 总线错误码 0x{0:X}。"), busError));
                 return false;
             }
 
@@ -562,7 +562,7 @@ namespace MotionControl.Services
             }
             else
             {
-                _logger.Warn($"WriteLight: 未找到灯光配置 LightType='{lightType}', 可用类型=[{string.Join(",", _lightByType.Keys)}]");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("SysState_Log_LightConfigNotFound", "WriteLight: 未找到灯光配置 LightType='{0}', 可用类型=[{1}]"), lightType, string.Join(",", _lightByType.Keys)));
             }
         }
         private void WriteBuzzer(bool on)
@@ -574,7 +574,7 @@ namespace MotionControl.Services
             }
             else
             {
-                _logger.Warn($"WriteBuzzer: 未找到蜂鸣器配置, 可用类型=[{string.Join(",", _lightByType.Keys)}]");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("SysState_Log_BuzzerConfigNotFound", "WriteBuzzer: 未找到蜂鸣器配置, 可用类型=[{0}]"), string.Join(",", _lightByType.Keys)));
             }
         }
         private string GetStateDescription() => _currentState switch

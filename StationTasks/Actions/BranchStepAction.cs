@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using StationTasks.Models;
 using StationTasks.Tasks;
@@ -14,17 +15,21 @@ namespace StationTasks.Actions
     public class BranchStepAction : IProcessStepAction
     {
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.BRANCH;
 
-        public BranchStepAction(ILoggerService logger)
+        public BranchStepAction(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
         }
 
         public Task ExecuteAsync(ProcessStep step, StationTaskBase task, CancellationToken token)
         {
-            _logger.Info($"BRANCH 步骤 [{step.Seq}] 条件评估由 ProcessStepExecutor 处理");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Branch_Log_ConditionHandledByExecutor", "BRANCH 步骤 [{0}] 条件评估由 ProcessStepExecutor 处理"),
+                step.Seq));
             return Task.CompletedTask;
         }
     }

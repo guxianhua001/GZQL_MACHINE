@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Exceptions;
 using MotionControl.Interfaces;
@@ -26,6 +27,7 @@ namespace StationTasks.Actions
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
         private readonly IMotionService _motionService;
+        private readonly ILocalizationService _localization;
         private readonly object _compileLock = new object();
         private Func<ScriptContext, bool> _compiledDelegate;
         private string _compiledScript;
@@ -37,12 +39,13 @@ namespace StationTasks.Actions
 
         public StepType SupportedStepType => StepType.SCRIPT;
 
-        public ScriptStepAction(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator, IMotionService motionService)
+        public ScriptStepAction(IRecipePoolService recipePoolService, ILoggerService logger, IEventAggregator eventAggregator, IMotionService motionService, ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
             _eventAggregator = eventAggregator;
             _motionService = motionService;
+            _localization = localization;
         }
 
         /// <summary>
@@ -52,7 +55,9 @@ namespace StationTasks.Actions
         {
             if (step.ScriptDetail == null || string.IsNullOrWhiteSpace(step.ScriptDetail.ScriptCode))
             {
-                _logger.Warn($"SCRIPT 步骤 [{step.Seq}] 无脚本代码，跳过");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Script_Log_NoScriptCode", "SCRIPT 步骤 [{0}] 无脚本代码，跳过"),
+                    step.Seq));
                 return;
             }
 
@@ -66,7 +71,9 @@ namespace StationTasks.Actions
                 gv => gv.Value ?? "0",
                 StringComparer.OrdinalIgnoreCase);
 
-            _logger.Info($"SCRIPT 步骤 [{step.Seq}] 开始执行，全局变量数: {globalVariables.Count}，步骤输出数: {StepOutputs.Count}");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Script_Log_StartExecute", "SCRIPT 步骤 [{0}] 开始执行，全局变量数: {1}，步骤输出数: {2}"),
+                step.Seq, globalVariables.Count, StepOutputs.Count));
 
             var ctx = new ScriptContext(globalVariables, StepOutputs, _motionService);
             bool success;
@@ -98,7 +105,9 @@ namespace StationTasks.Actions
             var changes = ctx.GetChanges();
             if (changes.Count == 0)
             {
-                _logger.Info($"SCRIPT 步骤 [{step.Seq}] 执行完成，无输出");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Script_Log_CompletedNoOutput", "SCRIPT 步骤 [{0}] 执行完成，无输出"),
+                    step.Seq));
                 return;
             }
 
@@ -108,11 +117,15 @@ namespace StationTasks.Actions
                 if (targetVar != null)
                 {
                     targetVar.Value = kv.Value;
-                    _logger.Info($"SCRIPT 步骤 [{step.Seq}] 全局变量 [{kv.Key}] = {kv.Value}");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Script_Log_GlobalVarUpdated", "SCRIPT 步骤 [{0}] 全局变量 [{1}] = {2}"),
+                        step.Seq, kv.Key, kv.Value));
                 }
                 else
                 {
-                    _logger.Info($"SCRIPT 步骤 [{step.Seq}] 输出参数 [{kv.Key}] 未匹配到全局变量，跳过回写");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Script_Log_OutputNoMatch", "SCRIPT 步骤 [{0}] 输出参数 [{1}] 未匹配到全局变量，跳过回写"),
+                        step.Seq, kv.Key));
                 }
             }
 
@@ -130,7 +143,9 @@ namespace StationTasks.Actions
                 StepOutputs[kv.Key] = kv.Value;
             }
 
-            _logger.Info($"SCRIPT 步骤 [{step.Seq}] 执行完成，输出 {changes.Count} 个参数");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Script_Log_CompletedWithOutput", "SCRIPT 步骤 [{0}] 执行完成，输出 {1} 个参数"),
+                step.Seq, changes.Count));
         }
 
         /// <summary>
@@ -176,7 +191,7 @@ namespace StationTasks.Actions
                         Delegate.CreateDelegate(typeof(Func<ScriptContext, bool>), executeMethod);
 
                     _compiledScript = scriptCode;
-                    _logger.Info("SCRIPT 脚本编译并绑定成功");
+                    _logger.Info(_localization.GetResourceOrDefault("Script_Log_CompileSuccess", "SCRIPT 脚本编译并绑定成功"));
                 }
                 catch (InvalidOperationException)
                 {
@@ -184,7 +199,9 @@ namespace StationTasks.Actions
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"SCRIPT 脚本编译失败: {ex.Message}");
+                    _logger.Error(string.Format(
+                        _localization.GetResourceOrDefault("Script_Log_CompileFailed", "SCRIPT 脚本编译失败: {0}"),
+                        ex.Message));
                     _compiledDelegate = null;
                     _compiledScript = null;
                     throw new InvalidOperationException($"脚本编译失败: {ex.Message}", ex);

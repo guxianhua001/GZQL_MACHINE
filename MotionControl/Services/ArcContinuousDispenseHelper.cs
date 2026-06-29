@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Interfaces;
 using System;
@@ -49,11 +50,15 @@ namespace MotionControl.Services
             ILoggerService? logger,
             string logContext,
             CancellationToken token,
-            TimeSpan motionTimeout)
+            TimeSpan motionTimeout,
+            ILocalizationService? localization = null)
         {
+            // 本地化辅助：localization 为 null 时回退到中文默认值（保证日志可读）
+            string L(string key, string fallback) => localization != null ? localization.GetResourceOrDefault(key, fallback) : fallback;
+
             if (motion == null) throw new ArgumentNullException(nameof(motion));
             if (pathPoints == null || pathPoints.Count == 0)
-                throw new ArgumentException("路径点为空", nameof(pathPoints));
+                throw new ArgumentException(L("ACD_Msg_PathPointsEmpty", "路径点为空"), nameof(pathPoints));
 
             motion.InitializeContinuousInterpolation(coordId, axisIds, startVel, interpSpeed, acc, dec, endVel);
             foreach (var (x, y) in pathPoints)
@@ -79,19 +84,20 @@ namespace MotionControl.Services
                     writeGlueIo(false);
                     glueClosed = true;
                     logger?.Info(
-                        $"[{logContext}] 提前关胶: 路径 {pathLen:F2}mm, 插补 {interpSpeed:F1}mm/s, 提前 {earlyCloseMs}ms");
+                        string.Format(L("ACD_Log_EarlyGlueOff", "[{0}] 提前关胶: 路径 {1:F2}mm, 插补 {2:F1}mm/s, 提前 {3}ms"),
+                            logContext, pathLen, interpSpeed, earlyCloseMs));
                 }
             }
 
             bool completed = await motionTask;
             if (!completed)
-                throw new TimeoutException($"{logContext} 连续插补运动超时");
+                throw new TimeoutException(string.Format(L("ACD_Msg_InterpTimeout", "{0} 连续插补运动超时"), logContext));
 
             if (writeGlueIo != null && !glueClosed)
             {
                 writeGlueIo(false);
                 if (earlyCloseMs > 0)
-                    logger?.Debug($"[{logContext}] 路径较短，运动结束时关胶");
+                    logger?.Debug(string.Format(L("ACD_Log_ShortPathGlueOff", "[{0}] 路径较短，运动结束时关胶"), logContext));
             }
 
             if (postDelayMs > 0)

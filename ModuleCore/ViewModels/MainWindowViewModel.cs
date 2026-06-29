@@ -158,8 +158,8 @@ namespace ModuleCore.ViewModels
 
             // 记录系统启动日志
             _logger.Info("========================================");
-            _logger.Info($"系统启动 - 版本 {AppVersion}");
-            _logger.Info($"配方: {_appConfig.RecipeName}");
+            _logger.Info(string.Format(LocalizationService.GetResourceOrDefault("MW_Log_SystemStartup", "系统启动 - 版本 {0}"), AppVersion));
+            _logger.Info(string.Format(LocalizationService.GetResourceOrDefault("MW_Log_RecipeInfo", "配方: {0}"), _appConfig.RecipeName));
             _logger.Info("========================================");
 
             // 发布系统初始化完成事件
@@ -200,7 +200,7 @@ namespace ModuleCore.ViewModels
             {
                 // 执行阻塞操作，例如暂停或停止设备
                 ExecutePause();
-                _logger.Info($"【WarningDialog】{notification.FormattedMessage}");
+                _logger.Info(string.Format(LocalizationService.GetResourceOrDefault("MW_Log_WarningDialog", "【WarningDialog】{0}"), notification.FormattedMessage));
             }
         }
         private void HandleDialogClose(object sender, DialogClosingEventArgs args)
@@ -530,12 +530,12 @@ namespace ModuleCore.ViewModels
 
             if ((int)result == 0) // YES
             {
-                _logger.Info("用户选择执行初始化操作");
+                _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_UserConfirmInit", "用户选择执行初始化操作"));
                 return true;
             }
             else
             {
-                _logger.Info("用户选择取消初始化操作");
+                _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_UserCancelInit", "用户选择取消初始化操作"));
             }
             return false;
         }
@@ -616,7 +616,7 @@ namespace ModuleCore.ViewModels
         /// </summary>
         private void OnInitializeFromMain()
         {
-            _logger.Info("【MainWindow】用户点击初始化按钮");
+            _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_InitButtonClicked", "【MainWindow】用户点击初始化按钮"));
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Initialize");
         }
 
@@ -625,7 +625,7 @@ namespace ModuleCore.ViewModels
         /// </summary>
         private void OnStartFromMain()
         {
-            _logger.Info("【MainWindow】用户点击启动按钮");
+            _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_StartButtonClicked", "【MainWindow】用户点击启动按钮"));
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Start");
         }
 
@@ -634,7 +634,7 @@ namespace ModuleCore.ViewModels
         /// </summary>
         private void OnPauseFromMain()
         {
-            _logger.Info("【MainWindow】用户点击暂停按钮");
+            _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_PauseButtonClicked", "【MainWindow】用户点击暂停按钮"));
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Pause");
         }
 
@@ -643,7 +643,7 @@ namespace ModuleCore.ViewModels
         /// </summary>
         private void OnResumeFromMain()
         {
-            _logger.Info("【MainWindow】用户点击恢复按钮");
+            _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_ResumeButtonClicked", "【MainWindow】用户点击恢复按钮"));
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Resume");
         }
 
@@ -652,7 +652,7 @@ namespace ModuleCore.ViewModels
         /// </summary>
         private void OnStopFromMain()
         {
-            _logger.Info("【MainWindow】用户点击停止按钮");
+            _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_StopButtonClicked", "【MainWindow】用户点击停止按钮"));
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("Stop");
         }
 
@@ -661,7 +661,7 @@ namespace ModuleCore.ViewModels
         /// </summary>
         private void OnEStopFromMain()
         {
-            _logger.Info("【MainWindow】用户点击急停按钮");
+            _logger.Info(LocalizationService.GetResourceOrDefault("MW_Log_EStopButtonClicked", "【MainWindow】用户点击急停按钮"));
             _eventAggregator.GetEvent<ControlButtonClickedEvent>().Publish("EStop");
         }
 

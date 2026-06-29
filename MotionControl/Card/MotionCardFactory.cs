@@ -1,4 +1,5 @@
-﻿using Core.Utilities;
+using Core.Abstraction;
+using Core.Utilities;
 using MotionControl.Interfaces;
 
 namespace MotionControl.Card
@@ -8,10 +9,13 @@ namespace MotionControl.Card
         private readonly ILoggerService _logger = new LoggerService();
         private readonly Dictionary<int, IMotionCard> _cache = new();
         private int _cardCount; // 实际检测到的卡数量
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
-        public MotionCardFactory(ILoggerService logger)
+        public MotionCardFactory(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
             // 立刻扫描硬件获取卡数量，不初始化具体卡
             _cardCount = ScanCardCount();
         }
@@ -27,7 +31,7 @@ namespace MotionControl.Card
                 int initResult = card.Initialize();
                 if (initResult != 0)
                 {
-                    _logger.Error($"MotionCardFactory: 初始化卡 {index} 失败，错误码：{initResult}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("MCF_Log_InitCardFailed", "MotionCardFactory: 初始化卡 {0} 失败，错误码：{1}"), index, initResult));
                     return null;
                 }
                 _cache[index] = card;

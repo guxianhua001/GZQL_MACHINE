@@ -1,4 +1,4 @@
-﻿using Core.Abstraction;
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Services;
 using System;
@@ -51,9 +51,8 @@ namespace StationTasks.Tasks
                 // Dx+Dy 插补运动使用插补系速度
                 double interpSpeed = GetInterpolationSpeed(coordId);
 
-                TaskLogger.Info($"[{TaskName}] ZScan 位置解析: SafeZ(Dz1={safeDz1:F3}, Dz2={safeDz2:F3}, Dz3={safeDz3:F3}), " +
-                    $"Start(Dx={startDx:F3}, Dy={startDy:F3}), End(Dx={endDx:F3}), Standby(Dx={standbyDx:F3}, Dy={standbyDy:F3})");
-                TaskLogger.Info($"[{TaskName}] ZScan 速度参数: Dx扫描={dxScanSpeed:F1}mm/s, Dz1={dz1Speed:F1}, Dz2={dz2Speed:F1}, Dz3={dz3Speed:F1}, 插补={interpSpeed:F1}");
+                TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_ZScanPositionResolved", "[{0}] ZScan 位置解析: SafeZ(Dz1={1:F3}, Dz2={2:F3}, Dz3={3:F3}), Start(Dx={4:F3}, Dy={5:F3}), End(Dx={6:F3}), Standby(Dx={7:F3}, Dy={8:F3})"), TaskName, safeDz1, safeDz2, safeDz3, startDx, startDy, endDx, standbyDx, standbyDy));
+                TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_ZScanSpeedParams", "[{0}] ZScan 速度参数: Dx扫描={1:F1}mm/s, Dz1={2:F1}, Dz2={3:F1}, Dz3={4:F1}, 插补={5:F1}"), TaskName, dxScanSpeed, dz1Speed, dz2Speed, dz3Speed, interpSpeed));
 
                 // 步骤1：Dz₁/Dz₂/Dz3 抬起到安全高度（多轴同步，统一轮询）
                 progressCallback?.Invoke("Raising Z axes...");
@@ -84,11 +83,11 @@ namespace StationTasks.Tasks
                 if (triggerLogicalId >= 0)
                 {
                     WriteDO(triggerLogicalId, true);
-                    TaskLogger.Info($"[{TaskName}] IO 触发信号已置位: {triggerIOName} (LogicalId={triggerLogicalId})");
+                    TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_IOTriggerSet", "[{0}] IO 触发信号已置位: {1} (LogicalId={2})"), TaskName, triggerIOName, triggerLogicalId));
                 }
                 else
                 {
-                    TaskLogger.Warn($"[{TaskName}] 未找到 IO 端口 '{triggerIOName}'，跳过相机触发");
+                    TaskLogger.Warn(string.Format(_localizationService.GetResourceOrDefault("DT_Log_IOPortNotFound", "[{0}] 未找到 IO 端口 '{1}'，跳过相机触发"), TaskName, triggerIOName));
                 }
 
                 // 步骤5：Dx 运动到扫描结束位（使用 dxScanSpeed）
@@ -99,7 +98,7 @@ namespace StationTasks.Tasks
                 if (triggerLogicalId >= 0)
                 {
                     WriteDO(triggerLogicalId, false);
-                    TaskLogger.Info($"[{TaskName}] IO 触发信号已复位: {triggerIOName}");
+                    TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_IOTriggerReset", "[{0}] IO 触发信号已复位: {1}"), TaskName, triggerIOName));
                 }
 
                 // 步骤7：Dz₁/Dz₂/Dz3 再次抬起到安全高度（多轴同步，统一轮询）
@@ -118,7 +117,7 @@ namespace StationTasks.Tasks
                     new[] { standbyDx, standbyDy }, interpSpeed, CurrentToken);
 
                 progressCallback?.Invoke("Motion sequence completed");
-                TaskLogger.Info($"[{TaskName}] Z-Scan 3D扫描运动序列完成");
+                TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_ZScanSequenceComplete", "[{0}] Z-Scan 3D扫描运动序列完成"), TaskName));
             });
         }
 
@@ -152,7 +151,7 @@ namespace StationTasks.Tasks
                 // Dx+Dy 插补运动使用插补系速度
                 double interpSpeed = GetInterpolationSpeed(coordId);
 
-                TaskLogger.Info($"[{TaskName}] ReturnToStandby 速度参数: Dz1={dz1Speed:F1}, Dz2={dz2Speed:F1}, Dz3={dz3Speed:F1}, 插补={interpSpeed:F1}");
+                TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_ReturnToStandbySpeedParams", "[{0}] ReturnToStandby 速度参数: Dz1={1:F1}, Dz2={2:F1}, Dz3={3:F1}, 插补={4:F1}"), TaskName, dz1Speed, dz2Speed, dz3Speed, interpSpeed));
 
                 // 步骤1：Dz₁/Dz₂/Dz3 抬起到安全高度（多轴同步，统一轮询）
                 progressCallback?.Invoke("Raising Z axes...");
@@ -171,7 +170,7 @@ namespace StationTasks.Tasks
                     new[] { standbyDx, standbyDy }, interpSpeed, CurrentToken);
 
                 progressCallback?.Invoke("Standby");
-                TaskLogger.Info($"[{TaskName}] 已返回待机位置");
+                TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_ReturnedToStandby", "[{0}] 已返回待机位置"), TaskName));
             });
         }
 
@@ -224,7 +223,7 @@ namespace StationTasks.Tasks
             var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
             if (dxConfig == null)
             {
-                TaskLogger.Warn($"[{TaskName}] 未找到Dx轴配置，CoordId 回退到 0");
+                TaskLogger.Warn(string.Format(_localizationService.GetResourceOrDefault("DT_Log_DxConfigNotFound", "[{0}] 未找到Dx轴配置，CoordId 回退到 0"), TaskName));
                 return 0;
             }
 
@@ -238,14 +237,14 @@ namespace StationTasks.Tasks
                     {
                         if (actAxisId == dxConfig.AxisId)
                         {
-                            TaskLogger.Info($"[{TaskName}] Dx(actAxisId={dxConfig.AxisId}) 匹配插补系 CoordId={sys.CoordId}");
+                            TaskLogger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_DxMatchedCoordId", "[{0}] Dx(actAxisId={1}) 匹配插补系 CoordId={2}"), TaskName, dxConfig.AxisId, sys.CoordId));
                             return sys.CoordId;
                         }
                     }
                 }
             }
 
-            TaskLogger.Warn($"[{TaskName}] Dx 不在任何插补系中，CoordId 回退到 0");
+            TaskLogger.Warn(string.Format(_localizationService.GetResourceOrDefault("DT_Log_DxNotInInterpSystem", "[{0}] Dx 不在任何插补系中，CoordId 回退到 0"), TaskName));
             return 0;
         }
 
@@ -259,7 +258,7 @@ namespace StationTasks.Tasks
             if (positions.TryGetValue(key, out double value))
                 return value;
 
-            TaskLogger.Warn($"[{TaskName}] 位置查找失败: {key}");
+            TaskLogger.Warn(string.Format(_localizationService.GetResourceOrDefault("DT_Log_PositionLookupFailed", "[{0}] 位置查找失败: {1}"), TaskName, key));
             return 0;
         }
 

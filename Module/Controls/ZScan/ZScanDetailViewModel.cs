@@ -53,6 +53,8 @@ namespace Module.ViewModels
         /// <summary> 配方池服务（用于全局变量链接读写） </summary>
         private readonly IRecipePoolService _recipePoolService;
         private readonly IEventAggregator _eventAggregator;
+        /// <summary> 本地化服务（通过 ContainerProvider 解析，用于日志/文案多语言） </summary>
+        private readonly ILocalizationService _localization;
 
         #region 原有属性
 
@@ -447,6 +449,7 @@ namespace Module.ViewModels
             _dispensingOps = dispensingOps;
             _eventAggregator = eventAggregator;
             _recipePoolService = _containerProvider.Resolve<IRecipePoolService>();
+            _localization = _containerProvider.Resolve<ILocalizationService>();
 
             _zscanCalibrationService.CalibrationChanged += OnCalibrationChanged;
 
@@ -575,7 +578,7 @@ namespace Module.ViewModels
         {
             InitializeCore();
 
-            _logger?.Info("Z-SCAN Detail 弹窗打开");
+            _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_PopupOpened", "Z-SCAN Detail 弹窗打开"));
         }
 
         /// <summary>
@@ -587,7 +590,7 @@ namespace Module.ViewModels
         {
             InitializeCore();
 
-            _logger?.Info("Z-SCAN Detail 嵌入模式初始化完成");
+            _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_EmbeddedModeInitDone", "Z-SCAN Detail 嵌入模式初始化完成"));
         }
 
         /// <summary>
@@ -616,7 +619,7 @@ namespace Module.ViewModels
             _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Unsubscribe(OnGlobalVariablesChanged);
             _eventAggregator.GetEvent<RecipePoolChangedEvent>().Unsubscribe(OnRecipePoolChanged);
 
-            _logger?.Info("Z-SCAN Detail 弹窗关闭");
+            _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_PopupClosed", "Z-SCAN Detail 弹窗关闭"));
         }
 
         public bool CanCloseDialog() => true;
@@ -672,7 +675,7 @@ namespace Module.ViewModels
                 IsScanning = true;
                 StatusText = "Scanning...";
                 StatusColor = Brushes.Orange;
-                _logger?.Info("Z-SCAN 开始3D扫描");
+                _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_ScanStart", "Z-SCAN 开始3D扫描"));
 
                 // 创建数据接收 TaskCompletionSource
                 _scanDataTcs = new TaskCompletionSource<List<double>>();
@@ -686,7 +689,7 @@ namespace Module.ViewModels
                     cts.Token);
 
                 // 步骤8：异步等待相机数据（带超时报警）
-                _logger?.Info($"Z-SCAN 等待3D相机数据返回（超时={DataReceiveTimeoutMs}ms）...");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_WaitingCameraData", "Z-SCAN 等待3D相机数据返回（超时={0}ms）..."), DataReceiveTimeoutMs));
                 StatusText = "Waiting for data...";
                 var timeoutTask = Task.Delay(DataReceiveTimeoutMs, cts.Token);
                 var completedTask = await Task.WhenAny(_scanDataTcs.Task, timeoutTask);
@@ -696,7 +699,7 @@ namespace Module.ViewModels
                     // 超时报警
                     StatusText = "Data Timeout";
                     StatusColor = Brushes.Red;
-                    _logger?.Error($"Z-SCAN 相机数据接收超时 ({DataReceiveTimeoutMs}ms)");
+                    _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataTimeout", "Z-SCAN 相机数据接收超时 ({0}ms)"), DataReceiveTimeoutMs));
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         ShowHintMessage($"3D相机数据接收超时（{DataReceiveTimeoutMs}ms），请检查相机连接和触发信号。");
@@ -706,7 +709,7 @@ namespace Module.ViewModels
                 {
                     // 数据已接收，更新表格并自动保存
                     var parsedValues = await _scanDataTcs.Task;
-                    _logger?.Info($"Z-SCAN 接收到 {parsedValues.Count} 个测量点数据");
+                    _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ReceivedPointCount", "Z-SCAN 接收到 {0} 个测量点数据"), parsedValues.Count));
                     if (parsedValues.Count > 0)
                     {
                         UpdatePointDetailsFromCameraData(parsedValues);
@@ -718,20 +721,20 @@ namespace Module.ViewModels
 
                     StatusText = "Scan Completed";
                     StatusColor = Brushes.Green;
-                    _logger?.Info("Z-SCAN 3D扫描完成");
+                    _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_ScanCompleted", "Z-SCAN 3D扫描完成"));
                 }
             }
             catch (OperationCanceledException)
             {
                 StatusText = "Stopped";
                 StatusColor = Brushes.Yellow;
-                _logger?.Warn("Z-SCAN 扫描被用户停止");
+                _logger?.Warn(_localization.GetResourceOrDefault("ZScan_Log_ScanStoppedByUser", "Z-SCAN 扫描被用户停止"));
             }
             catch (Exception ex)
             {
                 StatusText = "Error";
                 StatusColor = Brushes.Red;
-                _logger?.Error($"Z-SCAN 扫描异常: {ex.Message}\n{ex.StackTrace}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ScanException", "Z-SCAN 扫描异常: {0}\n{1}"), ex.Message, ex.StackTrace));
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     ShowHintMessage($"扫描失败: {ex.Message}");
@@ -752,7 +755,7 @@ namespace Module.ViewModels
         {
             try
             {
-                _logger?.Warn("Z-SCAN 用户触发停止");
+                _logger?.Warn(_localization.GetResourceOrDefault("ZScan_Log_UserTriggeredStop", "Z-SCAN 用户触发停止"));
 
                 // 同时停止两根针头的Z轴和X轴（安全优先）
                 _motionService.StopAxis(ZAxisIdNeedle1);
@@ -765,11 +768,11 @@ namespace Module.ViewModels
                 StatusColor = Brushes.Red;
 
                 ShowHintMessage("已停止！请检查设备状态后重试。");
-                _logger?.Info("Z-SCAN 停止命令已执行");
+                _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_StopCommandExecuted", "Z-SCAN 停止命令已执行"));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 停止失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_StopFailed", "Z-SCAN 停止失败: {0}"), ex.Message));
                 ShowHintMessage($"停止失败: {ex.Message}");
             }
         }
@@ -788,7 +791,7 @@ namespace Module.ViewModels
             {
                 StatusText = "Returning to Standby...";
                 StatusColor = Brushes.Orange;
-                _logger?.Info("Z-SCAN 开始返回待机位置");
+                _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_ReturnToStandbyStart", "Z-SCAN 开始返回待机位置"));
 
                 // 运动序列委托给 DispensingTask（享受 RunStep 安全保护）
                 // 各轴速度从轴参数配置获取 + 全局速度比例
@@ -799,19 +802,19 @@ namespace Module.ViewModels
 
                 StatusText = "Standby";
                 StatusColor = Brushes.Blue;
-                _logger?.Info("Z-SCAN 已返回待机位置");
+                _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_ReturnedToStandby", "Z-SCAN 已返回待机位置"));
             }
             catch (OperationCanceledException)
             {
                 StatusText = "Stopped";
                 StatusColor = Brushes.Yellow;
-                _logger?.Warn("Z-SCAN 返回待机被中断");
+                _logger?.Warn(_localization.GetResourceOrDefault("ZScan_Log_ReturnToStandbyInterrupted", "Z-SCAN 返回待机被中断"));
             }
             catch (Exception ex)
             {
                 StatusText = "Error";
                 StatusColor = Brushes.Red;
-                _logger?.Error($"Z-SCAN 返回待机失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ReturnToStandbyFailed", "Z-SCAN 返回待机失败: {0}"), ex.Message));
                 ShowHintMessage($"返回待机失败: {ex.Message}");
             }
             finally
@@ -853,11 +856,11 @@ namespace Module.ViewModels
                 if (TcpConnections.Count > 0 && string.IsNullOrEmpty(SelectedConnectionName))
                     SelectedConnectionName = TcpConnections[0];
 
-                _logger?.Info($"Z-SCAN TCP连接列表已加载: {TcpConnections.Count} 个");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_TcpConnectionsLoaded", "Z-SCAN TCP连接列表已加载: {0} 个"), TcpConnections.Count));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 加载TCP连接列表失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_LoadTcpConnectionsFailed", "Z-SCAN 加载TCP连接列表失败: {0}"), ex.Message));
             }
         }
 
@@ -889,7 +892,7 @@ namespace Module.ViewModels
                     if (parsedValues.Count > 0)
                     {
                         tcs.TrySetResult(parsedValues);
-                        _logger?.Info($"Z-SCAN 扫描数据已接收（来源={cameraName}，{parsedValues.Count}个点），TCS 已设置");
+                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ScanDataReceivedTcsSet", "Z-SCAN 扫描数据已接收（来源={0}，{1}个点），TCS 已设置"), cameraName, parsedValues.Count));
                     }
                     return;
                 }
@@ -901,7 +904,7 @@ namespace Module.ViewModels
                     {
                         try
                         {
-                            _logger?.Info($"Z-SCAN 收到相机数据 [{cameraName}]: {message}");
+                            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataReceived", "Z-SCAN 收到相机数据 [{0}]: {1}"), cameraName, message));
 
                             var parsedValues = ParseCameraData(message);
                             if (parsedValues.Count > 0)
@@ -913,18 +916,18 @@ namespace Module.ViewModels
                         }
                         catch (Exception ex)
                         {
-                            _logger?.Error($"Z-SCAN 相机数据处理失败: {ex.Message}");
+                            _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataProcessFailed", "Z-SCAN 相机数据处理失败: {0}"), ex.Message));
                         }
                     });
                 }
                 else if (!string.IsNullOrEmpty(cameraName))
                 {
-                    _logger?.Debug($"Z-SCAN 相机数据被连接名过滤忽略: 来源={cameraName}, 期望={SelectedConnectionName}");
+                    _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataFilteredByConnName", "Z-SCAN 相机数据被连接名过滤忽略: 来源={0}, 期望={1}"), cameraName, SelectedConnectionName));
                 }
             };
 
             _tcpEventService.CameraMessageReceived += _cameraDataHandler;
-            _logger?.Info($"Z-SCAN 已订阅TCP数据接收: 监听连接 '{SelectedConnectionName}'");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_TcpDataSubscribed", "Z-SCAN 已订阅TCP数据接收: 监听连接 '{0}'"), SelectedConnectionName));
         }
 
         /// <summary>
@@ -937,7 +940,7 @@ namespace Module.ViewModels
             {
                 _tcpEventService.CameraMessageReceived -= _cameraDataHandler;
                 _cameraDataHandler = null;
-                _logger?.Info("Z-SCAN 已取消订阅TCP数据接收");
+                _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_TcpDataUnsubscribed", "Z-SCAN 已取消订阅TCP数据接收"));
             }
         }
 
@@ -962,7 +965,7 @@ namespace Module.ViewModels
                 int startIndex = rawData.IndexOf(marker);
                 if (startIndex < 0)
                 {
-                    _logger?.Warn($"Z-SCAN 相机数据格式错误: 未找到'{marker}'标记");
+                    _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataFormatError", "Z-SCAN 相机数据格式错误: 未找到'{0}'标记"), marker));
                     return result;
                 }
 
@@ -980,15 +983,15 @@ namespace Module.ViewModels
                     }
                     else
                     {
-                        _logger?.Warn($"Z-SCAN 无法解析数值: '{valStr.Trim()}'");
+                        _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CannotParseValue", "Z-SCAN 无法解析数值: '{0}'"), valStr.Trim()));
                     }
                 }
 
-                _logger?.Info($"Z-SCAN 相机数据解析成功: {result.Count} 个数值");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataParseSuccess", "Z-SCAN 相机数据解析成功: {0} 个数值"), result.Count));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 相机数据解析异常: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraDataParseException", "Z-SCAN 相机数据解析异常: {0}"), ex.Message));
             }
 
             return result;
@@ -1038,7 +1041,7 @@ namespace Module.ViewModels
                     point.ZMeasured = data.ZMeasured;
                     point.DeltaZ = data.DeltaZ;
                     RecalculateRow(point);
-                    _logger?.Debug($"Z-SCAN 更新点[{point.PointNumber}]: ZMeasured={point.ZMeasured:F3}, DeltaZ={point.DeltaZ:F3}");
+                    _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_UpdatePoint", "Z-SCAN 更新点[{0}]: ZMeasured={1:F3}, DeltaZ={2:F3}"), point.PointNumber, point.ZMeasured, point.DeltaZ));
                 }
             }
             finally
@@ -1046,7 +1049,7 @@ namespace Module.ViewModels
                 _suppressLinkedGlobalVariableSync = false;
             }
 
-            _logger?.Info($"Z-SCAN 已更新 {Math.Min(pointDataList.Count, PointDetails.Count)} 个测量点（含标定偏移={totalOffset:F3}，数据格式={CurrentDataFormat}，数据点数={measuredValues.Count}）");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_PointsUpdatedWithCalibration", "Z-SCAN 已更新 {0} 个测量点（含标定偏移={1:F3}，数据格式={2}，数据点数={3}）"), Math.Min(pointDataList.Count, PointDetails.Count), totalOffset, CurrentDataFormat, measuredValues.Count));
 
             // 同步已链接的全局变量（DeltaZ 值回写）
             _ = SyncLinkedGlobalVariablesAsync();
@@ -1098,7 +1101,7 @@ namespace Module.ViewModels
             point.NotifyPropertyChanged(nameof(ZScanPointDetail.DeltaZ));
             point.NotifyPropertyChanged(nameof(ZScanPointDetail.Status));
 
-            _logger?.Debug($"Z-SCAN 行重算完成: 点[{point.PointNumber}] DeltaZ={point.DeltaZ:F3}, Status={point.Status}");
+            _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_RowRecalculated", "Z-SCAN 行重算完成: 点[{0}] DeltaZ={1:F3}, Status={2}"), point.PointNumber, point.DeltaZ, point.Status));
         }
 
         /// <summary>
@@ -1163,7 +1166,7 @@ namespace Module.ViewModels
                 StatusColor = Brushes.Green;
             }
 
-            _logger?.Info($"Z-SCAN 统计更新: 总点={TotalPoints}, Z范围={ZNominalRange}, 最大ΔZ={ZMaxDelta:F3}, 状态={StatusText} (Pass={passCount}, Fail={failCount}, Pending={pendingCount})");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_StatisticsUpdated", "Z-SCAN 统计更新: 总点={0}, Z范围={1}, 最大ΔZ={2:F3}, 状态={3} (Pass={4}, Fail={5}, Pending={6})"), TotalPoints, ZNominalRange, ZMaxDelta, StatusText, passCount, failCount, pendingCount));
         }
 
         /// <summary>
@@ -1207,7 +1210,7 @@ namespace Module.ViewModels
                     }
                     catch (Exception ex)
                     {
-                        _logger?.Error($"Z-SCAN 集合变更事件处理异常: {ex.Message}");
+                        _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CollectionChangedHandlerException", "Z-SCAN 集合变更事件处理异常: {0}"), ex.Message));
                     }
                 });
             };
@@ -1250,14 +1253,14 @@ namespace Module.ViewModels
                             }
                             catch (Exception innerEx)
                             {
-                                _logger?.Error($"Z-SCAN 属性变更计算异常: {innerEx.Message}");
+                                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_PropertyChangedCalcException", "Z-SCAN 属性变更计算异常: {0}"), innerEx.Message));
                             }
                         }), System.Windows.Threading.DispatcherPriority.Background);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger?.Error($"Z-SCAN 属性变更事件处理异常: {ex.Message}");
+                    _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_PropertyChangedHandlerException", "Z-SCAN 属性变更事件处理异常: {0}"), ex.Message));
                 }
             };
 
@@ -1273,7 +1276,7 @@ namespace Module.ViewModels
                 }
             }
 
-            _logger?.Debug("Z-SCAN 已注册 PointDetails 事件监听");
+            _logger?.Debug(_localization.GetResourceOrDefault("ZScan_Log_PointDetailsEventsSubscribed", "Z-SCAN 已注册 PointDetails 事件监听"));
         }
 
         /// <summary>
@@ -1324,7 +1327,7 @@ namespace Module.ViewModels
             _pointDetailsCollectionChangedHandler = null;
             _pointPropertyChangedHandler = null;
 
-            _logger?.Debug("Z-SCAN 已取消 PointDetails 事件监听");
+            _logger?.Debug(_localization.GetResourceOrDefault("ZScan_Log_PointDetailsEventsUnsubscribed", "Z-SCAN 已取消 PointDetails 事件监听"));
         }
 
         #endregion
@@ -1335,7 +1338,7 @@ namespace Module.ViewModels
             {
                 if (PointDetails == null)
                 {
-                    _logger?.Warn("Z-SCAN PointDetails 为空，无法添加行");
+                    _logger?.Warn(_localization.GetResourceOrDefault("ZScan_Log_PointDetailsNullCannotAddRow", "Z-SCAN PointDetails 为空，无法添加行"));
                     return;
                 }
 
@@ -1359,11 +1362,11 @@ namespace Module.ViewModels
                 // 添加新行（会触发 CollectionChanged 事件）
                 PointDetails.Add(newPoint);
 
-                _logger?.Info($"Z-SCAN 已添加新行: 点号={nextPt}, 总点数={PointDetails.Count}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_RowAdded", "Z-SCAN 已添加新行: 点号={0}, 总点数={1}"), nextPt, PointDetails.Count));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 添加行失败: {ex.Message}\n{ex.StackTrace}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AddRowFailed", "Z-SCAN 添加行失败: {0}\n{1}"), ex.Message, ex.StackTrace));
                 ShowHintMessage($"添加行失败: {ex.Message}");
             }
         }
@@ -1423,7 +1426,7 @@ namespace Module.ViewModels
                     if (!int.TryParse(firstField, out _))
                     {
                         startLine = 1; // 跳过标题行
-                        _logger?.Info($"Z-SCAN 检测到CSV标题行，将从第2行开始解析数据");
+                        _logger?.Info(_localization.GetResourceOrDefault("ZScan_Log_CsvHeaderDetected", "Z-SCAN 检测到CSV标题行，将从第2行开始解析数据"));
                     }
                 }
 
@@ -1478,14 +1481,14 @@ namespace Module.ViewModels
                         else
                         {
                             // 字段不足，记录警告并跳过
-                            _logger?.Warn($"Z-SCAN CSV 第{i + 1}行字段数不足（{parts.Length}个），已跳过");
+                            _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvRowFieldCountInsufficient", "Z-SCAN CSV 第{0}行字段数不足（{1}个），已跳过"), i + 1, parts.Length));
                             warningCount++;
                         }
                     }
                     catch (Exception parseEx)
                     {
                         // 单行解析失败不影响其他行
-                        _logger?.Warn($"Z-SCAN CSV 第{i + 1}行解析失败: {parseEx.Message}");
+                        _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvRowParseFailed", "Z-SCAN CSV 第{0}行解析失败: {1}"), i + 1, parseEx.Message));
                         warningCount++;
                     }
                 }
@@ -1531,22 +1534,22 @@ namespace Module.ViewModels
                 message += $"\n文件: {Path.GetFileName(openFileDialog.FileName)}";
 
                 ShowHintMessage(message);
-                _logger?.Info($"Z-SCAN CSV 导入完成: {newPoints.Count} 行成功, {warningCount} 行警告");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvImportCompleted", "Z-SCAN CSV 导入完成: {0} 行成功, {1} 行警告"), newPoints.Count, warningCount));
             }
             catch (FileNotFoundException ex)
             {
                 ShowHintMessage($"文件未找到: {ex.Message}");
-                _logger?.Error($"Z-SCAN CSV 文件未找到: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvFileNotFound", "Z-SCAN CSV 文件未找到: {0}"), ex.Message));
             }
             catch (IOException ex)
             {
                 ShowHintMessage($"文件读取错误: {ex.Message}\n请检查文件是否被其他程序占用。");
-                _logger?.Error($"Z-SCAN CSV 文件读取错误: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvFileReadError", "Z-SCAN CSV 文件读取错误: {0}"), ex.Message));
             }
             catch (Exception ex)
             {
                 ShowHintMessage($"导入失败: {ex.Message}");
-                _logger?.Error($"Z-SCAN CSV 导入异常: {ex.Message}\n{ex.StackTrace}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvImportException", "Z-SCAN CSV 导入异常: {0}\n{1}"), ex.Message, ex.StackTrace));
             }
         }
 
@@ -1615,22 +1618,22 @@ namespace Module.ViewModels
                                $"编码格式: UTF-8 BOM（兼容 Excel 中文显示）";
 
                 ShowHintMessage(message);
-                _logger?.Info($"Z-SCAN CSV 导出完成: {PointDetails.Count} 行 → {saveFileDialog.FileName}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvExportCompleted", "Z-SCAN CSV 导出完成: {0} 行 → {1}"), PointDetails.Count, saveFileDialog.FileName));
             }
             catch (UnauthorizedAccessException ex)
             {
                 ShowHintMessage($"没有写入权限: {ex.Message}\n请检查文件夹权限或选择其他位置。");
-                _logger?.Error($"Z-SCAN CSV 导出权限错误: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvExportPermissionError", "Z-SCAN CSV 导出权限错误: {0}"), ex.Message));
             }
             catch (IOException ex)
             {
                 ShowHintMessage($"文件写入错误: {ex.Message}\n请检查文件是否被其他程序打开。");
-                _logger?.Error($"Z-SCAN CSV 文件写入错误: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvFileWriteError", "Z-SCAN CSV 文件写入错误: {0}"), ex.Message));
             }
             catch (Exception ex)
             {
                 ShowHintMessage($"导出失败: {ex.Message}");
-                _logger?.Error($"Z-SCAN CSV 导出异常: {ex.Message}\n{ex.StackTrace}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CsvExportException", "Z-SCAN CSV 导出异常: {0}\n{1}"), ex.Message, ex.StackTrace));
             }
         }
 
@@ -1672,11 +1675,11 @@ namespace Module.ViewModels
                 double referenceZ = ZInitPosition;
                 _zscanCalibrationService.CalibrateCameraZ(measuredZ, referenceZ);
                 UpdateCalibrationDisplay();
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 相机Z标定完成: CameraZOffset={_zscanCalibrationService.CameraZOffset:F3}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraZCalibrationDone", "Z-SCAN [Dz{0}] 相机Z标定完成: CameraZOffset={1:F3}"), _currentNeedleIndex + 1, _zscanCalibrationService.CameraZOffset));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 相机Z标定失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CameraZCalibrationFailed", "Z-SCAN [Dz{0}] 相机Z标定失败: {1}"), _currentNeedleIndex + 1, ex.Message));
             }
         }
 
@@ -1686,11 +1689,11 @@ namespace Module.ViewModels
             {
                 _zscanCalibrationService.ApplyNeedleCompensation(NeedleCompensationInput);
                 UpdateCalibrationDisplay();
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 换针补偿已应用: NeedleZOffset={_zscanCalibrationService.NeedleZOffset:F3}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_NeedleCompensationApplied", "Z-SCAN [Dz{0}] 换针补偿已应用: NeedleZOffset={1:F3}"), _currentNeedleIndex + 1, _zscanCalibrationService.NeedleZOffset));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 换针补偿应用失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_NeedleCompensationFailed", "Z-SCAN [Dz{0}] 换针补偿应用失败: {1}"), _currentNeedleIndex + 1, ex.Message));
             }
         }
 
@@ -1709,11 +1712,11 @@ namespace Module.ViewModels
                 ZHeightDifference = 0;
                 BaseDispenseHeight = 0;
                 NeedleZOffset = 0;
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 标定已重置");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CalibrationReset", "Z-SCAN [Dz{0}] 标定已重置"), _currentNeedleIndex + 1));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 标定重置失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CalibrationResetFailed", "Z-SCAN [Dz{0}] 标定重置失败: {1}"), _currentNeedleIndex + 1, ex.Message));
             }
         }
 
@@ -1728,11 +1731,11 @@ namespace Module.ViewModels
                 if (advanceStep && value > 0 && CalibrationStep < 1)
                     CalibrationStep = 1;
                 if (logChange)
-                    _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 基准Z高度: {value:F3}");
+                    _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_BaseZHeight", "Z-SCAN [Dz{0}] 基准Z高度: {1:F3}"), _currentNeedleIndex + 1, value));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 设置基准Z失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_SetBaseZFailed", "Z-SCAN [Dz{0}] 设置基准Z失败: {1}"), _currentNeedleIndex + 1, ex.Message));
             }
         }
 
@@ -1743,11 +1746,11 @@ namespace Module.ViewModels
                 int zAxis = ResolveCurrentZAxisId();
                 await _needleTeachService.MoveNeedleToBaseZAsync(zAxis, BaseZInput, MoveSpeed);
                 CalibrationStep = 2;
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 针头已移动到基准Z高度: {BaseZInput:F3}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_NeedleMovedToBaseZ", "Z-SCAN [Dz{0}] 针头已移动到基准Z高度: {1:F3}"), _currentNeedleIndex + 1, BaseZInput));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 移动针头到基准Z失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_MoveNeedleToBaseZFailed", "Z-SCAN [Dz{0}] 移动针头到基准Z失败: {1}"), _currentNeedleIndex + 1, ex.Message));
                 ShowHintMessage($"移动针头到基准Z失败: {ex.Message}");
             }
         }
@@ -1761,11 +1764,11 @@ namespace Module.ViewModels
                 MeasuredMZ = mz;
                 _zscanCalibrationService.TeachNeedleMZ(mz);
                 CalibrationStep = 3;
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 针头示教MZ: {mz:F3}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_NeedleTeachMZ", "Z-SCAN [Dz{0}] 针头示教MZ: {1:F3}"), _currentNeedleIndex + 1, mz));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 针头示教失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_NeedleTeachFailed", "Z-SCAN [Dz{0}] 针头示教失败: {1}"), _currentNeedleIndex + 1, ex.Message));
                 ShowHintMessage($"针头示教失败: {ex.Message}");
             }
         }
@@ -1780,11 +1783,11 @@ namespace Module.ViewModels
                 CalculatedDispenseHeight = _zscanCalibrationService.CalculateDispenseHeight(
                     BaseZInput, MeasuredMZ, CurrentZHeightInput, NeedleCompensationValue);
                 CalibrationStep = 4;
-                _logger?.Info($"Z-SCAN [Dz{_currentNeedleIndex + 1}] Step4: 基准Z={BaseZInput:F3}, 当前Z={CurrentZHeightInput:F3}, Z高度差={ZHeightDifference:F3}, 基准点胶高度(MZ)={MeasuredMZ:F3}, 补偿={NeedleCompensationValue:F3}, 点胶高度={CalculatedDispenseHeight:F3}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_Step4CalcDispenseHeight", "Z-SCAN [Dz{0}] Step4: 基准Z={1:F3}, 当前Z={2:F3}, Z高度差={3:F3}, 基准点胶高度(MZ)={4:F3}, 补偿={5:F3}, 点胶高度={6:F3}"), _currentNeedleIndex + 1, BaseZInput, CurrentZHeightInput, ZHeightDifference, MeasuredMZ, NeedleCompensationValue, CalculatedDispenseHeight));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN [Dz{_currentNeedleIndex + 1}] 计算点胶高度失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CalcDispenseHeightFailed", "Z-SCAN [Dz{0}] 计算点胶高度失败: {1}"), _currentNeedleIndex + 1, ex.Message));
             }
         }
 
@@ -1819,11 +1822,11 @@ namespace Module.ViewModels
                 };
                 Tables.Add(newTable);
                 SelectedTable = newTable;
-                _logger?.Info($"Z-SCAN 新建表格: {newTable.TableName}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_TableCreated", "Z-SCAN 新建表格: {0}"), newTable.TableName));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 新建表格失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_CreateTableFailed", "Z-SCAN 新建表格失败: {0}"), ex.Message));
             }
         }
 
@@ -1836,11 +1839,11 @@ namespace Module.ViewModels
                 Tables.Remove(SelectedTable);
                 if (Tables.Count > 0)
                     SelectedTable = Tables[0];
-                _logger?.Info($"Z-SCAN 删除表格: {name}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_TableDeleted", "Z-SCAN 删除表格: {0}"), name));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 删除表格失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_DeleteTableFailed", "Z-SCAN 删除表格失败: {0}"), ex.Message));
             }
         }
 
@@ -1889,7 +1892,7 @@ namespace Module.ViewModels
             _previousTable = SelectedTable;
             SubscribePointDetailsEvents();
             RecalculateStatistics();
-            _logger?.Info($"Z-SCAN 切换表格: {SelectedTable.TableName}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_TableSwitched", "Z-SCAN 切换表格: {0}"), SelectedTable.TableName));
         }
 
         private void OnDataFormatChanged()
@@ -1955,11 +1958,11 @@ namespace Module.ViewModels
                 // 保存配置后同步已链接全局变量
                 _ = SyncLinkedGlobalVariablesAsync();
 
-                _logger?.Info($"Z-SCAN 配置已自动保存: {savedPath}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ConfigAutoSaved", "Z-SCAN 配置已自动保存: {0}"), savedPath));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 配置保存失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ConfigSaveFailed", "Z-SCAN 配置保存失败: {0}"), ex.Message));
             }
         }
 
@@ -1973,7 +1976,7 @@ namespace Module.ViewModels
                 var configFile = BuildConfigFile();
                 string savedPath = _zscanConfigService.SaveWithTimestamp(configFile);
                 CurrentFilePath = Path.GetFileName(savedPath);
-                _logger?.Info($"Z-SCAN 扫描后自动保存: {savedPath}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AutoSavedAfterScan", "Z-SCAN 扫描后自动保存: {0}"), savedPath));
             });
         }
 
@@ -2004,7 +2007,7 @@ namespace Module.ViewModels
                     if (dialog.ShowDialog() == true)
                     {
                         configFile = _zscanConfigService.LoadFromFile(dialog.FileName);
-                        _logger?.Info($"Z-SCAN 用户选择加载配置: {dialog.FileName}");
+                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_UserLoadConfig", "Z-SCAN 用户选择加载配置: {0}"), dialog.FileName));
                     }
                 }
                 else
@@ -2014,7 +2017,7 @@ namespace Module.ViewModels
                     if (!string.IsNullOrEmpty(latestFile))
                     {
                         configFile = _zscanConfigService.LoadFromFile(latestFile);
-                        _logger?.Info($"Z-SCAN 自动加载最新配置: {latestFile}");
+                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_AutoLoadLatestConfig", "Z-SCAN 自动加载最新配置: {0}"), latestFile));
                     }
                     else
                     {
@@ -2029,7 +2032,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 配置加载失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ConfigLoadFailed", "Z-SCAN 配置加载失败: {0}"), ex.Message));
             }
         }
 
@@ -2052,7 +2055,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"Z-SCAN 查找最新文件失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_FindLatestFileFailed", "Z-SCAN 查找最新文件失败: {0}"), ex.Message));
                 return null;
             }
         }
@@ -2079,7 +2082,7 @@ namespace Module.ViewModels
             CurrentFilePath = !string.IsNullOrEmpty(_zscanConfigService.LastSavedFilePath)
                 ? Path.GetFileName(_zscanConfigService.LastSavedFilePath)
                 : string.Empty;
-            _logger?.Info($"Z-SCAN 配置已加载: 共享表格={_tables.Count}个, Z标定分针头独立");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_ConfigLoaded", "Z-SCAN 配置已加载: 共享表格={0}个, Z标定分针头独立"), _tables.Count));
         }
 
         /// <summary>
@@ -2207,12 +2210,12 @@ namespace Module.ViewModels
                         {
                             gv.Value = newValue;
                             hasUpdate = true;
-                            _logger?.Debug($"Z-SCAN 全局变量同步: {gv.Name} = {point.DeltaZ:F6} (行{point.PointNumber})");
+                            _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_GlobalVarSync", "Z-SCAN 全局变量同步: {0} = {1:F6} (行{2})"), gv.Name, point.DeltaZ, point.PointNumber));
                         }
                     }
                     else
                     {
-                        _logger?.Warn($"Z-SCAN 全局变量链接未找到: {point.LinkedGlobalVarName} (行{point.PointNumber})");
+                        _logger?.Warn(string.Format(_localization.GetResourceOrDefault("ZScan_Log_GlobalVarLinkNotFound", "Z-SCAN 全局变量链接未找到: {0} (行{1})"), point.LinkedGlobalVarName, point.PointNumber));
                     }
                 }
 
@@ -2230,12 +2233,12 @@ namespace Module.ViewModels
                         if (localGv != null)
                             localGv.Value = point.DeltaZ.ToString("F6");
                     }
-                    _logger?.Info($"Z-SCAN 已同步 {PointDetails.Count(p => !string.IsNullOrEmpty(p.LinkedGlobalVarName))} 个链接全局变量");
+                    _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_LinkedGlobalVarsSynced", "Z-SCAN 已同步 {0} 个链接全局变量"), PointDetails.Count(p => !string.IsNullOrEmpty(p.LinkedGlobalVarName))));
                 }
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 同步全局变量失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_SyncGlobalVarsFailed", "Z-SCAN 同步全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -2244,7 +2247,7 @@ namespace Module.ViewModels
             if (point == null) return;
             string varName = point.LinkedGlobalVarName;
             point.LinkedGlobalVarName = null;
-            _logger?.Info($"Z-SCAN 行{point.PointNumber}已取消全局变量链接: {varName}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("ZScan_Log_RowUnlinkedGlobalVar", "Z-SCAN 行{0}已取消全局变量链接: {1}"), point.PointNumber, varName));
         }
 
         /// <summary>
@@ -2264,7 +2267,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"Z-SCAN 加载全局变量列表失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("ZScan_Log_LoadGlobalVarListFailed", "Z-SCAN 加载全局变量列表失败: {0}"), ex.Message));
             }
         }
 
@@ -2277,14 +2280,14 @@ namespace Module.ViewModels
                 return;
 
             LoadAvailableGlobalVariables();
-            _logger?.Debug($"Z-SCAN 已同步全局变量列表（池={poolId}，共 {AvailableGlobalVariables.Count} 项）");
+            _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_GlobalVarListSynced", "Z-SCAN 已同步全局变量列表（池={0}，共 {1} 项）"), poolId, AvailableGlobalVariables.Count));
         }
 
         /// <summary> 配方池切换时重新加载全局变量 </summary>
         private void OnRecipePoolChanged(string poolName)
         {
             LoadAvailableGlobalVariables();
-            _logger?.Debug($"Z-SCAN 配方池切换，已重新加载全局变量（池={poolName}）");
+            _logger?.Debug(string.Format(_localization.GetResourceOrDefault("ZScan_Log_RecipePoolSwitched", "Z-SCAN 配方池切换，已重新加载全局变量（池={0}）"), poolName));
         }
 
         #endregion

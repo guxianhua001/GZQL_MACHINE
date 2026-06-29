@@ -36,6 +36,8 @@ namespace Module.ViewModels
         private readonly IEventAggregator _eventAggregator;
         private readonly ICadAlignTransformService _cadAlignTransformService;
         private readonly IBaseDialogService _baseDialogService;
+        /// <summary>多语言服务缓存——避免每次调用时通过容器解析（性能优化）</summary>
+        private readonly ILocalizationService _localization;
         private bool _syncingFromSelection;
         private ProcessStep _step;
         private DispenseDetail _subscribedDispenseDetail;
@@ -1336,6 +1338,8 @@ namespace Module.ViewModels
             IBaseDialogService baseDialogService)
         {
             _containerProvider = containerProvider;
+            // 缓存多语言服务实例，避免每次调用时通过容器解析（性能与稳定性优化）
+            _localization = _containerProvider.Resolve<ILocalizationService>();
             _logger = logger;
             _recipePoolService = recipePoolService;
             _stationRegistry = stationRegistry;
@@ -1805,7 +1809,7 @@ namespace Module.ViewModels
                 lastSource = seg;
             }
 
-            _logger.Info($"[DispenseDetail] 导入 {candidates.Count} 段（Step3 已勾选）");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_ImportedSegments", "[DispenseDetail] 导入 {0} 段（Step3 已勾选）"), candidates.Count));
             RefreshSourceSegmentInfo();
             FinalizeImportSync(lastImported, lastSource);
         }
@@ -1888,7 +1892,7 @@ namespace Module.ViewModels
                 }
                 else
                 {
-                    segRef.SourceLayerName = "⚠ 来源已删除";
+                    segRef.SourceLayerName = _localization.GetResourceOrDefault("DD_Msg_SourceDeleted", "⚠ 来源已删除");
                     segRef.SourceLength = 0;
                     segRef.SourcePointCount = 0;
                 }
@@ -2101,7 +2105,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[DispenseDetail] 加载全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("DD_Log_LoadGlobalVarsFailed", "[DispenseDetail] 加载全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -2134,7 +2138,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[DispenseDetail] 刷新全局变量显示值失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("DD_Log_RefreshGlobalVarsFailed", "[DispenseDetail] 刷新全局变量显示值失败: {0}"), ex.Message));
             }
         }
 
@@ -2249,7 +2253,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Warn($"[DispenseDetail] 恢复 CAD 对齐变换快照失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("DD_Log_RestoreCadSnapshotFailed", "[DispenseDetail] 恢复 CAD 对齐变换快照失败: {0}"), ex.Message));
             }
         }
 
@@ -2260,7 +2264,7 @@ namespace Module.ViewModels
         {
             try
             {
-                _logger?.Info("[DispenseDetail] ViewRotatedCoords 按钮已点击，开始构建坐标对照");
+                _logger?.Info(_localization.GetResourceOrDefault("DD_Log_ViewRotatedCoordsClicked", "[DispenseDetail] ViewRotatedCoords 按钮已点击，开始构建坐标对照"));
 
                 // 打开弹窗前再次确保快照已恢复（防止启动时异步恢复尚未完成）
                 await EnsureCadAlignSnapshotRestoredAsync().ConfigureAwait(true);
@@ -2268,7 +2272,7 @@ namespace Module.ViewModels
                 var snapshot = _cadAlignTransformService?.CurrentSnapshot;
                 if (snapshot == null || !snapshot.IsValid)
                 {
-                    _logger?.Warn("[DispenseDetail] CAD 对齐变换不可用，无法查看旋转后坐标");
+                    _logger?.Warn(_localization.GetResourceOrDefault("DD_Log_CadTransformUnavailable", "[DispenseDetail] CAD 对齐变换不可用，无法查看旋转后坐标"));
                     System.Windows.MessageBox.Show(
                         L("DispenseDetail_TransformUnavailable"),
                         L("DispenseDetail_RotatedCoordsTitle"),
@@ -2278,12 +2282,12 @@ namespace Module.ViewModels
                 }
 
                 double rotationAngle = IsRotationAngleLinked ? RotationAngleDisplayValue : RotationAngle;
-                _logger?.Info($"[DispenseDetail] 旋转角度={rotationAngle:F3}°, 回转中心=({snapshot.Mox:F3}, {snapshot.Moy:F3})");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_RotationAngleAndCenter", "[DispenseDetail] 旋转角度={0:F3}°, 回转中心=({1:F3}, {2:F3})"), rotationAngle, snapshot.Mox, snapshot.Moy));
 
                 // 构建坐标对照列表
                 var coordList = new List<DispenseRotatedCoordItem>();
                 var sourceSegments = _segmentSourceService.GetSourceSegments();
-                _logger?.Info($"[DispenseDetail] 源段数={sourceSegments.Count}, SegmentRefs数={SegmentRefs?.Count ?? 0}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_SourceAndRefCount", "[DispenseDetail] 源段数={0}, SegmentRefs数={1}"), sourceSegments.Count, SegmentRefs?.Count ?? 0));
 
                 foreach (var segRef in SegmentRefs ?? new ObservableCollection<DispenseSegmentRef>())
                 {
@@ -2291,7 +2295,7 @@ namespace Module.ViewModels
                     var seg = sourceSegments.FirstOrDefault(s => s.SegmentId == segRef.SourceSegmentId);
                     if (seg?.Points == null)
                     {
-                        _logger?.Warn($"[DispenseDetail] 段 {segRef.SourceSegmentId} 未找到或无点数据");
+                        _logger?.Warn(string.Format(_localization.GetResourceOrDefault("DD_Log_SegmentNotFoundOrNoPoints", "[DispenseDetail] 段 {0} 未找到或无点数据"), segRef.SourceSegmentId));
                         continue;
                     }
 
@@ -2313,7 +2317,7 @@ namespace Module.ViewModels
 
                 if (coordList.Count == 0)
                 {
-                    _logger?.Warn("[DispenseDetail] 无可用的段坐标点，请先导入段");
+                    _logger?.Warn(_localization.GetResourceOrDefault("DD_Log_NoCoordPoints", "[DispenseDetail] 无可用的段坐标点，请先导入段"));
                     System.Windows.MessageBox.Show(
                         L("DispenseDetail_NoCoordPoints"),
                         L("DispenseDetail_RotatedCoordsTitle"),
@@ -2322,7 +2326,7 @@ namespace Module.ViewModels
                     return;
                 }
 
-                _logger?.Info($"[DispenseDetail] 坐标对照列表构建完成，共 {coordList.Count} 个点");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_CoordListBuilt", "[DispenseDetail] 坐标对照列表构建完成，共 {0} 个点"), coordList.Count));
 
                 // 解析并显示弹窗（await 确保对话框正常显示）
                 var dialogVm = _containerProvider.Resolve<DispenseRotatedCoordsViewModel>();
@@ -2331,13 +2335,13 @@ namespace Module.ViewModels
                     _step.DispenseDetail, _step.DispenseDetail?.NeedleIndex ?? 0, AvailableGlobalVariables);
                 var view = new Views.DispenseRotatedCoordsView { DataContext = dialogVm };
                 var title = L("DispenseDetail_RotatedCoordsTitle");
-                _logger?.Info($"[DispenseDetail] 准备显示弹窗: title={title}, _baseDialogService={_baseDialogService?.GetType().Name ?? "null"}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("DD_Log_PreparingDialog", "[DispenseDetail] 准备显示弹窗: title={0}, _baseDialogService={1}"), title, _baseDialogService?.GetType().Name ?? "null"));
                 await _baseDialogService.ShowDialog(view, title, "MapMarkerDistance");
-                _logger?.Info("[DispenseDetail] 弹窗已关闭");
+                _logger?.Info(_localization.GetResourceOrDefault("DD_Log_DialogClosed", "[DispenseDetail] 弹窗已关闭"));
             }
             catch (Exception ex)
             {
-                _logger?.Error(ex, "[DispenseDetail] 打开旋转后坐标弹窗失败");
+                _logger?.Error(ex, _localization.GetResourceOrDefault("DD_Log_OpenRotatedCoordsDialogFailed", "[DispenseDetail] 打开旋转后坐标弹窗失败"));
                 System.Windows.MessageBox.Show(
                     ex.ToString(),
                     "ViewRotatedCoords Error",

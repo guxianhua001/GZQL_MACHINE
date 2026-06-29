@@ -21,6 +21,14 @@ namespace Module.Services
         private readonly IEventAggregator _eventAggregator;
         private readonly IRecipePoolService _recipePoolService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         /// <summary>当前变换快照（初始为无效空快照）</summary>
         public CadAlignTransformSnapshot CurrentSnapshot { get; private set; } = new CadAlignTransformSnapshot();
@@ -28,11 +36,13 @@ namespace Module.Services
         public CadAlignTransformService(
             IEventAggregator eventAggregator,
             IRecipePoolService recipePoolService,
-            ILoggerService logger)
+            ILoggerService logger,
+            ILocalizationService localization)
         {
             _eventAggregator = eventAggregator;
             _recipePoolService = recipePoolService;
             _logger = logger;
+            _localization = localization;
 
             // 配方池切换时重新加载 CAD 对齐变换快照
             _eventAggregator?.GetEvent<RecipePoolChangedEvent>().Subscribe(
@@ -88,7 +98,7 @@ namespace Module.Services
 
                 if (!restored.IsValid)
                 {
-                    _logger?.Info("[CadAlignTransform] 持久化配置无有效变换快照，保持当前状态");
+                    _logger?.Info(L("CadAT_Log_NoValidSnapshot", "[CadAlignTransform] 持久化配置无有效变换快照，保持当前状态"));
                     return;
                 }
 
@@ -103,11 +113,11 @@ namespace Module.Services
                 }
 
                 UpdateSnapshot(restored);
-                _logger?.Info($"[CadAlignTransform] 已从持久化配置恢复变换快照，回转中心=({restored.Mox:F3}, {restored.Moy:F3})");
+                _logger?.Info(L("CadAT_Log_SnapshotRestored", "[CadAlignTransform] 已从持久化配置恢复变换快照，回转中心=({0:F3}, {1:F3})", restored.Mox, restored.Moy));
             }
             catch (System.Exception ex)
             {
-                _logger?.Warn($"[CadAlignTransform] 恢复变换快照失败: {ex.Message}");
+                _logger?.Warn(L("CadAT_Log_RestoreFailed", "[CadAlignTransform] 恢复变换快照失败: {0}", ex.Message));
             }
         }
     }

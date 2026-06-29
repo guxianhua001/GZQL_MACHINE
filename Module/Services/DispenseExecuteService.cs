@@ -119,7 +119,7 @@ namespace Module.Services
                     if (seg.Points == null || seg.Points.Count == 0) continue;
 
                     PublishProgress(ResourceHelper.GetString("DispenseExec_SegmentProgress", modeLabel, seg.SegmentId, seg.EntityType), index + 1, total);
-                    _logger?.Info($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]");
+                    _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispExec_Log_SegmentStart", modeLabel, seg.SegmentId)}");
 
                     // 1. Z 抬升到安全高度（使用 Step3 段参数 MoveSpeed）
                     double moveSpeed = seg.MoveSpeed;
@@ -364,7 +364,7 @@ namespace Module.Services
                     if (seg.Points == null || seg.Points.Count == 0) continue;
 
                     PublishProgress(ResourceHelper.GetString("DispenseExec_SegmentProgressWithIndex", modeLabel, seg.SegmentId, index + 1, total), index + 1, total);
-                    _logger?.Debug($"[DispenseExecute] {modeLabel}段 [{seg.SegmentId}]，共 {seg.Points.Count} 点");
+                    _logger?.Debug($"[DispenseExecute] {ResourceHelper.GetString("DispExec_Log_SegmentDebug", modeLabel, seg.SegmentId, seg.Points.Count)}");
 
                     double targetZ = dryRun ? safeHeight : processParams.EffectiveZHeight;
 

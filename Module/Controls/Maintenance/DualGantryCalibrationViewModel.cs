@@ -493,12 +493,12 @@ namespace Module.ViewModels
 
                 if (AvailableAxes.Count == 0)
                 {
-                    _logger.Warn("双龙门标定: 未读取到任何轴配置");
+                    _logger.Warn(_localization.GetResourceOrDefault("DGCVM_Log_NoAxesConfig", "双龙门标定: 未读取到任何轴配置"));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warn($"双龙门标定: 获取轴列表失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("DGCVM_Log_GetAxisListFailed", "双龙门标定: 获取轴列表失败 - {0}"), ex.Message));
                 AvailableAxes = new ObservableCollection<string>();
             }
         }
@@ -555,12 +555,12 @@ namespace Module.ViewModels
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("双龙门标定: 龙门1自动标定已取消");
+                _logger.Info(_localization.GetResourceOrDefault("DGCVM_Log_Gantry1AutoCalibCanceled", "双龙门标定: 龙门1自动标定已取消"));
                 UpdateStatus(L("DualGantryCalib_Idle", "空闲"), Brushes.LightGray);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门1自动标定启动失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry1AutoCalibStartFailed", "双龙门标定: 龙门1自动标定启动失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
                 IsGantry1Calibrating = false;
             }
@@ -607,12 +607,12 @@ namespace Module.ViewModels
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("双龙门标定: 龙门2自动标定已取消");
+                _logger.Info(_localization.GetResourceOrDefault("DGCVM_Log_Gantry2AutoCalibCanceled", "双龙门标定: 龙门2自动标定已取消"));
                 UpdateStatus(L("DualGantryCalib_Idle", "空闲"), Brushes.LightGray);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门2自动标定启动失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry2AutoCalibStartFailed", "双龙门标定: 龙门2自动标定启动失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
                 IsGantry2Calibrating = false;
             }
@@ -648,7 +648,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门1示教失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry1TeachFailed", "双龙门标定: 龙门1示教失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -663,7 +663,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门1移动失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry1MoveFailed", "双龙门标定: 龙门1移动失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -715,7 +715,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门2示教失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry2TeachFailed", "双龙门标定: 龙门2示教失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -730,7 +730,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门2移动失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry2MoveFailed", "双龙门标定: 龙门2移动失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -785,7 +785,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门1计算失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry1CalcFailed", "双龙门标定: 龙门1计算失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -809,7 +809,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 龙门2计算失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Gantry2CalcFailed", "双龙门标定: 龙门2计算失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -865,12 +865,12 @@ namespace Module.ViewModels
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("双龙门标定: Cam1公共基准采集已取消");
+                _logger.Info(_localization.GetResourceOrDefault("DGCVM_Log_Cam1CommonRefCanceled", "双龙门标定: Cam1公共基准采集已取消"));
                 UpdateStatus(L("DualGantryCalib_Idle", "空闲"), Brushes.LightGray);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: Cam1公共基准采集失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Cam1CommonRefFailed", "双龙门标定: Cam1公共基准采集失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
             finally
@@ -914,12 +914,12 @@ namespace Module.ViewModels
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("双龙门标定: Cam2公共基准采集已取消");
+                _logger.Info(_localization.GetResourceOrDefault("DGCVM_Log_Cam2CommonRefCanceled", "双龙门标定: Cam2公共基准采集已取消"));
                 UpdateStatus(L("DualGantryCalib_Idle", "空闲"), Brushes.LightGray);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: Cam2公共基准采集失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_Cam2CommonRefFailed", "双龙门标定: Cam2公共基准采集失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
             finally
@@ -969,7 +969,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 跨龙门对齐失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_CrossGantryAlignFailed", "双龙门标定: 跨龙门对齐失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -993,7 +993,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 坐标变换验证失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_TransformVerifyFailed", "双龙门标定: 坐标变换验证失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -1032,7 +1032,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 保存失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_SaveFailed", "双龙门标定: 保存失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -1066,7 +1066,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 另存为失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_SaveAsFailed", "双龙门标定: 另存为失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -1087,7 +1087,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 导入失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_ImportFailed", "双龙门标定: 导入失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -1117,7 +1117,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "双龙门标定: 导出失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("DGCVM_Log_ExportFailed", "双龙门标定: 导出失败"));
                 UpdateStatus($"{L("DualGantryCalib_Error", "标定错误")}: {ex.Message}", Brushes.Red);
             }
         }
@@ -1161,7 +1161,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"双龙门标定: 自动加载失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("DGCVM_Log_AutoLoadFailed", "双龙门标定: 自动加载失败 - {0}"), ex.Message));
             }
         }
 
@@ -1256,7 +1256,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"双龙门标定: 加载TCP连接列表失败 - {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("DGCVM_Log_LoadTcpConnectionsFailed", "双龙门标定: 加载TCP连接列表失败 - {0}"), ex.Message));
             }
         }
 

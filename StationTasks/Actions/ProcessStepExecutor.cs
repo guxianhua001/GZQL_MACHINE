@@ -31,6 +31,7 @@ namespace StationTasks.Actions
     {
         private readonly StationTaskBase _task;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly Dictionary<StepType, IProcessStepAction> _actionMap;
         private readonly IEventAggregator _ea;
         private readonly IStationRegistry _stationRegistry;
@@ -114,6 +115,7 @@ namespace StationTasks.Actions
         {
             _task = task;
             _logger = logger;
+            _localization = task.Localization;
             _alarmService = alarmService;
             _formulaEvaluator = formulaEvaluator;
             _recipePoolService = recipePoolService;
@@ -141,7 +143,7 @@ namespace StationTasks.Actions
             {
                 if (step.AlarmConfig?.IsEnabled == true)
                 {
-                    _logger.Info($"[ProcessStepExecutor] 事件触发: 步骤 [{step.Seq}] {step.Step} 立即设置 HasActiveAlarm = true");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepFaultedEventTriggered", "[ProcessStepExecutor] 事件触发: 步骤 [{0}] {1} 立即设置 HasActiveAlarm = true"), step.Seq, step.Step));
                     step.HasActiveAlarm = true;
                 }
             }
@@ -155,7 +157,7 @@ namespace StationTasks.Actions
             {
                 if (step.AlarmConfig?.IsEnabled == true)
                 {
-                    _logger.Info($"[ProcessStepExecutor] 步骤错误事件: [{step.Seq}] {step.Step} ErrorCode={payload.ErrorCode}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepErrorEvent", "[ProcessStepExecutor] 步骤错误事件: [{0}] {1} ErrorCode={2}"), step.Seq, step.Step, payload.ErrorCode));
                     step.ErrorMessage = $"[{payload.ErrorCode}] {payload.ErrorMessage}";
                 }
             }
@@ -169,7 +171,7 @@ namespace StationTasks.Actions
         {
             if (steps == null || steps.Count == 0)
             {
-                _logger.Warn("工艺步骤列表为空，跳过执行");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_Exec_ProcessStepListEmpty", "工艺步骤列表为空，跳过执行"));
                 return;
             }
 
@@ -214,14 +216,14 @@ namespace StationTasks.Actions
                     // 跳过禁用步骤（不执行、不标记、直接进入下一步）
                     if (!step.IsEnabled)
                     {
-                        _logger.Info($"[ProcessStepExecutor] 跳过禁用步骤: [{step.Seq}] {step.Step}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_SkipDisabledStep", "[ProcessStepExecutor] 跳过禁用步骤: [{0}] {1}"), step.Seq, step.Step));
                         currentIndex++;
                         continue;
                     }
 
                     // 标记当前步骤
                     NotifyExecutingStep(step);
-                    _logger.Info($"=== 执行步骤 [{step.Seq}] {step.Step} ({step.CompFeature} → {step.SiteFeature}) ===");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_ExecuteStepBegin", "=== 执行步骤 [{0}] {1} ({2} → {3}) ==="), step.Seq, step.Step, step.CompFeature, step.SiteFeature));
 
                     try
                     {
@@ -236,10 +238,10 @@ namespace StationTasks.Actions
                         {
                             // 提前高亮下一步，避免等待期间无高亮行
                             steps[nextIndex].IsCurrent = true;
-                            _logger.Info($"[ProcessStepExecutor] 单步模式等待下一步确认 (下一步骤 [{steps[nextIndex].Seq}])");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepModeWaitNextConfirm", "[ProcessStepExecutor] 单步模式等待下一步确认 (下一步骤 [{0}])"), steps[nextIndex].Seq));
                             await StepGate(token);
                             // 用户确认后，下一轮循环会重新设置 IsCurrent，无需在此清除
-                            _logger.Info("[ProcessStepExecutor] 单步模式收到下一步确认");
+                            _logger.Info(_localization.GetResourceOrDefault("PSE_Log_Exec_StepModeReceivedNextConfirm", "[ProcessStepExecutor] 单步模式收到下一步确认"));
                         }
                     
                         currentIndex = nextIndex;
@@ -247,10 +249,10 @@ namespace StationTasks.Actions
                     catch (OperationCanceledException)
                     {
                         step.IsCurrent = false;
-                        _logger.Info($"[ProcessStepExecutor] 步骤 [{step.Seq}] {step.Step} 捕获 OperationCanceledException, LastFaultStepName: {_task.LastFaultStepName}, IsEnabled: {step.AlarmConfig?.IsEnabled}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepCanceledException", "[ProcessStepExecutor] 步骤 [{0}] {1} 捕获 OperationCanceledException, LastFaultStepName: {2}, IsEnabled: {3}"), step.Seq, step.Step, _task.LastFaultStepName, step.AlarmConfig?.IsEnabled));
                         if (_task.LastFaultStepName != null && step.AlarmConfig?.IsEnabled == true)
                         {
-                            _logger.Info($"[ProcessStepExecutor] 步骤 [{step.Seq}] {step.Step} 设置 HasActiveAlarm = true (OperationCanceledException 路径)");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepSetAlarmCanceledPath", "[ProcessStepExecutor] 步骤 [{0}] {1} 设置 HasActiveAlarm = true (OperationCanceledException 路径)"), step.Seq, step.Step));
                             step.HasActiveAlarm = true;
                         }
                         throw;
@@ -258,18 +260,18 @@ namespace StationTasks.Actions
                     catch (Exception ex)
                     {
                         step.IsCurrent = false;
-                        _logger.Info($"[ProcessStepExecutor] 步骤 [{step.Seq}] {step.Step} 捕获 Exception: {ex.Message}, IsEnabled: {step.AlarmConfig?.IsEnabled}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepCaughtException", "[ProcessStepExecutor] 步骤 [{0}] {1} 捕获 Exception: {2}, IsEnabled: {3}"), step.Seq, step.Step, ex.Message, step.AlarmConfig?.IsEnabled));
                         if (step.AlarmConfig?.IsEnabled == true)
                         {
-                            _logger.Info($"[ProcessStepExecutor] 步骤 [{step.Seq}] {step.Step} 设置 HasActiveAlarm = true (Exception 路径)");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepSetAlarmExceptionPath", "[ProcessStepExecutor] 步骤 [{0}] {1} 设置 HasActiveAlarm = true (Exception 路径)"), step.Seq, step.Step));
                             step.HasActiveAlarm = true;
                         }
-                        _logger.Error($"[ProcessSequence] 步骤 [{step.Seq}] {step.Step} 执行异常: {ex.Message}");
+                        _logger.Error(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepExecutionException", "[ProcessSequence] 步骤 [{0}] {1} 执行异常: {2}"), step.Seq, step.Step, ex.Message));
                         currentIndex = -1;
                     }
                 }
 
-                _logger.Info("=== 工艺步骤序列执行完成 ===");
+                _logger.Info(_localization.GetResourceOrDefault("PSE_Log_Exec_ProcessSequenceCompleted", "=== 工艺步骤序列执行完成 ==="));
             }
             finally
             {
@@ -301,9 +303,9 @@ namespace StationTasks.Actions
             if (action == null)
             {
                 if (step.Step == StepType.RUNTASK)
-                    _logger.Warn($"步骤 [{step.Seq}] RUNTASK 类型不支持单独执行，请在任务序列中运行");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNotStandalone", "步骤 [{0}] RUNTASK 类型不支持单独执行，请在任务序列中运行"), step.Seq));
                 else
-                    _logger.Warn($"步骤 [{step.Seq}] 类型 {step.Step} 没有注册的 Action，无法单独执行");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_NoRegisteredActionStandalone", "步骤 [{0}] 类型 {1} 没有注册的 Action，无法单独执行"), step.Seq, step.Step));
                 return;
             }
 
@@ -311,7 +313,7 @@ namespace StationTasks.Actions
                 scriptAction.StepOutputs = _stepOutputs;
 
             string stepLabel = FormatStepLabel(step);
-            _logger.Info($"=== 单独执行步骤 [{step.Seq}] {step.Step} ===");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StandaloneStepBegin", "=== 单独执行步骤 [{0}] {1} ==="), step.Seq, step.Step));
 
             bool publishStatus = step.Step != StepType.GOTO;
             var sw = Stopwatch.StartNew();
@@ -322,7 +324,7 @@ namespace StationTasks.Actions
             sw.Stop();
             step.LastElapsedMs = sw.ElapsedMilliseconds;
 
-            _logger.Info($"=== 单独执行步骤 [{step.Seq}] {step.Step} 完成 ===");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StandaloneStepCompleted", "=== 单独执行步骤 [{0}] {1} 完成 ==="), step.Seq, step.Step));
         }
 
         /// <summary>
@@ -418,12 +420,12 @@ namespace StationTasks.Actions
                 case StepType.CURE:
                 case StepType.DISPENSE:
                 case StepType.RELEASE:
-                    _logger.Info($"[ProcessStepExecutor] 开始执行步骤 [{step.Seq}] {step.Step}, stepLabel: {stepLabel}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepStart", "[ProcessStepExecutor] 开始执行步骤 [{0}] {1}, stepLabel: {2}"), step.Seq, step.Step, stepLabel));
                     await ExecuteWithRunStepAsync(stepLabel, step, token);
-                    _logger.Info($"[ProcessStepExecutor] 步骤 [{step.Seq}] {step.Step} 完成, LastFaultStepName: {_task.LastFaultStepName}, IsEnabled: {step.AlarmConfig?.IsEnabled}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepCompleted", "[ProcessStepExecutor] 步骤 [{0}] {1} 完成, LastFaultStepName: {2}, IsEnabled: {3}"), step.Seq, step.Step, _task.LastFaultStepName, step.AlarmConfig?.IsEnabled));
                     if (_task.LastFaultStepName == stepLabel && step.AlarmConfig?.IsEnabled == true)
                     {
-                        _logger.Info($"[ProcessStepExecutor] 步骤 [{step.Seq}] {step.Step} 设置 HasActiveAlarm = true (LastFaultStepName 匹配路径)");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepSetAlarmLastFaultMatch", "[ProcessStepExecutor] 步骤 [{0}] {1} 设置 HasActiveAlarm = true (LastFaultStepName 匹配路径)"), step.Seq, step.Step));
                         step.HasActiveAlarm = true;
                     }
                     return currentIndex + 1;
@@ -431,15 +433,15 @@ namespace StationTasks.Actions
                 case StepType.RUNTASK:
                 {
                     // RUNTASK 步骤：调用被动任务，通过 CallStack 进行循环引用检测
-                    _logger.Info($"[ProcessStepExecutor] 开始执行 RUNTASK 步骤 [{step.Seq}], 目标任务: {step.RunTaskDetail?.TargetTaskName}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskStart", "[ProcessStepExecutor] 开始执行 RUNTASK 步骤 [{0}], 目标任务: {1}"), step.Seq, step.RunTaskDetail?.TargetTaskName));
                     if (_runTaskExecutor == null)
                     {
-                        _logger.Warn($"[ProcessStepExecutor] RUNTASK 步骤 [{step.Seq}] 未注入 IRunTaskExecutor，跳过");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNoExecutor", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未注入 IRunTaskExecutor，跳过"), step.Seq));
                         return currentIndex + 1;
                     }
                     if (step.RunTaskDetail == null || string.IsNullOrEmpty(step.RunTaskDetail.TargetTaskName))
                     {
-                        _logger.Warn($"[ProcessStepExecutor] RUNTASK 步骤 [{step.Seq}] 未配置目标任务，跳过");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNoTarget", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未配置目标任务，跳过"), step.Seq));
                         return currentIndex + 1;
                     }
                     // 通过 ExecuteStepSafeAsync 包装，享受暂停/急停/可恢复异常保护
@@ -451,34 +453,34 @@ namespace StationTasks.Actions
                             CallStack,
                             token);
                     }, true, step.AlarmConfig);
-                    _logger.Info($"[ProcessStepExecutor] RUNTASK 步骤 [{step.Seq}] 完成");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskCompleted", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 完成"), step.Seq));
                     return currentIndex + 1;
                 }
 
                 case StepType.BRANCH:
-                    _logger.Info($"[ProcessStepExecutor] 开始执行 BRANCH 步骤 [{step.Seq}]");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchStart", "[ProcessStepExecutor] 开始执行 BRANCH 步骤 [{0}]"), step.Seq));
                     if (step.BranchConfig?.IsEnabled == true)
                     {
                         return await ExecuteBranchLogicAsync(step, steps, currentIndex, token);
                     }
-                    _logger.Warn($"[Branch] 步骤 [{step.Seq}] BranchConfig 未启用，继续下一步");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchConfigDisabled", "[Branch] 步骤 [{0}] BranchConfig 未启用，继续下一步"), step.Seq));
                     return currentIndex + 1;
 
                 case StepType.IF:
-                    _logger.Info($"[ProcessStepExecutor] 开始执行 IF 步骤 [{step.Seq}]");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfStart", "[ProcessStepExecutor] 开始执行 IF 步骤 [{0}]"), step.Seq));
                     {
                         int? outerJump = await ExecuteIfStepAsync(step, steps, currentIndex, token);
                         if (outerJump.HasValue)
                         {
-                            _logger.Info($"[ProcessStepExecutor] IF 步骤 [{step.Seq}] 因子步骤 BRANCH 块外跳转，继续索引={outerJump.Value}");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfBranchOuterJump", "[ProcessStepExecutor] IF 步骤 [{0}] 因子步骤 BRANCH 块外跳转，继续索引={1}"), step.Seq, outerJump.Value));
                             return outerJump.Value;
                         }
                     }
-                    _logger.Info($"[ProcessStepExecutor] IF 步骤 [{step.Seq}] 完成");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfCompleted", "[ProcessStepExecutor] IF 步骤 [{0}] 完成"), step.Seq));
                     return currentIndex + 1;
 
                 default:
-                    _logger.Warn($"步骤类型 {step.Step} 尚未实现执行器，跳过步骤 [{step.Seq}]");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepTypeNotImplemented", "步骤类型 {0} 尚未实现执行器，跳过步骤 [{1}]"), step.Step, step.Seq));
                     return currentIndex + 1;
             }
         }
@@ -556,7 +558,7 @@ namespace StationTasks.Actions
             }
             else
             {
-                _logger.Warn($"步骤 [{step.Seq}] 类型 {step.Step} 没有注册的 Action，跳过");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_NoRegisteredAction", "步骤 [{0}] 类型 {1} 没有注册的 Action，跳过"), step.Seq, step.Step));
             }
         }
 
@@ -587,7 +589,7 @@ namespace StationTasks.Actions
 
                 await _task.ExecuteStepSafeAsync(stepLabel, async () =>
                 {
-                    _logger.Info($"CHECK 步骤 [{step.Seq}] 第{retryCount + 1}次检查结果: {(checkPassed ? "PASS" : "FAIL")}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_CheckStepResult", "CHECK 步骤 [{0}] 第{1}次检查结果: {2}"), step.Seq, retryCount + 1, (checkPassed ? "PASS" : "FAIL")));
                     await Task.CompletedTask;
                 }, true, step.AlarmConfig);
 
@@ -600,7 +602,7 @@ namespace StationTasks.Actions
                 // 重试次数超过上限，执行 OnMaxExceeded 动作
                 if (maxRetries > 0 && retryCount >= maxRetries)
                 {
-                    _logger.Warn($"CHECK 步骤 [{step.Seq}] 重试{retryCount}次仍未通过，执行 OnMaxExceeded={step.CheckDetail?.OnMaxExceeded}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_CheckRetryExhausted", "CHECK 步骤 [{0}] 重试{1}次仍未通过，执行 OnMaxExceeded={2}"), step.Seq, retryCount, step.CheckDetail?.OnMaxExceeded));
                     return await HandleMaxExceededAsync(step, steps, currentIndex, retryCount);
                 }
 
@@ -658,16 +660,16 @@ namespace StationTasks.Actions
                         type: AlarmType.ParameterOutOfLimit);
                     // 标记该步骤有活跃报警
                     step.HasActiveAlarm = true;
-                    _logger.Warn($"CHECK步骤 [{step.Seq}] 已触发报警 CHECK_MAX_RETRIES");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_CheckAlarmTriggered", "CHECK步骤 [{0}] 已触发报警 CHECK_MAX_RETRIES"), step.Seq));
                     // 报警后终止序列
                     return -1;
 
                 case OnMaxExceededAction.Stop:
-                    _logger.Warn($"CHECK步骤 [{step.Seq}] 重试超限，终止执行");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_CheckRetryExceededStop", "CHECK步骤 [{0}] 重试超限，终止执行"), step.Seq));
                     return -1;
 
                 case OnMaxExceededAction.Continue:
-                    _logger.Warn($"CHECK步骤 [{step.Seq}] 重试超限，继续执行下一步");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_CheckRetryExceededContinue", "CHECK步骤 [{0}] 重试超限，继续执行下一步"), step.Seq));
                     return currentIndex + 1;
 
                 default:
@@ -689,7 +691,7 @@ namespace StationTasks.Actions
 
                 if (!passed)
                 {
-                    _logger.Warn($"检查项 [{item.DataLink}] 不通过: 值={item.Value}, 范围=[{item.LowerLimit}, {item.UpperLimit}]");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_CheckItemFailed", "检查项 [{0}] 不通过: 值={1}, 范围=[{2}, {3}]"), item.DataLink, item.Value, item.LowerLimit, item.UpperLimit));
                     return false;
                 }
             }
@@ -743,12 +745,12 @@ namespace StationTasks.Actions
             {
                 if (steps[i].Seq == seq)
                 {
-                    _logger.Info($"跳转到步骤 Seq={seq} (索引={i})");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_JumpToStep", "跳转到步骤 Seq={0} (索引={1})"), seq, i));
                     return i;
                 }
             }
 
-            _logger.Warn($"未找到 Seq={seq} 的步骤，继续顺序执行");
+            _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepSeqNotFound", "未找到 Seq={0} 的步骤，继续顺序执行"), seq));
             return 0;
         }
 
@@ -770,7 +772,7 @@ namespace StationTasks.Actions
                 return currentIndex + 1; // 未启用分支，正常执行下一步
             }
 
-            _logger.Info($"[Branch] 步骤 [{step.Seq}] 开始评估条件分支, BranchConfig.IsEnabled={branchConfig.IsEnabled}, 条件数={branchConfig.Conditions?.Count ?? 0}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchEvalStart", "[Branch] 步骤 [{0}] 开始评估条件分支, BranchConfig.IsEnabled={1}, 条件数={2}"), step.Seq, branchConfig.IsEnabled, branchConfig.Conditions?.Count ?? 0));
 
             // 1. 收集当前上下文中的变量值（全局变量 + 输出参数）
             var variables = await CollectContextVariablesAsync(step, branchConfig);
@@ -782,30 +784,30 @@ namespace StationTasks.Actions
                 condIdx++;
                 if (string.IsNullOrWhiteSpace(condition.ConditionExpression))
                 {
-                    _logger.Warn($"[Branch] 条件[{condIdx}] ConditionExpression为空，跳过 (Desc={condition.Description}, TargetSeq={condition.TargetStepSeq})");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchConditionEmpty", "[Branch] 条件[{0}] ConditionExpression为空，跳过 (Desc={1}, TargetSeq={2})"), condIdx, condition.Description, condition.TargetStepSeq));
                     continue;
                 }
 
                 try
                 {
                     bool conditionResult = EvaluateCondition(condition.ConditionExpression, variables);
-                    _logger.Info($"[Branch] 条件 '{condition.ConditionExpression}' = {conditionResult}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchConditionResult", "[Branch] 条件 '{0}' = {1}"), condition.ConditionExpression, conditionResult));
 
                     if (conditionResult)
                     {
-                        _logger.Info($"[Branch] ✓ 条件匹配! 跳转到步骤 [{condition.TargetStepSeq}] ({condition.Description})");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchConditionMatched", "[Branch] ✓ 条件匹配! 跳转到步骤 [{0}] ({1})"), condition.TargetStepSeq, condition.Description));
                         return await ResolveStepIndexAsync(condition.TargetStepSeq, steps, currentIndex);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"[Branch] 条件表达式评估失败: '{condition.ConditionExpression}' - {ex.Message}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchConditionEvalFailed", "[Branch] 条件表达式评估失败: '{0}' - {1}"), condition.ConditionExpression, ex.Message));
                     continue; // 该条件评估失败，继续尝试下一个条件
                 }
             }
 
             // 3. 所有条件都不满足，执行默认动作
-            _logger.Info($"[Branch] 无条件匹配，执行默认动作: {branchConfig.DefaultAction}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchNoMatchDefault", "[Branch] 无条件匹配，执行默认动作: {0}"), branchConfig.DefaultAction));
             return await HandleDefaultActionAsync(branchConfig, steps, currentIndex);
         }
 
@@ -830,26 +832,26 @@ namespace StationTasks.Actions
                     var targetVar = globalVars.FirstOrDefault(v => v.Name == output.TargetGlobalVariable);
                     if (targetVar == null)
                     {
-                        _logger.Warn($"[Branch] 全局变量 '{output.TargetGlobalVariable}' 不存在，跳过写入");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_GlobalVarNotFound", "[Branch] 全局变量 '{0}' 不存在，跳过写入"), output.TargetGlobalVariable));
                         continue;
                     }
 
                     if (targetVar.Type != output.OutputType)
                     {
-                        _logger.Warn($"[Branch] 类型不匹配: 输出参数 '{output.Name}' 类型={output.OutputType}, 全局变量 '{targetVar.Name}' 类型={targetVar.Type}，跳过写入");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_OutputTypeMismatch", "[Branch] 类型不匹配: 输出参数 '{0}' 类型={1}, 全局变量 '{2}' 类型={3}，跳过写入"), output.Name, output.OutputType, targetVar.Name, targetVar.Type));
                         continue;
                     }
 
                     string valueToWrite = output.Value ?? "false";
                     targetVar.Value = valueToWrite;
-                    _logger.Info($"[Branch] 输出参数写入全局变量: {output.Name}={valueToWrite} → {targetVar.Name}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_OutputWrittenToGlobalVar", "[Branch] 输出参数写入全局变量: {0}={1} → {2}"), output.Name, valueToWrite, targetVar.Name));
                     changed = true;
                 }
 
                 if (changed)
                 {
                     await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars).ConfigureAwait(false);
-                    _logger.Info("[Branch] 全局变量已保存");
+                    _logger.Info(_localization.GetResourceOrDefault("PSE_Log_Exec_GlobalVarsSaved", "[Branch] 全局变量已保存"));
 
                     // 通知所有订阅者全局变量已更新
                     _ea.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>().Publish(poolId);
@@ -857,7 +859,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[Branch] 写入全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_WriteGlobalVarsFailed", "[Branch] 写入全局变量失败: {0}"), ex.Message));
             }
         }
 
@@ -890,7 +892,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[Branch] 加载全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_LoadGlobalVarsFailed", "[Branch] 加载全局变量失败: {0}"), ex.Message));
             }
 
             // 将前序步骤累积的输出参数加入变量池（@Output: 前缀）
@@ -900,7 +902,7 @@ namespace StationTasks.Actions
                     ? kv.Key
                     : $"@Output:{kv.Key}";
                 variables[key] = kv.Value;
-                _logger.Info($"[Branch] 变量池 += {key} = {kv.Value}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_VariablePoolAdd", "[Branch] 变量池 += {0} = {1}"), key, kv.Value));
             }
 
             // IF 分支内：显式合并同分支前序子步骤的输出（含 BranchConfig.OutputParameters）
@@ -939,7 +941,7 @@ namespace StationTasks.Actions
                 }
             }
 
-            _logger.Info($"[Branch] 变量池共 {variables.Count} 项: {string.Join(", ", variables.Keys)}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_VariablePoolSummary", "[Branch] 变量池共 {0} 项: {1}"), variables.Count, string.Join(", ", variables.Keys)));
             return variables;
         }
 
@@ -964,7 +966,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Error($"[Branch] 表达式评估异常: '{expression}' - {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_ExpressionEvalException", "[Branch] 表达式评估异常: '{0}' - {1}"), expression, ex.Message));
                 return false; // 表达式异常时返回false，不触发跳转
             }
         }
@@ -980,17 +982,17 @@ namespace StationTasks.Actions
             switch (config.DefaultAction)
             {
                 case DefaultBranchAction.Stop:
-                    _logger.Warn("[Branch] 默认动作: 终止序列执行");
+                    _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_Exec_DefaultActionStop", "[Branch] 默认动作: 终止序列执行"));
                     return -1; // -1 表示终止
 
                 case DefaultBranchAction.SkipTo:
                     if (config.DefaultTargetStepSeq > 0)
                     {
-                        _logger.Info($"[Branch] 默认动作: 跳转到步骤 [{config.DefaultTargetStepSeq}]");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_DefaultActionSkipTo", "[Branch] 默认动作: 跳转到步骤 [{0}]"), config.DefaultTargetStepSeq));
                         return await ResolveStepIndexAsync(config.DefaultTargetStepSeq, steps, currentIndex);
                     }
                     // 安全机制：SkipTo但目标无效时，触发报警并终止（防止撞机风险）
-                    string errorMsg = $"[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={config.DefaultTargetStepSeq} 不存在！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。";
+                    string errorMsg = string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchInvalidTargetSafetyWarn", "[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={0} 不存在！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。"), config.DefaultTargetStepSeq);
                     _logger.Error(errorMsg);
                     await _alarmService.TriggerAlarmAsync(
                         "BRANCH_INVALID_TARGET",
@@ -1002,7 +1004,7 @@ namespace StationTasks.Actions
 
                 case DefaultBranchAction.Continue:
                 default:
-                    _logger.Info("[Branch] 默认动作: Continue → 继续下一步");
+                    _logger.Info(_localization.GetResourceOrDefault("PSE_Log_Exec_DefaultActionContinue", "[Branch] 默认动作: Continue → 继续下一步"));
                     return currentIndex + 1;
             }
         }
@@ -1015,7 +1017,7 @@ namespace StationTasks.Actions
         {
             if (targetSeq <= 0)
             {
-                string errorMsg = $"[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={targetSeq} 无效！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。";
+                string errorMsg = string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchInvalidTargetSeqSafetyWarn", "[Branch] ⚠️ 安全警告: 条件分支配置的跳转目标步骤 Seq={0} 无效！为避免设备碰撞风险，已自动终止序列。请操作员检查配置后重试。"), targetSeq);
                 _logger.Error(errorMsg);
                 await _alarmService.TriggerAlarmAsync(
                     "BRANCH_INVALID_TARGET_SEQ",
@@ -1030,13 +1032,13 @@ namespace StationTasks.Actions
             {
                 if (steps[i].Seq == targetSeq)
                 {
-                    _logger.Info($"[Branch] 成功解析跳转目标: Seq={targetSeq} → Index={i}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_JumpTargetResolved", "[Branch] 成功解析跳转目标: Seq={0} → Index={1}"), targetSeq, i));
                     return i;
                 }
             }
 
             // 目标步骤不存在时的安全处理
-            string notFoundMsg = $"[Branch] ⚠️ 安全警告: 跳转目标步骤 Seq={targetSeq} 在当前序列中不存在！可能已被删除或序号错误。为避免设备碰撞风险，已自动终止序列。";
+            string notFoundMsg = string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_JumpTargetNotFoundSafetyWarn", "[Branch] ⚠️ 安全警告: 跳转目标步骤 Seq={0} 在当前序列中不存在！可能已被删除或序号错误。为避免设备碰撞风险，已自动终止序列。"), targetSeq);
             _logger.Error(notFoundMsg);
             await _alarmService.TriggerAlarmAsync(
                 "BRANCH_TARGET_NOT_FOUND",
@@ -1083,7 +1085,7 @@ namespace StationTasks.Actions
             var ifDetail = step.IfDetail;
             if (ifDetail == null)
             {
-                _logger.Warn($"[IF] 步骤 [{step.Seq}] IfDetail 为 null，跳过执行");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfDetailNull", "[IF] 步骤 [{0}] IfDetail 为 null，跳过执行"), step.Seq));
                 return null;
             }
 
@@ -1097,17 +1099,17 @@ namespace StationTasks.Actions
                 try
                 {
                     conditionResult = EvaluateCondition(ifDetail.ConditionExpression, variables);
-                    _logger.Info($"[IF] 步骤 [{step.Seq}] 条件 '{ifDetail.ConditionExpression}' = {conditionResult}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfConditionResult", "[IF] 步骤 [{0}] 条件 '{1}' = {2}"), step.Seq, ifDetail.ConditionExpression, conditionResult));
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"[IF] 步骤 [{step.Seq}] 条件评估异常: {ex.Message}，按 false 处理");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfConditionEvalException", "[IF] 步骤 [{0}] 条件评估异常: {1}，按 false 处理"), step.Seq, ex.Message));
                     conditionResult = false;
                 }
             }
             else
             {
-                _logger.Warn($"[IF] 步骤 [{step.Seq}] 条件表达式为空，按 false 处理");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfConditionEmpty", "[IF] 步骤 [{0}] 条件表达式为空，按 false 处理"), step.Seq));
             }
 
             // 选择执行的分支（IfBranches[0]=Then, IfBranches[1]=Else）
@@ -1117,11 +1119,11 @@ namespace StationTasks.Actions
 
             if (branch == null)
             {
-                _logger.Warn($"[IF] 步骤 [{step.Seq}] 未找到 {(conditionResult ? "Then" : "Else")} 分支，跳过执行");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfBranchNotFound", "[IF] 步骤 [{0}] 未找到 {1} 分支，跳过执行"), step.Seq, (conditionResult ? "Then" : "Else")));
                 return null;
             }
 
-            _logger.Info($"[IF] 步骤 [{step.Seq}] 执行 {branch.Header} 分支，子步骤数={branch.Steps?.Count ?? 0}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfBranchExecute", "[IF] 步骤 [{0}] 执行 {1} 分支，子步骤数={2}"), step.Seq, branch.Header, branch.Steps?.Count ?? 0));
 
             if (branch.Steps != null && branch.Steps.Count > 0)
             {
@@ -1155,12 +1157,12 @@ namespace StationTasks.Actions
 
                 if (!step.IsEnabled)
                 {
-                    _logger.Info($"[IF-Sub] 跳过禁用步骤: [{step.Seq}] {step.Step}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubSkipDisabledStep", "[IF-Sub] 跳过禁用步骤: [{0}] {1}"), step.Seq, step.Step));
                     continue;
                 }
 
                 NotifyExecutingStep(step);
-                _logger.Info($"[IF-Sub] === 执行子步骤 [{step.Seq}] {step.Step} ===");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubStepBegin", "[IF-Sub] === 执行子步骤 [{0}] {1} ==="), step.Seq, step.Step));
 
                 try
                 {
@@ -1181,10 +1183,10 @@ namespace StationTasks.Actions
                             int? outerJump = await TryExecuteBranchJumpOutAsync(step, outerSteps, token, ifCtx, precedingSteps).ConfigureAwait(false);
                             if (outerJump.HasValue)
                             {
-                                _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 块外跳转，目标索引={outerJump.Value}");
+                                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchOuterJump", "[IF-Sub] BRANCH 步骤 [{0}] 块外跳转，目标索引={1}"), step.Seq, outerJump.Value));
                                 return new IfStepListResult(IfStepListResultKind.JumpToOuter, outerJump.Value);
                             }
-                            _logger.Info($"[IF-Sub] BRANCH 步骤 [{step.Seq}] 默认 Continue，继续块内下一步");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchDefaultContinue", "[IF-Sub] BRANCH 步骤 [{0}] 默认 Continue，继续块内下一步"), step.Seq));
                         }
                     }
                     else
@@ -1203,7 +1205,7 @@ namespace StationTasks.Actions
                 catch (Exception ex)
                 {
                     step.IsCurrent = false;
-                    _logger.Error($"[IF-Sub] 子步骤 [{step.Seq}] {step.Step} 执行异常: {ex.Message}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubStepException", "[IF-Sub] 子步骤 [{0}] {1} 执行异常: {2}"), step.Seq, step.Step, ex.Message));
                     if (step.AlarmConfig?.IsEnabled == true)
                         step.HasActiveAlarm = true;
                     throw;
@@ -1245,30 +1247,30 @@ namespace StationTasks.Actions
                 try
                 {
                     bool conditionResult = EvaluateCondition(condition.ConditionExpression, variables);
-                    _logger.Info($"[IF-Sub] BRANCH 条件 '{condition.ConditionExpression}' = {conditionResult}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchConditionResult", "[IF-Sub] BRANCH 条件 '{0}' = {1}"), condition.ConditionExpression, conditionResult));
 
                     if (conditionResult)
                     {
-                        _logger.Info($"[IF-Sub] BRANCH 条件匹配，块外跳转到步骤 Seq={condition.TargetStepSeq} ({condition.Description})");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchConditionMatched", "[IF-Sub] BRANCH 条件匹配，块外跳转到步骤 Seq={0} ({1})"), condition.TargetStepSeq, condition.Description));
                         return await ResolveStepIndexAsync(condition.TargetStepSeq, outerSteps, -1);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"[IF-Sub] BRANCH 条件评估失败: '{condition.ConditionExpression}' - {ex.Message}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchConditionEvalFailed", "[IF-Sub] BRANCH 条件评估失败: '{0}' - {1}"), condition.ConditionExpression, ex.Message));
                 }
             }
 
             switch (branchConfig.DefaultAction)
             {
                 case DefaultBranchAction.Stop:
-                    _logger.Warn("[IF-Sub] BRANCH 默认动作 Stop，终止序列");
+                    _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchDefaultStop", "[IF-Sub] BRANCH 默认动作 Stop，终止序列"));
                     return -1;
 
                 case DefaultBranchAction.SkipTo:
                     if (branchConfig.DefaultTargetStepSeq > 0)
                     {
-                        _logger.Info($"[IF-Sub] BRANCH 默认动作 SkipTo 步骤 Seq={branchConfig.DefaultTargetStepSeq}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchDefaultSkipTo", "[IF-Sub] BRANCH 默认动作 SkipTo 步骤 Seq={0}"), branchConfig.DefaultTargetStepSeq));
                         return await ResolveStepIndexAsync(branchConfig.DefaultTargetStepSeq, outerSteps, -1);
                     }
                     return await HandleDefaultActionAsync(branchConfig, outerSteps, -1);
@@ -1333,7 +1335,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[IF] 加载全局变量失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfLoadGlobalVarsFailed", "[IF] 加载全局变量失败: {0}"), ex.Message));
             }
 
             // 将前序步骤累积的输出参数加入变量池（@Output: 前缀）

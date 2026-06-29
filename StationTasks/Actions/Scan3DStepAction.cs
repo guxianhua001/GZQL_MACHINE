@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using MotionControl.Exceptions;
@@ -32,6 +33,7 @@ namespace StationTasks.Actions
         private readonly IVisionDataParser _defaultParser;
         private readonly ScriptVisionDataParser _scriptParser;
         private readonly IEventAggregator _eventAggregator;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.SCAN;
 
@@ -42,7 +44,8 @@ namespace StationTasks.Actions
             IMotionService motionService,
             IVisionDataParser defaultParser,
             ScriptVisionDataParser scriptParser,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
@@ -51,6 +54,7 @@ namespace StationTasks.Actions
             _defaultParser = defaultParser;
             _scriptParser = scriptParser;
             _eventAggregator = eventAggregator;
+            _localization = localization;
         }
 
         /// <summary>
@@ -61,7 +65,7 @@ namespace StationTasks.Actions
             var detail = step.ScanDetail;
             if (detail == null)
             {
-                _logger.Warn($"SCAN 步骤 [{step.Seq}] 没有 ScanDetail 配置，跳过执行");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_NoScanDetail", "SCAN 步骤 [{0}] 没有 ScanDetail 配置，跳过执行"), step.Seq));
                 return;
             }
 
@@ -74,51 +78,51 @@ namespace StationTasks.Actions
                 double speed = detail.MoveSpeed > 0 ? detail.MoveSpeed : 10.0;
 
                 // 步骤1：Z轴抬升至初始位置
-                _logger.Info($"SCAN [{step.Seq}] 步骤1: Z轴抬升至 {detail.ZInitPosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step1_ZUp", "SCAN [{0}] 步骤1: Z轴抬升至 {1}"), step.Seq, detail.ZInitPosition));
                 await task.ExecuteMoveAsync(detail.ZAxisId, detail.ZInitPosition, speed);
 
                 // 步骤2：Y轴移动至起始点
-                _logger.Info($"SCAN [{step.Seq}] 步骤2: Y轴移动至 {detail.YStartPosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step2_YStart", "SCAN [{0}] 步骤2: Y轴移动至 {1}"), step.Seq, detail.YStartPosition));
                 await task.ExecuteMoveAsync(detail.YAxisId, detail.YStartPosition, speed);
 
                 // 步骤3：X轴移动至起始点
-                _logger.Info($"SCAN [{step.Seq}] 步骤3: X轴移动至 {detail.XStartPosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step3_XStart", "SCAN [{0}] 步骤3: X轴移动至 {1}"), step.Seq, detail.XStartPosition));
                 await task.ExecuteMoveAsync(detail.XAxisId, detail.XStartPosition, speed);
 
                 // 步骤4：Z轴下降至拍照高度
-                _logger.Info($"SCAN [{step.Seq}] 步骤4: Z轴下降至 {detail.ZPhotoPosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step4_ZDown", "SCAN [{0}] 步骤4: Z轴下降至 {1}"), step.Seq, detail.ZPhotoPosition));
                 await task.ExecuteMoveAsync(detail.ZAxisId, detail.ZPhotoPosition, speed);
 
                 // 步骤5：触发IO拍照信号（异步自动复位，不阻塞后续流程）
-                _logger.Info($"SCAN [{step.Seq}] 步骤5: 触发IO[{detail.TriggerIoPort}]拍照信号，复位延时{detail.IoResetDelayMs}ms");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step5_TriggerIO", "SCAN [{0}] 步骤5: 触发IO[{1}]拍照信号，复位延时{2}ms"), step.Seq, detail.TriggerIoPort, detail.IoResetDelayMs));
                 TriggerIoWithAutoReset(detail.TriggerIoPort, detail.IoResetDelayMs);
 
                 // 步骤6：X轴移动至终点，同时通过TCP实时接收3D相机数据
-                _logger.Info($"SCAN [{step.Seq}] 步骤6: X轴移动至 {detail.XEndPosition}，同时接收TCP数据");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step6_XMoveRecv", "SCAN [{0}] 步骤6: X轴移动至 {1}，同时接收TCP数据"), step.Seq, detail.XEndPosition));
                 string rawData = await MoveAndReceiveDataAsync(task, detail, speed, token);
 
                 // 步骤7：Z轴抬升至安全高度
-                _logger.Info($"SCAN [{step.Seq}] 步骤7: Z轴抬升至 {detail.ZSafePosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step7_ZSafe", "SCAN [{0}] 步骤7: Z轴抬升至 {1}"), step.Seq, detail.ZSafePosition));
                 await task.ExecuteMoveAsync(detail.ZAxisId, detail.ZSafePosition, speed);
 
                 // 步骤8：X轴返回待机位置
-                _logger.Info($"SCAN [{step.Seq}] 步骤8: X轴返回 {detail.XStandbyPosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step8_XStandby", "SCAN [{0}] 步骤8: X轴返回 {1}"), step.Seq, detail.XStandbyPosition));
                 await task.ExecuteMoveAsync(detail.XAxisId, detail.XStandbyPosition, speed);
 
                 // 步骤9：Y轴返回待机位置
-                _logger.Info($"SCAN [{step.Seq}] 步骤9: Y轴返回 {detail.YStandbyPosition}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_Step9_YStandby", "SCAN [{0}] 步骤9: Y轴返回 {1}"), step.Seq, detail.YStandbyPosition));
                 await task.ExecuteMoveAsync(detail.YAxisId, detail.YStandbyPosition, speed);
 
                 // 解析数据并映射全局变量
                 if (!string.IsNullOrEmpty(rawData))
                 {
                     var parsedData = ParseRawData(rawData, detail);
-                    _logger.Info($"SCAN [{step.Seq}] 解析结果: {string.Join(", ", parsedData.Select(kv => $"{kv.Key}={kv.Value:F3}"))}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_ParseResult", "SCAN [{0}] 解析结果: {1}"), step.Seq, string.Join(", ", parsedData.Select(kv => $"{kv.Key}={kv.Value:F3}"))));
                     await MapToGlobalVariablesAsync(parsedData, detail.VariableMappings);
                 }
                 else
                 {
-                    _logger.Warn($"SCAN [{step.Seq}] 未收到3D相机数据");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_NoDataReceived", "SCAN [{0}] 未收到3D相机数据"), step.Seq));
                 }
             }
             finally
@@ -140,11 +144,11 @@ namespace StationTasks.Actions
                 {
                     await Task.Delay(resetDelayMs);
                     _motionService.WriteDo(ioPort, false);
-                    _logger.Info($"IO[{ioPort}] 已自动复位（延时{resetDelayMs}ms）");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_IOAutoReset", "IO[{0}] 已自动复位（延时{1}ms）"), ioPort, resetDelayMs));
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"IO[{ioPort}] 自动复位失败: {ex.Message}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_IOAutoResetFailed", "IO[{0}] 自动复位失败: {1}"), ioPort, ex.Message));
                 }
             });
         }
@@ -158,7 +162,7 @@ namespace StationTasks.Actions
         {
             if (detail.CommunicationType != "TCPIP" || string.IsNullOrEmpty(detail.ConnectionName))
             {
-                _logger.Warn("SCAN 通讯方式未配置或非TCPIP模式，仅执行移动");
+                _logger.Warn(_localization.GetResourceOrDefault("Scan3D_Log_NoTCPIPMode", "SCAN 通讯方式未配置或非TCPIP模式，仅执行移动"));
                 await task.ExecuteMoveAsync(detail.XAxisId, detail.XEndPosition, speed);
                 return string.Empty;
             }
@@ -175,12 +179,12 @@ namespace StationTasks.Actions
                     {
                         receivedData.Add(message);
                         dataReceived = true;
-                        _logger.Info($"SCAN 实时收到TCP数据: {message}");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_RealtimeTCPData", "SCAN 实时收到TCP数据: {0}"), message));
                         dataReceivedTcs.TrySetResult(true);
                     }
                     catch (Exception ex)
                     {
-                        _logger.Error($"SCAN TCP数据处理失败: {ex.Message}");
+                        _logger.Error(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_TCPDataProcessFailed", "SCAN TCP数据处理失败: {0}"), ex.Message));
                     }
                 }
             };
@@ -201,7 +205,7 @@ namespace StationTasks.Actions
                     }
                     catch (OperationCanceledException) when (!token.IsCancellationRequested)
                     {
-                        _logger.Warn($"SCAN 等待TCP数据超时（{detail.ResponseTimeout}ms）");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_TCPTimeout", "SCAN 等待TCP数据超时（{0}ms）"), detail.ResponseTimeout));
                     }
                 }
 
@@ -237,7 +241,7 @@ namespace StationTasks.Actions
                     return _scriptParser.Parse(rawData);
                 }
 
-                var parser = new Camera3DDataParser(_logger, detail.TabCount);
+                var parser = new Camera3DDataParser(_logger, _localization, detail.TabCount);
                 return parser.Parse(rawData);
             }
             catch (RecoverableException)
@@ -246,7 +250,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Error($"SCAN 数据解析失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_ParseFailed", "SCAN 数据解析失败: {0}"), ex.Message));
                 throw new RecoverableException(
                     message: $"SCAN 数据解析失败: {ex.Message}",
                     suggestedAction: "请检查数据解析脚本或3D相机数据格式是否正确。"
@@ -263,7 +267,7 @@ namespace StationTasks.Actions
         {
             if (mappings == null || mappings.Count == 0)
             {
-                _logger.Info("SCAN 未配置变量映射，跳过全局变量写入");
+                _logger.Info(_localization.GetResourceOrDefault("Scan3D_Log_NoVariableMapping", "SCAN 未配置变量映射，跳过全局变量写入"));
                 return;
             }
 
@@ -280,7 +284,7 @@ namespace StationTasks.Actions
 
                 if (!parsedData.TryGetValue(mapping.SourceKey, out double value))
                 {
-                    _logger.Warn($"SCAN 映射跳过: 解析结果中不存在键 '{mapping.SourceKey}'");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_MapSkipNoKey", "SCAN 映射跳过: 解析结果中不存在键 '{0}'"), mapping.SourceKey));
                     continue;
                 }
 
@@ -291,12 +295,12 @@ namespace StationTasks.Actions
                     if (targetVar != null)
                     {
                         targetVar.Value = value.ToString("F6");
-                        _logger.Info($"SCAN 映射: {mapping.SourceKey}={value:F3} → '{mapping.GlobalVariableName}'(原始值)");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_MapOriginal", "SCAN 映射: {0}={1:F3} → '{2}'(原始值)"), mapping.SourceKey, value, mapping.GlobalVariableName));
                         changed = true;
                     }
                     else
                     {
-                        _logger.Warn($"SCAN 映射跳过: 全局变量 '{mapping.GlobalVariableName}' 不存在");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_MapSkipNoVar", "SCAN 映射跳过: 全局变量 '{0}' 不存在"), mapping.GlobalVariableName));
                     }
                 }
 
@@ -309,12 +313,12 @@ namespace StationTasks.Actions
                     if (compTargetVar != null)
                     {
                         compTargetVar.Value = deviation.ToString("F6");
-                        _logger.Info($"SCAN 映射: {mapping.SourceKey}({value:F3}-{mapping.BaseZValue:F3})={deviation:F3} → '{mapping.CompensatedGlobalVariableName}'(偏差)");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_MapDeviation", "SCAN 映射: {0}({1:F3}-{2:F3})={3:F3} → '{4}'(偏差)"), mapping.SourceKey, value, mapping.BaseZValue, deviation, mapping.CompensatedGlobalVariableName));
                         changed = true;
                     }
                     else
                     {
-                        _logger.Warn($"SCAN 映射跳过: 偏差全局变量 '{mapping.CompensatedGlobalVariableName}' 不存在");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("Scan3D_Log_MapSkipNoCompVar", "SCAN 映射跳过: 偏差全局变量 '{0}' 不存在"), mapping.CompensatedGlobalVariableName));
                     }
                 }
             }
@@ -322,7 +326,7 @@ namespace StationTasks.Actions
             if (changed)
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
-                _logger.Info("SCAN 全局变量已保存");
+                _logger.Info(_localization.GetResourceOrDefault("Scan3D_Log_GlobalVarsSaved", "SCAN 全局变量已保存"));
 
                 // 通知全局变量窗口重新加载最新数据
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);

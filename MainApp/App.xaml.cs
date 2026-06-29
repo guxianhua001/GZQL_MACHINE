@@ -1,6 +1,7 @@
 using Core;
 using Core.Abstraction;
 using Core.Configuration;
+using Core.Extensions;
 using Core.Services;
 using Core.Utilities;
 using LogViewer;
@@ -37,6 +38,7 @@ namespace MainApp
         private IAppSettingService _appSettingService;
         private IntPtr _prevExceptionFilter;
         private ILoggerService _logger;
+        private ILocalizationService _localization;
         private static readonly Logger _nlogLogger = LogManager.GetCurrentClassLogger();
 
         public App()
@@ -99,11 +101,11 @@ namespace MainApp
             {
                 _appSettingService = Container.Resolve<IAppSettingService>();
                 _appSettingService.Load();
-                _logger?.Info("应用程序配置加载完成");
+                _logger?.Info(_localization.GetResourceOrDefault("App_Log_ConfigLoaded", "应用程序配置加载完成"));
             }
             catch (Exception ex)
             {
-                _logger?.Error($"配置初始化失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("App_Log_ConfigInitFailed", "配置初始化失败: {0}"), ex.Message));
             }
         }
 
@@ -141,6 +143,7 @@ namespace MainApp
             });
 
             _logger = Container.Resolve<ILoggerService>();
+            _localization = Container.Resolve<ILocalizationService>();
         }
 
         private void RegisterDatabaseServices(IContainerRegistry containerRegistry) { }
@@ -160,13 +163,13 @@ namespace MainApp
 
                 var logger = Container.Resolve<ILoggerService>();
                 containerRegistry.RegisterSingleton<Core.Abstraction.IConfigurationProvider>(() =>
-                    new XmlConfigurationProvider(configPath, logger));
+                    new XmlConfigurationProvider(configPath, logger, Container.Resolve<ILocalizationService>()));
 
-                logger.Info("配置服务注册完成");
+                logger.Info(_localization.GetResourceOrDefault("App_Log_ConfigServiceRegistered", "配置服务注册完成"));
             }
             catch (Exception ex)
             {
-                _nlogLogger.Error($"配置服务注册失败: {ex.Message}");
+                _nlogLogger.Error(string.Format(_localization.GetResourceOrDefault("App_Log_ConfigServiceRegisterFailed", "配置服务注册失败: {0}"), ex.Message));
                 throw;
             }
         }
@@ -178,11 +181,11 @@ namespace MainApp
             try
             {
                 var logger = Container.Resolve<ILoggerService>();
-                logger.Info("视觉数据服务注册完成");
+                logger.Info(_localization.GetResourceOrDefault("App_Log_VisionDataServiceRegistered", "视觉数据服务注册完成"));
             }
             catch (Exception ex)
             {
-                _nlogLogger.Error($"视觉数据服务注册失败: {ex.Message}");
+                _nlogLogger.Error(string.Format(_localization.GetResourceOrDefault("App_Log_VisionDataServiceRegisterFailed", "视觉数据服务注册失败: {0}"), ex.Message));
                 throw;
             }
         }
@@ -205,12 +208,12 @@ namespace MainApp
         {
             try
             {
-                _logger?.Info("开始初始化服务依赖...");
-                _logger?.Info("服务依赖初始化完成");
+                _logger?.Info(_localization.GetResourceOrDefault("App_Log_ServiceDepsInitStart", "开始初始化服务依赖..."));
+                _logger?.Info(_localization.GetResourceOrDefault("App_Log_ServiceDepsInitDone", "服务依赖初始化完成"));
             }
             catch (Exception ex)
             {
-                _nlogLogger.Fatal($"服务依赖初始化失败: {ex}");
+                _nlogLogger.Fatal(string.Format(_localization.GetResourceOrDefault("App_Log_ServiceDepsInitFailed", "服务依赖初始化失败: {0}"), ex));
                 throw;
             }
         }
@@ -254,7 +257,7 @@ namespace MainApp
             try
             {
                 string dumpPath = GenerateCrashDump(exceptionPointers);
-                _nlogLogger.Fatal($"未处理非托管异常! 崩溃信息已保存: {dumpPath}");
+                _nlogLogger.Fatal(string.Format(_localization.GetResourceOrDefault("App_Log_UnmanagedException", "未处理非托管异常! 崩溃信息已保存: {0}"), dumpPath));
             }
             catch { }
             finally
@@ -295,7 +298,7 @@ namespace MainApp
                         IntPtr.Zero))
                     {
                         int error = Marshal.GetLastWin32Error();
-                        _nlogLogger.Error($"生成转储文件失败，错误代码: {error}");
+                        _nlogLogger.Error(string.Format(_localization.GetResourceOrDefault("App_Log_DumpGenerationFailed", "生成转储文件失败，错误代码: {0}"), error));
                     }
                 }
 
@@ -303,7 +306,7 @@ namespace MainApp
             }
             catch (Exception ex)
             {
-                _nlogLogger.Error(ex, "生成崩溃转储文件时出错");
+                _nlogLogger.Error(ex, _localization.GetResourceOrDefault("App_Log_DumpGenerationError", "生成崩溃转储文件时出错"));
                 return string.Empty;
             }
         }
@@ -328,13 +331,13 @@ namespace MainApp
             try
             {
                 string appInfo = $"""
-                    应用程序启动信息:
-                      版本: {Assembly.GetExecutingAssembly().GetName().Version}
-                      工作目录: {Environment.CurrentDirectory}
-                      系统版本: {Environment.OSVersion}
-                      内存状态: {(double)(GC.GetTotalMemory(false)) / 1024 / 1024:F2} MB
-                      处理器数: {Environment.ProcessorCount}
-                      命令行参数: {string.Join(" ", Environment.GetCommandLineArgs())}
+                    {ResourceHelper.GetString("App_Log_StartupInfoHeader")}
+                      {ResourceHelper.GetString("App_Log_StartupVersion", Assembly.GetExecutingAssembly().GetName().Version)}
+                      {ResourceHelper.GetString("App_Log_StartupWorkDir", Environment.CurrentDirectory)}
+                      {ResourceHelper.GetString("App_Log_StartupOSVersion", Environment.OSVersion)}
+                      {ResourceHelper.GetString("App_Log_StartupMemory", (double)(GC.GetTotalMemory(false)) / 1024 / 1024)}
+                      {ResourceHelper.GetString("App_Log_StartupProcessorCount", Environment.ProcessorCount)}
+                      {ResourceHelper.GetString("App_Log_StartupCmdArgs", string.Join(" ", Environment.GetCommandLineArgs()))}
                     """;
                 _nlogLogger.Info(appInfo);
             }
@@ -346,7 +349,7 @@ namespace MainApp
             var memoryMonitor = new System.Timers.Timer(60000);
             memoryMonitor.Elapsed += (s, e) => {
                 float currentMemory = (float)Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024;
-                _logger?.Debug($"当前内存使用量: {currentMemory:F2} MB");
+                _logger?.Debug(string.Format(_localization.GetResourceOrDefault("App_Log_CurrentMemoryUsage", "当前内存使用量: {0:F2} MB"), currentMemory));
             };
             memoryMonitor.Start();
         }
@@ -384,7 +387,7 @@ namespace MainApp
                 e.SetObserved();
                 return;
             }
-            _nlogLogger.Fatal(e.Exception, "未观察到的任务异常");
+            _nlogLogger.Fatal(e.Exception, _localization.GetResourceOrDefault("App_Log_UnobservedTaskException", "未观察到的任务异常"));
             e.SetObserved();
         }
 
@@ -410,8 +413,13 @@ namespace MainApp
         {
             try
             {
-                string threadContext = isUIShread ? "UI线程" : "后台线程";
-                _nlogLogger.Fatal(ex, $"{threadContext}未处理异常{(isTerminating ? "【将导致应用终止】" : "")}");
+                string threadContext = isUIShread
+                    ? _localization.GetResourceOrDefault("App_Log_UIThread", "UI线程")
+                    : _localization.GetResourceOrDefault("App_Log_BackgroundThread", "后台线程");
+                string terminatingSuffix = isTerminating
+                    ? _localization.GetResourceOrDefault("App_Log_TerminatingSuffix", "【将导致应用终止】")
+                    : string.Empty;
+                _nlogLogger.Fatal(ex, string.Format(_localization.GetResourceOrDefault("App_Log_UnhandledException", "{0}未处理异常{1}"), threadContext, terminatingSuffix));
 
                 GenerateErrorReport(ex);
                 ShowFriendlyError();
@@ -427,13 +435,13 @@ namespace MainApp
             try
             {
                 StringBuilder report = new StringBuilder();
-                report.AppendLine($"错误时间: {DateTime.Now}");
-                report.AppendLine($"错误消息: {ex.Message}");
-                report.AppendLine($"错误类型: {ex.GetType().FullName}");
-                report.AppendLine($"调用堆栈: {ex.StackTrace}");
+                report.AppendLine(string.Format(_localization.GetResourceOrDefault("App_Log_ErrorTime", "错误时间: {0}"), DateTime.Now));
+                report.AppendLine(string.Format(_localization.GetResourceOrDefault("App_Log_ErrorMessage", "错误消息: {0}"), ex.Message));
+                report.AppendLine(string.Format(_localization.GetResourceOrDefault("App_Log_ErrorType", "错误类型: {0}"), ex.GetType().FullName));
+                report.AppendLine(string.Format(_localization.GetResourceOrDefault("App_Log_CallStack", "调用堆栈: {0}"), ex.StackTrace));
                 report.AppendLine();
 
-                report.AppendLine("已加载模块:");
+                report.AppendLine(_localization.GetResourceOrDefault("App_Log_LoadedModules", "已加载模块:"));
                 foreach (var module in AppDomain.CurrentDomain.GetAssemblies())
                 {
                     report.AppendLine($" - {module.FullName} @ {module.Location}");
@@ -453,8 +461,8 @@ namespace MainApp
                     return;
                 Application.Current.Dispatcher.Invoke(() => {
                     MessageBox.Show(
-                        "应用程序遇到严重错误并将关闭。错误报告已保存到程序目录下的ErrorReports文件夹中。",
-                        "系统崩溃",
+                        _localization.GetResourceOrDefault("App_Log_FatalErrorMessage", "应用程序遇到严重错误并将关闭。错误报告已保存到程序目录下的ErrorReports文件夹中。"),
+                        _localization.GetResourceOrDefault("App_Log_FatalErrorTitle", "系统崩溃"),
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 });
@@ -481,11 +489,11 @@ namespace MainApp
             try
             {
                 string shutdownInfo = $"""
-                    应用程序关闭信息:
-                      时间: {DateTime.Now}
-                      退出代码: {exitCode}
-                      内存状态: {(double)(GC.GetTotalMemory(false)) / 1024 / 1024:F2} MB
-                      线程数: {Process.GetCurrentProcess().Threads.Count}
+                    {ResourceHelper.GetString("App_Log_ShutdownInfoHeader")}
+                      {ResourceHelper.GetString("App_Log_ShutdownTime", DateTime.Now)}
+                      {ResourceHelper.GetString("App_Log_ShutdownExitCode", exitCode)}
+                      {ResourceHelper.GetString("App_Log_ShutdownMemory", (double)(GC.GetTotalMemory(false)) / 1024 / 1024)}
+                      {ResourceHelper.GetString("App_Log_ShutdownThreadCount", Process.GetCurrentProcess().Threads.Count)}
                     """;
                 _nlogLogger.Info(shutdownInfo);
             }
@@ -499,7 +507,7 @@ namespace MainApp
 
         private void App_Exit(object sender, ExitEventArgs e)
         {
-            _logger?.Info("应用程序正常退出");
+            _logger?.Info(_localization.GetResourceOrDefault("App_Log_NormalExit", "应用程序正常退出"));
         }
 
         #endregion

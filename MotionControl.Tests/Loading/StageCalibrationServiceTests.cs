@@ -47,7 +47,8 @@ namespace MotionControl.Tests
                 motionController.Object,
                 tcpEventService.Object,
                 logger.Object,
-                configService.Object);
+                configService.Object,
+                new Mock<ILocalizationService>().Object);
         }
 
         [Fact]

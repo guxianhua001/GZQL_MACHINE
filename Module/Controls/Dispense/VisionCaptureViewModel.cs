@@ -1146,11 +1146,11 @@ namespace Module.ViewModels
                 RefreshAvailablePositions();
                 RefreshSafePositionDisplay();
                 RefreshPhotoPosition(SelectedRow);
-                _logger.Info($"[VisionCapture] 位置数据已同步更新 (recipe={recipeName}), _allPositions count={_allPositions?.Count ?? 0}, SafePositionName={SafePositionName}, Dx={SafePositionDx}, Dy={SafePositionDy}, Dz1={SafePositionDz1}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_PositionDataSynced", "[VisionCapture] 位置数据已同步更新 (recipe={0}), _allPositions count={1}, SafePositionName={2}, Dx={3}, Dy={4}, Dz1={5}"), recipeName, _allPositions?.Count ?? 0, SafePositionName, SafePositionDx, SafePositionDy, SafePositionDz1));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 位置数据同步失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_PositionDataSyncFailed", "[VisionCapture] 位置数据同步失败: {0}"), ex.Message));
             }
         }
 
@@ -1179,11 +1179,11 @@ namespace Module.ViewModels
                 RefreshAvailablePositions();
                 RefreshSafePositionDisplay();
                 RefreshPhotoPosition(SelectedRow);
-                _logger.Info($"[VisionCapture] 工站 [{stationIdentifier}] 位置已保存, _allPositions count={_allPositions?.Count ?? 0}, SafePositionName={SafePositionName}, Dx={SafePositionDx}, Dy={SafePositionDy}, Dz1={SafePositionDz1}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_StationPositionSaved", "[VisionCapture] 工站 [{0}] 位置已保存, _allPositions count={1}, SafePositionName={2}, Dx={3}, Dy={4}, Dz1={5}"), stationIdentifier, _allPositions?.Count ?? 0, SafePositionName, SafePositionDx, SafePositionDy, SafePositionDz1));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 工站位置保存后同步失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_StationPosSaveSyncFailed", "[VisionCapture] 工站位置保存后同步失败: {0}"), ex.Message));
             }
         }
 
@@ -1225,7 +1225,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 全局变量变更同步失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_GlobalVarChangeSyncFailed", "[VisionCapture] 全局变量变更同步失败: {0}"), ex.Message));
             }
         }
 
@@ -1265,14 +1265,14 @@ namespace Module.ViewModels
 
         private async Task InitializeAsync()
         {
-            _logger.Info("[VisionCapture] 开始初始化...");
+            _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_InitStart", "[VisionCapture] 开始初始化..."));
             try
             {
                 await LoadGroupsAsync();
             }
             catch (Exception ex)
             {
-                _logger.Error($"[VisionCapture] 初始化Group失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_InitGroupFailed", "[VisionCapture] 初始化Group失败: {0}"), ex.Message));
             }
             try
             {
@@ -1280,9 +1280,9 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"[VisionCapture] 自动加载配置异常: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_AutoLoadConfigException", "[VisionCapture] 自动加载配置异常: {0}"), ex.Message));
             }
-            _logger.Info("[VisionCapture] 初始化完成");
+            _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_InitComplete", "[VisionCapture] 初始化完成"));
         }
 
         private async Task LoadGroupsAsync()
@@ -1302,7 +1302,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"[VisionCapture] 加载Group列表失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_LoadGroupListFailed", "[VisionCapture] 加载Group列表失败: {0}"), ex.Message));
             }
         }
 
@@ -1347,7 +1347,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"[VisionCapture] 加载SiteFeature失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_LoadSiteFeatureFailed", "[VisionCapture] 加载SiteFeature失败: {0}"), ex.Message));
             }
         }
 
@@ -1398,7 +1398,7 @@ namespace Module.ViewModels
                 if (!dyFound) missingAxes.Add("Dy");
                 if (!dz1Found) missingAxes.Add("Dz₁");
                 StatusMessage = string.Format(L("VisionCapture_Status_SafePosMissingAxis"), SafePositionName, string.Join(", ", missingAxes));
-                _logger.Warn($"[VisionCapture] 安全位 '{SafePositionName}' 缺少轴: {string.Join(", ", missingAxes)}，请选择包含Dx/Dy/Dz₁轴工站的位置");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SafePosMissingAxis", "[VisionCapture] 安全位 '{0}' 缺少轴: {1}，请选择包含Dx/Dy/Dz₁轴工站的位置"), SafePositionName, string.Join(", ", missingAxes)));
             }
         }
 
@@ -1491,7 +1491,7 @@ namespace Module.ViewModels
             var dxConfig = axisConfigs.FirstOrDefault(a => a.Name == "Dx");
             if (dxConfig == null)
             {
-                _logger.Warn("[VisionCapture] 未找到Dx轴配置，CoordId 回退到 0");
+                _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_DxAxisConfigNotFound", "[VisionCapture] 未找到Dx轴配置，CoordId 回退到 0"));
                 return 0;
             }
 
@@ -1508,14 +1508,14 @@ namespace Module.ViewModels
                     {
                         if (actAxisId == dxConfig.AxisId)
                         {
-                            _logger.Info($"[VisionCapture] Dx(actAxisId={dxConfig.AxisId}) 匹配插补系 CoordId={sys.CoordId}");
+                            _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_DxMatchedInterpSystem", "[VisionCapture] Dx(actAxisId={0}) 匹配插补系 CoordId={1}"), dxConfig.AxisId, sys.CoordId));
                             return sys.CoordId;
                         }
                     }
                 }
             }
 
-            _logger.Warn($"[VisionCapture] Dx(actAxisId={dxConfig.AxisId}) 不在任何插补系中，CoordId 回退到 0");
+            _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_DxNotInInterpSystem", "[VisionCapture] Dx(actAxisId={0}) 不在任何插补系中，CoordId 回退到 0"), dxConfig.AxisId));
             return 0;
         }
 
@@ -1624,11 +1624,11 @@ namespace Module.ViewModels
 
                 CurrentStep = WorkflowStep.Step2_PreviewDispense;
                 StatusMessage = string.Format(L("VisionCapture_Status_PreviewArcComplete"), bezierPoints.Count);
-                _logger.Info($"[VisionCapture] 新格式弧线机械坐标完成: P1({p1mx:F3},{p1my:F3}) P2中点({p2mx:F3},{p2my:F3}) P3({p3mx:F3},{p3my:F3})，弧高={arcHeight:F3} 方向={arcDirection:F3} 贝塞尔{bezierPoints.Count}点");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ArcMachineCoordComplete", "[VisionCapture] 新格式弧线机械坐标完成: P1({0:F3},{1:F3}) P2中点({2:F3},{3:F3}) P3({4:F3},{5:F3})，弧高={6:F3} 方向={7:F3} 贝塞尔{8}点"), p1mx, p1my, p2mx, p2my, p3mx, p3my, arcHeight, arcDirection, bezierPoints.Count));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 自动计算弧线机械坐标失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_AutoCalcArcCoordFailed", "[VisionCapture] 自动计算弧线机械坐标失败: {0}"), ex.Message));
             }
         }
 
@@ -1729,7 +1729,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_ErrorFormat"), ex.Message);
-                _logger.Error($"[VisionCapture] 执行失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ExecuteFailed", "[VisionCapture] 执行失败: {0}"), ex.Message));
             }
             finally
             {
@@ -1756,7 +1756,7 @@ namespace Module.ViewModels
 
             if (safeZ <= 0 || safeX <= 0 || safeY <= 0)
             {
-                _logger.Warn($"[VisionCapture] 返回安全位失败: 安全位 '{SafePositionName}' 位置数据不完整 (Dz={safeZ}, Dx={safeX}, Dy={safeY})");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToSafePosDataIncomplete", "[VisionCapture] 返回安全位失败: 安全位 '{0}' 位置数据不完整 (Dz={1}, Dx={2}, Dy={3})"), SafePositionName, safeZ, safeX, safeY));
                 return;
             }
 
@@ -1767,7 +1767,7 @@ namespace Module.ViewModels
             if (safeYAxis > 0)
                 await _motionService.MoveAbsAsync(axisIdMap["Y"], safeYAxis, speed, token);
 
-            _logger.Info("[VisionCapture] 已返回安全位");
+            _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnedToSafePos", "[VisionCapture] 已返回安全位"));
         }
 
         private async Task MoveToTeachPositionAsync(PhotoPositionRow row)
@@ -1810,7 +1810,7 @@ namespace Module.ViewModels
                 await _motionService.MoveAbsAsync(axisIdMap["Dz₁"], photoZ, row.Speed, cts.Token);
 
                 StatusMessage = string.Format(L("VisionCapture_Status_MoveComplete"), targetX, targetY);
-                _logger.Info($"[VisionCapture] 移动完成 [{row.SiteFeatureName}]: ({targetX:F3}, {targetY:F3})");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_MoveComplete", "[VisionCapture] 移动完成 [{0}]: ({1:F3}, {2:F3})"), row.SiteFeatureName, targetX, targetY));
             }
             catch (OperationCanceledException)
             {
@@ -1819,7 +1819,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_MoveFail"), ex.Message);
-                _logger.Error($"[VisionCapture] 移动失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_MoveFailed", "[VisionCapture] 移动失败: {0}"), ex.Message));
             }
             finally
             {
@@ -1902,7 +1902,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_DispenseError"), ex.Message);
-                _logger.Error($"[VisionCapture] 点胶失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_DispenseFailed", "[VisionCapture] 点胶失败: {0}"), ex.Message));
             }
             finally
             {
@@ -2021,7 +2021,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_PreviewFail"), ex.Message);
-                _logger.Error($"[VisionCapture] 预览失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_PreviewFailed", "[VisionCapture] 预览失败: {0}"), ex.Message));
             }
         }
 
@@ -2194,12 +2194,12 @@ namespace Module.ViewModels
 
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, variableList);
                 StatusMessage = L("VisionCapture_CoordParamsSaved");
-                _logger.Info("[VisionCapture] 坐标转换参数已保存到全局变量");
+                _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_TransformParamsSaved", "[VisionCapture] 坐标转换参数已保存到全局变量"));
             }
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_SaveFail"), ex.Message);
-                _logger.Error($"[VisionCapture] 保存坐标转换参数失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SaveTransformParamsFailed", "[VisionCapture] 保存坐标转换参数失败: {0}"), ex.Message));
             }
         }
 
@@ -2236,9 +2236,9 @@ namespace Module.ViewModels
                     NeedleOffsetYLinkedVar = NormalizeLinkedVarName(noyLink?.Value);
 
                     if (noyLink != null && !string.IsNullOrWhiteSpace(noyLink.Value) && NeedleOffsetYLinkedVar == null)
-                        _logger.Info($"[VisionCapture] 忽略无效的 NeedleOffsetY 链接变量: {noyLink.Value.Trim()}");
+                        _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_IgnoreInvalidNeedleOffsetYLink", "[VisionCapture] 忽略无效的 NeedleOffsetY 链接变量: {0}"), noyLink.Value.Trim()));
                     if (noxLink != null && !string.IsNullOrWhiteSpace(noxLink.Value) && NeedleOffsetXLinkedVar == null)
-                        _logger.Info($"[VisionCapture] 忽略无效的 NeedleOffsetX 链接变量: {noxLink.Value.Trim()}");
+                        _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_IgnoreInvalidNeedleOffsetXLink", "[VisionCapture] 忽略无效的 NeedleOffsetX 链接变量: {0}"), noxLink.Value.Trim()));
 
                     var arcNoxLink = variables.FirstOrDefault(v => v.Name == "ArcNeedleOffsetX_LinkedVar");
                     var arcNoyLink = variables.FirstOrDefault(v => v.Name == "ArcNeedleOffsetY_LinkedVar");
@@ -2332,7 +2332,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 _isLoadingTransformParams = false;
-                _logger.Warn($"[VisionCapture] 加载坐标转换参数失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_LoadTransformParamsFailed", "[VisionCapture] 加载坐标转换参数失败: {0}"), ex.Message));
             }
         }
 
@@ -2377,7 +2377,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 更新全局变量值失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_UpdateGlobalVarFailed", "[VisionCapture] 更新全局变量值失败: {0}"), ex.Message));
             }
         }
 
@@ -2437,7 +2437,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_ErrorFormat"), ex.Message);
-                _logger.Error($"[VisionCapture] 同步拍照失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SyncCaptureFailed", "[VisionCapture] 同步拍照失败: {0}"), ex.Message));
             }
             finally
             {
@@ -2482,12 +2482,12 @@ namespace Module.ViewModels
                 _ = _configRetentionService.CleanupFolderByCountAsync("VisionCapture", "VisionCapture_*.json", filePath);
 
                 StatusMessage = string.Format(L("VisionCapture_Status_ConfigSaved"), CurrentFileName);
-                _logger.Info($"[VisionCapture] 配置已保存: {filePath}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ConfigSaved", "[VisionCapture] 配置已保存: {0}"), filePath));
             }
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_SaveFail"), ex.Message);
-                _logger.Error($"[VisionCapture] 保存配置失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SaveConfigFailed", "[VisionCapture] 保存配置失败: {0}"), ex.Message));
             }
         }
 
@@ -2512,7 +2512,7 @@ namespace Module.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_LoadFail"), ex.Message);
-                _logger.Error($"[VisionCapture] 加载配置失败: {ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_LoadConfigFailed", "[VisionCapture] 加载配置失败: {0}"), ex.Message));
             }
         }
 
@@ -2538,7 +2538,7 @@ namespace Module.ViewModels
             //await SaveCurrentFileToRecipePoolAsync();
 
             StatusMessage = string.Format(L("VisionCapture_Status_ConfigLoaded"), CurrentFileName);
-            _logger.Info($"[VisionCapture] 配置已加载: {filePath}");
+            _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ConfigLoaded", "[VisionCapture] 配置已加载: {0}"), filePath));
         }
 
         /// <summary>
@@ -2552,7 +2552,7 @@ namespace Module.ViewModels
                 var extData = await _recipePoolService.GetExtensionDataAsync<VisionCaptureFileRecord>(poolName, "VisionCapture_CurrentFile");
                 if (extData?.FilePath != null && File.Exists(extData.FilePath))
                 {
-                    _logger.Info($"[VisionCapture] 从配方池记录加载配置: {extData.FilePath}");
+                    _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_LoadConfigFromRecipePool", "[VisionCapture] 从配方池记录加载配置: {0}"), extData.FilePath));
                     await LoadConfigFromPathAsync(extData.FilePath);
                     return;
                 }
@@ -2561,16 +2561,16 @@ namespace Module.ViewModels
                 var defaultPath = System.IO.Path.Combine(configDir, "VisionCapture.json");
                 if (File.Exists(defaultPath))
                 {
-                    _logger.Info($"[VisionCapture] 配方池无记录，从默认路径加载: {defaultPath}");
+                    _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_LoadConfigFromDefault", "[VisionCapture] 配方池无记录，从默认路径加载: {0}"), defaultPath));
                     await LoadConfigFromPathAsync(defaultPath);
                     return;
                 }
 
-                _logger.Info("[VisionCapture] 无可加载的配置文件");
+                _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_NoConfigToLoad", "[VisionCapture] 无可加载的配置文件"));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 自动加载配置失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_AutoLoadConfigFailed", "[VisionCapture] 自动加载配置失败: {0}"), ex.Message));
             }
         }
 
@@ -2587,7 +2587,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[VisionCapture] 保存文件记录到配方池失败: {ex.Message}");
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SaveFileRecordToRecipePoolFailed", "[VisionCapture] 保存文件记录到配方池失败: {0}"), ex.Message));
             }
         }
 

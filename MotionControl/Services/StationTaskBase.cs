@@ -28,6 +28,10 @@ namespace StationTasks.Tasks
         private readonly IStationRegistry _stationRegistry;
         private readonly ISpeedOverrideService _speedOverride;
         private readonly string _stationId;
+        /// <summary> 本地化服务，供基类与子类日志多语言使用 </summary>
+        private readonly ILocalizationService _localization;
+        /// <summary> 暴露本地化服务，供 ProcessStepExecutor 等持有 StationTaskBase 引用的组件复用 </summary>
+        public ILocalizationService Localization => _localization;
         /// <summary> 当前正在运动的轴ID集合（包含跨工站轴），暂停/停止时需要停止这些轴 </summary>
         private readonly HashSet<int> _activeMotionAxes = new HashSet<int>();
         /// <summary> 当前是否在手动操作模式中（ExecuteManualProcess 设置） </summary>
@@ -73,7 +77,7 @@ namespace StationTasks.Tasks
 
             if (myTaskId == null)
             {
-                Logger.Warn($"[{TaskName}] 未在硬件配置中找到工站类型 '{StationIdentifierValue}'");
+                Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_StationTypeNotFound", "[{0}] 未在硬件配置中找到工站类型 '{1}'"), TaskName, StationIdentifierValue));
                 _discoveredAxes = Array.Empty<int>();
                 return _discoveredAxes;
             }
@@ -84,7 +88,7 @@ namespace StationTasks.Tasks
                 .Select(a => a.LogicalId)
                 .ToArray();
 
-            Logger.Info($"[{TaskName}] 从硬件配置发现 { _discoveredAxes.Length} 个轴: {string.Join(", ", _discoveredAxes.Select(id => $"{GetAxisNameById(id)}({id})"))}");
+            Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_AxesDiscovered", "[{0}] 从硬件配置发现 {1} 个轴: {2}"), TaskName, _discoveredAxes.Length, string.Join(", ", _discoveredAxes.Select(id => $"{GetAxisNameById(id)}({id})"))));
             return _discoveredAxes;
         }
 
@@ -114,7 +118,7 @@ namespace StationTasks.Tasks
                 if (state != null && state.Name == axisName)
                     return axisId;
             }
-            Logger.Warn($"[{TaskName}] 未找到轴 '{axisName}' 的配置");
+            Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_AxisConfigNotFound", "[{0}] 未找到轴 '{1}' 的配置"), TaskName, axisName));
             return -1;
         }
         /// <summary> 日志服务（公开给扩展方法和外部 Action 使用） </summary>
@@ -144,7 +148,8 @@ namespace StationTasks.Tasks
                 ISpeedOverrideService speedOverride,
                 int taskId,
                 string taskName,
-                string stationId)
+                string stationId,
+                ILocalizationService localization)
                 : base(motion, ea, logger, alarmService, taskId, taskName)
         {
             _motion = motion;
@@ -154,6 +159,7 @@ namespace StationTasks.Tasks
             _stationRegistry = stationRegistry;
             _speedOverride = speedOverride;
             _stationId = stationId;
+            _localization = localization;
         }
 
         /// <summary>
@@ -183,25 +189,25 @@ namespace StationTasks.Tasks
             _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             State = TaskState.Running;
             PublishTaskStatusChanged("Running", State);
-            Logger.Info($"[{TaskName}] 自定义序列启动");
+            Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_CustomSequenceStarted", "[{0}] 自定义序列启动"), TaskName));
 
             try
             {
                 await sequence(_cts.Token);
                 State = TaskState.Idle;
                 PublishTaskStatusChanged("Completed", State);
-                Logger.Info($"[{TaskName}] 自定义序列完成");
+                Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_CustomSequenceCompleted", "[{0}] 自定义序列完成"), TaskName));
             }
             catch (OperationCanceledException)
             {
                 State = TaskState.Stopped;
                 PublishTaskStatusChanged("Stopped", State);
-                Logger.Info($"[{TaskName}] 自定义序列已取消");
+                Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_CustomSequenceCancelled", "[{0}] 自定义序列已取消"), TaskName));
             }
             catch (StepFailureException sfe)
             {
                 // 致命步骤故障：急停本任务并通知全局急停
-                Logger.Error($"致命故障，任务 [{TaskName}] 在 [{sfe.StepName}] 步骤崩溃。内部异常: {sfe.InnerException?.Message}");
+                Logger.Error(string.Format(_localization.GetResourceOrDefault("STB_Log_FatalStepCrash", "致命故障，任务 [{0}] 在 [{1}] 步骤崩溃。内部异常: {2}"), TaskName, sfe.StepName, sfe.InnerException?.Message));
                 State = TaskState.Error;
                 await EmergencyStopAsync();
                 Ea.GetEvent<EmergencyStopAllEvent>().Publish();
@@ -209,7 +215,7 @@ namespace StationTasks.Tasks
             catch (Exception ex)
             {
                 // 未知严重错误：急停本任务并通知全局急停
-                Logger.Error($"[{TaskName}] 自定义序列执行错误: {ex.Message}");
+                Logger.Error(string.Format(_localization.GetResourceOrDefault("STB_Log_CustomSequenceError", "[{0}] 自定义序列执行错误: {1}"), TaskName, ex.Message));
                 State = TaskState.Error;
                 await EmergencyStopAsync();
                 Ea.GetEvent<EmergencyStopAllEvent>().Publish();
@@ -370,7 +376,7 @@ namespace StationTasks.Tasks
             if (!_singleStepMode) return;
 
             _stepTcs = new TaskCompletionSource<bool>();
-            Logger.Info($"[{TaskName}] waiting for next step...");
+            Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_WaitingNextStep", "[{0}] waiting for next step..."), TaskName));
 
             try
             {
@@ -421,7 +427,7 @@ namespace StationTasks.Tasks
             await CheckPauseAsync(token);
             if (_singleStepMode)
             {
-                Logger.Info($"[{TaskName}] 单步等待: {stepName}");
+                Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_SingleStepWait", "[{0}] 单步等待: {1}"), TaskName, stepName));
                 _stepTcs = new TaskCompletionSource<bool>();
                 await WhenAny(_stepTcs.Task, Task.Delay(Timeout.Infinite, token));
             }
@@ -429,11 +435,11 @@ namespace StationTasks.Tasks
             {
                 try
                 {
-                    Logger.Info($"[{TaskName}] 执行步骤: {stepName}");
+                    Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_ExecutingStep", "[{0}] 执行步骤: {1}"), TaskName, stepName));
                     var sw = Stopwatch.StartNew();
                     await action();
                     sw.Stop();
-                    Logger.Info($"[{TaskName}] 完成步骤: {stepName} (耗时: {sw.ElapsedMilliseconds}ms)");
+                    Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_StepCompleted", "[{0}] 完成步骤: {1} (耗时: {2}ms)"), TaskName, stepName, sw.ElapsedMilliseconds));
                     LastFaultStepName = null;
                     break;
                 }
@@ -458,10 +464,10 @@ namespace StationTasks.Tasks
                     }
 
                     // 其他 RecoverableException
-                    Logger.Warn($"步骤 [{stepName}] 发生可恢复故障。原因: {rex.Message} | 建议: {rex.SuggestedAction}");
+                    Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_RecoverableFault", "步骤 [{0}] 发生可恢复故障。原因: {1} | 建议: {2}"), stepName, rex.Message, rex.SuggestedAction));
 
                     LastFaultStepName = stepName;
-                    Logger.Info($"[StationTaskBase] LastFaultStepName 设置为: {stepName}, alarmConfig.IsEnabled: {alarmConfig?.IsEnabled}");
+                    Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_LastFaultStepSet", "[StationTaskBase] LastFaultStepName 设置为: {0}, alarmConfig.IsEnabled: {1}"), stepName, alarmConfig?.IsEnabled));
 
                     if (alarmConfig?.IsEnabled == true)
                     {
@@ -491,7 +497,7 @@ namespace StationTasks.Tasks
                     // 异常向上传播到 ExecuteManualProcess → ViewModel catch → ShowHintMessage(CustomDialog)
                     if (_isManualOperation)
                     {
-                        Logger.Info($"步骤 [{stepName}] 手动操作故障，异常向上传播至 ViewModel 处理");
+                        Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_ManualOpFaultPropagated", "步骤 [{0}] 手动操作故障，异常向上传播至 ViewModel 处理"), stepName));
                         throw; // 让 ExecuteManualProcess 的 catch(Exception) 处理
                     }
 
@@ -506,20 +512,20 @@ namespace StationTasks.Tasks
                     }
                     catch (OperationCanceledException)
                     {
-                        Logger.Info($"步骤 [{stepName}] 操作员选择停止任务");
+                        Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_OperatorStopTask", "步骤 [{0}] 操作员选择停止任务"), stepName));
                         throw;
                     }
                     if (State != TaskState.Running)
                     {
-                        Logger.Info($"步骤 [{stepName}] 任务未恢复运行，取消当前步骤");
+                        Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_TaskNotResumedCancelStep", "步骤 [{0}] 任务未恢复运行，取消当前步骤"), stepName));
                         throw new OperationCanceledException(token);
                     }
                     PublishTaskStatusChanged(stepName, State);
-                    Logger.Info($"步骤 [{stepName}] 已恢复运行，将重新执行当前步骤...");
+                    Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_ResumedRetryStep", "步骤 [{0}] 已恢复运行，将重新执行当前步骤..."), stepName));
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"[{TaskName}] 步骤 [{stepName}] 致命异常: {ex.Message}");
+                    Logger.Error(string.Format(_localization.GetResourceOrDefault("STB_Log_StepFatalError", "[{0}] 步骤 [{1}] 致命异常: {2}"), TaskName, stepName, ex.Message));
 
                     // 致命异常也触发报警和步骤故障标记，确保操作员能看到具体错误
                     LastFaultStepName = stepName;
@@ -552,7 +558,7 @@ namespace StationTasks.Tasks
         /// </summary>
         private async Task WaitForResumeAfterPauseAsync(string stepName, CancellationToken token)
         {
-            Logger.Info($"步骤 [{stepName}] 因暂停中断，等待恢复后重试");
+            Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_StepInterruptedByPause", "步骤 [{0}] 因暂停中断，等待恢复后重试"), stepName));
             LastFaultStepName = stepName;
             _systemState.RequestPause();
             // 已在 CancelMotionPause 中暂停，但为确保状态一致再次确认
@@ -565,16 +571,16 @@ namespace StationTasks.Tasks
             }
             catch (OperationCanceledException)
             {
-                Logger.Info($"步骤 [{stepName}] 操作员选择停止任务");
+                Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_OperatorStopTask", "步骤 [{0}] 操作员选择停止任务"), stepName));
                 throw;
             }
             if (State != TaskState.Running)
             {
-                Logger.Info($"步骤 [{stepName}] 任务未恢复运行，取消当前步骤");
+                Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_TaskNotResumedCancelStep", "步骤 [{0}] 任务未恢复运行，取消当前步骤"), stepName));
                 throw new OperationCanceledException(token);
             }
             PublishTaskStatusChanged(stepName, State);
-            Logger.Info($"步骤 [{stepName}] 已恢复运行，将重新执行当前步骤...");
+            Logger.Info(string.Format(_localization.GetResourceOrDefault("STB_Log_ResumedRetryStep", "步骤 [{0}] 已恢复运行，将重新执行当前步骤..."), stepName));
         }
 
         /// <summary>
@@ -602,7 +608,7 @@ namespace StationTasks.Tasks
             var outputs = Motion.GetOutputConfigurations();
             var config = outputs.FirstOrDefault(o => o.Name == portName);
             if (config == null)
-                Logger.Warn($"[{TaskName}] 未找到 DO 端口配置 '{portName}'");
+                Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_DOPortNotFound", "[{0}] 未找到 DO 端口配置 '{1}'"), TaskName, portName));
             return config?.LogicalId ?? -1;
         }
 
@@ -616,7 +622,7 @@ namespace StationTasks.Tasks
             var inputs = Motion.GetInputConfigurations();
             var config = inputs.FirstOrDefault(o => o.Name == portName);
             if (config == null)
-                Logger.Warn($"[{TaskName}] 未找到 DI 端口配置 '{portName}'");
+                Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_DIPortNotFound", "[{0}] 未找到 DI 端口配置 '{1}'"), TaskName, portName));
             return config?.LogicalId ?? -1;
         }
 
@@ -709,7 +715,7 @@ namespace StationTasks.Tasks
             {
                 return axisState.Name;
             }
-            Logger.Warn($"未找到轴 {axisId} 的名称配置，将使用 ID 作为配方 Key。");
+            Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_AxisNameNotFound", "未找到轴 {0} 的名称配置，将使用 ID 作为配方 Key。"), axisId));
             return axisId.ToString();
         }
         // ========== 手动操作流程机制 ==========
@@ -795,7 +801,7 @@ namespace StationTasks.Tasks
                 }
             }
 
-            Logger.Warn($"未找到名称为 '{axisName}' 的轴配置");
+            Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_AxisConfigByNameNotFound", "未找到名称为 '{0}' 的轴配置"), axisName));
             return -1;
         }
 

@@ -20,6 +20,14 @@ namespace Module.Services
         private readonly IAxisConfigurationService _axisConfig;
         private readonly ILoggerService _logger;
         private readonly IMotionInterlockService _motionInterlock;
+        private readonly ILocalizationService _localization;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         private const string StationIdentifier = "LoadingStation";
         private const double DefaultVelocity = 50.0;
@@ -34,7 +42,8 @@ namespace Module.Services
             ISystemStateService systemState,
             IAxisConfigurationService axisConfig,
             ILoggerService logger,
-            IMotionInterlockService motionInterlock)
+            IMotionInterlockService motionInterlock,
+            ILocalizationService localization)
         {
             _stationRegistry = stationRegistry;
             _motion = motion;
@@ -43,6 +52,7 @@ namespace Module.Services
             _axisConfig = axisConfig;
             _logger = logger;
             _motionInterlock = motionInterlock;
+            _localization = localization;
         }
 
         #region 平台真空控制（转发给 LoadingTask）
@@ -321,7 +331,7 @@ namespace Module.Services
                 if (axisId >= 0)
                 {
                     try { _motion.StopAxis(axisId); }
-                    catch (Exception ex) { _logger.Warn($"StopMotion: 停止轴 {axisName} 失败: {ex.Message}"); }
+                    catch (Exception ex) { _logger.Warn(L("LUL_Log_StopAxisFailed", "StopMotion: 停止轴 {0} 失败: {1}", axisName, ex.Message)); }
                 }
             }
         }

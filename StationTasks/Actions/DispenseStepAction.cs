@@ -28,6 +28,7 @@ namespace StationTasks.Actions
         private readonly IDispenseSegmentSourceService _segmentSourceService;
         private readonly ICadAlignTransformService _cadAlignTransformService;
         private readonly INeedleCameraCalibrationProvider _needleCameraCalibrationProvider;
+        private readonly ILocalizationService _localization;
 
         /// <summary>直线插补坐标系 ID（MoveLineAbsAsync）</summary>
         private const int CoordIdLinear = 0;
@@ -90,7 +91,8 @@ namespace StationTasks.Actions
             IMotionService motionService,
             IDispenseSegmentSourceService segmentSourceService,
             ICadAlignTransformService cadAlignTransformService,
-            INeedleCameraCalibrationProvider needleCameraCalibrationProvider)
+            INeedleCameraCalibrationProvider needleCameraCalibrationProvider,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
@@ -99,6 +101,7 @@ namespace StationTasks.Actions
             _segmentSourceService = segmentSourceService;
             _cadAlignTransformService = cadAlignTransformService;
             _needleCameraCalibrationProvider = needleCameraCalibrationProvider;
+            _localization = localization;
         }
 
         /// <summary>
@@ -109,7 +112,9 @@ namespace StationTasks.Actions
             var detail = step.DispenseDetail;
             if (detail == null)
             {
-                _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 没有 DispenseDetail，跳过执行");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_NoDispenseDetail", "DISPENSE 步骤 [{0}] 没有 DispenseDetail，跳过执行"),
+                    step.Seq));
                 return;
             }
 
@@ -119,7 +124,9 @@ namespace StationTasks.Actions
             var sourceSegments = _segmentSourceService.GetSourceSegments();
             var segDict = sourceSegments.Where(s => !string.IsNullOrEmpty(s.SegmentId))
                 .ToDictionary(s => s.SegmentId, s => s);
-            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 源轨迹段 {segDict.Count} 条");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_SourceSegmentCount", "DISPENSE 步骤 [{0}] 源轨迹段 {1} 条"),
+                step.Seq, segDict.Count));
 
             int dxAxisId = ResolveDispenseAxisId("Dx");
             int dyAxisId = ResolveDispenseAxisId("Dy");
@@ -129,7 +136,9 @@ namespace StationTasks.Actions
             string dzAxisName = needleIndex == 0 ? "Dz₂" : "Dz₃";
             int dzAxisId = ResolveDispenseAxisId(dzAxisName);
             int glueIoPort = GetGlueIoPort(needleIndex);
-            _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}/{dzAxisName}(逻辑轴ID={dzAxisId}), Dx={dxAxisId}, Dy={dyAxisId}, 出胶IO={glueIoPort}");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_NeedleAxisInfo", "DISPENSE 步骤 [{0}] 使用针头{1}/{2}(逻辑轴ID={3}), Dx={4}, Dy={5}, 出胶IO={6}"),
+                step.Seq, needleIndex + 1, dzAxisName, dzAxisId, dxAxisId, dyAxisId, glueIoPort));
 
             // 解析 XY 补偿（启用时叠加到所有运动目标 MachineX/MachineY）
             _enableComp = detail.EnableComp;
@@ -137,7 +146,9 @@ namespace StationTasks.Actions
             {
                 _xCompensation = ResolveLinkedValue(detail.XCompensation, detail.XCompensationLinkedVar);
                 _yCompensation = ResolveLinkedValue(detail.YCompensation, detail.YCompensationLinkedVar);
-                _logger.Info($"DISPENSE 步骤 [{step.Seq}] XY补偿已启用: dX={_xCompensation:F4}mm, dY={_yCompensation:F4}mm");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_XyCompEnabled", "DISPENSE 步骤 [{0}] XY补偿已启用: dX={1:F4}mm, dY={2:F4}mm"),
+                    step.Seq, _xCompensation, _yCompensation));
             }
             else
             {
@@ -150,7 +161,9 @@ namespace StationTasks.Actions
             if (_enableNeedleOffsetComp)
             {
                 (_needleOffsetX, _needleOffsetY) = ResolveNeedleOffset(detail, needleIndex);
-                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 针头偏移补偿已启用: dX={_needleOffsetX:F4}mm, dY={_needleOffsetY:F4}mm");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_NeedleOffsetCompEnabled", "DISPENSE 步骤 [{0}] 针头偏移补偿已启用: dX={1:F4}mm, dY={2:F4}mm"),
+                    step.Seq, _needleOffsetX, _needleOffsetY));
             }
             else
             {
@@ -166,9 +179,9 @@ namespace StationTasks.Actions
                 _yCompCalibrator = ResolveLinkedValue(detail.YCompensationCalibrator, detail.YCompensationCalibratorLinkedVar);
                 _zCompCalibrator = ResolveLinkedValue(detail.ZCompensationCalibrator, detail.ZCompensationCalibratorLinkedVar);
                 _zComp3D = ResolveLinkedValue(detail.ZCompensation3D, detail.ZCompensation3DLinkedVar);
-                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 校准补偿已启用: " +
-                             $"X Comp(校准器)={_xCompCalibrator:F4}mm, Y Comp(校准器)={_yCompCalibrator:F4}mm, " +
-                             $"Z Comp(校准器)={_zCompCalibrator:F4}mm, Z Comp(3D Camera)={_zComp3D:F4}mm");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_CalibrationCompEnabled", "DISPENSE 步骤 [{0}] 校准补偿已启用: X Comp(校准器)={1:F4}mm, Y Comp(校准器)={2:F4}mm, Z Comp(校准器)={3:F4}mm, Z Comp(3D Camera)={4:F4}mm"),
+                    step.Seq, _xCompCalibrator, _yCompCalibrator, _zCompCalibrator, _zComp3D));
             }
             else
             {
@@ -186,21 +199,29 @@ namespace StationTasks.Actions
                 _cadAlignSnapshot = _cadAlignTransformService?.CurrentSnapshot;
                 if (_cadAlignSnapshot == null || !_cadAlignSnapshot.IsValid)
                 {
-                    _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 旋转补偿已启用但 CAD 对齐变换不可用，回退使用原始坐标");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_RotationCompNoCadAlign", "DISPENSE 步骤 [{0}] 旋转补偿已启用但 CAD 对齐变换不可用，回退使用原始坐标"),
+                        step.Seq));
                     _enableRotationComp = false;
                 }
                 else
                 {
-                    _logger.Info($"DISPENSE 步骤 [{step.Seq}] 旋转补偿已启用: 旋转角度={_rotationAngle:F3}°, 回转中心=({_cadAlignSnapshot.Mox:F3}, {_cadAlignSnapshot.Moy:F3})");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_RotationCompEnabled", "DISPENSE 步骤 [{0}] 旋转补偿已启用: 旋转角度={1:F3}°, 回转中心=({2:F3}, {3:F3})"),
+                        step.Seq, _rotationAngle, _cadAlignSnapshot.Mox, _cadAlignSnapshot.Moy));
                 }
             }
 
             // 按配方针头加载仿射矩阵，执行时实时换算 MachineX/Y，避免与 Step3 所选针头不一致
             _runtimeAffine = LoadAffineForNeedle(detail.NeedleIndex);
             if (_runtimeAffine != null)
-                _logger.Info($"DISPENSE 步骤 [{step.Seq}] 使用针头{needleIndex + 1}仿射矩阵实时换算坐标 (RMS={_runtimeAffine.RmsError:F4}mm)");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_AffineMatrixUsed", "DISPENSE 步骤 [{0}] 使用针头{1}仿射矩阵实时换算坐标 (RMS={2:F4}mm)"),
+                    step.Seq, needleIndex + 1, _runtimeAffine.RmsError));
             else
-                _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未找到针头{needleIndex + 1}仿射矩阵，回退使用点内 MachineX/MachineY");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_AffineMatrixNotFound", "DISPENSE 步骤 [{0}] 未找到针头{1}仿射矩阵，回退使用点内 MachineX/MachineY"),
+                    step.Seq, needleIndex + 1));
 
             try
             {
@@ -218,7 +239,9 @@ namespace StationTasks.Actions
                             await ExecuteArcModeAsync(step.Seq, detail, segDict, dxAxisId, dyAxisId, dzAxisId, needleIndex, task, stopToken);
                             break;
                         default:
-                            _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 未知点胶模式: {detail.DispenseMode}");
+                            _logger.Warn(string.Format(
+                                _localization.GetResourceOrDefault("Disp_Log_UnknownDispenseMode", "DISPENSE 步骤 [{0}] 未知点胶模式: {1}"),
+                                step.Seq, detail.DispenseMode));
                             break;
                     }
                 }
@@ -228,13 +251,17 @@ namespace StationTasks.Actions
             catch (OperationCanceledException)
             {
                 SafeGlueOff(needleIndex);
-                _logger.Warn($"DISPENSE 步骤 [{step.Seq}] 已取消，已安全关胶");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_StepCancelled", "DISPENSE 步骤 [{0}] 已取消，已安全关胶"),
+                    step.Seq));
                 throw;
             }
             catch (Exception ex)
             {
                 SafeGlueOff(needleIndex);
-                _logger.Error(ex, $"DISPENSE 步骤 [{step.Seq}] 执行异常，已安全关胶");
+                _logger.Error(ex, string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_StepException", "DISPENSE 步骤 [{0}] 执行异常，已安全关胶"),
+                    step.Seq));
                 throw;
             }
         }
@@ -249,7 +276,7 @@ namespace StationTasks.Actions
             StationTaskBase task,
             CancellationToken stopToken)
         {
-            _logger.Info("DISPENSE 开始空跑");
+            _logger.Info(_localization.GetResourceOrDefault("Disp_Log_DryRunStart", "DISPENSE 开始空跑"));
 
             var enabledRefs = detail.SegmentRefs.Where(r => r.IsEnabled).ToList();
             DispenseSegment lastSeg = null;
@@ -260,7 +287,9 @@ namespace StationTasks.Actions
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
-                    _logger.Warn($"DISPENSE 空跑: 源段 '{segRef.SourceSegmentId}' 未找到，跳过");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_DryRunSegmentNotFound", "DISPENSE 空跑: 源段 '{0}' 未找到，跳过"),
+                        segRef.SourceSegmentId));
                     continue;
                 }
 
@@ -301,7 +330,7 @@ namespace StationTasks.Actions
                 await RunPausableAsync(task, stopToken, 0, "空跑结束Z抬升", t =>
                     _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
-            _logger.Info("DISPENSE 空跑完成");
+            _logger.Info(_localization.GetResourceOrDefault("Disp_Log_DryRunCompleted", "DISPENSE 空跑完成"));
         }
 
         /// <summary>
@@ -318,7 +347,9 @@ namespace StationTasks.Actions
             StationTaskBase task,
             CancellationToken stopToken)
         {
-            _logger.Info($"DISPENSE 步骤 [{stepSeq}] 单点模式开始");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_DotModeStart", "DISPENSE 步骤 [{0}] 单点模式开始"),
+                stepSeq));
 
             var enabledRefs = detail.SegmentRefs.Where(r => r.IsEnabled).ToList();
             int totalRefs = enabledRefs.Count;
@@ -333,7 +364,9 @@ namespace StationTasks.Actions
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
-                    _logger.Warn($"DISPENSE 步骤 [{stepSeq}] 单点: 源段 '{segRef.SourceSegmentId}' 未找到，跳过");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_DotSegmentNotFound", "DISPENSE 步骤 [{0}] 单点: 源段 '{1}' 未找到，跳过"),
+                        stepSeq, segRef.SourceSegmentId));
                     continue;
                 }
 
@@ -359,7 +392,9 @@ namespace StationTasks.Actions
                     if (abandonCurrentPoint)
                     {
                         abandonCurrentPoint = false;
-                        _logger.Warn($"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 暂停时已出胶，恢复后跳过该点");
+                        _logger.Warn(string.Format(
+                            _localization.GetResourceOrDefault("Disp_Log_DotPointAbandonedAfterPause", "DISPENSE 步骤 [{0}] 单点: 段[{1}]点{2} 暂停时已出胶，恢复后跳过该点"),
+                            stepSeq, seg.SegmentId, ptIndex + 1));
                         continue;
                     }
 
@@ -388,7 +423,9 @@ namespace StationTasks.Actions
                         _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, t));
 
                     WriteGlueIo(true, needleIndex);
-                    _logger.Debug($"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}]点{ptIndex + 1} 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
+                    _logger.Debug(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_DotGlueTriggerOn", "DISPENSE 步骤 [{0}] 单点: 段[{1}]点{2} 位置触发开胶，triggerZ={3:F3}, targetZ={4:F3}, offset={5:F3}mm"),
+                        stepSeq, seg.SegmentId, ptIndex + 1, triggerZ, targetZ, glueTriggerOffset));
 
                     await RunPausableAsync(task, stopToken, needleIndex, "单点Z目标位", t =>
                         _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, t),
@@ -434,7 +471,9 @@ namespace StationTasks.Actions
                 await RunPausableAsync(task, stopToken, needleIndex, "单点结束Z抬升", t =>
                     _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
-            _logger.Info($"DISPENSE 步骤 [{stepSeq}] 单点模式完成");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_DotModeCompleted", "DISPENSE 步骤 [{0}] 单点模式完成"),
+                stepSeq));
         }
 
         /// <summary>
@@ -451,7 +490,7 @@ namespace StationTasks.Actions
             StationTaskBase task,
             CancellationToken stopToken)
         {
-            _logger.Info($"DISPENSE 弧线模式开始");
+            _logger.Info(_localization.GetResourceOrDefault("Disp_Log_ArcModeStart", "DISPENSE 弧线模式开始"));
 
             var enabledRefs = detail.SegmentRefs
                 .Where(r => r.IsEnabled)
@@ -461,7 +500,7 @@ namespace StationTasks.Actions
 
             if (enabledRefs.Count == 0)
             {
-                _logger.Warn("DISPENSE 弧线模式: 无已启用的圆弧类分段（请导入 Arc/Circle/Ellipse 或含弧段的多段线）");
+                _logger.Warn(_localization.GetResourceOrDefault("Disp_Log_ArcNoArcSegments", "DISPENSE 弧线模式: 无已启用的圆弧类分段（请导入 Arc/Circle/Ellipse 或含弧段的多段线）"));
                 return;
             }
 
@@ -480,13 +519,17 @@ namespace StationTasks.Actions
                 {
                     abandonCurrentSegment = false;
                     detail.ExecutionCheckpoint.SkipCurrentArcSegment = false;
-                    _logger.Warn($"DISPENSE 弧线: 段 '{segRef.SourceSegmentId}' 暂停时走胶中断，恢复后跳过该段");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_ArcSegmentInterrupted", "DISPENSE 弧线: 段 '{0}' 暂停时走胶中断，恢复后跳过该段"),
+                        segRef.SourceSegmentId));
                     continue;
                 }
 
                 if (!segDict.TryGetValue(segRef.SourceSegmentId, out var source))
                 {
-                    _logger.Warn($"DISPENSE 弧线: 源段 '{segRef.SourceSegmentId}' 未找到，跳过");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_ArcSegmentNotFound", "DISPENSE 弧线: 源段 '{0}' 未找到，跳过"),
+                        segRef.SourceSegmentId));
                     continue;
                 }
 
@@ -502,9 +545,9 @@ namespace StationTasks.Actions
                 double slowVel = seg.MoveSpeed * seg.CornerDecel;
                 double glueTriggerOffset = seg.GlueTriggerOffsetMm;
 
-                _logger.Info($"DISPENSE 弧线: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，{seg.Points.Count} 点，" +
-                             $"MoveSpeed={moveSpeed:F1}, InterpSpeed={seg.InterpSpeed:F1}, SafeHeight={safeHeight:F1}, " +
-                             $"EarlyCloseGlueDelay={seg.EarlyCloseGlueDelayMs:F0}ms, PostDelay={seg.PostDelay:F0}ms");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_ArcSegmentParams", "DISPENSE 弧线: 段[{0}] ({1}/{2})，{3} 点，MoveSpeed={4:F1}, InterpSpeed={5:F1}, SafeHeight={6:F1}, EarlyCloseGlueDelay={7:F0}ms, PostDelay={8:F0}ms"),
+                    seg.SegmentId, currentRef, totalRefs, seg.Points.Count, moveSpeed, seg.InterpSpeed, safeHeight, seg.EarlyCloseGlueDelayMs, seg.PostDelay));
 
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线Z抬升", t =>
                     _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
@@ -528,7 +571,9 @@ namespace StationTasks.Actions
                     _motionService.MoveAbsAsync(dzAxisId, triggerZ, slowVel, t));
 
                 WriteGlueIo(true, needleIndex);
-                _logger.Debug($"DISPENSE 弧线: 段[{seg.SegmentId}] 位置触发开胶，triggerZ={triggerZ:F3}, targetZ={targetZ:F3}, offset={glueTriggerOffset:F3}mm");
+                _logger.Debug(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_ArcGlueTriggerOn", "DISPENSE 弧线: 段[{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm"),
+                    seg.SegmentId, triggerZ, targetZ, glueTriggerOffset));
 
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线Z目标位", t =>
                     _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, t),
@@ -550,7 +595,9 @@ namespace StationTasks.Actions
                 double currentZPos = _motionService.GetAxisPosition(dzAxisId);
                 if (Math.Abs(currentZPos - targetZ) > 0.5)
                 {
-                    _logger.Warn($"DISPENSE 弧线: 段[{seg.SegmentId}] Z轴未到位: 当前={currentZPos:F3}, 目标={targetZ:F3}，重新下降");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_ArcZNotReached", "DISPENSE 弧线: 段[{0}] Z轴未到位: 当前={1:F3}, 目标={2:F3}，重新下降"),
+                        seg.SegmentId, currentZPos, targetZ));
                     await RunPausableAsync(task, stopToken, needleIndex, "弧线Z补下降", t =>
                         _motionService.MoveAbsAsync(dzAxisId, targetZ, slowVel, t),
                         safeGlueOffOnPause: true,
@@ -581,7 +628,8 @@ namespace StationTasks.Actions
                         _logger,
                         $"DISPENSE 弧线 段[{seg.SegmentId}]",
                         t,
-                        TimeSpan.FromMinutes(5));
+                        TimeSpan.FromMinutes(5),
+                        _localization);
                 },
                 safeGlueOffOnPause: true,
                 onGluePauseAbandon: () =>
@@ -604,7 +652,7 @@ namespace StationTasks.Actions
                     _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
             detail.ClearExecutionCheckpoint();
-            _logger.Info("DISPENSE 弧线模式完成");
+            _logger.Info(_localization.GetResourceOrDefault("Disp_Log_ArcModeCompleted", "DISPENSE 弧线模式完成"));
         }
 
         /// <summary>
@@ -689,7 +737,9 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Warn($"解析链接全局变量 '{linkedVarName}' 失败: {ex.Message}");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_ResolveLinkedVarFailed", "解析链接全局变量 '{0}' 失败: {1}"),
+                    linkedVarName, ex.Message));
             }
 
             return manualValue;
@@ -749,7 +799,9 @@ namespace StationTasks.Actions
                     return cfg.LogicalId;
             }
 
-            _logger.Warn($"DISPENSE 无法从全局轴配置解析轴 '{axisName}'");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_AxisResolveFailed", "DISPENSE 无法从全局轴配置解析轴 '{0}'"),
+                axisName));
             return -1;
         }
 
@@ -777,7 +829,12 @@ namespace StationTasks.Actions
         {
             int port = GetGlueIoPort(needleIndex);
             try { _motionService.WriteDo(port, value); }
-            catch (Exception ex) { _logger.Error(ex, $"DISPENSE 写出胶IO失败 port={port} value={value}"); }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, string.Format(
+                    _localization.GetResourceOrDefault("Disp_Log_WriteGlueIoFailed", "DISPENSE 写出胶IO失败 port={0} value={1}"),
+                    port, value));
+            }
         }
 
         /// <summary>安全关胶——按所选针头关闭对应 IO</summary>
@@ -820,12 +877,16 @@ namespace StationTasks.Actions
                     {
                         SafeGlueOff(needleIndex);
                         onGluePauseAbandon?.Invoke();
-                        _logger.Warn($"DISPENSE {operationName} 暂停时已关胶，恢复后将跳过当前点/段");
+                        _logger.Warn(string.Format(
+                            _localization.GetResourceOrDefault("Disp_Log_PausedGlueOff", "DISPENSE {0} 暂停时已关胶，恢复后将跳过当前点/段"),
+                            operationName));
                         await WaitForDispenseResumeAsync(task, stopToken);
                         return;
                     }
 
-                    _logger.Info($"DISPENSE {operationName} 已暂停，等待恢复后继续当前动作");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("Disp_Log_PausedWaiting", "DISPENSE {0} 已暂停，等待恢复后继续当前动作"),
+                        operationName));
                     await WaitForDispenseResumeAsync(task, stopToken);
                 }
             }
@@ -1006,16 +1067,14 @@ namespace StationTasks.Actions
             double zCalAddon = detail.EnableZCalibration ? ResolveZCompensation(detail) : 0;
             string paramSource = useDefault ? "Default" : "Override";
 
-            _logger.Info(
-                $"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}] ({currentRef}/{totalRefs})，共 {seg.Points.Count} 点 | " +
-                $"参数来源={paramSource}, UseDefaultParams={useDefault} | " +
-                $"工艺参数: MoveSpeed={seg.MoveSpeed:F1}mm/s, SafeHeight={seg.SafeHeight:F3}mm, ApproachHeight={seg.ApproachHeight:F3}mm, " +
-                $"CornerDecel={seg.CornerDecel:F2}, GlueTriggerOffset={seg.GlueTriggerOffsetMm:F3}mm, " +
-                $"PreDelay={seg.PreDelay:F0}ms, DispenseTime={seg.DispenseTime:F0}ms, PostDelay={seg.PostDelay:F0}ms, " +
-                $"TeachHeight={seg.TeachHeight:F3}mm, HeightComp(manual)={manualHeightComp:F3}mm, ZCalAddon={zCalAddon:F3}mm, " +
-                $"HeightComp(total)={seg.HeightCompensation:F3}mm, EffectiveZ={seg.EffectiveZHeight:F3}mm, " +
-                $"DispensingPressure={seg.DispensingPressure:F3}MPa, SuckBackTime={seg.SuckBackTime:F0}ms, " +
-                $"人工XY补偿=({seg.XyCompensationX:F4}, {seg.XyCompensationY:F4})mm");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_DotSegmentProcessParams",
+                    "DISPENSE 步骤 [{0}] 单点: 段[{1}] ({2}/{3})，共 {4} 点 | 参数来源={5}, UseDefaultParams={6} | 工艺参数: MoveSpeed={7:F1}mm/s, SafeHeight={8:F3}mm, ApproachHeight={9:F3}mm, CornerDecel={10:F2}, GlueTriggerOffset={11:F3}mm, PreDelay={12:F0}ms, DispenseTime={13:F0}ms, PostDelay={14:F0}ms, TeachHeight={15:F3}mm, HeightComp(manual)={16:F3}mm, ZCalAddon={17:F3}mm, HeightComp(total)={18:F3}mm, EffectiveZ={19:F3}mm, DispensingPressure={20:F3}MPa, SuckBackTime={21:F0}ms, 人工XY补偿=({22:F4}, {23:F4})mm"),
+                stepSeq, seg.SegmentId, currentRef, totalRefs, seg.Points.Count, paramSource, useDefault,
+                seg.MoveSpeed, seg.SafeHeight, seg.ApproachHeight, seg.CornerDecel, seg.GlueTriggerOffsetMm,
+                seg.PreDelay, seg.DispenseTime, seg.PostDelay, seg.TeachHeight, manualHeightComp, zCalAddon,
+                seg.HeightCompensation, seg.EffectiveZHeight, seg.DispensingPressure, seg.SuckBackTime,
+                seg.XyCompensationX, seg.XyCompensationY));
         }
 
         /// <summary>
@@ -1031,15 +1090,14 @@ namespace StationTasks.Actions
             MachineXYBreakdown xy,
             double targetZ)
         {
-            _logger.Info(
-                $"DISPENSE 步骤 [{stepSeq}] 单点: 段[{seg.SegmentId}] 点{ptIndex + 1}/{pointTotal} [Id={point.Id}] | " +
-                $"原始CAD=({xy.CadX:F4}, {xy.CadY:F4}, Z={point.Z:F4}) | " +
-                $"变换来源={xy.TransformSource}, 变换后=({xy.TransformedX:F4}, {xy.TransformedY:F4}) | " +
-                $"人工XY补偿=({xy.ManualXyCompX:F4}, {xy.ManualXyCompY:F4})mm | " +
-                $"针头偏移=({xy.NeedleOffsetX:F4}, {xy.NeedleOffsetY:F4})mm | " +
-                $"校准XY=({xy.CalibratorCompX:F4}, {xy.CalibratorCompY:F4})mm | " +
-                $"全局XY=({xy.GlobalCompX:F4}, {xy.GlobalCompY:F4})mm | " +
-                $"最终XY=({xy.FinalX:F4}, {xy.FinalY:F4}), Z={targetZ:F4}mm");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_DotPointDetail",
+                    "DISPENSE 步骤 [{0}] 单点: 段[{1}] 点{2}/{3} [Id={4}] | 原始CAD=({5:F4}, {6:F4}, Z={7:F4}) | 变换来源={8}, 变换后=({9:F4}, {10:F4}) | 人工XY补偿=({11:F4}, {12:F4})mm | 针头偏移=({13:F4}, {14:F4})mm | 校准XY=({15:F4}, {16:F4})mm | 全局XY=({17:F4}, {18:F4})mm | 最终XY=({19:F4}, {20:F4}), Z={21:F4}mm"),
+                stepSeq, seg.SegmentId, ptIndex + 1, pointTotal, point.Id,
+                xy.CadX, xy.CadY, point.Z, xy.TransformSource, xy.TransformedX, xy.TransformedY,
+                xy.ManualXyCompX, xy.ManualXyCompY, xy.NeedleOffsetX, xy.NeedleOffsetY,
+                xy.CalibratorCompX, xy.CalibratorCompY, xy.GlobalCompX, xy.GlobalCompY,
+                xy.FinalX, xy.FinalY, targetZ));
         }
 
         /// <summary>
@@ -1057,11 +1115,11 @@ namespace StationTasks.Actions
             double cadX = startPt.X;
             double cadY = startPt.Y;
 
-            _logger.Info(
-                $"DISPENSE 步骤 [{stepSeq}] 弧线: 段[{seg.SegmentId}] 起始点原始坐标 CAD=({cadX:F4}, {cadY:F4}), " +
-                $"X Comp(校准器)={_xCompCalibrator:F4}mm, Y Comp(校准器)={_yCompCalibrator:F4}mm, " +
-                $"Z Comp(校准器)={_zCompCalibrator:F4}mm, Z Comp(3D Camera)={_zComp3D:F4}mm, " +
-                $"最终起始点 XY=({finalStartX:F4}, {finalStartY:F4}), Z={finalTargetZ:F4}");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Disp_Log_ArcSegmentStartCoords",
+                    "DISPENSE 步骤 [{0}] 弧线: 段[{1}] 起始点原始坐标 CAD=({2:F4}, {3:F4}), X Comp(校准器)={4:F4}mm, Y Comp(校准器)={5:F4}mm, Z Comp(校准器)={6:F4}mm, Z Comp(3D Camera)={7:F4}mm, 最终起始点 XY=({8:F4}, {9:F4}), Z={10:F4}"),
+                stepSeq, seg.SegmentId, cadX, cadY, _xCompCalibrator, _yCompCalibrator, _zCompCalibrator, _zComp3D,
+                finalStartX, finalStartY, finalTargetZ));
         }
     }
 }

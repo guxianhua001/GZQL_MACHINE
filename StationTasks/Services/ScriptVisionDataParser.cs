@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using Natasha.CSharp;
 using System;
@@ -22,10 +23,13 @@ namespace StationTasks.Services
         /// <summary>Natasha 全局初始化标志（只需初始化一次）</summary>
         private static bool _natashaInitialized;
         private static readonly object _initLock = new object();
-        public ScriptVisionDataParser(ILoggerService logger)
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
+        public ScriptVisionDataParser(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
-            _defaultParser = new DefaultVisionDataParser(logger);
+            _localization = localization;
+            _defaultParser = new DefaultVisionDataParser(logger, localization);
         }
         /// <summary>
         /// 用户自定义解析脚本（完整 C# 类代码）
@@ -53,7 +57,7 @@ namespace StationTasks.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"视觉脚本运行时错误: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("ScriptVis_Log_RuntimeError", "视觉脚本运行时错误: {0}"), ex.Message));
                 throw new InvalidOperationException($"视觉脚本运行时错误: {ex.Message}", ex);
             }
         }
@@ -115,7 +119,7 @@ namespace StationTasks.Services
                     _compiledDelegate = (Func<string, Dictionary<string, double>>)Delegate.CreateDelegate(
                         typeof(Func<string, Dictionary<string, double>>), parseMethod);
                     _compiledScript = _script;
-                    _logger.Info("视觉解析脚本编译并绑定成功");
+                    _logger.Info(_localization.GetResourceOrDefault("ScriptVis_Log_CompileSuccess", "视觉解析脚本编译并绑定成功"));
                 }
                 catch (InvalidOperationException)
                 {
@@ -124,7 +128,7 @@ namespace StationTasks.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"视觉脚本编译失败: {ex.Message}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("ScriptVis_Log_CompileFailed", "视觉脚本编译失败: {0}"), ex.Message));
                     _compiledDelegate = null;
                     _compiledScript = null;
                     throw new InvalidOperationException($"视觉脚本编译失败: {ex.Message}", ex);

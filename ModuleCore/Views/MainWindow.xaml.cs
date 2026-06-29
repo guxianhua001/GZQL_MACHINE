@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using ModuleCore.ViewModels;
 using MotionControl.Events;
@@ -20,7 +21,8 @@ namespace ModuleCore.Views
         private readonly IEventAggregator _ea;
         private readonly IContainerProvider _container;
         private readonly ILoggerService _logger;
-        public MainWindow(IRegionManager regionManager, IEventAggregator ea, IContainerProvider container, ILoggerService logger)
+        private readonly ILocalizationService _localization;
+        public MainWindow(IRegionManager regionManager, IEventAggregator ea, IContainerProvider container, ILoggerService logger, ILocalizationService localization)
         {
             InitializeComponent();
             RegionManager.SetRegionManager(ContentRegionCore, regionManager);
@@ -32,6 +34,7 @@ namespace ModuleCore.Views
             _ea = ea;
             _container = container;
             _logger = logger;
+            _localization = localization;
 
             // 初始化轴控制面板（通过 Prism 容器解析 ViewModel）
             InitializeAxisControlPanel();
@@ -50,11 +53,11 @@ namespace ModuleCore.Views
                 var view = new AxisControlPanelView();
                 view.DataContext = viewModel;
                 AxisPanelContent.Content = view;
-                System.Diagnostics.Debug.WriteLine("[MainWindow] 轴控制面板初始化成功");
+                System.Diagnostics.Debug.WriteLine(_localization.GetResourceOrDefault("MW_Log_AxisPanelInitSuccess", "[MainWindow] 轴控制面板初始化成功"));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainWindow] 轴控制面板初始化失败: {ex.Message}\n{ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine(string.Format(_localization.GetResourceOrDefault("MW_Log_AxisPanelInitFailed", "[MainWindow] 轴控制面板初始化失败: {0}\n{1}"), ex.Message, ex.StackTrace));
             }
         }
 
@@ -92,7 +95,7 @@ namespace ModuleCore.Views
                 {
                     viewModel.CloseSecsGemService();
                 }
-                _logger.Info("应用程序正在关闭...");
+                _logger.Info(_localization.GetResourceOrDefault("MW_Log_AppClosing", "应用程序正在关闭..."));
                 // 关闭窗体
                 Application.Current.Shutdown();
             }

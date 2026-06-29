@@ -1,4 +1,5 @@
-﻿using Core.Abstractions.Storages;
+using Core.Abstractions.Storages;
+using Core.Abstraction;
 using Core.Services;
 using Core.Utilities;
 using Recipe.Interfaces;
@@ -12,13 +13,15 @@ namespace Recipe.Services
     {
         private readonly IGenericStorage _genericStorage;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private const string RecipePoolPrefix = "recipe_pool_";
         private const string RecipePrefix = "recipe_";
 
-        public RecipeStorage(IGenericStorage genericStorage, ILoggerService logger)
+        public RecipeStorage(IGenericStorage genericStorage, ILoggerService logger, ILocalizationService localization)
         {
             _genericStorage = genericStorage;
             _logger = logger;
+            _localization = localization;
         }
 
         public async Task<RecipePool> LoadRecipePoolAsync(string poolName)
@@ -121,7 +124,7 @@ namespace Recipe.Services
 
             string key = $"{RecipePoolPrefix}{poolId}";
             await _genericStorage.DeleteAsync<RecipePool>(key);
-            _logger?.Info($"配方池 '{poolId}' 已删除。");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("RStor_Log_PoolDeleted", "配方池 '{0}' 已删除。"), poolId));
         }
 
         // 辅助方法：清理文件名中的非法字符
@@ -178,12 +181,12 @@ namespace Recipe.Services
                 string backupFileName = $"{fileName}_{timestamp}.bak";
                 string backupPath = Path.Combine(backupDir, backupFileName);
                 File.Copy(filePath, backupPath, overwrite: true);
-                _logger?.Info($"已备份配方池文件: {backupPath}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("RStor_Log_PoolFileBackedUp", "已备份配方池文件: {0}"), backupPath));
             }
             catch (Exception ex)
             {
                 // 备份失败不影响正常保存，仅记录警告日志
-                _logger?.Warn($"备份配方池文件失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("RStor_Log_BackupPoolFileFailed", "备份配方池文件失败: {0}"), ex.Message));
             }
         }
     }

@@ -14,6 +14,14 @@ namespace Module.Services
         private readonly ConcurrentDictionary<int, int> _usageCounts = new();
         private readonly ILoggerService _logger;
         private readonly IEventAggregator _eventAggregator;
+        private readonly ILocalizationService _localization;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         /// <summary>
         /// 针头默认最大使用次数
@@ -25,10 +33,11 @@ namespace Module.Services
         /// </summary>
         private const double WarningThreshold = 0.8;
 
-        public NeedleService(ILoggerService logger, IEventAggregator eventAggregator)
+        public NeedleService(ILoggerService logger, IEventAggregator eventAggregator, ILocalizationService localization)
         {
             _logger = logger;
             _eventAggregator = eventAggregator;
+            _localization = localization;
         }
 
         /// <summary>
@@ -53,14 +62,14 @@ namespace Module.Services
         public void IncrementNeedleCount(int needleId)
         {
             var newCount = _usageCounts.AddOrUpdate(needleId, 1, (_, current) => current + 1);
-            _logger?.Info($"NeedleService: 针头 {needleId} 使用次数递增至 {newCount}");
+            _logger?.Info(L("Needle_Log_CountIncremented", "NeedleService: 针头 {0} 使用次数递增至 {1}", needleId, newCount));
 
             var maxCount = GetNeedleMaxCount(needleId);
             var ratio = (double)newCount / maxCount;
 
             if (ratio >= WarningThreshold)
             {
-                _logger?.Warn($"NeedleService: 针头 {needleId} 使用次数已达预警阈值 ({ratio:P0})，当前 {newCount}/{maxCount}");
+                _logger?.Warn(L("Needle_Log_LifeWarningThreshold", "NeedleService: 针头 {0} 使用次数已达预警阈值 ({1:P0})，当前 {2}/{3}", needleId, ratio, newCount, maxCount));
 
                 _eventAggregator.GetEvent<NeedleLifeWarningEvent>().Publish(new NeedleLifeWarningEventArgs
                 {
@@ -78,7 +87,7 @@ namespace Module.Services
         public void ResetNeedle(int needleId)
         {
             _usageCounts.AddOrUpdate(needleId, 0, (_, _) => 0);
-            _logger?.Info($"NeedleService: 针头 {needleId} 使用计数已重置");
+            _logger?.Info(L("Needle_Log_CountReset", "NeedleService: 针头 {0} 使用计数已重置", needleId));
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Prism.Commands;
+using Prism.Commands;
 using Prism.Events;
 using Prism.Mvvm;
 using System.Collections.ObjectModel;
@@ -15,15 +15,18 @@ namespace Framework.ViewModels
         private readonly IAppSettingService _appConfig;
         private readonly IEventAggregator _eventAggregator;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         public ConfigurationViewModel(
             IAppSettingService appConfig,
             IEventAggregator eventAggregator,
-            ILoggerService logger)
+            ILoggerService logger,
+            ILocalizationService localization)
         {
             _appConfig = appConfig;
             _eventAggregator = eventAggregator;
             _logger = logger;
+            _localization = localization;
 
             // 初始化命令
             SaveCommand = new DelegateCommand(SaveConfiguration);
@@ -38,7 +41,7 @@ namespace Framework.ViewModels
             // 加载当前配置
             LoadCurrentConfig();
 
-            _logger.Info("ConfigurationViewModel 初始化完成");
+            _logger.Info(_localization.GetResourceOrDefault("CfgVM_Log_InitComplete", "ConfigurationViewModel 初始化完成"));
         }
 
         #region 命令
@@ -149,7 +152,7 @@ namespace Framework.ViewModels
         {
             try
             {
-                _logger.Info("开始加载配置");
+                _logger.Info(_localization.GetResourceOrDefault("CfgVM_Log_StartLoadConfig", "开始加载配置"));
 
                 // 加载服务器配置
                 ServerIP = _appConfig.ServerConfig.ServerIP;
@@ -183,11 +186,11 @@ namespace Framework.ViewModels
                     SelectedClient = Clients.First();
                 }
 
-                _logger.Info($"配置加载完成，共 {Clients.Count} 个客户端");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgVM_Log_ConfigLoaded", "配置加载完成，共 {0} 个客户端"), Clients.Count));
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, "加载配置失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("CfgVM_Log_LoadConfigFailed", "加载配置失败"));
             }
         }
 
@@ -195,19 +198,19 @@ namespace Framework.ViewModels
         {
             try
             {
-                _logger.Info("开始保存配置");
+                _logger.Info(_localization.GetResourceOrDefault("CfgVM_Log_StartSaveConfig", "开始保存配置"));
 
                 // 验证服务器配置
                 if (!IPAddress.TryParse(ServerIP, out _))
                 {
-                    _logger.Warn("服务器IP地址格式无效");
+                    _logger.Warn(_localization.GetResourceOrDefault("CfgVM_Log_ServerIPInvalid", "服务器IP地址格式无效"));
                     // 可以在这里显示错误消息
                     return;
                 }
 
                 if (ServerPort < 1 || ServerPort > 65535)
                 {
-                    _logger.Warn("服务器端口号无效");
+                    _logger.Warn(_localization.GetResourceOrDefault("CfgVM_Log_ServerPortInvalid", "服务器端口号无效"));
                     return;
                 }
 
@@ -248,11 +251,11 @@ namespace Framework.ViewModels
                 // 发布配置更新事件
                 _eventAggregator.GetEvent<ConfigurationUpdatedEvent>().Publish();
 
-                _logger.Info("配置保存成功");
+                _logger.Info(_localization.GetResourceOrDefault("CfgVM_Log_ConfigSaved", "配置保存成功"));
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, "保存配置失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("CfgVM_Log_SaveConfigFailed", "保存配置失败"));
             }
         }
 
@@ -262,25 +265,25 @@ namespace Framework.ViewModels
             {
                 if (string.IsNullOrWhiteSpace(NewClient.ClientName))
                 {
-                    _logger.Warn("客户端名称不能为空");
+                    _logger.Warn(_localization.GetResourceOrDefault("CfgVM_Log_ClientNameEmpty", "客户端名称不能为空"));
                     return;
                 }
 
                 if (Clients.Any(c => c.ClientName == NewClient.ClientName))
                 {
-                    _logger.Warn($"客户端名称 '{NewClient.ClientName}' 已存在");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("CfgVM_Log_ClientNameExists", "客户端名称 '{0}' 已存在"), NewClient.ClientName));
                     return;
                 }
 
                 if (!IPAddress.TryParse(NewClient.IP, out _))
                 {
-                    _logger.Warn("客户端IP地址格式无效");
+                    _logger.Warn(_localization.GetResourceOrDefault("CfgVM_Log_ClientIPInvalid", "客户端IP地址格式无效"));
                     return;
                 }
 
                 if (NewClient.Port < 1 || NewClient.Port > 65535)
                 {
-                    _logger.Warn("客户端端口号无效");
+                    _logger.Warn(_localization.GetResourceOrDefault("CfgVM_Log_ClientPortInvalid", "客户端端口号无效"));
                     return;
                 }
 
@@ -299,11 +302,11 @@ namespace Framework.ViewModels
                 // 重置新客户端模板
                 NewClient = new ClientConfiguration();
 
-                _logger.Info($"添加客户端: {newClient.ClientName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgVM_Log_ClientAdded", "添加客户端: {0}"), newClient.ClientName));
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, "添加客户端失败");
+                _logger.Error(ex, _localization.GetResourceOrDefault("CfgVM_Log_AddClientFailed", "添加客户端失败"));
             }
         }
 
@@ -315,7 +318,7 @@ namespace Framework.ViewModels
                 if (client != null)
                 {
                     Clients.Remove(client);
-                    _logger.Info($"移除客户端: {clientName}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgVM_Log_ClientRemoved", "移除客户端: {0}"), clientName));
 
                     // 更新选中项
                     if (SelectedClient == client)
@@ -326,7 +329,7 @@ namespace Framework.ViewModels
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, $"移除客户端失败: {clientName}");
+                _logger.Error(ex, string.Format(_localization.GetResourceOrDefault("CfgVM_Log_RemoveClientFailed", "移除客户端失败: {0}"), clientName));
             }
         }
 
@@ -338,12 +341,12 @@ namespace Framework.ViewModels
                 if (index > 0)
                 {
                     Clients.Move(index, index - 1);
-                    _logger.Debug($"客户端 '{client.ClientName}' 上移");
+                    _logger.Debug(string.Format(_localization.GetResourceOrDefault("CfgVM_Log_ClientMovedUp", "客户端 '{0}' 上移"), client.ClientName));
                 }
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, $"上移客户端失败: {client.ClientName}");
+                _logger.Error(ex, string.Format(_localization.GetResourceOrDefault("CfgVM_Log_MoveClientUpFailed", "上移客户端失败: {0}"), client.ClientName));
             }
         }
 
@@ -355,19 +358,19 @@ namespace Framework.ViewModels
                 if (index < Clients.Count - 1)
                 {
                     Clients.Move(index, index + 1);
-                    _logger.Debug($"客户端 '{client.ClientName}' 下移");
+                    _logger.Debug(string.Format(_localization.GetResourceOrDefault("CfgVM_Log_ClientMovedDown", "客户端 '{0}' 下移"), client.ClientName));
                 }
             }
             catch (System.Exception ex)
             {
-                _logger.Error(ex, $"下移客户端失败: {client.ClientName}");
+                _logger.Error(ex, string.Format(_localization.GetResourceOrDefault("CfgVM_Log_MoveClientDownFailed", "下移客户端失败: {0}"), client.ClientName));
             }
         }
 
         public void RefreshConfiguration()
         {
             LoadCurrentConfig();
-            _logger.Info("配置已刷新");
+            _logger.Info(_localization.GetResourceOrDefault("CfgVM_Log_ConfigRefreshed", "配置已刷新"));
         }
         #endregion
     }

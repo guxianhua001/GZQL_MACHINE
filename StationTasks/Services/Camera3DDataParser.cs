@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Exceptions;
 using System;
@@ -13,15 +14,18 @@ namespace StationTasks.Services
     public class Camera3DDataParser : IVisionDataParser
     {
         private readonly ILoggerService _logger;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
         /// <summary>
         /// Tab数量，决定前N个数值映射为Tab高度键名
         /// </summary>
         public int TabCount { get; set; } = 6;
 
-        public Camera3DDataParser(ILoggerService logger, int tabCount = 6)
+        public Camera3DDataParser(ILoggerService logger, ILocalizationService localization, int tabCount = 6)
         {
             _logger = logger;
+            _localization = localization;
             TabCount = tabCount;
         }
 
@@ -35,7 +39,7 @@ namespace StationTasks.Services
 
             if (string.IsNullOrWhiteSpace(rawData))
             {
-                _logger.Warn("3D相机数据为空，无法解析");
+                _logger.Warn(_localization.GetResourceOrDefault("Cam3D_Log_DataEmpty", "3D相机数据为空，无法解析"));
                 return result;
             }
 
@@ -55,14 +59,14 @@ namespace StationTasks.Services
 
                 if (visionSegment == null)
                 {
-                    _logger.Warn($"3D相机数据中未找到 VISION_RESULT 段: {rawData}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Cam3D_Log_VisionResultSegmentNotFound", "3D相机数据中未找到 VISION_RESULT 段: {0}"), rawData));
                     return result;
                 }
 
                 var colonParts = visionSegment.Split(new[] { ':' }, 3);
                 if (colonParts.Length < 3)
                 {
-                    _logger.Warn($"VISION_RESULT 段格式不正确: {visionSegment}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Cam3D_Log_VisionResultSegmentInvalid", "VISION_RESULT 段格式不正确: {0}"), visionSegment));
                     return result;
                 }
 
@@ -79,7 +83,7 @@ namespace StationTasks.Services
 
                 if (string.IsNullOrEmpty(valuesPart))
                 {
-                    _logger.Warn("VISION_RESULT 成功但无数值数据");
+                    _logger.Warn(_localization.GetResourceOrDefault("Cam3D_Log_NoValues", "VISION_RESULT 成功但无数值数据"));
                     return result;
                 }
 
@@ -95,11 +99,11 @@ namespace StationTasks.Services
                     }
                     else
                     {
-                        _logger.Warn($"Tab{i + 1} 数值解析失败: '{valueStrings[i]}'");
+                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("Cam3D_Log_TabParseFailed", "Tab{0} 数值解析失败: '{1}'"), i + 1, valueStrings[i]));
                     }
                 }
 
-                _logger.Info($"3D相机数据解析完成: {result.Count} 个Tab高度值");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Cam3D_Log_ParseCompleted", "3D相机数据解析完成: {0} 个Tab高度值"), result.Count));
                 return result;
             }
             catch (RecoverableException)
@@ -108,7 +112,7 @@ namespace StationTasks.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"3D相机数据解析异常: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("Cam3D_Log_ParseException", "3D相机数据解析异常: {0}"), ex.Message));
                 throw new RecoverableException(
                     message: $"3D相机数据解析异常: {ex.Message}",
                     suggestedAction: "请检查3D相机数据格式是否正确。"

@@ -1,19 +1,22 @@
-﻿// Framework/ViewModels/RecipeSelectionDialogViewModel.cs
+// Framework/ViewModels/RecipeSelectionDialogViewModel.cs
 using Prism.Mvvm;
 using Prism.Commands;
 using Prism.Services.Dialogs;
 using System.Collections.ObjectModel;
 using Core.Utilities;
+using Core.Abstraction;
 
 namespace Framework.ViewModels
 {
     public class RecipeSelectionDialogViewModel : BindableBase, IDialogAware
     {
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
-        public RecipeSelectionDialogViewModel(ILoggerService logger)
+        public RecipeSelectionDialogViewModel(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
             SelectCommand = new DelegateCommand<string>(ExecuteSelect, CanSelect);
             CancelCommand = new DelegateCommand(ExecuteCancel);
         }
@@ -87,7 +90,7 @@ namespace Framework.ViewModels
 
         public void OnDialogClosed()
         {
-            _logger.Info("配方选择对话框已关闭");
+            _logger.Info(_localization.GetResourceOrDefault("RSD_Log_DialogClosed", "配方选择对话框已关闭"));
         }
 
         public void OnDialogOpened(IDialogParameters parameters)
@@ -119,7 +122,7 @@ namespace Framework.ViewModels
                 Message = parameters.GetValue<string>("Message");
             }
 
-            _logger.Info($"配方选择对话框已打开，共 {Recipes.Count} 个配方");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("RSD_Log_DialogOpened", "配方选择对话框已打开，共 {0} 个配方"), Recipes.Count));
         }
         #endregion
     }

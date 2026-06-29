@@ -46,7 +46,7 @@ namespace StationTasks.Tasks
             IAxisParameterService axisParameterService)
             : base(motion, recipePool, interaction, ea, logger, alarmService, systemState,
                   recipeServiceFactory, recipePoolService, stationRegistry, speedOverride,
-                  2, localizationService?.GetResourceOrDefault("Station_DispenserStation", "点胶系统") ?? "点胶系统", "DispenserStation")
+                  2, localizationService?.GetResourceOrDefault("Station_DispenserStation", "点胶系统") ?? "点胶系统", "DispenserStation", localizationService)
         {
             _axisParameterService = axisParameterService;
             _speedOverrideLocal = speedOverride;

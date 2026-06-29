@@ -84,11 +84,11 @@ namespace AlarmModule.ViewModels
                 await _alarmService.ConfirmAsync(alarm.Id, Environment.UserName);
                 UpdateUnconfirmedCount();
                 RaiseCanExecuteChanged();
-                _logger.Info($"已确认报警：{alarm.AlarmCode}@{alarm.AlarmSource}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_Confirmed", "已确认报警：{0}@{1}"), alarm.AlarmCode, alarm.AlarmSource));
             }
             catch (Exception ex)
             {
-                _logger.Error($"确认报警失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_ConfirmFailed", "确认报警失败：{0}"), ex.Message));
             }
         }
 
@@ -104,11 +104,11 @@ namespace AlarmModule.ViewModels
                 await _alarmService.ResetAsync(alarm.Id, Environment.UserName);
                 UpdateUnconfirmedCount();
                 RaiseCanExecuteChanged();
-                _logger.Info($"已复位报警：{alarm.AlarmCode}@{alarm.AlarmSource}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_Reset", "已复位报警：{0}@{1}"), alarm.AlarmCode, alarm.AlarmSource));
             }
             catch (Exception ex)
             {
-                _logger.Error($"复位报警失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_ResetFailed", "复位报警失败：{0}"), ex.Message));
             }
         }
 
@@ -124,11 +124,11 @@ namespace AlarmModule.ViewModels
                 await _alarmService.EliminateAsync(alarm.Id);
                 UpdateUnconfirmedCount();
                 RaiseCanExecuteChanged();
-                _logger.Info($"已消除报警：{alarm.AlarmCode}@{alarm.AlarmSource}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_Eliminated", "已消除报警：{0}@{1}"), alarm.AlarmCode, alarm.AlarmSource));
             }
             catch (Exception ex)
             {
-                _logger.Error($"消除报警失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_EliminateFailed", "消除报警失败：{0}"), ex.Message));
             }
         }
 
@@ -144,11 +144,11 @@ namespace AlarmModule.ViewModels
                 await _alarmService.ConfirmAllAsync(Environment.UserName);
                 UpdateUnconfirmedCount();
                 RaiseCanExecuteChanged();
-                _logger.Info("已确认全部未确认报警");
+                _logger.Info(_localizationService.GetResourceOrDefault("AlarmList_Log_ConfirmAll", "已确认全部未确认报警"));
             }
             catch (Exception ex)
             {
-                _logger.Error($"批量确认失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_ConfirmAllFailed", "批量确认失败：{0}"), ex.Message));
             }
         }
 
@@ -159,11 +159,11 @@ namespace AlarmModule.ViewModels
                 await _alarmService.ResetAllAsync(Environment.UserName);
                 UpdateUnconfirmedCount();
                 RaiseCanExecuteChanged();
-                _logger.Info("已复位全部已确认报警");
+                _logger.Info(_localizationService.GetResourceOrDefault("AlarmList_Log_ResetAll", "已复位全部已确认报警"));
             }
             catch (Exception ex)
             {
-                _logger.Error($"批量复位失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_ResetAllFailed", "批量复位失败：{0}"), ex.Message));
             }
         }
 
@@ -177,7 +177,7 @@ namespace AlarmModule.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"刷新报警列表失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmList_Log_RefreshFailed", "刷新报警列表失败：{0}"), ex.Message));
             }
         }
 

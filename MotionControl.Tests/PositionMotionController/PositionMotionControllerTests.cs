@@ -21,6 +21,7 @@ namespace MotionControl.Tests.PositionMotionController
         private readonly Mock<IAxisConfigurationService> _axisConfigMock;
         private readonly Mock<ILoggerService> _loggerMock;
         private readonly Mock<IMotionInterlockService> _motionInterlockMock;
+        private readonly Mock<ILocalizationService> _localizationMock;
 
         public PositionMotionControllerTests()
         {
@@ -30,7 +31,12 @@ namespace MotionControl.Tests.PositionMotionController
             _axisConfigMock = new Mock<IAxisConfigurationService>();
             _loggerMock = new Mock<ILoggerService>();
             _motionInterlockMock = new Mock<IMotionInterlockService>();
+            _localizationMock = new Mock<ILocalizationService>();
             _motionInterlockMock.Setup(m => m.CanExecuteManualMotion).Returns(true);
+            // 本地化服务默认返回默认值（保留中文 fallback），保证测试日志可读
+            _localizationMock
+                .Setup(l => l.GetResourceOrDefault(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((key, defaultValue) => defaultValue);
         }
 
         private PositionMotionControllerImpl CreateController()
@@ -41,7 +47,8 @@ namespace MotionControl.Tests.PositionMotionController
                 _systemStateMock.Object,
                 _axisConfigMock.Object,
                 _loggerMock.Object,
-                _motionInterlockMock.Object);
+                _motionInterlockMock.Object,
+                _localizationMock.Object);
         }
 
         #region T1-T3: TeachAsync Tests

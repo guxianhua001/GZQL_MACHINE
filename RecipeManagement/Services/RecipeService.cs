@@ -27,6 +27,7 @@ namespace Recipe
         private string _currentRecipePool = "Default";
 
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly IDialogService _dialogService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IParameterEditor _parameterEditor;
@@ -83,6 +84,7 @@ namespace Recipe
             string stationIdentifier,
             string stationName,
             ILoggerService loggerService,
+            ILocalizationService localization,
             IDialogService dialogService,
             IEventAggregator eventAggregator,
             IParameterEditor parameterEditor,
@@ -95,6 +97,7 @@ namespace Recipe
             ((IRecipeService)this).StationIdentifier = stationIdentifier;
             ((IRecipeService)this).StationName = stationName;
             _logger = loggerService;
+            _localization = localization;
             _dialogService = dialogService;
             _eventAggregator = eventAggregator;
             _parameterEditor = parameterEditor;
@@ -141,28 +144,28 @@ namespace Recipe
         {
             try
             {
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 正在从当前配方池 '{_currentRecipePool}' 初始化当前配方...");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_InitCurrentRecipeStart", "[{0}] 正在从当前配方池 '{1}' 初始化当前配方..."), ((IRecipeService)this).StationIdentifier, _currentRecipePool));
 
                 var defaultPool = await _recipeStorage.LoadRecipePoolAsync(_currentRecipePool).ConfigureAwait(false);
                 if (defaultPool == null)
                 {
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 配方池 '{_currentRecipePool}' 不存在，使用默认配方");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_PoolNotExistUseDefault", "[{0}] 配方池 '{1}' 不存在，使用默认配方"), ((IRecipeService)this).StationIdentifier, _currentRecipePool));
                     return;
                 }
 
                 var currentRecipeInfo = defaultPool.GetCurrentRecipeInfo();
                 if (!currentRecipeInfo.IsValid)
                 {
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 没有有效的当前配方记录，使用默认配方");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_NoValidCurrentRecipe", "[{0}] 没有有效的当前配方记录，使用默认配方"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
                 _currentRecipeName = currentRecipeInfo.RecipeName;
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 从配方池 '{_currentRecipePool}' 成功加载上次选择的配方: {currentRecipeInfo.RecipeName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadedLastRecipe", "[{0}] 从配方池 '{1}' 成功加载上次选择的配方: {2}"), ((IRecipeService)this).StationIdentifier, _currentRecipePool, currentRecipeInfo.RecipeName));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 从配方池 '{_currentRecipePool}' 初始化当前配方失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_InitCurrentRecipeFailed", "[{0}] 从配方池 '{1}' 初始化当前配方失败: {2}"), ((IRecipeService)this).StationIdentifier, _currentRecipePool, ex.Message));
                 _currentRecipeName = "Default";
             }
         }
@@ -173,7 +176,7 @@ namespace Recipe
         {
             try
             {
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 打开参数编辑窗口，当前配方: {_currentRecipeName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_OpenEditWindow", "[{0}] 打开参数编辑窗口，当前配方: {1}"), ((IRecipeService)this).StationIdentifier, _currentRecipeName));
 
                 await LoadRecipeParameters(_currentRecipeName);
 
@@ -187,7 +190,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 打开参数编辑窗口失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_OpenEditWindowFailed", "[{0}] 打开参数编辑窗口失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     MessageBox.Show($"打开参数编辑窗口失败: {ex.Message}", "错误",
@@ -211,7 +214,7 @@ namespace Recipe
                     // 触发内部事件
                     _parametersAppliedInternal?.Invoke(this, parameters);
 
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 参数已保存并应用");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_ParametersSavedAndApplied", "[{0}] 参数已保存并应用"), ((IRecipeService)this).StationIdentifier));
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -222,7 +225,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 参数保存回调处理失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveCallbackFailed", "[{0}] 参数保存回调处理失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
             }
         }
 
@@ -247,7 +250,7 @@ namespace Recipe
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
                             _internalParameters = stationParams;
-                            _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 从配方 '{recipeName}' (池: {targetPool}) 加载了工站参数");
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadedStationParamsFromRecipe", "[{0}] 从配方 '{1}' (池: {2}) 加载了工站参数"), ((IRecipeService)this).StationIdentifier, recipeName, targetPool));
                             _parametersLoadedInternal?.Invoke(this, _internalParameters);
                         });
                         return;
@@ -256,11 +259,11 @@ namespace Recipe
 
                 await Task.Run(() => LoadParametersFromFile(recipeName)).ConfigureAwait(false);
                 _parametersLoadedInternal?.Invoke(this, _internalParameters);
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 从文件加载了配方 '{recipeName}' 的参数");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadedParamsFromFile", "[{0}] 从文件加载了配方 '{1}' 的参数"), ((IRecipeService)this).StationIdentifier, recipeName));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 从配方 '{recipeName}' 加载参数失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadParamsFromRecipeFailed", "[{0}] 从配方 '{1}' 加载参数失败: {2}"), ((IRecipeService)this).StationIdentifier, recipeName, ex.Message));
                 LoadDefaultParameters();
                 _parametersLoadedInternal?.Invoke(this, _internalParameters);
             }
@@ -295,7 +298,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 获取配方参数失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_GetRecipeParamsFailed", "[{0}] 获取配方参数失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 return null;
             }
         }
@@ -304,7 +307,7 @@ namespace Recipe
         {
             try
             {
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 正在将当前配方 '{recipeName}' 保存到配方池 {poolName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_SavingRecipeToPool", "[{0}] 正在将当前配方 '{1}' 保存到配方池 {2}"), ((IRecipeService)this).StationIdentifier, recipeName, poolName));
 
                 // 通过 UpdateRecipePoolAsync 走信号量保护，从文件重新加载避免覆盖工站参数
                 await _recipePoolManager.UpdateRecipePoolAsync(poolName, pool =>
@@ -312,11 +315,11 @@ namespace Recipe
                     pool.SetCurrentRecipeInfo(((IRecipeService)this).StationIdentifier, recipeName, poolName);
                 }).ConfigureAwait(false);
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 当前配方 '{recipeName}' 已保存到配方池{poolName}顶层属性");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_RecipeSavedToPoolTopLevel", "[{0}] 当前配方 '{1}' 已保存到配方池{2}顶层属性"), ((IRecipeService)this).StationIdentifier, recipeName, poolName));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 保存当前配方到配方池{poolName}失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveRecipeToPoolFailed", "[{0}] 保存当前配方到配方池{1}失败: {2}"), ((IRecipeService)this).StationIdentifier, poolName, ex.Message));
             }
         }
 
@@ -334,7 +337,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 保存参数到配方系统失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveParamsToSystemFailed", "[{0}] 保存参数到配方系统失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
             }
         }
         /// <summary>
@@ -358,7 +361,7 @@ namespace Recipe
                 // 保存参数到配方子目录（固定文件名，覆盖当前版本）
                 _parameterStorage.Save(fixedIdentifier, _internalParameters, customDirectory);
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 参数已保存到本地文件: {Path.Combine(customDirectory, fixedIdentifier)}.json");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_ParamsSavedToLocalFile", "[{0}] 参数已保存到本地文件: {1}"), ((IRecipeService)this).StationIdentifier, Path.Combine(customDirectory, fixedIdentifier) + ".json"));
 
                 // 同时更新根目录下的默认参数文件（可选，保持兼容）
                 //if (recipeName == _currentRecipeName)
@@ -369,7 +372,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 保存参数到本地文件失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveParamsToLocalFileFailed", "[{0}] 保存参数到本地文件失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 throw;
             }
         }
@@ -380,17 +383,17 @@ namespace Recipe
             {
                 if (_internalParameters == null)
                 {
-                    _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 参数为空，无法保存");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_ParametersNullCannotSave", "[{0}] 参数为空，无法保存"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始保存参数到配方: {_currentRecipeName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_StartSaveParamsToRecipeCurrent", "[{0}] 开始保存参数到配方: {1}"), ((IRecipeService)this).StationIdentifier, _currentRecipeName));
                 SaveParametersToLocalFile(_currentRecipeName);
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 参数已保存到配方 '{_currentRecipeName}'");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_ParamsSavedToRecipeCurrent", "[{0}] 参数已保存到配方 '{1}'"), ((IRecipeService)this).StationIdentifier, _currentRecipeName));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 保存参数到配方失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveParamsToRecipeFailed", "[{0}] 保存参数到配方失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 throw;
             }
         }
@@ -401,11 +404,11 @@ namespace Recipe
             {
                 if (_internalParameters == null)
                 {
-                    _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 参数为空，无法保存");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_ParametersNullCannotSave", "[{0}] 参数为空，无法保存"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始保存参数到配方: {recipeName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_StartSaveParamsToRecipe", "[{0}] 开始保存参数到配方: {1}"), ((IRecipeService)this).StationIdentifier, recipeName));
 
                 // 保存前更新最后修改时间为当前本地时间，确保 LastModified 反映最新保存时刻
                 _internalParameters.UpdateLastModified();
@@ -413,11 +416,11 @@ namespace Recipe
                 await SaveParametersToRecipeSystem(poolName, recipeName);
                 SaveParametersToLocalFile(recipeName);
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 参数已保存到配方 '{recipeName}'");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_ParamsSavedToRecipe", "[{0}] 参数已保存到配方 '{1}'"), ((IRecipeService)this).StationIdentifier, recipeName));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 保存参数到配方失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveParamsToRecipeFailed", "[{0}] 保存参数到配方失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 throw;
             }
         }
@@ -428,11 +431,11 @@ namespace Recipe
             {
                 if (parameters == null)
                 {
-                    _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 参数为空，无法保存");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_ParametersNullCannotSave", "[{0}] 参数为空，无法保存"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始保存参数到配方: {recipeName}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_StartSaveParamsToRecipe", "[{0}] 开始保存参数到配方: {1}"), ((IRecipeService)this).StationIdentifier, recipeName));
 
                 _internalParameters = parameters;
                 // 保存前更新最后修改时间为当前本地时间，确保 LastModified 反映最新保存时刻
@@ -443,11 +446,11 @@ namespace Recipe
 
                 _parametersAppliedInternal?.Invoke(this, parameters);
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 参数已保存到配方 '{recipeName}'");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_ParamsSavedToRecipe", "[{0}] 参数已保存到配方 '{1}'"), ((IRecipeService)this).StationIdentifier, recipeName));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 保存参数到配方失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_SaveParamsToRecipeFailed", "[{0}] 保存参数到配方失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 throw;
             }
         }
@@ -462,7 +465,7 @@ namespace Recipe
                 if (parameters != null && parameters.IsValid)
                 {
                     _internalParameters = parameters;
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 从本地文件加载了配方 '{recipeName}' 的参数");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadedParamsFromLocalFile", "[{0}] 从本地文件加载了配方 '{1}' 的参数"), ((IRecipeService)this).StationIdentifier, recipeName));
                     return;
                 }
 
@@ -470,7 +473,7 @@ namespace Recipe
                 if (parameters != null && parameters.IsValid)
                 {
                     _internalParameters = parameters;
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 从默认文件加载了参数");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadedParamsFromDefaultFile", "[{0}] 从默认文件加载了参数"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
@@ -478,7 +481,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 从文件加载参数失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadParamsFromFileFailed", "[{0}] 从文件加载参数失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 LoadDefaultParameters();
             }
         }
@@ -508,7 +511,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 从默认配方池获取当前配方名称失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_GetCurrentRecipeNameFromPoolFailed", "[{0}] 从默认配方池获取当前配方名称失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 return "Default";
             }
         }
@@ -534,7 +537,7 @@ namespace Recipe
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[{((IRecipeService)this).StationIdentifier}] 获取当前配方信息失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_GetCurrentRecipeInfoFailed", "[{0}] 获取当前配方信息失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 return CreateDefaultInfo();
             }
         }
@@ -552,7 +555,7 @@ namespace Recipe
         {
             try
             {
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始手动切换配方");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_StartManualSwitchRecipe", "[{0}] 开始手动切换配方"), ((IRecipeService)this).StationIdentifier));
 
                 var availableRecipes = await GetAvailableRecipes();
                 if (!availableRecipes.Any())
@@ -568,7 +571,7 @@ namespace Recipe
                 );
                 if (string.IsNullOrEmpty(selectedRecipe))
                 {
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 用户取消配方切换");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_UserCancelledSwitch", "[{0}] 用户取消配方切换"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
@@ -587,17 +590,17 @@ namespace Recipe
 
                 if (confirmed != "确认切换")
                 {
-                    _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 用户取消配方切换确认");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_UserCancelledSwitchConfirm", "[{0}] 用户取消配方切换确认"), ((IRecipeService)this).StationIdentifier));
                     return;
                 }
 
                 await SwitchToRecipe(selectedRecipe, poolName);
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 手动切换配方完成: {_currentRecipeName} -> {selectedRecipe}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_ManualSwitchCompleted", "[{0}] 手动切换配方完成: {1} -> {2}"), ((IRecipeService)this).StationIdentifier, _currentRecipeName, selectedRecipe));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 手动切换配方失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_ManualSwitchFailed", "[{0}] 手动切换配方失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 await _recipeDialogService.ShowAlertAsync("配方切换失败", $"切换配方时发生错误: {ex.Message}");
             }
         }
@@ -609,7 +612,7 @@ namespace Recipe
         {
             try
             {
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 开始切换到配方: {recipeName} (池: {poolId})");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_StartSwitchToRecipe", "[{0}] 开始切换到配方: {1} (池: {2})"), ((IRecipeService)this).StationIdentifier, recipeName, poolId));
 
                 await SaveParametersToRecipe(poolId, _currentRecipeName);
 
@@ -632,11 +635,11 @@ namespace Recipe
                     _appConfig.TryUpdateRecipeName(recipeName);
                 }
 
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 成功切换到配方: {recipeName} (池: {poolId})");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_SwitchToRecipeSuccess", "[{0}] 成功切换到配方: {1} (池: {2})"), ((IRecipeService)this).StationIdentifier, recipeName, poolId));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 切换配方失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_SwitchRecipeFailed", "[{0}] 切换配方失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 throw new Exception($"切换配方 '{recipeName}' 失败: {ex.Message}", ex);
             }
         }
@@ -675,11 +678,11 @@ namespace Recipe
                 string backupPath = Path.Combine(backupDir, backupFileName);
 
                 File.Copy(filePath, backupPath, overwrite: true);
-                _logger.Info($"已备份参数文件: {backupPath}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_BackupFileCreated", "已备份参数文件: {0}"), backupPath));
             }
             catch (Exception ex)
             {
-                _logger.Warn($"备份参数文件失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("RS_Log_BackupFileFailed", "备份参数文件失败: {0}"), ex.Message));
             }
         }
         private async Task<List<string>> GetAvailableRecipes()
@@ -698,21 +701,21 @@ namespace Recipe
         {
             try
             {
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 正在加载默认参数");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadingDefaultParams", "[{0}] 正在加载默认参数"), ((IRecipeService)this).StationIdentifier));
                 _internalParameters = new TParameters();
                 SetDefaultParameterValues();
-                _logger.Info($"[{((IRecipeService)this).StationIdentifier}] 默认参数加载完成");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("RS_Log_DefaultParamsLoaded", "[{0}] 默认参数加载完成"), ((IRecipeService)this).StationIdentifier));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{((IRecipeService)this).StationIdentifier}] 加载默认参数失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("RS_Log_LoadDefaultParamsFailed", "[{0}] 加载默认参数失败: {1}"), ((IRecipeService)this).StationIdentifier, ex.Message));
                 _internalParameters = new TParameters();
             }
         }
 
         private void SetDefaultParameterValues()
         {
-            _logger.Debug($"[{((IRecipeService)this).StationIdentifier}] 参数默认值已设置");
+            _logger.Debug(string.Format(_localization.GetResourceOrDefault("RS_Log_DefaultParamsSet", "[{0}] 参数默认值已设置"), ((IRecipeService)this).StationIdentifier));
         }
 
         private void ApplyParametersToHardware() { }

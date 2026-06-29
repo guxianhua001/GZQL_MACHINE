@@ -1,3 +1,4 @@
+using Core.Extensions;
 using Core.Utilities;
 using DryIoc;
 using MotionControl.Interfaces;
@@ -67,7 +68,7 @@ namespace StationTasks
             _logger = containerProvider.Resolve<ILoggerService>();
 
             var tasks = containerProvider.Resolve<IEnumerable<ITask>>().ToList();
-            _logger.Info($"[StationTasksModule] 已解析 {tasks.Count} 个工站任务并完成自注册");
+            _logger.Info(ResourceHelper.GetString("STM_Log_TasksResolvedAndRegistered", tasks.Count));
         }
     }
 }

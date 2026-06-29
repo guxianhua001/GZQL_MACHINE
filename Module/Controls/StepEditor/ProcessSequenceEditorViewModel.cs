@@ -359,10 +359,10 @@ namespace Module.ViewModels
         {
             if (SelectedStep == null)
             {
-                _logger.Info("[OpenStepDetail] SelectedStep为null，跳过");
+                _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_SelectedStepNullSkip", "[OpenStepDetail] SelectedStep为null，跳过"));
                 return;
             }
-            _logger.Info($"[OpenStepDetail] 步骤: Seq={SelectedStep.Seq}, Step={SelectedStep.Step}, CompFeature={SelectedStep.CompFeature}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_OpenStepDetailInfo", "[OpenStepDetail] 步骤: Seq={0}, Step={1}, CompFeature={2}"), SelectedStep.Seq, SelectedStep.Step, SelectedStep.CompFeature));
             OpenStepDetailForStep(SelectedStep);
         }
 
@@ -373,20 +373,20 @@ namespace Module.ViewModels
         {
             if (step == null) return;
 
-            _logger.Info($"[OpenStepDetailForStep] 步骤类型={step.Step}, Seq={step.Seq}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_OpenStepDetailForStepInfo", "[OpenStepDetailForStep] 步骤类型={0}, Seq={1}"), step.Step, step.Seq));
 
             switch (step.Step)
             {
                 case StepType.DASHBOARD:
-                    _logger.Info("[OpenStepDetailForStep] → 调用 OnOpenDashboard");
+                    _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_CallOnOpenDashboard", "[OpenStepDetailForStep] → 调用 OnOpenDashboard"));
                     OnOpenDashboard(step);
                     break;
                 case StepType.BRANCH:
-                    _logger.Info("[OpenStepDetailForStep] → 调用 OnOpenBranchConfig");
+                    _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_CallOnOpenBranchConfig", "[OpenStepDetailForStep] → 调用 OnOpenBranchConfig"));
                     OnOpenBranchConfig(step);
                     break;
                 default:
-                    _logger.Info($"[OpenStepDetailForStep] → 调用 NavigateToDetailView (类型={step.Step})");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_CallNavigateToDetailView", "[OpenStepDetailForStep] → 调用 NavigateToDetailView (类型={0})"), step.Step));
                     NavigateToDetailView(step);
                     break;
             }
@@ -645,7 +645,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Warn($"自动保存序列失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_AutoSaveSequenceFailed", "自动保存序列失败: {0}"), ex.Message));
             }
         }
 
@@ -777,14 +777,14 @@ namespace Module.ViewModels
         /// <summary> 打开数据看板弹窗（编辑器中预览/配置模式） </summary>
         private async void OnOpenDashboard(ProcessStep step)
         {
-            _logger.Info($"[OnOpenDashboard] 开始, step={(step != null ? $"Seq={step.Seq}" : "null")}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_OnOpenDashboardStart", "[OnOpenDashboard] 开始, step={0}"), step != null ? string.Format(_localization.GetResourceOrDefault("PSEdit_Log_SeqValue", "Seq={0}"), step.Seq) : "null"));
 
             if (step == null) return;
 
             // 如果DashboardDetail为null，自动创建默认配置
             if (step.DashboardDetail == null)
             {
-                _logger.Info("[OnOpenDashboard] DashboardDetail为null，创建默认配置");
+                _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_DashboardDetailNullCreateDefault", "[OnOpenDashboard] DashboardDetail为null，创建默认配置"));
                 step.DashboardDetail = new Core.Models.DashboardStepDetail
                 {
                     Fields = new List<Core.Models.DashboardField>
@@ -800,13 +800,13 @@ namespace Module.ViewModels
 
             try
             {
-                _logger.Info("[OnOpenDashboard] 解析 DataDashboardViewModel...");
+                _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_ResolveDataDashboardViewModel", "[OnOpenDashboard] 解析 DataDashboardViewModel..."));
                 var vm = _containerProvider.Resolve<DataDashboardViewModel>();
-                _logger.Info("[OnOpenDashboard] 创建 DataDashboardView...");
+                _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_CreateDataDashboardView", "[OnOpenDashboard] 创建 DataDashboardView..."));
                 var view = new DataDashboardView();
                 view.DataContext = vm;
 
-                _logger.Info($"[OnOpenDashboard] 加载看板数据, Fields数量={step.DashboardDetail.Fields?.Count ?? 0}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_LoadDashboardData", "[OnOpenDashboard] 加载看板数据, Fields数量={0}"), step.DashboardDetail.Fields?.Count ?? 0));
                 vm.ApplyPayload(new StationTasks.Events.ShowDashboardPayload
                 {
                     Step = step,
@@ -816,13 +816,13 @@ namespace Module.ViewModels
                     IsExecutionMode = false
                 });
 
-                _logger.Info($"[OnOpenDashboard] 调用 ShowStepDetailDialog (BaseDialogWindow)...");
+                _logger.Info(_localization.GetResourceOrDefault("PSEdit_Log_CallShowStepDetailDialog", "[OnOpenDashboard] 调用 ShowStepDetailDialog (BaseDialogWindow)..."));
                 await ShowStepDetailDialog(view, "PSE_DialogTitleDashboard", "MonitorDashboard");
-                _logger.Info($"[OnOpenDashboard] 已打开步骤 [{step.Seq}] 的数据看板");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_DashboardOpened", "[OnOpenDashboard] 已打开步骤 [{0}] 的数据看板"), step.Seq));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[OnOpenDashboard] ❌ 打开数据看板失败: {ex.Message}\n{ex.StackTrace}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_OpenDashboardFailed", "[OnOpenDashboard] ❌ 打开数据看板失败: {0}\n{1}"), ex.Message, ex.StackTrace));
             }
         }
 
@@ -925,7 +925,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"单独执行步骤 [{targetStep.Seq}] 失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_RunSingleStepFailed", "单独执行步骤 [{0}] 失败: {1}"), targetStep.Seq, ex.Message));
             }
             finally
             {
@@ -962,7 +962,7 @@ namespace Module.ViewModels
             };
 
             CurrentTask.Steps.Add(newStep);
-            _logger.Info($"[ProcessSequenceEditor] 已插入 DASHBOARD 步骤 [Seq={nextSeq}]");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_DashboardStepInserted", "[ProcessSequenceEditor] 已插入 DASHBOARD 步骤 [Seq={0}]"), nextSeq));
         }
 
         /// <summary> 打开条件分支配置对话框（编辑器中配置模式） </summary>
@@ -1002,12 +1002,12 @@ namespace Module.ViewModels
                 vm.Step = step;
 
                 await ShowStepDetailDialog(view, "PSE_DialogTitleBranch", "SourceBranch");
-                _logger.Info($"[ProcessSequenceEditor] 已更新步骤 [{step.Seq}] 的条件分支配置");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_BranchConfigUpdated", "[ProcessSequenceEditor] 已更新步骤 [{0}] 的条件分支配置"), step.Seq));
                 await AutoSaveSequenceAsync();
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequenceEditor] 打开条件分支配置失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_OpenBranchConfigFailed", "[ProcessSequenceEditor] 打开条件分支配置失败: {0}"), ex.Message));
             }
         }
 
@@ -1041,7 +1041,7 @@ namespace Module.ViewModels
             };
 
             CurrentTask.Steps.Add(newStep);
-            _logger.Info($"[ProcessSequenceEditor] 已插入 BRANCH 条件分支步骤 [Seq={nextSeq}]");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_BranchStepInserted", "[ProcessSequenceEditor] 已插入 BRANCH 条件分支步骤 [Seq={0}]"), nextSeq));
         }
 
         /// <summary>
@@ -1073,7 +1073,7 @@ namespace Module.ViewModels
             };
 
             CurrentTask.Steps.Add(newStep);
-            _logger.Info($"[ProcessSequenceEditor] 已插入 IF 条件块步骤 [Seq={nextSeq}]");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_IfStepInserted", "[ProcessSequenceEditor] 已插入 IF 条件块步骤 [Seq={0}]"), nextSeq));
 
             // 立即打开配置对话框
             ShowIfDetailDialog(newStep);
@@ -1100,7 +1100,7 @@ namespace Module.ViewModels
                     // 为子步骤分配序号（基于分支组内现有数量）
                     step.Seq = branch.Steps.Count + 1;
                     branch.Steps.Add(step);
-                    _logger.Info($"[ProcessSequenceEditor] 已在 IF {branch.Header} 分支下添加子步骤 [{step.Seq}] {step.Step}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_IfSubStepAdded", "[ProcessSequenceEditor] 已在 IF {0} 分支下添加子步骤 [{1}] {2}"), branch.Header, step.Seq, step.Step));
                     _ = AutoSaveSequenceAsync();
                 }
             });
@@ -1133,12 +1133,12 @@ namespace Module.ViewModels
                 vm.Step = step;
 
                 await ShowStepDetailDialog(view, "PSE_DialogTitleIf", "SourceBranch");
-                _logger.Info($"[ProcessSequenceEditor] 已更新 IF 步骤 [{step.Seq}] 的条件配置");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_IfConfigUpdated", "[ProcessSequenceEditor] 已更新 IF 步骤 [{0}] 的条件配置"), step.Seq));
                 await AutoSaveSequenceAsync();
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequenceEditor] 打开 IF 配置对话框失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("PSEdit_Log_OpenIfConfigFailed", "[ProcessSequenceEditor] 打开 IF 配置对话框失败: {0}"), ex.Message));
             }
         }
 

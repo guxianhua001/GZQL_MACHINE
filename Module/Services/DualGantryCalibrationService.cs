@@ -24,6 +24,14 @@ namespace Module.Services
         private readonly IPositionMotionController _motionController;
         private readonly ITCPEventService _tcpEventService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
+
+        /// <summary>获取多语言格式化字符串</summary>
+        private string L(string key, string fallback, params object[] args)
+        {
+            var format = _localization?.GetResourceOrDefault(key, fallback) ?? fallback;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
 
         /// <summary>线程同步锁，保护共享资源（CTS/TCS/事件处理器/连接名）</summary>
         private readonly object _lock = new object();
@@ -84,16 +92,18 @@ namespace Module.Services
         public event Action<int, string>? CalibrationError;
 
         /// <summary>
-        /// 构造函数——注入运动控制器、TCP事件服务、日志服务
+        /// 构造函数——注入运动控制器、TCP事件服务、日志服务、多语言服务
         /// </summary>
         public DualGantryCalibrationService(
             IPositionMotionController motionController,
             ITCPEventService tcpEventService,
-            ILoggerService logger)
+            ILoggerService logger,
+            ILocalizationService localization)
         {
             _motionController = motionController;
             _tcpEventService = tcpEventService;
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>
@@ -130,7 +140,7 @@ namespace Module.Services
 
             try
             {
-                _logger.Info($"双龙门标定: 启动龙门{gantryId}自动标定，共 {points.Count} 个点位");
+                _logger.Info(L("DGC_Log_StartAutoCalibration", "双龙门标定: 启动龙门{0}自动标定，共 {1} 个点位", gantryId, points.Count));
 
                 // 订阅视觉数据
                 if (config.EnableVisionData && !string.IsNullOrEmpty(tcpConnection))
@@ -158,7 +168,7 @@ namespace Module.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.Warn($"双龙门标定: 龙门{gantryId}发送触发命令失败 - {ex.Message}");
+                            _logger.Warn(L("DGC_Log_SendTriggerCommandFailed", "双龙门标定: 龙门{0}发送触发命令失败 - {1}", gantryId, ex.Message));
                         }
                     }
 
@@ -190,7 +200,7 @@ namespace Module.Services
                             }
                             else
                             {
-                                _logger.Warn($"双龙门标定: 龙门{gantryId}点位 {point.Name} 等待视觉数据超时");
+                                _logger.Warn(L("DGC_Log_VisionDataTimeout", "双龙门标定: 龙门{0}点位 {1} 等待视觉数据超时", gantryId, point.Name));
                             }
                         }
                         finally
@@ -220,21 +230,21 @@ namespace Module.Services
                 {
                     var result = ComputeCalibration(calibratedPoints);
                     GantryCalibrationCompleted?.Invoke(gantryId, result);
-                    _logger.Info($"双龙门标定: 龙门{gantryId}标定完成，RMS={result.RmsError}mm，点数={result.PointCount}");
+                    _logger.Info(L("DGC_Log_CalibrationCompleted", "双龙门标定: 龙门{0}标定完成，RMS={1}mm，点数={2}", gantryId, result.RmsError, result.PointCount));
                 }
                 else
                 {
-                    _logger.Warn($"双龙门标定: 龙门{gantryId}已标定点数不足3个，无法计算仿射");
+                    _logger.Warn(L("DGC_Log_InsufficientPoints", "双龙门标定: 龙门{0}已标定点数不足3个，无法计算仿射", gantryId));
                 }
             }
             catch (OperationCanceledException)
             {
-                _logger.Info($"双龙门标定: 龙门{gantryId}自动标定已取消");
+                _logger.Info(L("DGC_Log_AutoCalibrationCanceled", "双龙门标定: 龙门{0}自动标定已取消", gantryId));
                 CalibrationError?.Invoke(gantryId, "自动标定已取消");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, $"双龙门标定: 龙门{gantryId}自动标定异常");
+                _logger.Error(ex, L("DGC_Log_AutoCalibrationException", "双龙门标定: 龙门{0}自动标定异常", gantryId));
                 CalibrationError?.Invoke(gantryId, $"自动标定异常: {ex.Message}");
             }
             finally
@@ -264,7 +274,7 @@ namespace Module.Services
                 _gantry1Cts?.Cancel();
                 _gantry2Cts?.Cancel();
             }
-            _logger.Info("双龙门标定: 已停止所有自动标定流程");
+            _logger.Info(L("DGC_Log_StoppedAllAutoCalibration", "双龙门标定: 已停止所有自动标定流程"));
         }
 
         /// <summary>
@@ -328,7 +338,7 @@ namespace Module.Services
 
             if (string.IsNullOrEmpty(connectionName))
             {
-                _logger.Warn($"双龙门标定: 龙门{gantryId}订阅连接名为空，跳过订阅");
+                _logger.Warn(L("DGC_Log_SubscribeConnectionNameEmpty", "双龙门标定: 龙门{0}订阅连接名为空，跳过订阅", gantryId));
                 return;
             }
 
@@ -356,7 +366,7 @@ namespace Module.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"双龙门标定: 龙门{gantryId}解析视觉数据失败 - {ex.Message}, 原始数据: {message}");
+                    _logger.Warn(L("DGC_Log_ParseVisionDataFailed", "双龙门标定: 龙门{0}解析视觉数据失败 - {1}, 原始数据: {2}", gantryId, ex.Message, message));
                 }
             };
 
@@ -375,7 +385,7 @@ namespace Module.Services
             }
 
             _tcpEventService.CameraMessageReceived += handler;
-            _logger.Info($"双龙门标定: 龙门{gantryId}已订阅TCP视觉数据，连接名: {connectionName}");
+            _logger.Info(L("DGC_Log_SubscribedTcpVisionData", "双龙门标定: 龙门{0}已订阅TCP视觉数据，连接名: {1}", gantryId, connectionName));
         }
 
         /// <summary>取消订阅指定龙门的TCP视觉数据</summary>
@@ -407,7 +417,7 @@ namespace Module.Services
             if (handler != null)
             {
                 _tcpEventService.CameraMessageReceived -= handler;
-                _logger.Info($"双龙门标定: 龙门{gantryId}已取消订阅TCP视觉数据，连接名: {connectionName}");
+                _logger.Info(L("DGC_Log_UnsubscribedTcpVisionData", "双龙门标定: 龙门{0}已取消订阅TCP视觉数据，连接名: {1}", gantryId, connectionName));
             }
         }
 
@@ -465,7 +475,7 @@ namespace Module.Services
 
             try
             {
-                _logger.Info($"双龙门标定: 采集Cam1公共基准，CommonY1={commonY1}");
+                _logger.Info(L("DGC_Log_CaptureRefGantry1Start", "双龙门标定: 采集Cam1公共基准，CommonY1={0}", commonY1));
 
                 // 4. 触发Cam1拍照
                 if (!string.IsNullOrEmpty(config.Gantry1TcpConnection) && !string.IsNullOrEmpty(config.Gantry1TriggerCommand))
@@ -476,7 +486,7 @@ namespace Module.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"双龙门标定: 触发Cam1失败 - {ex.Message}");
+                        _logger.Warn(L("DGC_Log_TriggerCam1Failed", "双龙门标定: 触发Cam1失败 - {0}", ex.Message));
                     }
                 }
 
@@ -487,12 +497,12 @@ namespace Module.Services
                 if (completed == tcs.Task)
                 {
                     var visionData = await tcs.Task;
-                    _logger.Info($"双龙门标定: Cam1公共基准采集完成，视觉=({visionData.X},{visionData.Y})");
+                    _logger.Info(L("DGC_Log_CaptureRefGantry1Done", "双龙门标定: Cam1公共基准采集完成，视觉=({0},{1})", visionData.X, visionData.Y));
                     return (commonY1, visionData.X, visionData.Y);
                 }
                 else
                 {
-                    _logger.Warn("双龙门标定: 等待Cam1视觉数据超时");
+                    _logger.Warn(L("DGC_Log_Cam1VisionDataTimeout", "双龙门标定: 等待Cam1视觉数据超时"));
                     return (commonY1, 0, 0);
                 }
             }
@@ -535,7 +545,7 @@ namespace Module.Services
 
             try
             {
-                _logger.Info($"双龙门标定: 采集Cam2公共基准，CommonY2={commonY2}");
+                _logger.Info(L("DGC_Log_CaptureRefGantry2Start", "双龙门标定: 采集Cam2公共基准，CommonY2={0}", commonY2));
 
                 // 4. 触发Cam2拍照
                 if (!string.IsNullOrEmpty(config.Gantry2TcpConnection) && !string.IsNullOrEmpty(config.Gantry2TriggerCommand))
@@ -546,7 +556,7 @@ namespace Module.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"双龙门标定: 触发Cam2失败 - {ex.Message}");
+                        _logger.Warn(L("DGC_Log_TriggerCam2Failed", "双龙门标定: 触发Cam2失败 - {0}", ex.Message));
                     }
                 }
 
@@ -557,12 +567,12 @@ namespace Module.Services
                 if (completed == tcs.Task)
                 {
                     var visionData = await tcs.Task;
-                    _logger.Info($"双龙门标定: Cam2公共基准采集完成，视觉=({visionData.X},{visionData.Y})");
+                    _logger.Info(L("DGC_Log_CaptureRefGantry2Done", "双龙门标定: Cam2公共基准采集完成，视觉=({0},{1})", visionData.X, visionData.Y));
                     return (commonY2, visionData.X, visionData.Y);
                 }
                 else
                 {
-                    _logger.Warn("双龙门标定: 等待Cam2视觉数据超时");
+                    _logger.Warn(L("DGC_Log_Cam2VisionDataTimeout", "双龙门标定: 等待Cam2视觉数据超时"));
                     return (commonY2, 0, 0);
                 }
             }
@@ -708,7 +718,7 @@ namespace Module.Services
 
             GantryTransformComputed?.Invoke(transform);
             _cachedGantryTransform = transform;
-            _logger.Info($"双龙门标定: 跨龙门对齐完成，Offset=({transform.OffsetX},{transform.OffsetY})，旋转={transform.RotationDeg}°，残差={transform.Residual}mm");
+            _logger.Info(L("DGC_Log_GantryTransformComputed", "双龙门标定: 跨龙门对齐完成，Offset=({0},{1})，旋转={2}°，残差={3}mm", transform.OffsetX, transform.OffsetY, transform.RotationDeg, transform.Residual));
 
             return transform;
         }

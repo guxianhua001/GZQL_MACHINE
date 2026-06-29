@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using StationTasks.Models;
 using StationTasks.Tasks;
@@ -15,13 +16,15 @@ namespace StationTasks.Actions
     public class IfStepAction : IProcessStepAction
     {
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         /// <summary> 该 Action 支持的步骤类型：IF </summary>
         public StepType SupportedStepType => StepType.IF;
 
-        public IfStepAction(ILoggerService logger)
+        public IfStepAction(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>
@@ -30,7 +33,9 @@ namespace StationTasks.Actions
         /// </summary>
         public Task ExecuteAsync(ProcessStep step, StationTaskBase task, CancellationToken token)
         {
-            _logger.Info($"IF 步骤 [{step.Seq}] 条件评估由 ProcessStepExecutor 处理");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("If_Log_ConditionHandledByExecutor", "IF 步骤 [{0}] 条件评估由 ProcessStepExecutor 处理"),
+                step.Seq));
             return Task.CompletedTask;
         }
     }

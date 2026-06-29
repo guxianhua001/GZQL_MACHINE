@@ -17,6 +17,7 @@ namespace StationTasks.Services
     public class RecipeServiceFactory : IRecipeServiceFactory
     {
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly IDialogService _dialogService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IParameterEditor _parameterEditor;
@@ -38,6 +39,7 @@ namespace StationTasks.Services
 
         public RecipeServiceFactory(
             ILoggerService logger,
+            ILocalizationService localization,
             IDialogService dialogService,
             IEventAggregator eventAggregator,
             IParameterEditor parameterEditor,
@@ -48,6 +50,7 @@ namespace StationTasks.Services
             IRecipeDialogService recipeDialogService)
         {
             _logger = logger;
+            _localization = localization;
             _dialogService = dialogService;
             _eventAggregator = eventAggregator;
             _parameterEditor = parameterEditor;
@@ -65,7 +68,7 @@ namespace StationTasks.Services
         {
             if (!StationParameterTypeMap.TryGetValue(stationIdentifier, out var paramType))
             {
-                _logger?.Warn($"未知的工站标识符: {stationIdentifier}，使用默认参数类型");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("RSF_Log_UnknownStationIdentifier", "未知的工站标识符: {0}，使用默认参数类型"), stationIdentifier));
                 paramType = typeof(TaskParametersBase);
             }
 
@@ -74,6 +77,7 @@ namespace StationTasks.Services
                 stationIdentifier,
                 stationName,
                 _logger,
+                _localization,
                 _dialogService,
                 _eventAggregator,
                 _parameterEditor,

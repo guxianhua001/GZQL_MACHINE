@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using StationTasks.Models;
@@ -13,12 +14,14 @@ namespace StationTasks.Actions
     public class WaitStepAction : IProcessStepAction
     {
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.WAIT;
 
-        public WaitStepAction(ILoggerService logger)
+        public WaitStepAction(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>
@@ -28,11 +31,15 @@ namespace StationTasks.Actions
         {
             double delayMs = step.WaitDetail?.ActualDelayMs ?? 1000;
 
-            _logger.Info($"WAIT 步骤 [{step.Seq}] 开始延时: {delayMs} ms");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Wait_Log_StartDelay", "WAIT 步骤 [{0}] 开始延时: {1} ms"),
+                step.Seq, delayMs));
 
             await Task.Delay((int)delayMs, token);
 
-            _logger.Info($"WAIT 步骤 [{step.Seq}] 延时完成: {delayMs} ms");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("Wait_Log_DelayCompleted", "WAIT 步骤 [{0}] 延时完成: {1} ms"),
+                step.Seq, delayMs));
         }
     }
 }

@@ -59,8 +59,9 @@ namespace StationTasks.Tasks
             ISpeedOverrideService speedOverride,
             int taskId,
             string taskName,
-            string stationId)
-            : base(motion, positionProvider, interaction, ea, logger, alarmService, systemState, stationRegistry, speedOverride, taskId, taskName, stationId)
+            string stationId,
+            ILocalizationService localization)
+            : base(motion, positionProvider, interaction, ea, logger, alarmService, systemState, stationRegistry, speedOverride, taskId, taskName, stationId, localization)
         {
             _logger = logger;
             _recipePoolService = recipePoolService;
@@ -75,7 +76,7 @@ namespace StationTasks.Tasks
 
             // 自注册到工站注册表
             _stationRegistry.Register(this);
-            _logger.Info($"[{StationIdentifierValue}] 已注册到工站注册表");
+            _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_RegisteredToStationRegistry", "[{0}] 已注册到工站注册表"), StationIdentifierValue));
 
             _ = InitializeRecipeAsync();
         }
@@ -92,11 +93,11 @@ namespace StationTasks.Tasks
                 await _recipeService.LoadRecipeParameters(currentPoolName, currentRecipeName).ConfigureAwait(false);
 
                 _internalParameters = _recipeService.GetParameters<TParameters>();
-                _logger.Info($"[{StationIdentifierValue}] 配方参数初始化完成: {currentRecipeName}");
+                _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_RecipeParamsInitCompleted", "[{0}] 配方参数初始化完成: {1}"), StationIdentifierValue, currentRecipeName));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{StationIdentifierValue}] 配方参数初始化失败: {ex.Message}");
+                _logger.Error(string.Format(Localization.GetResourceOrDefault("RSB_Log_RecipeParamsInitFailed", "[{0}] 配方参数初始化失败: {1}"), StationIdentifierValue, ex.Message));
             }
         }
 
@@ -113,14 +114,14 @@ namespace StationTasks.Tasks
             {
                 _internalParameters = typedParams;
                 _hasUnsavedChanges = false;
-                _logger.Info($"[{StationIdentifierValue}] 配方参数已应用: {CurrentRecipeName}");
+                _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_RecipeParamsApplied", "[{0}] 配方参数已应用: {1}"), StationIdentifierValue, CurrentRecipeName));
             }
         }
 
         private void OnRecipeChanged(object sender, string newRecipeName)
         {
             _hasUnsavedChanges = false;
-            _logger.Info($"[{StationIdentifierValue}] 配方已切换: {newRecipeName}");
+            _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_RecipeSwitched", "[{0}] 配方已切换: {1}"), StationIdentifierValue, newRecipeName));
         }
 
         private void OnParametersLoaded(object sender, object parameters)
@@ -128,7 +129,7 @@ namespace StationTasks.Tasks
             if (parameters is TParameters typedParams)
             {
                 _internalParameters = typedParams;
-                _logger.Info($"[{StationIdentifierValue}] 配方参数已加载: {CurrentRecipeName}");
+                _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_RecipeParamsLoaded", "[{0}] 配方参数已加载: {1}"), StationIdentifierValue, CurrentRecipeName));
             }
         }
 
@@ -145,11 +146,11 @@ namespace StationTasks.Tasks
                 _recipePoolService.StageStationParameters(StationIdentifierValue, parameters);
                 await _recipeService.SaveCurrentParameters().ConfigureAwait(false);
                 _hasUnsavedChanges = false;
-                _logger.Info($"[{StationIdentifierValue}] 参数已暂存并保存");
+                _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_ParamsStagedAndSaved", "[{0}] 参数已暂存并保存"), StationIdentifierValue));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{StationIdentifierValue}] 保存参数失败: {ex.Message}");
+                _logger.Error(string.Format(Localization.GetResourceOrDefault("RSB_Log_SaveParamsFailed", "[{0}] 保存参数失败: {1}"), StationIdentifierValue, ex.Message));
             }
         }
 
@@ -162,17 +163,17 @@ namespace StationTasks.Tasks
         {
             try
             {
-                _logger.Info($"[{StationIdentifierValue}] 批量切换到配方: {newRecipeName}");
+                _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_BatchSwitchToRecipe", "[{0}] 批量切换到配方: {1}"), StationIdentifierValue, newRecipeName));
 
                 await _recipeService.LoadRecipeParameters(batchContext.PoolName, newRecipeName).ConfigureAwait(false);
 
                 _internalParameters = _recipeService.GetParameters<TParameters>();
 
-                _logger.Info($"[{StationIdentifierValue}] 批量切换完成: {newRecipeName}");
+                _logger.Info(string.Format(Localization.GetResourceOrDefault("RSB_Log_BatchSwitchCompleted", "[{0}] 批量切换完成: {1}"), StationIdentifierValue, newRecipeName));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[{StationIdentifierValue}] 批量切换配方失败: {ex.Message}");
+                _logger.Error(string.Format(Localization.GetResourceOrDefault("RSB_Log_BatchSwitchFailed", "[{0}] 批量切换配方失败: {1}"), StationIdentifierValue, ex.Message));
             }
         }
 

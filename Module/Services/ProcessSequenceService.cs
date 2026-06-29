@@ -338,7 +338,9 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequence] 读取最近文件列表失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_LoadRecentFailed", "[ProcessSequence] 读取最近文件列表失败: {0}"),
+                    ex.Message));
             }
             return result;
         }
@@ -355,7 +357,9 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequence] 保存最近文件列表失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_SaveRecentFailed", "[ProcessSequence] 保存最近文件列表失败: {0}"),
+                    ex.Message));
             }
         }
 
@@ -481,7 +485,7 @@ namespace Module.Services
                 return;
             }
 
-            _logger.Warn("[ProcessSequence] 不支持跨层级或跨 IF 分支拖拽排序");
+            _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_CrossLevelDragNotSupported", "[ProcessSequence] 不支持跨层级或跨 IF 分支拖拽排序"));
         }
 
         /// <summary> 判断两个步骤是否可在拖拽中互相排序 </summary>
@@ -511,7 +515,9 @@ namespace Module.Services
                 actualTarget = Tasks.Count - 1;
             if (oldIndex == actualTarget) return;
             Tasks.Move(oldIndex, actualTarget);
-            _logger.Info($"[ProcessSequence] 任务 [{task.Name}] 已从位置 {oldIndex} 移动到 {actualTarget}");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_TaskMoved", "[ProcessSequence] 任务 [{0}] 已从位置 {1} 移动到 {2}"),
+                task.Name, oldIndex, actualTarget));
         }
 
         public void AddTask(bool isDefault = false)
@@ -747,7 +753,9 @@ namespace Module.Services
         {
             if (_motionInterlock.CanExecuteManualMotion)
                 return true;
-            _logger.Warn($"[ProcessSequence] {operationName} 被拒绝: {_motionInterlock.GetBlockedMessage()}");
+            _logger.Warn(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_OperationRejected", "[ProcessSequence] {0} 被拒绝: {1}"),
+                operationName, _motionInterlock.GetBlockedMessage()));
             return false;
         }
 
@@ -759,9 +767,11 @@ namespace Module.Services
         {
             var firstStation = _stationRegistry.GetAllStations().OfType<StationTaskBase>().FirstOrDefault();
             if (firstStation == null)
-                _logger.Warn("[ProcessSequence] 未找到任何已注册的工站任务");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_NoStationTaskRegistered", "[ProcessSequence] 未找到任何已注册的工站任务"));
             else
-                _logger.Info($"[ProcessSequence] 使用执行宿主: {firstStation.TaskName}");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_UseExecutionHost", "[ProcessSequence] 使用执行宿主: {0}"),
+                    firstStation.TaskName));
             return firstStation;
         }
 
@@ -779,7 +789,9 @@ namespace Module.Services
             if (stationTask == null) return;
             if (stationTask.State == TaskState.Running)
             {
-                _logger.Warn($"[ProcessSequence] 工站 [{stationTask.TaskName}] 状态遗留 Running，强制复位后启动");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_StationRunningForceReset", "[ProcessSequence] 工站 [{0}] 状态遗留 Running，强制复位后启动"),
+                    stationTask.TaskName));
                 stationTask.StopAsync();
                 stationTask.ResetMotionPause();
             }
@@ -812,17 +824,19 @@ namespace Module.Services
         public void StartTask()
         {
             if (CurrentTask == null) return;
-            if (!EnsureMachineReadyForSequence("启动任务"))
+            if (!EnsureMachineReadyForSequence(_localization.GetResourceOrDefault("PSE_Log_Operation_StartTask", "启动任务")))
                 return;
             // 被动任务不可直接启动
             if (CurrentTask.RunMode == TaskRunMode.Passive)
             {
-                _logger.Warn($"[ProcessSequence] 任务 {CurrentTask.Name} 为被动模式，不可直接启动，请通过调用任务动作触发");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_PassiveTaskCannotStart", "[ProcessSequence] 任务 {0} 为被动模式，不可直接启动，请通过调用任务动作触发"),
+                    CurrentTask.Name));
                 return;
             }
             if (_isExecuting)
             {
-                _logger.Warn("[ProcessSequence] 已有任务正在执行，拒绝启动新任务");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_AlreadyExecutingRejectStart", "[ProcessSequence] 已有任务正在执行，拒绝启动新任务"));
                 return;
             }
             var stationTask = FindStationTask();
@@ -835,7 +849,9 @@ namespace Module.Services
             {
                 if (!SelectedMethod.IsEnabled)
                 {
-                    _logger.Warn($"[ProcessSequence] 选中的方法 [{SelectedMethod.Name}] 已禁用，无法执行");
+                    _logger.Warn(string.Format(
+                        _localization.GetResourceOrDefault("PSE_Log_SelectedMethodDisabled", "[ProcessSequence] 选中的方法 [{0}] 已禁用，无法执行"),
+                        SelectedMethod.Name));
                     return;
                 }
                 steps = FlattenMethodSteps(SelectedMethod);
@@ -849,7 +865,7 @@ namespace Module.Services
 
             if (steps == null || steps.Count == 0)
             {
-                _logger.Warn("[ProcessSequence] 没有可执行步骤，无法启动");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_NoExecutableSteps", "[ProcessSequence] 没有可执行步骤，无法启动"));
                 return;
             }
             _executionCts = new CancellationTokenSource();
@@ -865,7 +881,9 @@ namespace Module.Services
             foreach (var step in steps)
                 step.HasActiveAlarm = false;
             ClearDispenseCheckpoints(steps);
-            _logger.Info($"[ProcessSequence] 启动: {executionLabel}，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_SequenceStarted", "[ProcessSequence] 启动: {0}，共 {1} 个步骤，目标工站: {2}"),
+                executionLabel, steps.Count, stationTask.TaskName));
 
             // 异步执行步骤序列
             _ = ExecuteSequenceAsync(stationTask, steps, _executionCts.Token);
@@ -942,7 +960,9 @@ namespace Module.Services
             }
             catch (InvalidOperationException ex)
             {
-                _logger.Error($"[ProcessSequence] 启动失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_StartFailed", "[ProcessSequence] 启动失败: {0}"),
+                    ex.Message));
             }
             finally
             {
@@ -957,7 +977,7 @@ namespace Module.Services
                     // 任务结束后重置步骤高亮到执行列表的第一步
                     ResetStepHighlight(steps);
                 }
-                _logger.Info("[ProcessSequence] 任务执行结束");
+                _logger.Info(_localization.GetResourceOrDefault("PSE_Log_TaskExecutionEnded", "[ProcessSequence] 任务执行结束"));
             }
         }
 
@@ -983,7 +1003,7 @@ namespace Module.Services
             }
             CurrentTask.Status = TaskItem.TaskStatusEnum.Stopped;
             ResetStepHighlight();
-            _logger.Info("[ProcessSequence] 任务已停止");
+            _logger.Info(_localization.GetResourceOrDefault("PSE_Log_TaskStopped", "[ProcessSequence] 任务已停止"));
         }
 
         /// <summary> 暂停当前任务，遍历所有工站停止运动轴并取消暂停令牌（安全关键） </summary>
@@ -998,7 +1018,7 @@ namespace Module.Services
             foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
                 station.CancelMotionPause();
             CurrentTask.Status = TaskItem.TaskStatusEnum.Paused;
-            _logger.Info("[ProcessSequence] 任务已暂停");
+            _logger.Info(_localization.GetResourceOrDefault("PSE_Log_TaskPaused", "[ProcessSequence] 任务已暂停"));
         }
 
         /// <summary> 恢复当前任务，遍历所有工站重置暂停令牌（跨工站轴恢复通过 RunStep 重试自动完成） </summary>
@@ -1013,7 +1033,7 @@ namespace Module.Services
             foreach (var station in _stationRegistry.GetAllStations().OfType<StationTaskBase>())
                 station.ResetMotionPause();
             CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
-            _logger.Info("[ProcessSequence] 任务已恢复");
+            _logger.Info(_localization.GetResourceOrDefault("PSE_Log_TaskResumed", "[ProcessSequence] 任务已恢复"));
         }
 
         // ========== 方法级控制（独立执行单个方法） ==========
@@ -1034,20 +1054,26 @@ namespace Module.Services
         {
             if (method == null)
             {
-                _logger.Warn("[ProcessSequence] 启动方法失败：方法为空");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_StartMethodFailedNull", "[ProcessSequence] 启动方法失败：方法为空"));
                 return;
             }
-            if (!EnsureMachineReadyForSequence($"启动方法 [{method.Name}]"))
+            if (!EnsureMachineReadyForSequence(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_Operation_StartMethod", "启动方法 [{0}]"),
+                method.Name)))
                 return;
             // 互斥检查：任务级或方法级执行正在进行时拒绝启动
             if (_isExecuting)
             {
-                _logger.Warn($"[ProcessSequence] 已有任务/方法正在执行，拒绝启动方法 [{method.Name}]");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_RejectStartMethodBusy", "[ProcessSequence] 已有任务/方法正在执行，拒绝启动方法 [{0}]"),
+                    method.Name));
                 return;
             }
             if (!method.IsEnabled)
             {
-                _logger.Warn($"[ProcessSequence] 方法 [{method.Name}] 已禁用，无法执行");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_MethodDisabled", "[ProcessSequence] 方法 [{0}] 已禁用，无法执行"),
+                    method.Name));
                 return;
             }
             // Stopped 为停止后遗留状态，启动前规范为 Idle
@@ -1060,7 +1086,9 @@ namespace Module.Services
             var steps = FlattenMethodSteps(method);
             if (steps == null || steps.Count == 0)
             {
-                _logger.Warn($"[ProcessSequence] 方法 [{method.Name}] 没有可执行步骤，无法启动");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_MethodNoSteps", "[ProcessSequence] 方法 [{0}] 没有可执行步骤，无法启动"),
+                    method.Name));
                 return;
             }
 
@@ -1082,7 +1110,9 @@ namespace Module.Services
             foreach (var step in steps)
                 step.HasActiveAlarm = false;
             ClearDispenseCheckpoints(method);
-            _logger.Info($"[ProcessSequence] 启动方法: [{method.Name}]，共 {steps.Count} 个步骤，目标工站: {stationTask.TaskName}");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_MethodStarted", "[ProcessSequence] 启动方法: [{0}]，共 {1} 个步骤，目标工站: {2}"),
+                method.Name, steps.Count, stationTask.TaskName));
 
             // 异步执行方法步骤序列
             _ = ExecuteMethodAsync(stationTask, method, steps, _executionCts.Token);
@@ -1123,7 +1153,9 @@ namespace Module.Services
             }
             catch (InvalidOperationException ex)
             {
-                _logger.Error($"[ProcessSequence] 启动方法失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_StartMethodFailed", "[ProcessSequence] 启动方法失败: {0}"),
+                    ex.Message));
             }
             finally
             {
@@ -1140,7 +1172,9 @@ namespace Module.Services
                     CurrentTask.Status = TaskItem.TaskStatusEnum.Idle;
                 // 方法结束后重置步骤高亮到执行列表的第一步
                 ResetStepHighlight(steps);
-                _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 执行结束");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_MethodEnded", "[ProcessSequence] 方法 [{0}] 执行结束"),
+                    method.Name));
             }
         }
 
@@ -1157,7 +1191,9 @@ namespace Module.Services
             _executingMethod.Status = TaskItem.TaskStatusEnum.Paused;
             if (CurrentTask != null)
                 CurrentTask.Status = TaskItem.TaskStatusEnum.Paused;
-            _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已暂停");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_MethodPaused", "[ProcessSequence] 方法 [{0}] 已暂停"),
+                _executingMethod.Name));
         }
 
         /// <summary> 恢复当前被暂停的方法（重建暂停令牌，跨工站轴通过重试自动恢复） </summary>
@@ -1173,7 +1209,9 @@ namespace Module.Services
             _executingMethod.Status = TaskItem.TaskStatusEnum.Running;
             if (CurrentTask != null)
                 CurrentTask.Status = TaskItem.TaskStatusEnum.Running;
-            _logger.Info($"[ProcessSequence] 方法 [{_executingMethod.Name}] 已恢复");
+            _logger.Info(string.Format(
+                _localization.GetResourceOrDefault("PSE_Log_MethodResumed", "[ProcessSequence] 方法 [{0}] 已恢复"),
+                _executingMethod.Name));
         }
 
         /// <summary>
@@ -1199,7 +1237,9 @@ namespace Module.Services
                 }
                 ClearDispenseCheckpoints(method);
                 ResetStepHighlight(_methodExecutionSteps);
-                _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 已停止");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_MethodStopped", "[ProcessSequence] 方法 [{0}] 已停止"),
+                    method.Name));
                 return;
             }
 
@@ -1207,7 +1247,9 @@ namespace Module.Services
             if (method.Status != TaskItem.TaskStatusEnum.Idle)
             {
                 ResetMethodRuntimeState(method);
-                _logger.Info($"[ProcessSequence] 方法 [{method.Name}] 运行状态已重置为 Idle");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_MethodStateResetIdle", "[ProcessSequence] 方法 [{0}] 运行状态已重置为 Idle"),
+                    method.Name));
             }
         }
 
@@ -1241,7 +1283,9 @@ namespace Module.Services
                 {
                     _isSingleStepMode = value;
                     RaisePropertyChanged();
-                    _logger.Info($"[ProcessSequence] 单步模式: {(value ? "已启用" : "已关闭")}");
+                    _logger.Info(_localization.GetResourceOrDefault(
+                        value ? "PSE_Log_SingleStepEnabled" : "PSE_Log_SingleStepDisabled",
+                        value ? "[ProcessSequence] 单步模式: 已启用" : "[ProcessSequence] 单步模式: 已关闭"));
                 }
             }
         }
@@ -1253,7 +1297,7 @@ namespace Module.Services
             if (tcs != null && !tcs.Task.IsCompleted)
             {
                 tcs.TrySetResult(true);
-                _logger.Info("[ProcessSequence] 单步模式：用户确认下一步");
+                _logger.Info(_localization.GetResourceOrDefault("PSE_Log_SingleStepNext", "[ProcessSequence] 单步模式：用户确认下一步"));
             }
         }
 
@@ -1280,7 +1324,9 @@ namespace Module.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.Warn($"[ProcessSequence] 同步执行步骤 UI 失败: {ex.Message}");
+                        _logger.Warn(string.Format(
+                            _localization.GetResourceOrDefault("PSE_Log_SyncStepUiFailed", "[ProcessSequence] 同步执行步骤 UI 失败: {0}"),
+                            ex.Message));
                     }
                 }));
             };
@@ -1305,7 +1351,7 @@ namespace Module.Services
         /// <summary> 重置步骤高亮到执行列表的第一步（不清除 HasActiveAlarm，报警标记在下次启动时清除） </summary>
         private void ResetStepHighlight(ObservableCollection<ProcessStep> executedSteps = null)
         {
-            _logger.Info("[ProcessSequenceService] ResetStepHighlight 被调用");
+            _logger.Info(_localization.GetResourceOrDefault("PSE_Log_ResetStepHighlightCalled", "[ProcessSequenceService] ResetStepHighlight 被调用"));
 
             if (CurrentTask?.Methods != null)
             {
@@ -1326,20 +1372,20 @@ namespace Module.Services
             if (first != null)
                 first.IsCurrent = true;
 
-            _logger.Info("[ProcessSequenceService] ResetStepHighlight 完成");
+            _logger.Info(_localization.GetResourceOrDefault("PSE_Log_ResetStepHighlightDone", "[ProcessSequenceService] ResetStepHighlight 完成"));
         }
 
         /// <summary> 单独执行指定步骤（用于步骤编辑器中的调试运行） </summary>
         public async Task RunSingleStepAsync(ProcessStep step)
         {
             if (step == null || _isExecuting) return;
-            if (!EnsureMachineReadyForSequence("单步执行"))
+            if (!EnsureMachineReadyForSequence(_localization.GetResourceOrDefault("PSE_Log_Operation_SingleStep", "单步执行")))
                 return;
 
             var stationTask = _activeStationTask ?? FindStationTask();
             if (stationTask == null)
             {
-                _logger.Warn("[ProcessSequenceService] 未找到可用的工站任务，无法单独执行步骤");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_NoStationForSingleStep", "[ProcessSequenceService] 未找到可用的工站任务，无法单独执行步骤"));
                 return;
             }
 
@@ -1357,7 +1403,9 @@ namespace Module.Services
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequenceService] 单独执行步骤异常: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_RunSingleStepError", "[ProcessSequenceService] 单独执行步骤异常: {0}"),
+                    ex.Message));
             }
             finally
             {
@@ -1377,34 +1425,45 @@ namespace Module.Services
         {
             if (string.IsNullOrEmpty(targetTaskName))
             {
-                _logger.Warn("[ProcessSequence] RUNTASK: 目标任务名称为空");
+                _logger.Warn(_localization.GetResourceOrDefault("PSE_Log_RunTaskNameEmpty", "[ProcessSequence] RUNTASK: 目标任务名称为空"));
                 return;
             }
             // 循环引用检测
             if (callStack.Contains(targetTaskName))
             {
                 var chain = string.Join(" → ", callStack.Reverse().Concat(new[] { targetTaskName }));
-                _logger.Error($"[ProcessSequence] 检测到循环调用: {chain}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_CircularCall", "[ProcessSequence] 检测到循环调用: {0}"),
+                    chain));
                 var alarmService = (IAlarmService)_containerProvider.Resolve(typeof(IAlarmService));
-                await alarmService.TriggerAlarmAsync("PSE_CIRCULAR_CALL", AlarmLevel.Serious, $"循环调用: {chain}");
-                throw new InvalidOperationException($"循环调用: {chain}");
+                var alarmMsg = string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_CircularCallAlarm", "循环调用: {0}"),
+                    chain);
+                await alarmService.TriggerAlarmAsync("PSE_CIRCULAR_CALL", AlarmLevel.Serious, alarmMsg);
+                throw new InvalidOperationException(alarmMsg);
             }
             // 查找目标任务
             var targetTask = Tasks.FirstOrDefault(t => t.Name == targetTaskName && t.RunMode == TaskRunMode.Passive);
             if (targetTask == null)
             {
-                _logger.Warn($"[ProcessSequence] RUNTASK: 未找到被动任务 '{targetTaskName}'");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_RunTaskNotFound", "[ProcessSequence] RUNTASK: 未找到被动任务 '{0}'"),
+                    targetTaskName));
                 return;
             }
             if (!targetTask.IsEnabled)
             {
-                _logger.Info($"[ProcessSequence] 跳过禁用任务: {targetTaskName}");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_SkippedDisabledTask", "[ProcessSequence] 跳过禁用任务: {0}"),
+                    targetTaskName));
                 return;
             }
             var steps = FlattenEnabledSteps(targetTask);
             if (steps.Count == 0)
             {
-                _logger.Warn($"[ProcessSequence] RUNTASK: 目标任务 '{targetTaskName}' 没有可执行步骤");
+                _logger.Warn(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_RunTaskNoSteps", "[ProcessSequence] RUNTASK: 目标任务 '{0}' 没有可执行步骤"),
+                    targetTaskName));
                 return;
             }
             // 压入调用栈并递归执行
@@ -1416,9 +1475,13 @@ namespace Module.Services
                 var formulaEvaluator = (IFormulaEvaluator)_containerProvider.Resolve(typeof(IFormulaEvaluator));
                 var executor = new ProcessStepExecutor(callerTask, callerTask.TaskLogger, actions, alarmService, formulaEvaluator, _recipePoolService, this);
                 executor.CallStack = callStack;
-                _logger.Info($"[ProcessSequence] RUNTASK: 开始执行被动任务 '{targetTaskName}'，共 {steps.Count} 步");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_RunTaskStarted", "[ProcessSequence] RUNTASK: 开始执行被动任务 '{0}'，共 {1} 步"),
+                    targetTaskName, steps.Count));
                 await executor.ExecuteAsync(steps, token);
-                _logger.Info($"[ProcessSequence] RUNTASK: 被动任务 '{targetTaskName}' 执行完成");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_RunTaskCompleted", "[ProcessSequence] RUNTASK: 被动任务 '{0}' 执行完成"),
+                    targetTaskName));
             }
             finally
             {
@@ -1511,11 +1574,15 @@ namespace Module.Services
                 using var doc = System.Text.Json.JsonDocument.Parse(json);
                 _appSettingService.Settings.ExtensionData[LastPathKey] = doc.RootElement.Clone();
                 _appSettingService.Save();
-                _logger.Info($"[ProcessSequence] 已保存工序序列路径: {filePath}");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_SequencePathSaved", "[ProcessSequence] 已保存工序序列路径: {0}"),
+                    filePath));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequence] 保存工序序列路径失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_SaveSequencePathFailed", "[ProcessSequence] 保存工序序列路径失败: {0}"),
+                    ex.Message));
             }
         }
 
@@ -1530,14 +1597,18 @@ namespace Module.Services
                     && element.ValueKind == JsonValueKind.String)
                 {
                     var path = element.GetString();
-                    _logger.Info($"[ProcessSequence] 从配置读取上次工序序列路径: {path}");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("PSE_Log_ReadLastPath", "[ProcessSequence] 从配置读取上次工序序列路径: {0}"),
+                        path));
                     return path;
                 }
-                _logger.Info($"[ProcessSequence] 配置中未找到上次工序序列路径 (ExtensionData 中无键或类型非字符串)");
+                _logger.Info(_localization.GetResourceOrDefault("PSE_Log_LastPathNotFound", "[ProcessSequence] 配置中未找到上次工序序列路径 (ExtensionData 中无键或类型非字符串)"));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequence] 读取上次工序序列路径失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_ReadLastPathFailed", "[ProcessSequence] 读取上次工序序列路径失败: {0}"),
+                    ex.Message));
             }
             return null;
         }
@@ -1612,7 +1683,9 @@ namespace Module.Services
             if (speed >= 1 && speed <= 100)
             {
                 _gripperService.ManualOperationSpeed = speed;
-                _logger.Info($"[ProcessSequence] 已加载电爪速度: {speed}%");
+                _logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_GripperSpeedLoaded", "[ProcessSequence] 已加载电爪速度: {0}%"),
+                    speed));
             }
         }
 
@@ -1663,17 +1736,21 @@ namespace Module.Services
                 var lastPath = GetLastSequencePath();
                 if (!string.IsNullOrEmpty(lastPath) && File.Exists(lastPath))
                 {
-                    _logger.Info($"[ProcessSequence] 自动加载上次工序序列: {lastPath}");
+                    _logger.Info(string.Format(
+                        _localization.GetResourceOrDefault("PSE_Log_AutoLoadSequence", "[ProcessSequence] 自动加载上次工序序列: {0}"),
+                        lastPath));
                     await LoadSequenceFromPathAsync(lastPath);
                 }
                 else
                 {
-                    _logger.Info($"[ProcessSequence] 未找到上次工序序列文件，跳过自动加载");
+                    _logger.Info(_localization.GetResourceOrDefault("PSE_Log_AutoLoadSkipped", "[ProcessSequence] 未找到上次工序序列文件，跳过自动加载"));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ProcessSequence] 自动加载工序序列失败: {ex.Message}");
+                _logger.Error(string.Format(
+                    _localization.GetResourceOrDefault("PSE_Log_AutoLoadFailed", "[ProcessSequence] 自动加载工序序列失败: {0}"),
+                    ex.Message));
             }
         }
 

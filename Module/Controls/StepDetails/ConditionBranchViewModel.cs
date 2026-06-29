@@ -594,12 +594,12 @@ namespace Module.ViewModels
                     resultText,
                     branchHint);
 
-                _logger?.Info($"[ConditionBranch] 表达式检测: '{condition.ConditionExpression}' => {result}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("CondBr_Log_ExpressionChecked", "[ConditionBranch] 表达式检测: '{0}' => {1}"), condition.ConditionExpression, result));
             }
             catch (Exception ex)
             {
                 condition.CheckResultMessage = string.Format(CultureInfo.CurrentCulture, L("BranchDetail_CheckFailed"), ex.Message);
-                _logger?.Warn($"[ConditionBranch] 表达式检测失败: {ex.Message}");
+                _logger?.Warn(string.Format(_localization.GetResourceOrDefault("CondBr_Log_ExpressionCheckFailed", "[ConditionBranch] 表达式检测失败: {0}"), ex.Message));
             }
         }
 
@@ -730,7 +730,7 @@ namespace Module.ViewModels
                     .Select(kv => Conditions.IndexOf(kv.Key) + 1)
                     .ToList();
                 string errorMsg = string.Join("\n", errors.Select(kv => $"行{Conditions.IndexOf(kv.Key) + 1}: {kv.Value}"));
-                _logger?.Error($"[ConditionBranch] 存在表达式错误，无法保存: 行 [{string.Join(", ", errorRows)}]");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("CondBr_Log_ExpressionErrorsExist", "[ConditionBranch] 存在表达式错误，无法保存: 行 [{0}]"), string.Join(", ", errorRows)));
                 System.Windows.MessageBox.Show(
                     $"条件表达式校验失败:\n{errorMsg}",
                     "校验错误",
@@ -746,9 +746,9 @@ namespace Module.ViewModels
                 Description = c.Description ?? ""
             }).ToList();
 
-            _logger?.Info($"[ConditionBranch] 保存条件分支配置: IsEnabled={IsEnabled}, 条件数={conditionsCopy.Count}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("CondBr_Log_ConfigSaved", "[ConditionBranch] 保存条件分支配置: IsEnabled={0}, 条件数={1}"), IsEnabled, conditionsCopy.Count));
             foreach (var c in conditionsCopy)
-                _logger?.Info($"[ConditionBranch]   条件: Expression='{c.ConditionExpression}', Target={c.TargetStepSeq}, Desc={c.Description}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("CondBr_Log_ConditionDetail", "[ConditionBranch]   条件: Expression='{0}', Target={1}, Desc={2}"), c.ConditionExpression, c.TargetStepSeq, c.Description));
 
             _step.BranchConfig = new BranchConfig
             {

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Core.Abstraction;
 using Core.Models;
 using Core.Utilities;
 using TCPIPModule.Interfaces;
@@ -18,6 +19,7 @@ namespace TCPIPModule.Services
     {
         private readonly ConcurrentDictionary<string, ITCPClient> _clients = new();
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         /// <summary> 已注册的客户端字典 </summary>
         public IReadOnlyDictionary<string, ITCPClient> Clients => _clients;
@@ -31,9 +33,10 @@ namespace TCPIPModule.Services
         /// <summary> 客户端移除事件 </summary>
         public event Action<string>? ClientRemoved;
 
-        public TcpClientManagerServiceImpl(ILoggerService logger)
+        public TcpClientManagerServiceImpl(ILoggerService logger, ILocalizationService localization)
         {
             _logger = logger;
+            _localization = localization;
         }
 
         /// <summary>
@@ -46,7 +49,7 @@ namespace TCPIPModule.Services
                 await AddClientAsync(config.ClientName, config);
             }
             IsInitialized = true;
-            _logger.Info($"TCP客户端管理器初始化完成，已加载 {_clients.Count} 个客户端");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpClient_Log_Initialized", "TCP客户端管理器初始化完成，已加载 {0} 个客户端"), _clients.Count));
         }
 
         /// <summary>
@@ -76,7 +79,7 @@ namespace TCPIPModule.Services
         {
             if (_clients.ContainsKey(clientName))
             {
-                _logger.Warn($"TCP客户端 [{clientName}] 已存在，跳过添加");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("TcpClient_Log_ClientExists", "TCP客户端 [{0}] 已存在，跳过添加"), clientName));
                 return false;
             }
 
@@ -95,11 +98,11 @@ namespace TCPIPModule.Services
                 try
                 {
                     await client.ConnectAsync(config.IP, config.Port);
-                    _logger.Info($"TCP客户端 [{clientName}] 已连接到 {config.IP}:{config.Port}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpClient_Log_ClientConnected", "TCP客户端 [{0}] 已连接到 {1}:{2}"), clientName, config.IP, config.Port));
                 }
                 catch (Exception ex)
                 {
-                    _logger.Warn($"TCP客户端 [{clientName}] 连接 {config.IP}:{config.Port} 失败: {ex.Message}，自动重连已启用");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("TcpClient_Log_ConnectFailed", "TCP客户端 [{0}] 连接 {1}:{2} 失败: {3}，自动重连已启用"), clientName, config.IP, config.Port, ex.Message));
                 }
             }
 
@@ -116,7 +119,7 @@ namespace TCPIPModule.Services
                 await client.DisconnectAsync();
                 client.Dispose();
                 ClientRemoved?.Invoke(clientName);
-                _logger.Info($"TCP客户端 [{clientName}] 已移除");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("TcpClient_Log_ClientRemoved", "TCP客户端 [{0}] 已移除"), clientName));
                 return true;
             }
             return await Task.FromResult(false);

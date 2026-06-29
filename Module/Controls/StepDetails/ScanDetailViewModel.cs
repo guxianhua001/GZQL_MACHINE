@@ -32,6 +32,7 @@ namespace Module.ViewModels
         private readonly ITCPClientManagerService _tcpClientManagerService;
         private readonly ITCPEventService _tcpEventService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
         private readonly IVisionDataParser _defaultParser;
         private readonly ScriptVisionDataParser _scriptParser;
         private readonly IStationRegistry _stationRegistry;
@@ -291,6 +292,7 @@ namespace Module.ViewModels
             ITCPClientManagerService tcpClientManagerService,
             ITCPEventService tcpEventService,
             ILoggerService logger,
+            ILocalizationService localization,
             IVisionDataParser defaultParser,
             ScriptVisionDataParser scriptParser,
             IStationRegistry stationRegistry,
@@ -302,6 +304,7 @@ namespace Module.ViewModels
             _tcpClientManagerService = tcpClientManagerService;
             _tcpEventService = tcpEventService;
             _logger = logger;
+            _localization = localization;
             _defaultParser = defaultParser;
             _scriptParser = scriptParser;
             _stationRegistry = stationRegistry;
@@ -414,7 +417,7 @@ namespace Module.ViewModels
                 LastReceivedTime = detail.LastReceivedTime ?? "";
                 LastReceivedData = detail.LastReceivedData ?? "";
 
-                _logger?.Info($"已加载上次保存的扫描结果: {ScanResults.Count}条记录, 最后解析时间={LastReceivedTime}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_LoadedLastResults", "已加载上次保存的扫描结果: {0}条记录, 最后解析时间={1}"), ScanResults.Count, LastReceivedTime));
             }
 
             RaisePropertyChanged(nameof(StepDescription));
@@ -464,7 +467,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"初始化刷新变量映射 DisplayValue 失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_InitRefreshMappingFailed", "初始化刷新变量映射 DisplayValue 失败: {0}"), ex.Message));
             }
         }
 
@@ -494,7 +497,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"加载位置列表失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_LoadPositionsFailed", "加载位置列表失败: {0}"), ex.Message));
             }
         }
 
@@ -524,7 +527,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"加载TCP连接列表失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_LoadTcpListFailed", "加载TCP连接列表失败: {0}"), ex.Message));
             }
         }
 
@@ -549,7 +552,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"加载全局变量列表失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_LoadGlobalVarsFailed", "加载全局变量列表失败: {0}"), ex.Message));
             }
         }
 
@@ -608,7 +611,7 @@ namespace Module.ViewModels
                 });
             }
 
-            _logger?.Info("已填充3D相机示例数据、变量映射和扫描结果");
+            _logger?.Info(_localization.GetResourceOrDefault("Scan_Log_FilledSampleData", "已填充3D相机示例数据、变量映射和扫描结果"));
         }
 
         /// <summary>
@@ -641,7 +644,7 @@ namespace Module.ViewModels
             if (mapping != null)
             {
                 mapping.GlobalVariableName = "";
-                _logger?.Info($"已解除变量映射链接: {mapping.SourceKey}");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_UnlinkedMapping", "已解除变量映射链接: {0}"), mapping.SourceKey));
             }
         }
 
@@ -655,11 +658,11 @@ namespace Module.ViewModels
                 try
                 {
                     System.Windows.Clipboard.SetText(variableName);
-                    _logger?.Info($"已复制全局变量名到剪贴板: {variableName}");
+                    _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_CopiedVarName", "已复制全局变量名到剪贴板: {0}"), variableName));
                 }
                 catch (Exception ex)
                 {
-                    _logger?.Error($"复制全局变量名失败: {ex.Message}");
+                    _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_CopyVarNameFailed", "复制全局变量名失败: {0}"), ex.Message));
                 }
             }
         }
@@ -834,7 +837,7 @@ namespace Module.ViewModels
             if (string.IsNullOrEmpty(poolId))
                 return "当前无配方池，跳过变量映射";
 
-            _logger?.Info($"SCAN 开始同步全局变量: PoolId={poolId}, 解析数据项数={parsedData.Count}");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_StartSyncVars", "SCAN 开始同步全局变量: PoolId={0}, 解析数据项数={1}"), poolId, parsedData.Count));
 
             var globalVars = await _recipePoolService.LoadGlobalVariablesAsync(poolId);
             var results = new List<string>();
@@ -894,14 +897,14 @@ namespace Module.ViewModels
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
                 results.Add("全局变量已保存");
-                _logger?.Info($"SCAN 全局变量同步完成: PoolId={poolId}, 更新了{results.Count(r => r.StartsWith("✓"))}个变量");
+                _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_SyncVarsCompleted", "SCAN 全局变量同步完成: PoolId={0}, 更新了{1}个变量"), poolId, results.Count(r => r.StartsWith("✓"))));
 
                 // 通知全局变量窗口重新加载最新数据
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);
             }
             else
             {
-                _logger?.Warn($"SCAN 全局变量无需更新: 无匹配的变量映射或解析数据");
+                _logger?.Warn(_localization.GetResourceOrDefault("Scan_Log_NoSyncNeeded", "SCAN 全局变量无需更新: 无匹配的变量映射或解析数据"));
             }
 
             return "变量映射:\n" + string.Join("\n", results);
@@ -976,18 +979,18 @@ namespace Module.ViewModels
                             // 被动接收数据时自动同步全局变量（原始值+补偿后值）
                             await ApplyVariableMappingsAsync(parsedData);
 
-                            _logger?.Info($"SCAN 被动接收到相机数据 [{SelectedConnectionName}]: {message}");
+                            _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_PassiveDataReceived", "SCAN 被动接收到相机数据 [{0}]: {1}"), SelectedConnectionName, message));
                         }
                         catch (Exception ex)
                         {
-                            _logger?.Error($"SCAN 被动数据处理失败: {ex.Message}");
+                            _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_PassiveDataFailed", "SCAN 被动数据处理失败: {0}"), ex.Message));
                         }
                     });
                 }
             };
 
             _tcpEventService.CameraMessageReceived += _cameraDataHandler;
-            _logger?.Info($"SCAN 已订阅TCP数据接收: 监听连接 '{SelectedConnectionName}'");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_SubscribedTcp", "SCAN 已订阅TCP数据接收: 监听连接 '{0}'"), SelectedConnectionName));
         }
 
         /// <summary>
@@ -999,7 +1002,7 @@ namespace Module.ViewModels
             {
                 _tcpEventService.CameraMessageReceived -= _cameraDataHandler;
                 _cameraDataHandler = null;
-                _logger?.Info("SCAN 已取消订阅TCP数据接收");
+                _logger?.Info(_localization.GetResourceOrDefault("Scan_Log_UnsubscribedTcp", "SCAN 已取消订阅TCP数据接收"));
             }
         }
 
@@ -1020,12 +1023,12 @@ namespace Module.ViewModels
                 }
 
                 // 默认解析：按变量映射数量动态解析数值
-                var parser = new Camera3DDataParser(_logger, VariableMappings.Count);
+                var parser = new Camera3DDataParser(_logger, _localization, VariableMappings.Count);
                 return parser.Parse(rawData);
             }
             catch (Exception ex)
             {
-                _logger?.Error($"SCAN 数据解析失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_ParseFailed", "SCAN 数据解析失败: {0}"), ex.Message));
                 return new Dictionary<string, double>();
             }
         }
@@ -1067,7 +1070,7 @@ namespace Module.ViewModels
             }
             catch (Exception ex)
             {
-                _logger?.Error($"刷新变量映射 DisplayValue 失败: {ex.Message}");
+                _logger?.Error(string.Format(_localization.GetResourceOrDefault("Scan_Log_RefreshMappingFailed", "刷新变量映射 DisplayValue 失败: {0}"), ex.Message));
             }
         }
 
@@ -1146,7 +1149,7 @@ namespace Module.ViewModels
                     Status = item.Status
                 }));
 
-            _logger?.Info($"SCAN 步骤配置已保存: {_step.Seq} - {StepDescription}（含{ScanResults.Count}条扫描结果）");
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("Scan_Log_ConfigSaved", "SCAN 步骤配置已保存: {0} - {1}（含{2}条扫描结果）"), _step.Seq, StepDescription, ScanResults.Count));
 
             OnClose();
         }

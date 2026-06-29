@@ -426,12 +426,12 @@ namespace AlarmModule.ViewModels
                     await _repository.DeleteThresholdConfigAsync(config.Id);
                     _allConfigs.Remove(config);
                     ApplyFilter();
-                    _logger.Info($"已删除阈值配置：{config.AlarmCode}@{config.AlarmSource}");
+                    _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_Deleted", "已删除阈值配置：{0}@{1}"), config.AlarmCode, config.AlarmSource));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error($"删除阈值配置失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_DeleteFailed", "删除阈值配置失败：{0}"), ex.Message));
             }
         }
 
@@ -480,11 +480,11 @@ namespace AlarmModule.ViewModels
                 IsEditing = false;
                 _editingId = 0;
                 await LoadConfigsAsync();
-                _logger.Info($"已保存阈值配置：{config.AlarmCode}@{config.AlarmSource}");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_Saved", "已保存阈值配置：{0}@{1}"), config.AlarmCode, config.AlarmSource));
             }
             catch (Exception ex)
             {
-                _logger.Error($"保存阈值配置失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_SaveFailed", "保存阈值配置失败：{0}"), ex.Message));
                 MessageBox.Show(ex.Message,
                     _localizationService.GetResourceOrDefault("SaveFailed", "保存失败"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
@@ -535,11 +535,11 @@ namespace AlarmModule.ViewModels
                 var ids = selected.Select(c => c.Id).ToList();
                 await _repository.BatchUpdateEnabledAsync(ids, true);
                 foreach (var c in selected) c.IsEnabled = true;
-                _logger.Info($"批量启用 {ids.Count} 项阈值配置");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_BatchEnabled", "批量启用 {0} 项阈值配置"), ids.Count));
             }
             catch (Exception ex)
             {
-                _logger.Error($"批量启用失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_BatchEnableFailed", "批量启用失败：{0}"), ex.Message));
             }
         }
 
@@ -560,11 +560,11 @@ namespace AlarmModule.ViewModels
                 var ids = selected.Select(c => c.Id).ToList();
                 await _repository.BatchUpdateEnabledAsync(ids, false);
                 foreach (var c in selected) c.IsEnabled = false;
-                _logger.Info($"批量禁用 {ids.Count} 项阈值配置");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_BatchDisabled", "批量禁用 {0} 项阈值配置"), ids.Count));
             }
             catch (Exception ex)
             {
-                _logger.Error($"批量禁用失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_BatchDisableFailed", "批量禁用失败：{0}"), ex.Message));
             }
         }
 
@@ -596,11 +596,11 @@ namespace AlarmModule.ViewModels
                     _allConfigs.Remove(c);
 
                 ApplyFilter();
-                _logger.Info($"批量删除 {ids.Count} 项阈值配置");
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_BatchDeleted", "批量删除 {0} 项阈值配置"), ids.Count));
             }
             catch (Exception ex)
             {
-                _logger.Error($"批量删除失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_BatchDeleteFailed", "批量删除失败：{0}"), ex.Message));
             }
         }
 
@@ -626,7 +626,7 @@ namespace AlarmModule.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"刷新阈值配置失败：{ex.Message}");
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("AlarmThresh_Log_RefreshFailed", "刷新阈值配置失败：{0}"), ex.Message));
             }
         }
 

@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using MaterialDesignThemes.Wpf;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -11,7 +12,8 @@ namespace Recipe.ViewModels
     /// </summary>
     public class RecipeConfirmDialogViewModel : BindableBase
     {
-        private string _title = "确认操作";
+        private readonly ILocalizationService _localization;
+        private string _title;
         public string Title
         {
             get => _title;
@@ -42,11 +44,14 @@ namespace Recipe.ViewModels
         public DelegateCommand ConfirmCommand { get; }
         public DelegateCommand CancelCommand { get; }
 
-        public RecipeConfirmDialogViewModel()
+        public RecipeConfirmDialogViewModel(ILocalizationService localization)
         {
+            _localization = localization;
             ConfirmCommand = new DelegateCommand(ExecuteConfirm);
             CancelCommand = new DelegateCommand(ExecuteCancel);
 
+            // 默认标题本地化（Initialize 调用时通常会被覆盖）
+            _title = _localization.GetResourceOrDefault("RCD_Title_ConfirmOperation", "确认操作");
             _iconKind = ResolveIconKind("Information");
         }
 

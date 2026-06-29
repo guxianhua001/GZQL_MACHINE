@@ -1,3 +1,4 @@
+using Core.Abstraction;
 using Core.Utilities;
 using MotionControl.Exceptions;
 using MotionControl.Interfaces;
@@ -29,6 +30,7 @@ namespace StationTasks.Actions
         private readonly IVisionDataParser _defaultParser;
         private readonly ScriptVisionDataParser _scriptParser;
         private readonly IEventAggregator _eventAggregator;
+        private readonly ILocalizationService _localization;
 
         public StepType SupportedStepType => StepType.VISION;
 
@@ -38,7 +40,8 @@ namespace StationTasks.Actions
             ITCPEventService tcpEventService,
             IVisionDataParser defaultParser,
             ScriptVisionDataParser scriptParser,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            ILocalizationService localization)
         {
             _recipePoolService = recipePoolService;
             _logger = logger;
@@ -46,6 +49,7 @@ namespace StationTasks.Actions
             _defaultParser = defaultParser;
             _scriptParser = scriptParser;
             _eventAggregator = eventAggregator;
+            _localization = localization;
         }
 
         public async Task ExecuteAsync(ProcessStep step, StationTaskBase task, CancellationToken token)
@@ -53,7 +57,7 @@ namespace StationTasks.Actions
             var detail = step.VisionDetail;
             if (detail == null)
             {
-                _logger.Warn($"VISION 步骤 [{step.Seq}] 没有 VisionDetail 配置，跳过执行");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("Vis_Log_NoVisionDetail", "VISION 步骤 [{0}] 没有 VisionDetail 配置，跳过执行"), step.Seq));
                 return;
             }
 
@@ -68,7 +72,7 @@ namespace StationTasks.Actions
 
                 // 阶段2：解析返回数据
                 var parsedData = ParseRawData(rawData, detail.ParseScript);
-                _logger.Info($"VISION 步骤 [{step.Seq}] 解析结果: {string.Join(", ", parsedData.Select(kv => $"{kv.Key}={kv.Value:F3}"))}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Vis_Log_ParseResult", "VISION 步骤 [{0}] 解析结果: {1}"), step.Seq, string.Join(", ", parsedData.Select(kv => $"{kv.Key}={kv.Value:F3}"))));
 
                 // 阶段3：映射全局变量
                 await MapToGlobalVariablesAsync(parsedData, detail.VariableMappings);
@@ -87,13 +91,13 @@ namespace StationTasks.Actions
         {
             if (string.IsNullOrEmpty(detail.TriggerCommand))
             {
-                _logger.Warn($"VISION 步骤 [{step.Seq}] 未配置触发命令");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("Vis_Log_NoTriggerCmd", "VISION 步骤 [{0}] 未配置触发命令"), step.Seq));
                 return string.Empty;
             }
 
             if (detail.CommunicationType != "TCPIP" || string.IsNullOrEmpty(detail.ConnectionName))
             {
-                _logger.Warn($"VISION 步骤 [{step.Seq}] 通讯方式未配置或非TCPIP模式");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("Vis_Log_NoTCPIPMode", "VISION 步骤 [{0}] 通讯方式未配置或非TCPIP模式"), step.Seq));
                 return string.Empty;
             }
 
@@ -105,7 +109,7 @@ namespace StationTasks.Actions
                 attempt++;
                 token.ThrowIfCancellationRequested();
 
-                _logger.Info($"VISION 步骤 [{step.Seq}] 发送触发命令（第{attempt}次）: '{detail.TriggerCommand}' → {detail.ConnectionName}, 超时={detail.ResponseTimeout}ms");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("Vis_Log_SendTrigger", "VISION 步骤 [{0}] 发送触发命令（第{1}次）: '{2}' → {3}, 超时={4}ms"), step.Seq, attempt, detail.TriggerCommand, detail.ConnectionName, detail.ResponseTimeout));
 
                 try
                 {
@@ -114,21 +118,21 @@ namespace StationTasks.Actions
                         detail.TriggerCommand,
                         detail.ResponseTimeout);
 
-                    _logger.Info($"VISION 步骤 [{step.Seq}] 收到响应: {response}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("Vis_Log_ReceivedResponse", "VISION 步骤 [{0}] 收到响应: {1}"), step.Seq, response));
                     return response ?? string.Empty;
                 }
                 catch (TimeoutException ex)
                 {
-                    _logger.Warn($"VISION 步骤 [{step.Seq}] 第{attempt}次等待响应超时（{detail.ResponseTimeout}ms）: {ex.Message}");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Vis_Log_ResponseTimeout", "VISION 步骤 [{0}] 第{1}次等待响应超时（{2}ms）: {3}"), step.Seq, attempt, detail.ResponseTimeout, ex.Message));
 
                     if (attempt < maxRetries)
                     {
-                        _logger.Info($"VISION 步骤 [{step.Seq}] 将重新发送拍照命令并等待返回信号...");
+                        _logger.Info(string.Format(_localization.GetResourceOrDefault("Vis_Log_RetrySend", "VISION 步骤 [{0}] 将重新发送拍照命令并等待返回信号..."), step.Seq));
                         continue;
                     }
 
                     // 重试次数用尽，抛出可恢复异常
-                    _logger.Error($"VISION 步骤 [{step.Seq}] 已重试{maxRetries}次，均超时");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("Vis_Log_AllRetriesTimeout", "VISION 步骤 [{0}] 已重试{1}次，均超时"), step.Seq, maxRetries));
                     throw new RecoverableException(
                         message: $"VISION 步骤 [{step.Seq}] 等待响应超时，已重试{maxRetries}次（每次{detail.ResponseTimeout}ms）",
                         suggestedAction: "请检查视觉系统连接是否正常，或增加超时时间。可选择重试、暂停或停止。"
@@ -136,7 +140,7 @@ namespace StationTasks.Actions
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"VISION 步骤 [{step.Seq}] 发送命令失败: {ex.Message}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("Vis_Log_SendCmdFailed", "VISION 步骤 [{0}] 发送命令失败: {1}"), step.Seq, ex.Message));
                     throw new RecoverableException(
                         message: $"VISION 步骤 [{step.Seq}] 发送命令失败: {ex.Message}",
                         suggestedAction: "请检查TCPIP连接配置是否正确，视觉系统是否在线。"
@@ -154,7 +158,7 @@ namespace StationTasks.Actions
         {
             if (string.IsNullOrEmpty(rawData))
             {
-                _logger.Warn("VISION 收到空数据，无法解析");
+                _logger.Warn(_localization.GetResourceOrDefault("Vis_Log_EmptyData", "VISION 收到空数据，无法解析"));
                 return new Dictionary<string, double>();
             }
 
@@ -168,7 +172,7 @@ namespace StationTasks.Actions
             }
             catch (Exception ex)
             {
-                _logger.Error($"VISION 数据解析失败: {ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("Vis_Log_ParseFailed", "VISION 数据解析失败: {0}"), ex.Message));
                 throw new RecoverableException(
                     message: $"VISION 数据解析失败: {ex.Message}",
                     suggestedAction: "请检查数据解析脚本是否正确，或使用默认解析器。"
@@ -183,7 +187,7 @@ namespace StationTasks.Actions
         {
             if (mappings == null || mappings.Count == 0)
             {
-                _logger.Info("VISION 未配置变量映射，跳过全局变量写入");
+                _logger.Info(_localization.GetResourceOrDefault("Vis_Log_NoVariableMapping", "VISION 未配置变量映射，跳过全局变量写入"));
                 return;
             }
 
@@ -203,7 +207,7 @@ namespace StationTasks.Actions
 
                 if (!parsedData.TryGetValue(mapping.SourceKey, out double value))
                 {
-                    _logger.Warn($"VISION 映射跳过: 解析结果中不存在键 '{mapping.SourceKey}'");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Vis_Log_MapSkipNoKey", "VISION 映射跳过: 解析结果中不存在键 '{0}'"), mapping.SourceKey));
                     continue;
                 }
 
@@ -211,19 +215,19 @@ namespace StationTasks.Actions
                 if (targetVar != null)
                 {
                     targetVar.Value = value.ToString("F6");
-                    _logger.Info($"VISION 映射: {mapping.SourceKey}={value:F3} → 全局变量 '{mapping.GlobalVariableName}'");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("Vis_Log_MapApplied", "VISION 映射: {0}={1:F3} → 全局变量 '{2}'"), mapping.SourceKey, value, mapping.GlobalVariableName));
                     changed = true;
                 }
                 else
                 {
-                    _logger.Warn($"VISION 映射跳过: 全局变量 '{mapping.GlobalVariableName}' 不存在");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("Vis_Log_MapSkipNoVar", "VISION 映射跳过: 全局变量 '{0}' 不存在"), mapping.GlobalVariableName));
                 }
             }
 
             if (changed)
             {
                 await _recipePoolService.SaveGlobalVariablesAsync(poolId, globalVars);
-                _logger.Info("VISION 全局变量已保存");
+                _logger.Info(_localization.GetResourceOrDefault("Vis_Log_GlobalVarsSaved", "VISION 全局变量已保存"));
 
                 // 通知所有订阅者全局变量已更新，刷新 UI 显示值
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(poolId);

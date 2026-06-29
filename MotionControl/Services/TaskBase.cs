@@ -1,5 +1,6 @@
 using AlarmModule.Interfaces;
 using AlarmModule.Models;
+using Core.Extensions;
 using Core.Utilities;
 using MotionControl.Events;
 using MotionControl.Exceptions;
@@ -97,7 +98,7 @@ namespace MotionControl.Services
             catch (StepFailureException sfe)
             {
                 // 能走到这里的 StepFailureException，内部绝对不是 RecoverableException
-                Logger.Error($"致命故障，任务 [{TaskName}] 在 [{sfe.StepName}] 步骤崩溃。内部异常: {sfe.InnerException?.Message}");
+                Logger.Error(ResourceHelper.GetString("TB_Log_FatalStepFailure", TaskName, sfe.StepName, sfe.InnerException?.Message));
                 State = TaskState.Error;
                 await EmergencyStopAsync();
                 // 通知全局状态服务：设备必须急停
@@ -105,7 +106,7 @@ namespace MotionControl.Services
             }
             catch (Exception ex)
             {
-                Logger.Error($"[{TaskName}] 未知严重错误: {ex.Message}");
+                Logger.Error(ResourceHelper.GetString("TB_Log_UnknownFatalError", TaskName, ex.Message));
                 State = TaskState.Error;
                 await EmergencyStopAsync();
                 Ea.GetEvent<EmergencyStopAllEvent>().Publish();

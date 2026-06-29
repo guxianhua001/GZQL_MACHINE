@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Core.Abstraction;
 using MotionControl.Exceptions;
 using MotionControl.Interfaces;
 using TCPIPModule.Interfaces;
@@ -23,22 +24,26 @@ namespace StationTasks.Services
         private readonly ITCPEventService _tcpEventService;
         private readonly IVisionDataParser _visionDataParser;
         private readonly ILoggerService _logger;
+        /// <summary> 本地化服务，用于日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
 
         public VisionCaptureService(IMotionService motionService, IPositionProvider positionProvider,
-            ITCPEventService tcpEventService, IVisionDataParser visionDataParser, ILoggerService logger)
+            ITCPEventService tcpEventService, IVisionDataParser visionDataParser, ILoggerService logger,
+            ILocalizationService localization)
         {
             _motionService = motionService;
             _positionProvider = positionProvider;
             _tcpEventService = tcpEventService;
             _visionDataParser = visionDataParser;
             _logger = logger;
+            _localization = localization;
         }
 
         public async Task<VisionCaptureResult> ExecuteCaptureAsync(
             string connectionName, string triggerCommand, int timeout,
             CancellationToken token)
         {
-            _logger.Info($"[VisionCapture] 发送触发命令: {triggerCommand} → {connectionName}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("VisCapSvc_Log_SendTriggerCommand", "[VisionCapture] 发送触发命令: {0} → {1}"), triggerCommand, connectionName));
             string rawData;
             try
             {
@@ -59,7 +64,7 @@ namespace StationTasks.Services
             }
 
             var parsedData = _visionDataParser.Parse(rawData);
-            _logger.Info($"[VisionCapture] 数据解析完成，共 {parsedData.Count} 个键值对, 原始数据: {rawData}");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("VisCapSvc_Log_ParseCompleted", "[VisionCapture] 数据解析完成，共 {0} 个键值对, 原始数据: {1}"), parsedData.Count, rawData));
 
             return new VisionCaptureResult
             {

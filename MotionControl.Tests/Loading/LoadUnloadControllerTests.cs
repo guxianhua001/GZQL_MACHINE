@@ -41,7 +41,8 @@ namespace MotionControl.Tests
                 systemState.Object,
                 axisConfig.Object,
                 logger.Object,
-                motionInterlock.Object);
+                motionInterlock.Object,
+                new Mock<ILocalizationService>().Object);
         }
 
         [Fact]

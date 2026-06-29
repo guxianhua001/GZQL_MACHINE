@@ -1,5 +1,6 @@
 using AlarmModule.Interfaces;
 using AlarmModule.Models;
+using Core.Abstraction;
 using Core.Utilities;
 using Framework.Mvvm;
 using Microsoft.Win32;
@@ -17,6 +18,7 @@ namespace AlarmModule.ViewModels
     {
         private readonly IAlarmService _alarmService;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         private DateTime? _startTime = DateTime.Today.AddDays(-7);
         private DateTime? _endTime = DateTime.Now;
@@ -153,12 +155,13 @@ namespace AlarmModule.ViewModels
         public DelegateCommand NextPageCommand { get; }
 
         /// <summary>
-        /// 构造函数：注入报警服务和日志服务，初始化命令
+        /// 构造函数：注入报警服务、日志服务、本地化服务，初始化命令
         /// </summary>
-        public AlarmHistoryViewModel(IAlarmService alarmService, ILoggerService logger)
+        public AlarmHistoryViewModel(IAlarmService alarmService, ILoggerService logger, ILocalizationService localization)
         {
             _alarmService = alarmService;
             _logger = logger;
+            _localization = localization;
 
             QueryCommand = new DelegateCommand(OnQuery);
             ExportCommand = new DelegateCommand(OnExport);
@@ -178,7 +181,7 @@ namespace AlarmModule.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"查询报警历史失败：{ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("AlarmHist_Log_QueryFailed", "查询报警历史失败：{0}"), ex.Message));
             }
         }
 
@@ -199,12 +202,12 @@ namespace AlarmModule.ViewModels
                 {
                     var parameters = BuildQueryParams();
                     await _alarmService.ExportToExcelAsync(dialog.FileName, parameters);
-                    _logger.Info($"报警数据已导出到：{dialog.FileName}");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("AlarmHist_Log_Exported", "报警数据已导出到：{0}"), dialog.FileName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error($"导出Excel失败：{ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("AlarmHist_Log_ExportFailed", "导出Excel失败：{0}"), ex.Message));
             }
         }
 
@@ -223,7 +226,7 @@ namespace AlarmModule.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"翻页失败：{ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("AlarmHist_Log_PaginationFailed", "翻页失败：{0}"), ex.Message));
             }
         }
 
@@ -242,7 +245,7 @@ namespace AlarmModule.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.Error($"翻页失败：{ex.Message}");
+                _logger.Error(string.Format(_localization.GetResourceOrDefault("AlarmHist_Log_PaginationFailed", "翻页失败：{0}"), ex.Message));
             }
         }
 

@@ -1,6 +1,94 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.06.29c — 全站日志与 ViewModel 多语言支持（第二批 + 第三批）
+-------------------------------------------
+1. 问题：
+   - StationTaskBase / MotionService / ProcessStepExecutor / Actions 文件夹下所有
+     StepAction 的 _logger 日志均为硬编码中文，无法随系统语言切换。
+   - RecipeManagerViewModel / MultiStationPositionEditorViewModel / DispenseDetailViewModel
+     等 ViewModel 的 StatusMessage / 对话框 / 日志文案均为硬编码中文。
+   - ArcContinuousDispenseHelper（静态类）异常与日志消息为硬编码中文。
+   - RecipeConfirmDialogViewModel 默认标题为硬编码中文。
+
+2. 修复（第二批 — 日志多语言）：
+   - StationTaskBase：构造函数注入 ILocalizationService，Localization 属性改为 public
+     供 ProcessStepExecutor / DashboardStepAction 复用；24 个 STB_Log_* 键。
+   - MotionService：注入 ILocalizationService，15 个 MS_Log_* 键。
+   - ProcessStepExecutor：通过 task.Localization 获取服务，78 个 PSE_Log_Exec_* 键。
+   - DispenseStepAction：~34 个 Disp_Log_* 键；CureStepAction：12 个 Cure_Log_* 键。
+   - PickStepAction(16) / ReleaseStepAction(16) / Scan3DStepAction(26) /
+     VisionStepAction(17) / ScriptStepAction(8) / SeekStepAction(7) /
+     SignalStepAction(7) / WaitStepAction(2) / IfStepAction(1) /
+     BranchStepAction(1) / DashboardStepAction(9) 各自前缀日志键。
+   - RecipeStationBase / LoadingTask / DispensingTask / AssemblyTask 构造函数传递
+     localization 至 StationTaskBase。
+
+3. 修复（第三批 — ViewModel / Helper 多语言）：
+   - RecipeManagerViewModel：构造函数新增 ILocalizationService（第10个参数），
+     77 个 RM_Log_/RM_Msg_ 键覆盖 StatusMessage / 对话框 / 日志；内部类
+     StationParameterEditable 同步注入。
+   - MultiStationPositionEditorViewModel：复用既有 ILocalizationService 注入与
+     Loc() 辅助方法，7 个 MSP_Log_/MSP_Msg_ 键。
+   - DispenseDetailViewModel：通过 IContainerProvider.Resolve<ILocalizationService>
+     获取服务，15 个 DD_Log_/DD_Msg_ 键。
+   - ArcContinuousDispenseHelper（静态类）：新增 ILocalizationService? 可空参数 +
+     局部 L() 函数，null 时回退中文；4 个 ACD_ 键。DispenseStepAction 传递
+     _localization，DispenseExecuteService 使用默认 null（中文回退）。
+   - RecipeConfirmDialogViewModel：构造函数注入 ILocalizationService，
+     默认标题本地化为 RCD_Title_ConfirmOperation。
+   - GlobalVariablesViewModel / AxisControlPanelView / SingleAxisControlView：
+     经检查无用户可见硬编码中文（仅注释 / Debug.WriteLine / 已用 {lang:Lang} 标记
+     扩展），无需修改。
+
+4. 资源文件：
+   - Strings.zh-CN.xaml / Strings.en-US.xaml 各新增 378 个资源键（按字母序插入
+     </ResourceDictionary> 之前），中文值取自源码 fallback 原文，英文为自然翻译。
+   - 两文件新增 Key 集合大小写完全一致，无重复，XML 结构完整。
+
+5. 安全性：
+   - 所有运动控制逻辑、暂停/恢复、联锁检查、循环引用检测等安全关键代码
+     均保持不变，仅替换用户可见文案。
+   - 日志级别、命令谓词、控制流不变。
+
+修改文件:
+  - StationTasks/StationTaskBase.cs + Actions/*.cs（13 个 StepAction + ProcessStepExecutor）
+  - MotionControl/Services/MotionService.cs
+  - MotionControl/Services/ArcContinuousDispenseHelper.cs
+  - RecipeManagement/ViewModels/RecipeManagerViewModel.cs
+  - RecipeManagement/ViewModels/MultiStationPositionEditorViewModel.cs
+  - RecipeManagement/ViewModels/RecipeConfirmDialogViewModel.cs
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - MainApp/Languages/Strings.zh-CN.xaml（+378 键）
+  - MainApp/Languages/Strings.en-US.xaml（+378 键）
+  - 版本修改记录.txt
+
+v2026.06.29 — ProcessSequenceService / GotoStepAction 日志多语言支持
+-------------------------------------------
+1. 问题：
+   - ProcessSequenceService 与 GotoStepAction 中所有 _logger.Info/Warn/Error 及报警/异常
+     文案均为硬编码中文，无法随系统语言切换，不符合多语言规范。
+
+2. 修复：
+   - 复用既有 ILocalizationService.GetResourceOrDefault(key, 中文默认值) + string.Format
+     模式（与 NeedleAlignerViewModel 一致），将硬编码中文日志替换为可本地化资源键。
+   - GotoStepAction 构造函数新增 ILocalizationService 依赖（DI 容器自动注入，不影响
+     RegisterMany 注册）。
+   - 循环调用报警 (PSE_CIRCULAR_CALL) 与 InvalidOperationException 文案同步本地化，
+     报警与异常消息复用同一资源键 PSE_Log_CircularCallAlarm。
+   - EnsureMachineReadyForSequence 传入的操作名（启动任务/启动方法/单步执行）同步本地化。
+
+3. 资源键命名约定：
+   - ProcessSequenceService 日志：PSE_Log_*
+   - GotoStepAction 日志：Goto_Log_*
+   - 中文为回退默认值，资源缺失时仍可正常工作。
+
+修改文件:
+  - StationTasks/Actions/GotoStepAction.cs（注入 ILocalizationService + 12 处日志本地化）
+  - Module/Services/ProcessSequenceService.cs（~57 处日志/报警/异常文案本地化）
+  - MainApp/Languages/Strings.zh-CN.xaml（新增 57 个 PSE_Log_* + 12 个 Goto_Log_* 键）
+  - MainApp/Languages/Strings.en-US.xaml（对应英文翻译）
+
 v2026.06.27c — AddEditStepDialogView 多语言修复
 -------------------------------------------
 1. 问题：添加/编辑步骤对话框存在中文硬编码及英文 Hint 未本地化。
@@ -3311,3 +3399,21 @@ v2026.05.30d �� ArcԲ���㽺���㹫ʽ����������
   - SubMoveRowViewModel：打开编辑器时刷新缓存；位置下拉按当前轴过滤；按轴+位置名校验
   - PositionLookupHelper：统一位置键查找，支持 Dz₂/Dz2、Dz₃/Dz3 别名
 修改文件：Core/Utilities/PositionLookupHelper.cs、GotoStepAction.cs、StationTaskBase.cs、SubMoveRowViewModel.cs、Strings.zh-CN/en-US.xaml
+
+【2026-06-29】运行日志多语言支持：消除 Info.log 中文硬编码
+需求：net9.0-windows7.0\Logs\Info.log 中多处中文硬编码日志，需统一改为通过 ILocalizationService 资源键查找。
+原因：.cs 文件中 Logger 调用直接使用中文字符串字面量；已转换的代码使用 GetResourceOrDefault(key, 中文默认值) 但资源键未添加到 XAML，导致回退到中文默认值参数。
+实现：
+  - LoadingTask.cs + LoadingTask.Init.cs：17 处 Logger 调用转换为 GetResourceOrDefault 模式（LT_Log_* 前缀）
+  - DispensingTask.Init.cs + DispensingTask.ZScan.cs：22 处 TaskLogger 调用转换（DT_Log_* 前缀）
+  - AssemblyTask.Init.cs：12 处 Logger 调用转换（AT_Log_* 前缀）
+  - MotionControl/Services/TaskBase.cs：2 处 Logger.Error 调用使用 ResourceHelper.GetString（TB_Log_* 前缀，无 ILocalizationService 注入）
+  - Strings.zh-CN.xaml：新增 764 个资源键（中文值），修复文件截断问题（原 4461 键 → 5225 键）
+  - Strings.en-US.xaml：新增 762 个资源键（556 个英文翻译 + 105 个中文回退 + 101 个键名占位），修复文件截断问题（原 4461 键 → 5223 键）
+  - 安全关键代码（运动控制、暂停/恢复、互锁检查、循环引用检测）未修改，仅替换用户可见文本（日志、StatusMessage、对话框消息）
+修改文件：
+  - StationTasks/Tasks/LoadingTask.cs、LoadingTask.Init.cs
+  - StationTasks/Tasks/DispensingTask.Init.cs、DispensingTask.ZScan.cs
+  - StationTasks/Tasks/AssemblyTask.Init.cs
+  - MotionControl/Services/TaskBase.cs
+  - MainApp/Languages/Strings.zh-CN.xaml、Strings.en-US.xaml

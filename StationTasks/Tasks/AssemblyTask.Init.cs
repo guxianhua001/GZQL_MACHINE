@@ -39,7 +39,7 @@ namespace StationTasks.Tasks
             // 设置取消令牌，支持初始化过程中的停止/急停
             _cts = new CancellationTokenSource();
             State = TaskState.Homing;
-            Logger.Info($"[{TaskName}] 开始组装系统初始化...");
+            Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_InitStart", "[{0}] 开始组装系统初始化..."), TaskName));
             PublishTaskStatusChanged(L("Init_Initializing"), State);
             PublishInitProgress(0, L("Init_Assembly_Start"));
 
@@ -53,14 +53,14 @@ namespace StationTasks.Tasks
                 ResetInitSignals();
 
                 // ===== 阶段1：组装Z轴回零 → 待机位 =====
-                Logger.Info($"[{TaskName}] 阶段1：组装Z轴回零...");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_Phase1ZHoming", "[{0}] 阶段1：组装Z轴回零..."), TaskName));
                 PublishTaskStatusChanged(L("Init_Assembly_ZHoming"), State);
                 PublishInitProgress(10, L("Init_Assembly_ZHoming"));
 
                 CurrentToken.ThrowIfCancellationRequested();
                 if (AxisZ >= 0)
                 {
-                    Logger.Info($"[{TaskName}] Z 轴回零中...");
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_ZHoming", "[{0}] Z 轴回零中..."), TaskName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", "Z"), State);
                     PublishInitProgress(15, L("Init_HomeAxis", "Z"));
                     await ExecuteHomeAxisAsync(AxisZ);
@@ -74,13 +74,13 @@ namespace StationTasks.Tasks
                 // 通知点胶/上下料：组装Z轴回零完成
                 SignalToStation("DispensingStation", "AssemblyZComplete", true);
                 SignalToStation("LoadingStation", "AssemblyZComplete", true);
-                Logger.Info($"[{TaskName}] 已通知点胶/上下料：组装Z轴回零完成。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_NotifyZComplete", "[{0}] 已通知点胶/上下料：组装Z轴回零完成。"), TaskName));
 
                 // ===== 等待点胶Z轴完成（所有Z轴归零前提） =====
                 PublishTaskStatusChanged(L("Init_Assembly_WaitDispensingZ"), State);
                 PublishInitProgress(40, L("Init_Assembly_WaitDispensingZ"));
                 await WaitForSignalAsync("AssemblyStation", "DispensingZComplete", true, SignalWaitTimeoutMs);
-                Logger.Info($"[{TaskName}] 点胶Z轴已完成，开始组装辅助轴回零。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_DispensingZDone", "[{0}] 点胶Z轴已完成，开始组装辅助轴回零。"), TaskName));
 
                 // ===== 阶段2：组装辅助轴（Cy, Ey）回零 → 待机位 =====
                 PublishTaskStatusChanged(L("Init_Assembly_AuxHoming"), State);
@@ -95,7 +95,7 @@ namespace StationTasks.Tasks
                     CurrentToken.ThrowIfCancellationRequested();
                     if (axisId < 0) continue;
 
-                    Logger.Info($"[{TaskName}] {axisName} 轴回零中...");
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_AuxAxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
                     PublishInitProgress(50 + aIndex * 10, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
@@ -117,7 +117,7 @@ namespace StationTasks.Tasks
                 PublishTaskStatusChanged(L("Init_Assembly_WaitDispensingComplete"), State);
                 PublishInitProgress(80, L("Init_Assembly_WaitDispensingComplete"));
                 await WaitForSignalAsync("AssemblyStation", "DispensingComplete", true, SignalWaitTimeoutMs);
-                Logger.Info($"[{TaskName}] 点胶工站回零完成，开始组装主轴回零。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_DispensingHomingDone", "[{0}] 点胶工站回零完成，开始组装主轴回零。"), TaskName));
 
                 // ===== 阶段4：组装主轴（X, Ry）回零 → 待机位 =====
                 PublishTaskStatusChanged(L("Init_Assembly_MainHoming"), State);
@@ -132,7 +132,7 @@ namespace StationTasks.Tasks
                     CurrentToken.ThrowIfCancellationRequested();
                     if (axisId < 0) continue;
 
-                    Logger.Info($"[{TaskName}] {axisName} 轴回零中...");
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_MainAxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
                     PublishInitProgress(85 + mIndex * 5, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
@@ -151,14 +151,14 @@ namespace StationTasks.Tasks
                 }
 
                 State = TaskState.Idle;
-                Logger.Info($"[{TaskName}] 组装系统初始化完成，进入待机。");
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_InitComplete", "[{0}] 组装系统初始化完成，进入待机。"), TaskName));
                 PublishTaskStatusChanged(L("Init_Idle"), State);
                 PublishInitProgress(100, L("Init_Assembly_Complete"), true);
             }
             catch (System.OperationCanceledException)
             {
                 State = TaskState.Error;
-                Logger.Warn($"[{TaskName}] 组装系统初始化被取消。");
+                Logger.Warn(string.Format(_localizationService.GetResourceOrDefault("AT_Log_InitCanceled", "[{0}] 组装系统初始化被取消。"), TaskName));
                 PublishTaskStatusChanged(L("Init_Canceled"), State);
                 PublishInitProgress(0, L("Init_Canceled"), true, true);
                 throw;
@@ -166,7 +166,7 @@ namespace StationTasks.Tasks
             catch (RecoverableException ex)
             {
                 State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 组装系统初始化失败（等待信号超时）: {ex.Message}");
+                Logger.Error(string.Format(_localizationService.GetResourceOrDefault("AT_Log_InitFailedSignalTimeout", "[{0}] 组装系统初始化失败（等待信号超时）: {1}"), TaskName, ex.Message));
                 PublishTaskStatusChanged(L("Init_Failed"), State);
                 PublishInitProgress(0, L("Init_Failed"), true, true);
                 throw;
@@ -174,7 +174,7 @@ namespace StationTasks.Tasks
             catch (System.Exception ex)
             {
                 State = TaskState.Error;
-                Logger.Error($"[{TaskName}] 组装系统初始化失败: {ex.Message}");
+                Logger.Error(string.Format(_localizationService.GetResourceOrDefault("AT_Log_InitFailed", "[{0}] 组装系统初始化失败: {1}"), TaskName, ex.Message));
                 PublishTaskStatusChanged(L("Init_Failed"), State);
                 PublishInitProgress(0, L("Init_Failed"), true, true);
                 throw;

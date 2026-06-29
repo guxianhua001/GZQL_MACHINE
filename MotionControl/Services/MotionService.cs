@@ -37,6 +37,8 @@ namespace MotionControl.Services
         /// <summary> 安全区域监控器：运动前安全互锁检查，防止轴进入危险区域 </summary>
         private readonly ISafetyZoneMonitor _safetyZoneMonitor;
         private readonly IAxisOperationPanelState _axisPanelState;
+        /// <summary> 本地化服务：日志多语言支持 </summary>
+        private readonly ILocalizationService _localization;
         private MotionSystemConfig _config;
 
         private List<IMotionCard> _cards = new();
@@ -174,7 +176,8 @@ namespace MotionControl.Services
         public MotionService(IMotionCardFactory cardFactory, IHardwareConfigLoader configLoader,
                              IEventAggregator ea, ILoggerService logger, IAlarmService alarmService,
                              IADValueConverter adConverter, ISafetyZoneMonitor safetyZoneMonitor,
-                             IAxisOperationPanelState axisPanelState)
+                             IAxisOperationPanelState axisPanelState,
+                             ILocalizationService localization)
         {
             _cardFactory = cardFactory;
             _configLoader = configLoader;
@@ -184,6 +187,7 @@ namespace MotionControl.Services
             _adConverter = adConverter;
             _safetyZoneMonitor = safetyZoneMonitor;
             _axisPanelState = axisPanelState;
+            _localization = localization;
 
             if (_axisPanelState != null)
             {
@@ -196,7 +200,9 @@ namespace MotionControl.Services
         private void OnAxisPanelOpenChanged(bool isOpen)
         {
             _pollIntervalMs = isOpen ? FastPollIntervalMs : SlowPollIntervalMs;
-            _logger.Info($"轴操作面板{(isOpen ? "打开" : "关闭")}，轮询间隔 {_pollIntervalMs}ms");
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("MS_Log_AxisPanelToggle", "轴操作面板{0}，轮询间隔 {1}ms"),
+                isOpen ? _localization.GetResourceOrDefault("MS_Log_PanelOpen", "打开") : _localization.GetResourceOrDefault("MS_Log_PanelClosed", "关闭"),
+                _pollIntervalMs));
         }
 
         // ---------- 初始化 ----------
@@ -209,7 +215,7 @@ namespace MotionControl.Services
             {
                 foreach (var adCfg in _config.AnalogInputs)
                     _adConverter.UpdateChannelConfig(adCfg);
-                _logger.Info($"已加载 {_config.AnalogInputs.Count} 个 AD 通道配置");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("MS_Log_ADChannelsLoaded", "已加载 {0} 个 AD 通道配置"), _config.AnalogInputs.Count));
             }
 
             foreach (var cardCfg in _config.Cards)
@@ -217,7 +223,7 @@ namespace MotionControl.Services
                 var card = _cardFactory.GetCard(cardCfg.Index);
                 if (card == null)
                 {
-                    _logger.Warn($"Card index {cardCfg.Index} not available (hardware may be missing)");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("MS_Log_CardNotAvailable", "卡号 {0} 不可用（可能缺少硬件）"), cardCfg.Index));
                     continue;
                 }
 
@@ -225,13 +231,13 @@ namespace MotionControl.Services
                 int busStatus = card.CheckEtherCatStatus();
                 if (busStatus != 0)
                 {
-                    _logger.Warn($"Card {cardCfg.Index} EtherCAT bus error (0x{busStatus:X}), attempting soft reset...");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("MS_Log_CardBusError", "卡 {0} EtherCAT 总线错误 (0x{1:X})，尝试软复位..."), cardCfg.Index, busStatus));
                     card.SoftReset();
                     // 重置后再次检查
                     busStatus = card.CheckEtherCatStatus();
                     if (busStatus != 0)
                     {
-                        _logger.Error($"Card {cardCfg.Index} bus reset failed, status: 0x{busStatus:X}. Skipping config load.");
+                        _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_CardResetFailed", "卡 {0} 总线复位失败，状态: 0x{1:X}。跳过配置加载。"), cardCfg.Index, busStatus));
                         continue;   // 跳过该卡，不加载配置
                     }
                 }
@@ -240,7 +246,7 @@ namespace MotionControl.Services
                 var configPath = cardCfg.ConfigPath;
                 if (string.IsNullOrWhiteSpace(configPath))
                 {
-                    _logger.Warn($"Card {cardCfg.Index} ConfigPath is empty and no default config found in hwcfg.xml. Skipping config load.");
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("MS_Log_CardConfigPathEmpty", "卡 {0} ConfigPath 为空且 hwcfg.xml 中未找到默认配置。跳过配置加载。"), cardCfg.Index));
                     _cards.Add(card);
                     continue;
                 }
@@ -248,9 +254,9 @@ namespace MotionControl.Services
                 // 在后台线程调用雷赛加载配置文件
                 int loadResult = await Task.Run(() => card.LoadConfig(configPath)).ConfigureAwait(false);
                 if (loadResult != 0)
-                    _logger.Error($"Card {cardCfg.Index} failed to load config '{configPath}', error code: {loadResult}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_CardConfigLoadFailed", "卡 {0} 加载配置 '{1}' 失败，错误码: {2}"), cardCfg.Index, configPath, loadResult));
                 else
-                    _logger.Info($"Card {cardCfg.Index} loaded config '{configPath}'");
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("MS_Log_CardConfigLoaded", "卡 {0} 已加载配置 '{1}'"), cardCfg.Index, configPath));
 
                 _cards.Add(card);
             }
@@ -262,7 +268,7 @@ namespace MotionControl.Services
             // 若无任何真实卡，则添加一张虚拟卡，以便轴/IO映射正常进行
             if (_cards.Count == 0)
             {
-                _logger.Warn("No hardware cards found. Adding a virtual card for simulation.");
+                _logger.Warn(_localization.GetResourceOrDefault("MS_Log_NoHardwareCards", "未找到硬件卡，添加虚拟卡用于模拟。"));
                 _cards.Add(new VirtualMotionCard(-1));
             }
 
@@ -341,7 +347,7 @@ namespace MotionControl.Services
                 var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, position);
                 if (!allowed)
                 {
-                    _logger.Error($"[安全互锁] 轴{axisId}绝对移动被拒绝 | 目标位置:{position:F3} | 原因:{reason}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_InterlockAbsMoveRejected", "[安全互锁] 轴{0}绝对移动被拒绝 | 目标位置:{1:F3} | 原因:{2}"), axisId, position, reason));
                     throw new SafetyViolationException($"轴{axisId}绝对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
@@ -380,7 +386,7 @@ namespace MotionControl.Services
                     var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(logicalId, targetPos);
                     if (!allowed)
                     {
-                        _logger.Error($"[安全互锁] 轴{logicalId}绝对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                        _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_InterlockAbsMoveRejected", "[安全互锁] 轴{0}绝对移动被拒绝 | 目标位置:{1:F3} | 原因:{2}"), logicalId, targetPos, reason));
                         throw new SafetyViolationException($"轴{logicalId}绝对移动被安全策略拒绝: {reason}", logicalId, reason);
                     }
                     card.MoveAbs(pid, targetPos, velocity);
@@ -445,7 +451,7 @@ namespace MotionControl.Services
                 var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
                 if (!allowed)
                 {
-                    _logger.Error($"[安全互锁] 轴{axisId}相对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_InterlockRelMoveRejected", "[安全互锁] 轴{0}相对移动被拒绝 | 目标位置:{1:F3} | 原因:{2}"), axisId, targetPos, reason));
                     throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
@@ -466,7 +472,7 @@ namespace MotionControl.Services
                 var (allowed, reason) = _safetyZoneMonitor.CheckMoveAllowed(axisId, targetPos);
                 if (!allowed)
                 {
-                    _logger.Error($"[安全互锁] 轴{axisId}相对移动被拒绝 | 目标位置:{targetPos:F3} | 原因:{reason}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_InterlockRelMoveRejected", "[安全互锁] 轴{0}相对移动被拒绝 | 目标位置:{1:F3} | 原因:{2}"), axisId, targetPos, reason));
                     throw new SafetyViolationException($"轴{axisId}相对移动被安全策略拒绝: {reason}", axisId, reason);
                 }
 
@@ -483,7 +489,7 @@ namespace MotionControl.Services
                 var (allowed, reason) = _safetyZoneMonitor.CheckInterpolationMoveAllowed(axisIds, positions);
                 if (!allowed)
                 {
-                    _logger.Error($"[安全互锁] 插补移动(坐标系{coordId})被拒绝 | 原因:{reason}");
+                    _logger.Error(string.Format(_localization.GetResourceOrDefault("MS_Log_InterlockInterpMoveRejected", "[安全互锁] 插补移动(坐标系{0})被拒绝 | 原因:{1}"), coordId, reason));
                     throw new SafetyViolationException($"插补移动被安全策略拒绝: {reason}", axisIds[0], reason);
                 }
 
@@ -567,7 +573,7 @@ namespace MotionControl.Services
             var (card, pid) = ResolveAxis(axisId);
             int ret = card.MoveJog(pid, positive ? 0 : 1, speed);
             if (ret != 0)
-                _logger.Warn($"JogStart 失败 | 逻辑轴:{axisId} 物理轴:{pid} 返回值:{ret}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("MS_Log_JogStartFailed", "JogStart 失败 | 逻辑轴:{0} 物理轴:{1} 返回值:{2}"), axisId, pid, ret));
         }
 
         public void JogStop(int axisId)

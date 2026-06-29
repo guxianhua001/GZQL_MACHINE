@@ -1,4 +1,5 @@
 using Core.Abstraction;
+using Core.Extensions;
 using Core.Models;
 using Core.Utilities;
 using System;
@@ -19,6 +20,7 @@ namespace Core.Services
         private readonly IDispenseSegmentStore _segmentStore;
         private readonly IStationRegistry _stationRegistry;
         private readonly ILoggerService _logger;
+        private readonly ILocalizationService _localization;
 
         private static readonly JsonSerializerOptions SegmentJsonOptions = new()
         {
@@ -29,11 +31,13 @@ namespace Core.Services
         public DispenseSegmentSourceService(
             IDispenseSegmentStore segmentStore,
             IStationRegistry stationRegistry,
-            ILoggerService logger)
+            ILoggerService logger,
+            ILocalizationService localization)
         {
             _segmentStore = segmentStore;
             _stationRegistry = stationRegistry;
             _logger = logger;
+            _localization = localization;
         }
 
         /// <inheritdoc />
@@ -57,7 +61,7 @@ namespace Core.Services
 
             var fileSegments = DispenseSegmentFileLoader.LoadFromFile(configPath, _logger);
             if (fileSegments.Count > 0)
-                _logger.Info($"[DispenseSegmentSource] 从配置文件加载 {fileSegments.Count} 段: {configPath}");
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("DSS_Log_SegmentsLoadedFromFile", "[DispenseSegmentSource] 从配置文件加载 {0} 段: {1}"), fileSegments.Count, configPath));
 
             return fileSegments;
         }
@@ -84,7 +88,7 @@ namespace Core.Services
             }
             catch (Exception ex)
             {
-                _logger.Warn($"[DispenseSegmentSource] 读取工站参数失败: {ex.Message}");
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("DSS_Log_ReadStationParamsFailed", "[DispenseSegmentSource] 读取工站参数失败: {0}"), ex.Message));
             }
 
             return null;
@@ -157,7 +161,7 @@ namespace Core.Services
         {
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
-                logger?.Warn($"[DispenseSegmentFileLoader] 轨迹配置文件不存在: {path}");
+                logger?.Warn(ResourceHelper.GetString("DSS_Log_ConfigFileNotFound", path));
                 return new List<DispenseSegment>();
             }
 
@@ -174,7 +178,7 @@ namespace Core.Services
             }
             catch (Exception ex)
             {
-                logger?.Warn($"[DispenseSegmentFileLoader] 轨迹配置文件反序列化失败 [{path}]: {ex.Message}");
+                logger?.Warn(ResourceHelper.GetString("DSS_Log_DeserializeFailed", path, ex.Message));
                 return new List<DispenseSegment>();
             }
         }
@@ -193,7 +197,7 @@ namespace Core.Services
             }
             catch (Exception ex)
             {
-                logger?.Warn($"[DispenseSegmentFileLoader] 对齐数据加载失败 [{path}]: {ex.Message}");
+                logger?.Warn(ResourceHelper.GetString("DSS_Log_AlignDataLoadFailed", path, ex.Message));
                 return null;
             }
         }
