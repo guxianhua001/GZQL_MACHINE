@@ -95,9 +95,18 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(IsOffsetLinked));
                     RaisePropertyChanged(nameof(OffsetDisplayText));
                     UpdateOffsetDisplayValue();
-                    // 如果输入的是数值，同步到 Offset 字段
                     if (double.TryParse(value, out var numVal))
+                    {
+                        // 手动输入数值：同步到 Offset 字段并刷新显示值
                         _subMove.Offset = numVal;
+                        OffsetDisplayValue = numVal;
+                    }
+                    else if (string.IsNullOrEmpty(value))
+                    {
+                        // 取消链接时清零固定偏移量和显示值，避免执行时残留补偿值
+                        _subMove.Offset = 0;
+                        OffsetDisplayValue = 0;
+                    }
                 }
             }
         }

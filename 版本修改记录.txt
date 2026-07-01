@@ -1,6 +1,23 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.07.01a — GOTO Ofs 取消链接后残留补偿值修复
+-------------------------------------------
+1. 问题
+   - GotoDetailView 中 Ofs 链接全局变量或手动输入值（如100）后，点击链接图标取消，
+     执行 GOTO 时仍残留补偿值100，未清零。
+2. 根因
+   - SubMoveRowViewModel.OffsetVariableName setter 仅同步数值到 _subMove.Offset，
+     但取消链接（设为 null/空）时未清零 _subMove.Offset，执行时 GotoStepAction 仍读取
+     subMove.Offset 叠加到 totalOffset，导致残留补偿。
+   - OffsetDisplayValue 未同步刷新，取消链接后显示值也为旧值。
+3. 修复
+   - OffsetVariableName setter 增加：设为 null/空时同时清零 _subMove.Offset=0 和
+     OffsetDisplayValue=0；手动输入数值时同步刷新 OffsetDisplayValue。
+   - 影响范围：GOTO/PICK/RELEASE 共用 SubMoveRowViewModel，均受益。
+4. 验证
+   - dotnet build Module/Module.csproj：0 error。
+
 v2026.06.30c — OverView 工作灯/吹气/安全门锁 DO 开关
 -------------------------------------------
 1. 需求
