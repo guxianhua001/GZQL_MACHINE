@@ -61,6 +61,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(ReleasePosition));
                     RaisePropertyChanged(nameof(SkipClampCheck));
                     RaisePropertyChanged(nameof(PickMoves));
+                    RaisePropertyChanged(nameof(IsVacuumOn));
                     RaisePropertyChanged(nameof(StepDescription));
                 }
             }
@@ -454,6 +455,9 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(VacuumCheckDelay));
             RaisePropertyChanged(nameof(ClampPosition));
             RaisePropertyChanged(nameof(ReleasePosition));
+            RaisePropertyChanged(nameof(SkipClampCheck));
+            RaisePropertyChanged(nameof(PickMoves));
+            RaisePropertyChanged(nameof(IsVacuumOn));
             RaisePropertyChanged(nameof(StepDescription));
         }
 

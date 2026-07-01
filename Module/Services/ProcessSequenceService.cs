@@ -7,6 +7,7 @@ using MotionControl.Interfaces;
 using Newtonsoft.Json;
 using Prism.Events;
 using Prism.Mvvm;
+using Recipe.Events;
 using Recipe.Interfaces;
 using StationTasks.Actions;
 using StationTasks.Models;
@@ -94,6 +95,17 @@ namespace Module.Services
             SiteFeatureOptions = new ObservableCollection<string>();
             // 创建默认任务
             AddTask(isDefault: true);
+
+            // 订阅配方池切换事件：切换池时从新池 ExtensionData 重新加载工序序列文件（参考 ZScanDetailViewModel 模式）
+            _eventAggregator.GetEvent<RecipePoolChangedEvent>().Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
+        }
+
+        /// <summary>配方池切换时从新池 ExtensionData 重新加载工序序列文件</summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            _ = AutoLoadLastSequenceAsync();
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_RecipePoolSwitchedReload",
+                "[ProcessSequence] 配方池切换，已从新池重新加载工序序列（池={0}）"), poolName));
         }
 
         // ========== 任务与步骤管理 ==========
@@ -741,6 +753,7 @@ namespace Module.Services
             step.IsSingleExecuting = false;
             step.HasActiveAlarm = false;
             step.ErrorMessage = null;
+            step.LastElapsedMs = 0;
 
             if (step.IfBranches == null) return;
             foreach (var branch in step.IfBranches)
@@ -1528,6 +1541,8 @@ namespace Module.Services
                 Status = t.Status,
                 RunMode = t.RunMode,
                 IsEnabled = t.IsEnabled,
+                Comment = t.Comment,
+                IsExpanded = t.IsExpanded,
                 Methods = t.Methods?.ToList(),
                 Steps = null  // 新格式不序列化 Steps
             }).ToList();
@@ -1691,7 +1706,10 @@ namespace Module.Services
                         IsDefault = taskData.IsDefault,
                         Status = TaskItem.TaskStatusEnum.Idle,
                         RunMode = taskData.RunMode,
-                        IsEnabled = taskData.IsEnabled
+                        IsEnabled = taskData.IsEnabled,
+                        // 恢复任务级注释与展开状态（旧文件无此字段时取默认值）
+                        Comment = taskData.Comment,
+                        IsExpanded = taskData.IsExpanded
                     };
                     // 加载 Methods（新格式），或从旧格式 Steps 迁移
                     if (taskData.Methods != null && taskData.Methods.Count > 0)
@@ -1713,7 +1731,9 @@ namespace Module.Services
                         method.LastElapsedMs = 0;
                         foreach (var step in method.Steps)
                         {
-                            step.IsCurrent = false;
+                            // 完整重置步骤运行时状态（含 IF 分支子步骤的 IsCurrent/LastElapsedMs 等）
+                            ResetRuntimeState(step);
+                            // 确保结构初始化（AlarmConfig/BranchConfig/IfDetail/IfBranches）
                             step.EnsureAlarmConfigInitialized();
                         }
                     }
@@ -1961,6 +1981,10 @@ namespace Module.Services
         public TaskItem.TaskStatusEnum Status { get; set; }
         public TaskRunMode RunMode { get; set; }
         public bool IsEnabled { get; set; } = true;
+        /// <summary>任务注释（用户备注，需持久化保存/恢复）</summary>
+        public string Comment { get; set; }
+        /// <summary>TreeView 展开状态（持久化以保持用户折叠/展开偏好）</summary>
+        public bool IsExpanded { get; set; } = true;
         public List<ProcessMethod> Methods { get; set; }
         // 向后兼容：旧格式只有 Steps，加载时迁移为 Methods
         public List<ProcessStep> Steps { get; set; }

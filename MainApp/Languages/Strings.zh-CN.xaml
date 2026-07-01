@@ -2169,6 +2169,7 @@
     <sys:String x:Key="NeedleAligner_Log_Cleared">日志已清空</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignNoAxis">对针位置示教失败: 系统{0}未读取到 Dx/Dy/针尖Z轴</sys:String>
     <sys:String x:Key="NeedleAligner_Log_RaiseSafeHeight">阶段1: 抬升至安全高度 Z={0:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveToFirstSearchPoint">插补速度移动到首搜索点 X={0:F3} Y={1:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SearchPointStart">── 搜索点{0} 预设({1:F3},{2:F3}) ──</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SearchPointArrival">点{0} 到位: X={1:F3} Y={2:F3} Z寻针高</sys:String>
     <sys:String x:Key="NeedleAligner_Log_BoundaryScanStart">点{0} {1}向扫描: 中心={2:F3} ±{3:F3} DI={4}</sys:String>
@@ -2999,6 +3000,7 @@
     <sys:String x:Key="OverView_Btn_SingleStep_On">单步模式(开)</sys:String>
     <sys:String x:Key="OverView_Btn_WorkLight">工作灯</sys:String>
     <sys:String x:Key="OverView_Door_Locked">安全门: 已锁定</sys:String>
+    <sys:String x:Key="OverView_Door_Unlocked">安全门: 已解锁</sys:String>
     <sys:String x:Key="OverView_Placeholder_MainVisual">设备主视觉区域</sys:String>
     <sys:String x:Key="OverView_Speed">速度</sys:String>
     <sys:String x:Key="OverView_TrioLight_Alarm">三色灯: 报警</sys:String>
@@ -4675,7 +4677,7 @@
     <sys:String x:Key="DGCVM_Log_TransformVerifyFailed">双龙门标定: 坐标变换验证失败</sys:String>
     <sys:String x:Key="DSS_Log_ReadStationParamsFailed">[DispenseSegmentSource] 读取工站参数失败: {0}</sys:String>
     <sys:String x:Key="DSS_Log_SegmentsLoadedFromFile">[DispenseSegmentSource] 从配置文件加载 {0} 段: {1}</sys:String>
-    <sys:String x:Key="DT_Log_AssemblyZDone">[{0}] 组装Z轴已完成，开始点胶XY轴回零。</sys:String>
+    <sys:String x:Key="DT_Log_AssemblyZDone">[{0}] 组装Z轴已完成，开始 Dx 轴回零。</sys:String>
     <sys:String x:Key="DT_Log_AxisHoming">[{0}] {1} 轴回零中...</sys:String>
     <sys:String x:Key="DT_Log_DxConfigNotFound">[{0}] 未找到Dx轴配置，CoordId 回退到 0</sys:String>
     <sys:String x:Key="DT_Log_DxMatchedCoordId">[{0}] Dx(actAxisId={1}) 匹配插补系 CoordId={2}</sys:String>
@@ -4690,7 +4692,10 @@
     <sys:String x:Key="DT_Log_IOTriggerSet">[{0}] IO 触发信号已置位: {1} (LogicalId={2})</sys:String>
     <sys:String x:Key="DT_Log_NotifyDispensingComplete">[{0}] 已通知组装：点胶回零完成。</sys:String>
     <sys:String x:Key="DT_Log_NotifyZComplete">[{0}] 已通知组装/上下料：点胶Z轴回零完成。</sys:String>
-    <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] 阶段1：点胶Z轴回零...</sys:String>
+    <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] 阶段1：点胶Z轴（Dz₂/Dz₃）回零...</sys:String>
+    <sys:String x:Key="DT_Log_Phase2DyHoming">[{0}] 阶段2：Dy 轴回零...</sys:String>
+    <sys:String x:Key="DT_Log_Phase3Dz1Homing">[{0}] 阶段3：Dz₁ 轴回零...</sys:String>
+    <sys:String x:Key="DT_Log_Phase6DxHoming">[{0}] 阶段6：Dx 轴回零...</sys:String>
     <sys:String x:Key="DT_Log_PositionLookupFailed">[{0}] 位置查找失败: {1}</sys:String>
     <sys:String x:Key="DT_Log_ReturnedToStandby">[{0}] 已返回待机位置</sys:String>
     <sys:String x:Key="DT_Log_ReturnToStandbySpeedParams">[{0}] ReturnToStandby 速度参数: Dz1={1:F1}, Dz2={2:F1}, Dz3={3:F1}, 插补={4:F1}</sys:String>
@@ -4909,6 +4914,7 @@
     <sys:String x:Key="SysState_Log_ResetButtonLongPressTrigger">复位按钮长按5秒 -&gt; 触发整机初始化。</sys:String>
     <sys:String x:Key="SysState_Log_ResetButtonPressed">复位按钮已按下，长按5秒将触发整机初始化...</sys:String>
     <sys:String x:Key="SysState_Log_TowerLightsConfigLoaded">TowerLights 配置加载完成: [{0}], 共{1}项</sys:String>
+    <sys:String x:Key="SysState_Log_DoorLocksResolved">安全门锁 DO 解析完成: {0} 个 (LogicalIds: [{1}])</sys:String>
     <sys:String x:Key="SZCfg_Log_ConfigFileNotFound">[安全互锁] 未找到配置文件，使用默认机型规则</sys:String>
     <sys:String x:Key="SZCfg_Log_ConfigSaved">[安全互锁] 配置已保存</sys:String>
     <sys:String x:Key="SZCfg_Log_LoadConfigFailed">[安全互锁] 加载配置失败: {0}，使用默认规则</sys:String>
@@ -5316,5 +5322,13 @@
     <sys:String x:Key="ScriptDetail_CompileFailed">ScriptDetail_CompileFailed</sys:String>
     <sys:String x:Key="SeekDetail_Error_ImportFailed">SeekDetail_Error_ImportFailed</sys:String>
     <!-- ===== End auto-added missing log keys ===== -->
+
+    <!-- ===== 配方池切换：各编辑器/服务重新加载配置文件日志 ===== -->
+    <sys:String x:Key="PSE_Log_RecipePoolSwitchedReload">[ProcessSequence] 配方池切换，已从新池重新加载工序序列（池={0}）</sys:String>
+    <sys:String x:Key="VisCap_Log_RecipePoolSwitchedReload">[VisionCapture] 配方池切换，已从新池重新加载配置（池={0}）</sys:String>
+    <sys:String x:Key="NA_Log_RecipePoolSwitchedReload">[NeedleAligner] 配方池切换，已从新池重新加载系统{0}校准参数（池={1}）</sys:String>
+    <sys:String x:Key="NCA_Log_RecipePoolSwitchedReload">[NeedleCamera] 配方池切换，已从新池重新加载系统参数（池={0}）</sys:String>
+    <sys:String x:Key="NCA_Log_RecipePoolSwitchedReloadFailed">[NeedleCamera] 配方池切换重新加载失败: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_RecipePoolSwitchedReload">[NeedleVerify] 配方池切换，已从新池重新加载系统{0}验证记录（池={1}）</sys:String>
 </ResourceDictionary>
 

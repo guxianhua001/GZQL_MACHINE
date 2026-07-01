@@ -84,7 +84,31 @@ namespace Module.ViewModels
 
             _eventAggregator.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>().Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
+            // 订阅配方池切换事件：切换池时清空系统状态缓存并从新池 ExtensionData 重新加载（参考 ZScanDetailViewModel 模式）
+            _eventAggregator.GetEvent<Recipe.Events.RecipePoolChangedEvent>().Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
+
             _ = InitializeAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>配方池切换时清空系统状态缓存，从新池 ExtensionData 重新加载系统1/2参数并应用到当前系统UI</summary>
+        private async void OnRecipePoolChanged(string poolName)
+        {
+            try
+            {
+                // 清空旧池的系统状态缓存，强制从新池 ExtensionData 重新加载
+                _systemStateCache.Clear();
+                await EnsureSystemCachedAsync(1);
+                await EnsureSystemCachedAsync(2);
+                if (_systemStateCache.TryGetValue(_selectedSystemNumber, out var state))
+                    ApplySystemState(state, _selectedSystemNumber);
+                _logger.Info(string.Format(_localization.GetResourceOrDefault("NCA_Log_RecipePoolSwitchedReload",
+                    "[NeedleCamera] 配方池切换，已从新池重新加载系统参数（池={0}）"), poolName));
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("NCA_Log_RecipePoolSwitchedReloadFailed",
+                    "[NeedleCamera] 配方池切换重新加载失败: {0}"), ex.Message));
+            }
         }
 
         /// <summary>初始化：确保默认全局变量存在，预加载系统1/2参数，再应用当前系统到 UI</summary>

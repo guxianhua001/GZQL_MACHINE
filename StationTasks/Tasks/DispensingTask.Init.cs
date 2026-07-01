@@ -25,11 +25,13 @@ namespace StationTasks.Tasks
         /// <summary>
         /// 点胶工站整机初始化（重写 HomeAsync）。
         /// 时序：
-        /// 1. 回零 Dz₁/Dz₂/Dz₃ → 回到待机位
-        /// 2. 通知组装/上下料：点胶Z轴完成
-        /// 3. 等待组装Z轴完成
-        /// 4. 回零 Dx/Dy → 回到待机位
-        /// 5. 通知组装：点胶回零完成
+        /// 1. 回零 Dz₂/Dz₃ → 回到待机位
+        /// 2. Dy 轴回零 → 回到待机位
+        /// 3. Dz₁ 轴回零 → 回到待机位
+        /// 4. 通知组装/上下料：点胶Z轴完成
+        /// 5. 等待组装Z轴完成
+        /// 6. 回零 Dx → 回到待机位
+        /// 7. 通知组装：点胶回零完成
         /// </summary>
         public override async Task HomeAsync()
         {
@@ -49,13 +51,14 @@ namespace StationTasks.Tasks
                 // 重置工站间协调信号（防止上次初始化残留）
                 ResetInitSignals();
 
-                // ===== 阶段1：点胶Z轴（Dz₁, Dz₂, Dz₃）回零 → 待机位 =====
-                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase1ZHoming", "[{0}] 阶段1：点胶Z轴回零..."), TaskName));
+                // ===== 阶段1：点胶Z轴（Dz₂, Dz₃）回零 → 待机位 =====
+                // Dz₁ 延后至 Dy 回零后执行，避免机械干涉
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase1ZHoming", "[{0}] 阶段1：点胶Z轴（Dz₂/Dz₃）回零..."), TaskName));
                 PublishTaskStatusChanged(L("Init_Dispenser_ZHoming"), State);
-                PublishInitProgress(10, L("Init_Dispenser_ZHoming"));
+                PublishInitProgress(5, L("Init_Dispenser_ZHoming"));
 
-                int[] zAxes = { AxisDz1, AxisDz2, AxisDz3 };
-                string[] zAxisNames = { "Dz₁", "Dz₂", "Dz₃" };
+                int[] zAxes = { AxisDz2, AxisDz3 };
+                string[] zAxisNames = { "Dz₂", "Dz₃" };
                 int zIndex = 0;
 
                 foreach (var (axisId, axisName) in zAxes.Zip(zAxisNames, (id, name) => (id, name)))
@@ -65,65 +68,72 @@ namespace StationTasks.Tasks
 
                     Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
                     PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
-                    PublishInitProgress(10 + zIndex * 10, L("Init_HomeAxis", axisName));
+                    PublishInitProgress(5 + zIndex * 5, L("Init_HomeAxis", axisName));
                     await ExecuteHomeAxisAsync(axisId);
                     zIndex++;
                 }
 
-                // Z轴回到待机位
+                // Dz₂/Dz₃ 回到待机位
                 PublishTaskStatusChanged(L("Init_Dispenser_ZStandby"), State);
+                int zStandbyIdx = 0;
                 foreach (var (axisId, axisName) in zAxes.Zip(zAxisNames, (id, name) => (id, name)))
                 {
                     CurrentToken.ThrowIfCancellationRequested();
                     if (axisId < 0) continue;
 
-                    PublishInitProgress(40 + zIndex * 10, L("Init_StandbyPosition", axisName));
+                    PublishInitProgress(15 + zStandbyIdx * 5, L("Init_StandbyPosition", axisName));
                     await ExecuteMoveAsync(axisId, "StandbyPosition", InitZAxisVelocity);
+                    zStandbyIdx++;
                 }
 
-                // 通知组装/上下料：点胶Z轴回零完成
+                // ===== 阶段2：Dy 轴回零 → 待机位 =====
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase2DyHoming", "[{0}] 阶段2：Dy 轴回零..."), TaskName));
+                PublishTaskStatusChanged(L("Init_HomeAxis", "Dy"), State);
+                PublishInitProgress(25, L("Init_HomeAxis", "Dy"));
+                if (AxisDy >= 0)
+                {
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] Dy 轴回零中..."), TaskName));
+                    await ExecuteHomeAxisAsync(AxisDy);
+                    PublishInitProgress(30, L("Init_StandbyPosition", "Dy"));
+                    await ExecuteMoveAsync(AxisDy, "StandbyPosition", InitXYAxisVelocity);
+                }
+
+                // ===== 阶段3：Dz₁ 轴回零 → 待机位 =====
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase3Dz1Homing", "[{0}] 阶段3：Dz₁ 轴回零..."), TaskName));
+                PublishTaskStatusChanged(L("Init_HomeAxis", "Dz₁"), State);
+                PublishInitProgress(35, L("Init_HomeAxis", "Dz₁"));
+                if (AxisDz1 >= 0)
+                {
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] Dz₁ 轴回零中..."), TaskName));
+                    await ExecuteHomeAxisAsync(AxisDz1);
+                    PublishInitProgress(40, L("Init_StandbyPosition", "Dz₁"));
+                    await ExecuteMoveAsync(AxisDz1, "StandbyPosition", InitZAxisVelocity);
+                }
+
+                // ===== 阶段4：通知组装/上下料：点胶Z轴回零完成 =====
                 SignalToStation("AssemblyStation", "DispensingZComplete", true);
                 SignalToStation("LoadingStation", "DispensingZComplete", true);
                 Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_NotifyZComplete", "[{0}] 已通知组装/上下料：点胶Z轴回零完成。"), TaskName));
 
-                // ===== 等待组装Z轴完成（所有Z轴归零前提） =====
+                // ===== 阶段5：等待组装Z轴完成（所有Z轴归零前提） =====
                 PublishTaskStatusChanged(L("Init_Dispenser_WaitAssemblyZ"), State);
-                PublishInitProgress(60, L("Init_Dispenser_WaitAssemblyZ"));
+                PublishInitProgress(45, L("Init_Dispenser_WaitAssemblyZ"));
                 await WaitForSignalAsync("DispensingStation", "AssemblyZComplete", true, SignalWaitTimeoutMs);
-                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AssemblyZDone", "[{0}] 组装Z轴已完成，开始点胶XY轴回零。"), TaskName));
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AssemblyZDone", "[{0}] 组装Z轴已完成，开始 Dx 轴回零。"), TaskName));
 
-                // ===== 阶段2：点胶XY轴（Dx, Dy）回零 → 待机位 =====
+                // ===== 阶段6：Dx 轴回零 → 待机位 =====
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase6DxHoming", "[{0}] 阶段6：Dx 轴回零..."), TaskName));
                 PublishTaskStatusChanged(L("Init_Dispenser_XYHoming"), State);
-                PublishInitProgress(65, L("Init_Dispenser_XYHoming"));
-
-                int[] mainAxes = { AxisDx, AxisDy };
-                string[] mainAxisNames = { "Dx", "Dy" };
-                int mIndex = 0;
-
-                foreach (var (axisId, axisName) in mainAxes.Zip(mainAxisNames, (id, name) => (id, name)))
+                PublishInitProgress(65, L("Init_HomeAxis", "Dx"));
+                if (AxisDx >= 0)
                 {
-                    CurrentToken.ThrowIfCancellationRequested();
-                    if (axisId < 0) continue;
-
-                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, axisName));
-                    PublishTaskStatusChanged(L("Init_HomeAxis", axisName), State);
-                    PublishInitProgress(65 + mIndex * 10, L("Init_HomeAxis", axisName));
-                    await ExecuteHomeAxisAsync(axisId);
-                    mIndex++;
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] Dx 轴回零中..."), TaskName));
+                    await ExecuteHomeAxisAsync(AxisDx);
+                    PublishInitProgress(85, L("Init_StandbyPosition", "Dx"));
+                    await ExecuteMoveAsync(AxisDx, "StandbyPosition", InitXYAxisVelocity);
                 }
 
-                // XY轴回到待机位
-                PublishTaskStatusChanged(L("Init_Dispenser_XYStandby"), State);
-                foreach (var (axisId, axisName) in mainAxes.Zip(mainAxisNames, (id, name) => (id, name)))
-                {
-                    CurrentToken.ThrowIfCancellationRequested();
-                    if (axisId < 0) continue;
-
-                    PublishInitProgress(85 + mIndex * 5, L("Init_StandbyPosition", axisName));
-                    await ExecuteMoveAsync(axisId, "StandbyPosition", InitXYAxisVelocity);
-                }
-
-                // 通知组装：点胶回零完成
+                // ===== 阶段7：通知组装：点胶回零完成 =====
                 SignalToStation("AssemblyStation", "DispensingComplete", true);
                 Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_NotifyDispensingComplete", "[{0}] 已通知组装：点胶回零完成。"), TaskName));
 

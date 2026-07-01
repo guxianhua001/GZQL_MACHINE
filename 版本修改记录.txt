@@ -3564,3 +3564,235 @@ v2026.05.30d �� ArcԲ���㽺���㹫ʽ����������
   - StationTasks/Tasks/AssemblyTask.Init.cs
   - MotionControl/Services/TaskBase.cs
   - MainApp/Languages/Strings.zh-CN.xaml、Strings.en-US.xaml
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 修复 ProcessSequenceEditorViewModel.OnLoadFromJson 加载工序序列文件时参数不完整的问题
+修改内容:
+  1. SequenceTaskData DTO 新增 Comment、IsExpanded 属性，使任务级注释和展开状态能够持久化保存/恢复
+  2. SaveSequenceToPathAsync 保存时映射 Comment、IsExpanded 字段到 DTO
+  3. LoadSequenceFromPathAsync 加载时从 DTO 恢复 Comment、IsExpanded 到 TaskItem
+  4. ProcessStep 中 IsCurrent、IsSingleExecuting、HasActiveAlarm、ErrorMessage、LastElapsedMs 的 [JsonIgnore] 特性
+     从私有字段移至公开属性，修复 Newtonsoft.Json 仍序列化运行时属性的 Bug
+     （原 [JsonIgnore] 标注在私有字段上无效，Newtonsoft 序列化属性而非字段）
+  5. LoadSequenceFromPathAsync 加载时调用 ResetRuntimeState(step) 完整重置步骤运行时状态
+     （含 IF 分支子步骤），替代原仅重置 step.IsCurrent 的不完整逻辑
+  6. ResetRuntimeState 新增 step.LastElapsedMs = 0 重置，避免加载后步骤显示上一次执行耗时
+修改文件:
+  - Module/Services/ProcessSequenceService.cs
+  - StationTasks/Models/ProcessStep.cs
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 修复 ProcessSequenceEditorViewModel.OnLoadFromJson 加载工序序列文件时参数不完整的问题
+修改内容:
+  1. SequenceTaskData DTO 新增 Comment、IsExpanded 属性，使任务级注释和展开状态能够持久化保存/恢复
+  2. SaveSequenceToPathAsync 保存时映射 Comment、IsExpanded 字段到 DTO
+  3. LoadSequenceFromPathAsync 加载时从 DTO 恢复 Comment、IsExpanded 到 TaskItem
+  4. ProcessStep 中 IsCurrent、IsSingleExecuting、HasActiveAlarm、ErrorMessage、LastElapsedMs 的 [JsonIgnore] 特性
+     从私有字段移至公开属性，修复 Newtonsoft.Json 仍序列化运行时属性的 Bug
+     （原 [JsonIgnore] 标注在私有字段上无效，Newtonsoft 序列化属性而非字段）
+  5. LoadSequenceFromPathAsync 加载时调用 ResetRuntimeState(step) 完整重置步骤运行时状态
+     （含 IF 分支子步骤），替代原仅重置 step.IsCurrent 的不完整逻辑
+  6. ResetRuntimeState 新增 step.LastElapsedMs = 0 重置，避免加载后步骤显示上一次执行耗时
+修改文件:
+  - Module/Services/ProcessSequenceService.cs
+  - StationTasks/Models/ProcessStep.cs
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 修复 DispenseDetailViewModel/PickDetailViewModel 从 JSON 加载后部分参数不刷新到 UI 的问题
+修改内容:
+  1. DispenseDetailViewModel: Step setter 与 OnNavigatedTo 的 RaisePropertyChanged 列表不一致，
+     各自缺失多个绑定属性的变更通知，导致打开 DISPENSE 详情对话框时以下参数不显示已加载的值：
+     - Step setter 缺失: EnableZCalibration、AngleCompensationLinkedVar、IsAngleCompensationLinked、
+       DefaultXyCompensationX、DefaultXyCompensationY
+     - OnNavigatedTo 缺失: AngleCompensationLinkedVar、IsAngleCompensationLinked、
+       DefaultPreDispenseDelay、DefaultDispenseTime
+     修复方案: 提取统一的 RaiseAllDispensePropertiesChanged() 方法，Step setter 与 OnNavigatedTo
+     共用同一方法，彻底消除两处列表不一致的问题。Step setter 新增 RefreshCalibrationDisplayValues() 调用。
+  2. PickDetailViewModel: 同类问题——Step setter 与 OnNavigatedTo 缺失 IsVacuumOn 的 RaisePropertyChanged，
+     OnNavigatedTo 还缺失 SkipClampCheck、PickMoves。已补齐两处列表。
+修改文件:
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - Module/Controls/StepDetails/PickDetailViewModel.cs
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 修复 DispenseDetailViewModel/PickDetailViewModel 从 JSON 加载后部分参数不刷新到 UI 的问题
+修改内容:
+  1. DispenseDetailViewModel: Step setter 与 OnNavigatedTo 的 RaisePropertyChanged 列表不一致，
+     各自缺失多个绑定属性的变更通知，导致打开 DISPENSE 详情对话框时以下参数不显示已加载的值：
+     - Step setter 缺失: EnableZCalibration、AngleCompensationLinkedVar、IsAngleCompensationLinked、
+       DefaultXyCompensationX、DefaultXyCompensationY
+     - OnNavigatedTo 缺失: AngleCompensationLinkedVar、IsAngleCompensationLinked、
+       DefaultPreDispenseDelay、DefaultDispenseTime
+     修复方案: 提取统一的 RaiseAllDispensePropertiesChanged() 方法，Step setter 与 OnNavigatedTo
+     共用同一方法，彻底消除两处列表不一致的问题。Step setter 新增 RefreshCalibrationDisplayValues() 调用。
+  2. PickDetailViewModel: 同类问题——Step setter 与 OnNavigatedTo 缺失 IsVacuumOn 的 RaisePropertyChanged，
+     OnNavigatedTo 还缺失 SkipClampCheck、PickMoves。已补齐两处列表。
+修改文件:
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+  - Module/Controls/StepDetails/PickDetailViewModel.cs
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 优化 ExecuteNeedleCalibrationAsync 阶段1防碰撞（全部Z轴抬升）及阶段2+3前快速定位
+修改内容:
+  1. 阶段1防碰撞优化: 新增 MoveAllZToSafeHeightAsync 方法，依次抬升全部三个Z轴
+     （Dz₁、Dz₂、Dz₃）至安全高度。原 MoveToSafeHeightAsync 仅抬升当前系统Z轴，
+     其余针头仍处于低位，水平移动时存在碰撞风险。
+  2. 阶段2+3前快速定位: 在调用 SearchCenterPointAsync 之前，使用 GetXYInterpSpeed
+     插补速度快速移动到第一个搜索点（SearchPoint1），替代原来在 SearchCenterPointAsync
+     内部以 SearchSpeed 慢速移动到首点的方式，提升效率。SearchCenterPointAsync 本身不修改。
+  3. INeedleAlignerMotionService 接口新增 MoveAllZToSafeHeightAsync 方法定义。
+  4. 校准完成及寻针失败后的抬升也改为 MoveAllZToSafeHeightAsync，确保所有针头离开工作面。
+  5. 新增本地化资源 NeedleAligner_Log_MoveToFirstSearchPoint（中/英文）。
+修改文件:
+  - Module/Services/NeedleAlignerMotionService.cs
+  - Module/Services/INeedleAlignerMotionService.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 优化 ExecuteNeedleCalibrationAsync 阶段1防碰撞（全部Z轴抬升）及阶段2+3前快速定位
+修改内容:
+  1. 阶段1防碰撞优化: 新增 MoveAllZToSafeHeightAsync 方法，依次抬升全部三个Z轴
+     （Dz₁、Dz₂、Dz₃）至安全高度。原 MoveToSafeHeightAsync 仅抬升当前系统Z轴，
+     其余针头仍处于低位，水平移动时存在碰撞风险。
+  2. 阶段2+3前快速定位: 在调用 SearchCenterPointAsync 之前，使用 GetXYInterpSpeed
+     插补速度快速移动到第一个搜索点（SearchPoint1），替代原来在 SearchCenterPointAsync
+     内部以 SearchSpeed 慢速移动到首点的方式，提升效率。SearchCenterPointAsync 本身不修改。
+  3. INeedleAlignerMotionService 接口新增 MoveAllZToSafeHeightAsync 方法定义。
+  4. 校准完成及寻针失败后的抬升也改为 MoveAllZToSafeHeightAsync，确保所有针头离开工作面。
+  5. 新增本地化资源 NeedleAligner_Log_MoveToFirstSearchPoint（中/英文）。
+修改文件:
+  - Module/Services/NeedleAlignerMotionService.cs
+  - Module/Services/INeedleAlignerMotionService.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 优化 DispensingTask.Init.cs 回零时序，拆分 Dz₁/Dy/Dx 独立回零避免机械干涉
+修改内容:
+  原时序:
+    1. 回零 Dz₁/Dz₂/Dz₃ → 待机位
+    2. 通知组装/上下料：点胶Z轴完成
+    3. 等待组装Z轴完成
+    4. 回零 Dx/Dy → 待机位
+    5. 通知组装：点胶回零完成
+  新时序:
+    1. 回零 Dz₂/Dz₃ → 待机位（Dz₁ 延后避免机械干涉）
+    2. Dy 轴回零 → 待机位
+    3. Dz₁ 轴回零 → 待机位（Dy 回零后再回零 Dz₁）
+    4. 通知组装/上下料：点胶Z轴完成
+    5. 等待组装Z轴完成
+    6. 回零 Dx → 待机位（Dx 与 Dy 分开回零）
+    7. 通知组装：点胶回零完成
+  新增本地化资源: DT_Log_Phase2DyHoming、DT_Log_Phase3Dz1Homing、DT_Log_Phase6DxHoming（中/英文）
+  更新本地化资源: DT_Log_Phase1ZHoming（标注 Dz₂/Dz₃）、DT_Log_AssemblyZDone（改为 Dx 轴回零）
+修改文件:
+  - StationTasks/Tasks/DispensingTask.Init.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: 优化 DispensingTask.Init.cs 回零时序，拆分 Dz₁/Dy/Dx 独立回零避免机械干涉
+修改内容:
+  原时序:
+    1. 回零 Dz₁/Dz₂/Dz₃ → 待机位
+    2. 通知组装/上下料：点胶Z轴完成
+    3. 等待组装Z轴完成
+    4. 回零 Dx/Dy → 待机位
+    5. 通知组装：点胶回零完成
+  新时序:
+    1. 回零 Dz₂/Dz₃ → 待机位（Dz₁ 延后避免机械干涉）
+    2. Dy 轴回零 → 待机位
+    3. Dz₁ 轴回零 → 待机位（Dy 回零后再回零 Dz₁）
+    4. 通知组装/上下料：点胶Z轴完成
+    5. 等待组装Z轴完成
+    6. 回零 Dx → 待机位（Dx 与 Dy 分开回零）
+    7. 通知组装：点胶回零完成
+  新增本地化资源: DT_Log_Phase2DyHoming、DT_Log_Phase3Dz1Homing、DT_Log_Phase6DxHoming（中/英文）
+  更新本地化资源: DT_Log_Phase1ZHoming（标注 Dz₂/Dz₃）、DT_Log_AssemblyZDone（改为 Dx 轴回零）
+修改文件:
+  - StationTasks/Tasks/DispensingTask.Init.cs
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: OverView 安全门锁定状态从 SystemStateService 获取，替代 OverViewModel 直接 ReadDo
+修改内容:
+  架构变更:
+    原: OverViewModel 通过 IMotionService.ReadDo(Q1.2SafetyDoorLock) 直接回读硬件 DO
+    新: SystemStateService 在 20ms 轮询中回读 DO 并通过 SafetyDoorLockChanged 事件推送，
+        OverViewModel 订阅事件获取状态，单一数据源避免多处直接访问硬件
+
+  1. ISystemStateService: 新增 IsSafetyDoorLocked 属性 + SafetyDoorLockChanged 事件
+  2. SystemStateService:
+     - InitializeMappings 中解析 Q1.2SafetyDoorLock DO LogicalId（ResolveOutputDoIdByName）
+     - UpdateSignalStates 轮询中调用 RefreshSafetyDoorLockState 回读 DO，
+       状态变更时触发 SafetyDoorLockChanged 事件
+     - best-effort：读取失败保持上次状态，不中断轮询
+  3. OverViewModel:
+     - 构造函数订阅 _systemState.SafetyDoorLockChanged 事件
+     - 新增 DoorStatusText、DoorTextColor 绑定属性
+     - 新增 ApplyDoorLockState 方法统一更新状态/颜色/文本
+     - OnSafetyDoorLockChanged 回调通过 Dispatcher 切换到 UI 线程
+     - RefreshOutputStates 改为从 _systemState.IsSafetyDoorLocked 获取（不再直接 ReadDo）
+     - OnToggleSafetyDoorLock 乐观更新改用 ApplyDoorLockState（同步更新全部 UI 属性）
+  4. OverView.xaml: 顶部安全门徽章文本从静态本地化键改为绑定 DoorStatusText，
+     Foreground 从静态 #2E7D32 改为绑定 DoorTextColor
+  5. 新增本地化资源 OverView_Door_Unlocked（中: 安全门: 已解锁 / 英: Door: Unlocked）
+修改文件:
+  - MotionControl/Interfaces/ISystemStateService.cs
+  - MotionControl/Services/SystemStateService.cs
+  - Module/ViewModels/OverViewModel.cs
+  - Module/Views/OverView.xaml
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml
+
+========================================
+版本: v2.9.x
+日期: 2026-07-02
+描述: OverView 安全门锁定状态从 SystemStateService 获取，替代 OverViewModel 直接 ReadDo
+修改内容:
+  架构变更:
+    原: OverViewModel 通过 IMotionService.ReadDo(Q1.2SafetyDoorLock) 直接回读硬件 DO
+    新: SystemStateService 在 20ms 轮询中回读 DO 并通过 SafetyDoorLockChanged 事件推送，
+        OverViewModel 订阅事件获取状态，单一数据源避免多处直接访问硬件
+
+  1. ISystemStateService: 新增 IsSafetyDoorLocked 属性 + SafetyDoorLockChanged 事件
+  2. SystemStateService:
+     - InitializeMappings 中解析 Q1.2SafetyDoorLock DO LogicalId（ResolveOutputDoIdByName）
+     - UpdateSignalStates 轮询中调用 RefreshSafetyDoorLockState 回读 DO，
+       状态变更时触发 SafetyDoorLockChanged 事件
+     - best-effort：读取失败保持上次状态，不中断轮询
+  3. OverViewModel:
+     - 构造函数订阅 _systemState.SafetyDoorLockChanged 事件
+     - 新增 DoorStatusText、DoorTextColor 绑定属性
+     - 新增 ApplyDoorLockState 方法统一更新状态/颜色/文本
+     - OnSafetyDoorLockChanged 回调通过 Dispatcher 切换到 UI 线程
+     - RefreshOutputStates 改为从 _systemState.IsSafetyDoorLocked 获取（不再直接 ReadDo）
+     - OnToggleSafetyDoorLock 乐观更新改用 ApplyDoorLockState（同步更新全部 UI 属性）
+  4. OverView.xaml: 顶部安全门徽章文本从静态本地化键改为绑定 DoorStatusText，
+     Foreground 从静态 #2E7D32 改为绑定 DoorTextColor
+  5. 新增本地化资源 OverView_Door_Unlocked（中: 安全门: 已解锁 / 英: Door: Unlocked）
+修改文件:
+  - MotionControl/Interfaces/ISystemStateService.cs
+  - MotionControl/Services/SystemStateService.cs
+  - Module/ViewModels/OverViewModel.cs
+  - Module/Views/OverView.xaml
+  - MainApp/Languages/Strings.zh-CN.xaml
+  - MainApp/Languages/Strings.en-US.xaml

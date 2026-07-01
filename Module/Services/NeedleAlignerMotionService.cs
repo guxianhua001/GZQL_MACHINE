@@ -129,6 +129,29 @@ namespace Module.Services
             await MoveZAbsWithApproachAsync(zId, parameters.SafeHeight, fastSpeed, parameters.FineSearchSpeed, token);
         }
 
+        /// <summary>
+        /// 抬升全部针尖 Z 轴（Dz₁、Dz₂、Dz₃）至安全高度。
+        /// 校准阶段 1 防碰撞：仅抬升当前系统 Z 轴时，其余针头仍处于低位，
+        /// 水平移动过程中存在碰撞风险。此处依次抬升所有 Z 轴确保安全。
+        /// </summary>
+        public async Task MoveAllZToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
+        {
+            var zIds = ResolveAllZAxisIds();
+            if (zIds.Count == 0)
+            {
+                // 回退：未解析到任何 Z 轴时按原逻辑抬升当前系统 Z
+                await MoveToSafeHeightAsync(parameters, systemNumber, token);
+                return;
+            }
+
+            foreach (var zId in zIds)
+            {
+                token.ThrowIfCancellationRequested();
+                var fastSpeed = GetAxisMotionSpeed(zId);
+                await MoveZAbsWithApproachAsync(zId, parameters.SafeHeight, fastSpeed, parameters.FineSearchSpeed, token);
+            }
+        }
+
         public async Task MoveToAlignPositionAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
         {
             var align = GetAlignPosition(parameters, systemNumber);
@@ -169,11 +192,23 @@ namespace Module.Services
             bool succeeded = false;
             try
             {
-                // 阶段 1：Z 抬升至安全高度，水平移动前防碰撞
+                // 阶段 1：全部 Z 轴（Dz₁、Dz₂、Dz₃）抬升至安全高度，水平移动前防碰撞
                 ReportProgress(progress,
                     L("NeedleAligner_Status_RaiseSafeHeight", "抬升到安全高度"), 5,
                     L("NeedleAligner_Log_RaiseSafeHeight", "阶段1: 抬升至安全高度 Z={0:F3}", parameters.SafeHeight));
-                await MoveToSafeHeightAsync(parameters, systemNumber, token);
+                await MoveAllZToSafeHeightAsync(parameters, systemNumber, token);
+
+                // 使用插补速度快速定位到第一个搜索点（搜索阶段内部使用 SearchSpeed，见 SearchCenterPointAsync）
+                var map = ResolveAxisMap();
+                var dxId = ResolveAxisId(map, "Dx");
+                var dyId = ResolveAxisId(map, "Dy");
+                ReportDetail(progress, 8,
+                    L("NeedleAligner_Log_MoveToFirstSearchPoint",
+                        "插补速度移动到首搜索点 X={0:F3} Y={1:F3}",
+                        parameters.SearchPoint1.X, parameters.SearchPoint1.Y));
+                await MoveXYLineAsync(dxId, dyId,
+                    parameters.SearchPoint1.X, parameters.SearchPoint1.Y,
+                    GetXYInterpSpeed(dxId, dyId), token);
 
                 // 阶段 2+3：四点边界扫描 → 拟合中心 → 移至 (X0,Y0)
                 ReportProgress(progress, L("NeedleAligner_Status_SearchCenterXY", "搜索中心点XY"), 10);
@@ -213,7 +248,8 @@ namespace Module.Services
                 var compensation = CalculateCompensation(measuredCenter, zOutcome.Height, parameters);
 
                 ReportProgress(progress, L("NeedleAligner_Status_CalibrationDoneMotion", "针头校准完成"), 100);
-                await MoveToSafeHeightAsync(parameters, systemNumber, token);
+                // 校准完成后抬升全部 Z 轴至安全高度，确保所有针头离开工作面
+                await MoveAllZToSafeHeightAsync(parameters, systemNumber, token);
 
                 succeeded = true;
                 return new NeedleCalibrationResult
@@ -250,7 +286,7 @@ namespace Module.Services
             try
             {
                 _logger.Warn(L("NAM_Log_RaiseSafeHeightOnFailure", "[NeedleAligner] 寻针失败，自动抬升至安全高度"));
-                await MoveToSafeHeightAsync(parameters, systemNumber, token);
+                await MoveAllZToSafeHeightAsync(parameters, systemNumber, token);
             }
             catch (Exception ex)
             {
@@ -1675,6 +1711,23 @@ namespace Module.Services
             throw new InvalidOperationException($"未找到系统{systemNumber}针尖Z轴 (Dz₂/Dz₃)");
         }
 
+        /// <summary>
+        /// 解析全部针尖 Z 轴（Dz₁、Dz₂、Dz₃）的逻辑轴 ID。
+        /// 同时兼容 Unicode 下标名（Dz₁）与 ASCII 名（Dz1），去重后返回。
+        /// </summary>
+        private List<int> ResolveAllZAxisIds()
+        {
+            var map = ResolveAxisMap();
+            var ids = new List<int>(3);
+            // 依次尝试 Dz₁/Dz1、Dz₂/Dz2、Dz₃/Dz3，已加入的轴 ID 跳过避免重复
+            foreach (var name in new[] { "Dz₁", "Dz1", "Dz₂", "Dz2", "Dz₃", "Dz3" })
+            {
+                if (TryGetAxisId(map, name, out int id) && !ids.Contains(id))
+                    ids.Add(id);
+            }
+            return ids;
+        }
+
         private static bool TryGetAxisId(Dictionary<string, int> map, string name, out int axisId)
         {
             if (map.TryGetValue(name, out axisId))
@@ -1719,6 +1772,9 @@ namespace Module.Services
             => Task.CompletedTask;
 
         public Task MoveToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
+            => Task.CompletedTask;
+
+        public Task MoveAllZToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token)
             => Task.CompletedTask;
 
         public Task MoveToSearchPointXYAsync(NeedleCalibrationParams parameters, int systemNumber, double x, double y, CancellationToken token)

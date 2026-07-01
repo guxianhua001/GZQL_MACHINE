@@ -33,16 +33,14 @@ namespace Module.ViewModels
         private readonly ILocalizationService _localization;
         private readonly IMachineInitializationService _machineInitService;
         private readonly IMotionService _motionService;
+        private readonly IHardwareConfigLoader _hwConfigLoader;
         private readonly DispatcherTimer _timer;
 
-        // DO 输出点名（与 hwcfg.xml name 属性严格一致，无分隔符）
-        private const string WorkLightDoName = "Q2.7CabinetLighting";
-        private const string AirBlowDoName = "Q3.7MasterAirPressureControl";
-        private const string SafetyDoorLockDoName = "Q1.2SafetyDoorLock";
-        // 解析后的 DO LogicalId（-1 表示未配置）
+        // 解析后的 DO LogicalId（-1 表示未配置；从 hwcfg.xml OutputGroups 按 Group 解析，不硬编码点位名）
+        // 注：安全门锁支持多扇，用列表存储；空列表表示未配置
         private int _workLightDoId = -1;
         private int _airBlowDoId = -1;
-        private int _doorLockDoId = -1;
+        private IList<int> _doorLockDoIds = new List<int>();
         #region 绑定属性
         private DateTime _systemTime;
         public DateTime SystemTime
@@ -64,12 +62,26 @@ namespace Module.ViewModels
             get => _trioLightText;
             set => SetProperty(ref _trioLightText, value);
         }
-        // 安全门颜色
+        // 安全门颜色（椭圆指示灯）
         private string _doorColor = "#4CAF50";
         public string DoorColor
         {
             get => _doorColor;
             set => SetProperty(ref _doorColor, value);
+        }
+        // 安全门状态文本（已锁定/已解锁）
+        private string _doorStatusText;
+        public string DoorStatusText
+        {
+            get => _doorStatusText;
+            set => SetProperty(ref _doorStatusText, value);
+        }
+        // 安全门文本颜色
+        private string _doorTextColor = "#2E7D32";
+        public string DoorTextColor
+        {
+            get => _doorTextColor;
+            set => SetProperty(ref _doorTextColor, value);
         }
         // 判断是否正在运行（用于控制暂停/恢复按钮的显隐和文本）
         private bool _isSystemRunning = false;
@@ -127,15 +139,15 @@ namespace Module.ViewModels
         public bool IsAirBlowOn { get => _isAirBlowOn; set => SetProperty(ref _isAirBlowOn, value); }
 
         private bool _isSafetyDoorLocked;
-        /// <summary>安全门锁（Q1.2）锁定状态：true=已锁定</summary>
+        /// <summary>安全门锁锁定状态：true=已锁定（支持多扇，全部锁定才为 true；DO 由 hwcfg.xml Group="DoorLocks" 配置）</summary>
         public bool IsSafetyDoorLocked { get => _isSafetyDoorLocked; set => SetProperty(ref _isSafetyDoorLocked, value); }
 
         /// <summary>工作灯 DO 点位是否已配置（控制按钮 IsEnabled）</summary>
         public bool IsWorkLightAvailable => _workLightDoId >= 0;
         /// <summary>吹气 DO 点位是否已配置</summary>
         public bool IsAirBlowAvailable => _airBlowDoId >= 0;
-        /// <summary>安全门锁 DO 点位是否已配置</summary>
-        public bool IsSafetyDoorLockAvailable => _doorLockDoId >= 0;
+        /// <summary>安全门锁 DO 点位是否已配置（支持多扇，至少一个即启用）</summary>
+        public bool IsSafetyDoorLockAvailable => _doorLockDoIds.Count > 0;
         #endregion
         #region 命令
         public DelegateCommand InitializeCommand { get; }
@@ -164,7 +176,8 @@ namespace Module.ViewModels
             IDialogService dialogService,
             ILocalizationService localization,
             IMachineInitializationService machineInitService,
-            IMotionService motionService)
+            IMotionService motionService,
+            IHardwareConfigLoader hwConfigLoader)
         {
             _regionManager = regionManager;
             _ea = ea;
@@ -176,6 +189,7 @@ namespace Module.ViewModels
             _localization = localization;
             _machineInitService = machineInitService;
             _motionService = motionService;
+            _hwConfigLoader = hwConfigLoader;
             _speedPercent = _speedOverride.SpeedPercent;
             _speedOverride.SpeedChanged += OnSpeedChanged;
             _singleStepButtonText = _localization.GetResource("OverView_Btn_SingleStep_Off");
@@ -209,6 +223,30 @@ namespace Module.ViewModels
 
             // 解析 DO 点位 LogicalId（配置在启动时已加载，安全；未配置返回 -1，按钮自动禁用）
             ResolveOutputDoIds();
+            // 订阅 SystemStateService 安全门锁状态推送（由其 20ms 轮询线程回读 DO 并触发）
+            _systemState.SafetyDoorLockChanged += OnSafetyDoorLockChanged;
+        }
+
+        /// <summary>
+        /// 安全门锁状态变更回调（由 SystemStateService 轮询线程触发，需 Dispatcher 切换到 UI 线程）。
+        /// 同步更新锁定状态、指示灯颜色、文本及文本颜色。
+        /// </summary>
+        private void OnSafetyDoorLockChanged(bool locked)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.HasShutdownStarted) return;
+            dispatcher.Invoke(() => ApplyDoorLockState(locked));
+        }
+
+        /// <summary>将安全门锁状态应用到 UI 绑定属性</summary>
+        private void ApplyDoorLockState(bool locked)
+        {
+            IsSafetyDoorLocked = locked;
+            DoorColor = locked ? "#4CAF50" : "#F44336";       // 绿=锁定, 红=解锁
+            DoorTextColor = locked ? "#2E7D32" : "#C62828";   // 深绿=锁定, 深红=解锁
+            DoorStatusText = _localization.GetResourceOrDefault(
+                locked ? "OverView_Door_Locked" : "OverView_Door_Unlocked",
+                locked ? "安全门: 已锁定" : "安全门: 已解锁");
         }
         private void OnStationStateChanged(StationStatePayload payload)
         {
@@ -381,41 +419,53 @@ namespace Module.ViewModels
         #region DO 输出开关（工作灯/吹气/安全门锁）
 
         /// <summary>
-        /// 解析三个 DO 输出点位的 LogicalId（按 hwcfg.xml name 精确匹配，不硬编码 actDoId）。
-        /// 未配置时返回 -1，对应按钮 IsEnabled=False。配置在应用启动时已加载，此处安全调用。
+        /// 从 hwcfg.xml OutputGroups 按 Group 解析三个 DO 输出点位的 LogicalId。
+        /// 不硬编码物理点位名，完全依赖配置文件的分组定义。
+        /// 未配置时返回 -1，对应按钮 IsEnabled=False。
         /// </summary>
         private void ResolveOutputDoIds()
         {
-            _workLightDoId = ResolveDoId(WorkLightDoName);
-            _airBlowDoId = ResolveDoId(AirBlowDoName);
-            _doorLockDoId = ResolveDoId(SafetyDoorLockDoName);
+            var config = _hwConfigLoader.Load();
+            _workLightDoId = ResolveDoIdByGroup(config, "WorkLights");
+            _airBlowDoId = ResolveDoIdByGroup(config, "AirBlow");
+            // 安全门锁支持多扇：解析分组内全部有效 DO LogicalId
+            _doorLockDoIds = ResolveDoIdsByGroup(config, "DoorLocks");
             // 触发可用性属性通知（按钮 IsEnabled 绑定）
             RaisePropertyChanged(nameof(IsWorkLightAvailable));
             RaisePropertyChanged(nameof(IsAirBlowAvailable));
             RaisePropertyChanged(nameof(IsSafetyDoorLockAvailable));
         }
 
-        /// <summary>按 name 查询 DO LogicalId；未找到返回 -1 并记录警告</summary>
-        private int ResolveDoId(string name)
+        /// <summary>
+        /// 按 Group 从 MotionSystemConfig.OutputSignals 中解析首个有效 DO LogicalId。
+        /// 未找到返回 -1 并记录警告（适用于单点位分组，如 WorkLights/AirBlow）。
+        /// </summary>
+        private int ResolveDoIdByGroup(MotionSystemConfig config, string group)
         {
-            try
-            {
-                var outputs = _motionService.GetOutputConfigurations();
-                var cfg = outputs.FirstOrDefault(o => o.Name == name);
-                if (cfg == null)
-                    System.Diagnostics.Debug.WriteLine($"[OverView] DO 点位未配置: {name}，对应按钮将禁用");
-                return cfg?.LogicalId ?? -1;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[OverView] 解析 DO 点位 {name} 失败: {ex.Message}");
-                return -1;
-            }
+            var cfg = config.OutputSignals.FirstOrDefault(o => o.Group == group && o.LogicalId.HasValue);
+            if (cfg == null)
+                System.Diagnostics.Debug.WriteLine($"[OverView] 输出分组 '{group}' 未配置或 io 为空，对应按钮将禁用");
+            return cfg?.LogicalId ?? -1;
         }
 
         /// <summary>
-        /// 回读三个 DO 点位当前硬件状态，刷新 UI 显示。best-effort：运动卡未就绪时 catch 异常，保持默认 false。
-        /// 约定：ReadDo 返回 true = 功能开（与 SystemStateService.WriteLight 的 WriteDo(true)=开 一致，不反转）。
+        /// 按 Group 从 MotionSystemConfig.OutputSignals 中解析全部有效 DO LogicalId。
+        /// 支持同分组多点位（如多扇安全门锁 DoorLocks），未找到返回空列表。
+        /// </summary>
+        private IList<int> ResolveDoIdsByGroup(MotionSystemConfig config, string group)
+        {
+            var ids = config.OutputSignals
+                .Where(o => o.Group == group && o.LogicalId.HasValue)
+                .Select(o => o.LogicalId.Value)
+                .ToList();
+            if (ids.Count == 0)
+                System.Diagnostics.Debug.WriteLine($"[OverView] 输出分组 '{group}' 未配置或 io 为空，对应按钮将禁用");
+            return ids;
+        }
+
+        /// <summary>
+        /// 回读 DO 点位当前硬件状态，刷新 UI 显示。best-effort：运动卡未就绪时 catch 异常，保持默认 false。
+        /// 安全门锁状态由 SystemStateService 轮询推送（SafetyDoorLockChanged 事件），此处不再直接 ReadDo。
         /// </summary>
         private void RefreshOutputStates()
         {
@@ -423,8 +473,8 @@ namespace Module.ViewModels
                 IsWorkLightOn = TryReadDo(_workLightDoId);
             if (_airBlowDoId >= 0)
                 IsAirBlowOn = TryReadDo(_airBlowDoId);
-            if (_doorLockDoId >= 0)
-                IsSafetyDoorLocked = TryReadDo(_doorLockDoId);
+            // 安全门锁状态从 SystemStateService 获取（由其 20ms 轮询推送，首次进入时同步当前值）
+            ApplyDoorLockState(_systemState.IsSafetyDoorLocked);
         }
 
         /// <summary>best-effort 读取 DO 状态，失败返回 false</summary>
@@ -444,8 +494,29 @@ namespace Module.ViewModels
         /// <summary>吹气开关：toggle 总气压控制 Q3.7</summary>
         private void OnToggleAirBlow() => ToggleDo(_airBlowDoId, v => IsAirBlowOn = v, nameof(IsAirBlowOn), "吹气");
 
-        /// <summary>安全门锁开关：toggle Q1.2（true=锁定）</summary>
-        private void OnToggleSafetyDoorLock() => ToggleDo(_doorLockDoId, v => IsSafetyDoorLocked = v, nameof(IsSafetyDoorLocked), "安全门锁");
+        /// <summary>
+        /// 安全门锁开关：toggle DoorLocks 分组全部 DO 点位（true=锁定，支持多扇同时锁定/解锁）。
+        /// 乐观更新全部 UI 属性（状态/颜色/文本），SystemStateService 20ms 内确认实际状态。
+        /// 多门锁场景：同时写入所有点位，任一写入失败回滚 UI 并记录（实际状态由轮询纠正）。
+        /// </summary>
+        private void OnToggleSafetyDoorLock()
+        {
+            if (_doorLockDoIds.Count == 0) return;
+            bool current = IsSafetyDoorLocked;
+            bool newVal = !current;
+            try
+            {
+                // 同时锁定/解锁所有安全门锁 DO 点位（多扇门同步控制）
+                foreach (var doId in _doorLockDoIds)
+                    _motionService.WriteDo(doId, newVal);
+                ApplyDoorLockState(newVal);   // 乐观更新：状态+颜色+文本
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OverView] 安全门锁 DO 切换失败 (logicalIds=[{string.Join(",", _doorLockDoIds)}]): {ex.Message}");
+                ApplyDoorLockState(current);  // 回滚到实际状态
+            }
+        }
 
         /// <summary>
         /// 通用 DO toggle：读取当前状态取反写入，乐观更新 UI，失败回滚。

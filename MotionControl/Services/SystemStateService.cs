@@ -34,6 +34,10 @@ namespace MotionControl.Services
         // 当前状态
         private StationState _currentState = StationState.WAITRESET;
         public StationState CurrentState => _currentState;
+        /// <summary>安全门锁锁定状态：true=已锁定（支持多扇，由 hwcfg.xml OutputGroups Group="DoorLocks" 配置；全部锁定才为 true）</summary>
+        public bool IsSafetyDoorLocked => _isSafetyDoorLocked;
+        /// <summary>安全门锁状态变更事件（参数: true=已锁定, false=已解锁）</summary>
+        public event Action<bool> SafetyDoorLockChanged;
         private readonly object _stateLock = new();
         private CancellationTokenSource _resetCts;
         // 快速查找字典
@@ -59,6 +63,10 @@ namespace MotionControl.Services
         private Timer _buzzerPulseTimer;
         private bool _buzzerLatched;
         private bool _buzzerActualOutput;
+        // 安全门锁 DO 点位集合，由轮询线程回读并推送状态变更（LogicalId 从 hwcfg.xml OutputGroups 按 Group="DoorLocks" 解析）。
+        // 支持同分组多点位（多扇安全门锁），"已锁定" = 所有点位均锁定（AND 逻辑）。
+        private int[] _safetyDoorLockDoIds = Array.Empty<int>();
+        private bool _isSafetyDoorLocked;
         // 长按复位按钮检测
         private DateTime? _resetButtonPressedTime;
         private bool _resetLongPressHandled;
@@ -156,7 +164,34 @@ namespace MotionControl.Services
             }
             _logger.Info(string.Format(_localization.GetResourceOrDefault("SysState_Log_TowerLightsConfigLoaded", "TowerLights 配置加载完成: [{0}], 共{1}项"), string.Join(", ", _lightByType.Keys), _lightByType.Count));
             foreach (var kv in _signalLookup) _previousDiStates[kv.Key] = false;
+            // 解析安全门锁 DO 点位 LogicalId 集合（从 hwcfg.xml OutputGroups 按 Group="DoorLocks" 解析，不硬编码点位名）
+            // 支持多扇安全门锁：分组内每个有效 io 项均纳入，全部锁定才视为"已锁定"
+            _safetyDoorLockDoIds = ResolveOutputDoIdsByGroup("DoorLocks");
+            if (_safetyDoorLockDoIds.Length > 0)
+                _logger.Info(string.Format(_localization.GetResourceOrDefault(
+                    "SysState_Log_DoorLocksResolved",
+                    "安全门锁 DO 解析完成: {0} 个 (LogicalIds: [{1}])"),
+                    _safetyDoorLockDoIds.Length, string.Join(", ", _safetyDoorLockDoIds)));
         }
+
+        /// <summary>
+        /// 按 Group 从 hwcfg.xml OutputSignals 中解析全部有效 DO 点位的 LogicalId。
+        /// 支持同分组多点位（如多扇安全门锁 DoorLocks），未配置返回空数组（对应功能不可用但不影响其他功能）。
+        /// 不硬编码物理点位名，完全依赖配置文件的分组定义。
+        /// </summary>
+        private int[] ResolveOutputDoIdsByGroup(string group)
+        {
+            var ids = _config.OutputSignals
+                .Where(o => o.Group == group && o.LogicalId.HasValue)
+                .Select(o => o.LogicalId.Value)
+                .ToArray();
+            if (ids.Length == 0)
+                _logger.Info(_localization.GetResourceOrDefault(
+                    "SysState_Log_OutputGroupNotFound",
+                    $"输出分组 '{group}' 未配置或 io 为空，对应功能不可用。"));
+            return ids;
+        }
+
         private void OnTimerTick(object state) => UpdateSignalStates();
         private void OnTaskInternalEmergencyStop()
         {
@@ -186,6 +221,36 @@ namespace MotionControl.Services
                 }
                 CheckSafetyAndEStop();
                 CheckResetButtonLongPress();
+                // 回读安全门锁 DO 输出状态，状态变更时推送事件（供 OverView 等订阅方刷新 UI）
+                RefreshSafetyDoorLockState();
+            }
+        }
+
+        /// <summary>
+        /// 回读安全门锁 DO 硬件状态（点位由 hwcfg.xml Group="DoorLocks" 配置，支持多扇）。
+        /// "已锁定" = 分组内所有 DO 点位均处于锁定电平（AND 逻辑，任一未锁定即整体未锁定，符合安全语义）。
+        /// 状态变化时触发 SafetyDoorLockChanged 事件，best-effort：读取失败保持上次状态，不中断轮询。
+        /// </summary>
+        private void RefreshSafetyDoorLockState()
+        {
+            if (_safetyDoorLockDoIds.Length == 0) return;
+            try
+            {
+                // 所有点位均锁定才视为已锁定（AND 逻辑：任一门未锁即不安全）
+                bool doorLocked = true;
+                foreach (var doId in _safetyDoorLockDoIds)
+                {
+                    if (!_motion.ReadDo(doId)) { doorLocked = false; break; }
+                }
+                if (doorLocked != _isSafetyDoorLocked)
+                {
+                    _isSafetyDoorLocked = doorLocked;
+                    SafetyDoorLockChanged?.Invoke(doorLocked);
+                }
+            }
+            catch
+            {
+                // 运动卡未就绪等异常时保持上次状态，不中断轮询
             }
         }
         /// <summary>

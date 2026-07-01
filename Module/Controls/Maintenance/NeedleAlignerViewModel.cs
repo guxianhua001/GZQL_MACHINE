@@ -655,6 +655,9 @@ namespace Module.ViewModels
 
             _eventAggregator.GetEvent<Recipe.Events.GlobalVariablesChangedEvent>().Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
 
+            // 订阅配方池切换事件：切换池时从新池 ExtensionData 重新加载针头校准参数（参考 ZScanDetailViewModel 模式）
+            _eventAggregator.GetEvent<RecipePoolChangedEvent>().Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
+
             _ = InitializeAsync().ConfigureAwait(false);
         }
 
@@ -2300,6 +2303,14 @@ namespace Module.ViewModels
             {
                 _logger.Warn(string.Format(_localization.GetResourceOrDefault("NA_Log_SaveFileToPoolFailed", "[NeedleAligner] 保存文件记录到配方池失败: {0}"), ex.Message));
             }
+        }
+
+        /// <summary>配方池切换时从新池 ExtensionData 重新加载当前系统的校准参数</summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            _ = TryAutoLoadConfigAsync();
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("NA_Log_RecipePoolSwitchedReload",
+                "[NeedleAligner] 配方池切换，已从新池重新加载系统{0}校准参数（池={1}）"), SystemNumber, poolName));
         }
 
         /// <summary>启动时自动加载当前系统的校准参数</summary>

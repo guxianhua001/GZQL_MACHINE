@@ -22,6 +22,7 @@ using Prism.Commands;
 using Prism.Events;
 using Prism.Ioc;
 using Prism.Mvvm;
+using Recipe.Events;
 using Recipe.Interfaces;
 using StationTasks.Params;
 
@@ -1936,6 +1937,16 @@ namespace Module.ViewModels
             // 打开点胶步骤时，将配方针头同步到 Step3（仅加载，不回写 DispenseDetail）
             _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>().Subscribe(
                 OnDispenseNeedleIndexLoaded, ThreadOption.UIThread);
+
+            // 订阅配方池切换事件：切换池时从新池 ExtensionData 重新加载轨迹段配置文件（参考 ZScanDetailViewModel 模式）
+            _eventAggregator?.GetEvent<RecipePoolChangedEvent>().Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
+        }
+
+        /// <summary>配方池切换时从新池 ExtensionData 重新加载轨迹段配置文件</summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            // TryAutoLoadLastConfig 为 async void（fire-and-forget），优先从新池 ExtensionData[CadPoint_CurrentFile] 恢复轨迹段配置
+            TryAutoLoadLastConfig();
         }
 
         /// <summary>点胶步骤加载时，将 DispenseDetail 针头同步到 Step3 统一入口</summary>
@@ -3963,8 +3974,15 @@ namespace Module.ViewModels
             catch { /* 静默处理，配方参数可能尚未加载 */ }
         }
 
+        /// <summary> 配方池 ExtensionData 键：记录当前配方池关联的轨迹段配置文件路径（参考 ProcessSequence_CurrentFile / ZScan_CurrentFile 模式） </summary>
+        private const string CadPointCurrentFileKey = "CadPoint_CurrentFile";
+
         /// <summary>
-        /// 记录轨迹段配置文件路径到共享存储和配方参数
+        /// 记录轨迹段配置文件路径到共享存储、配方参数和配方池 ExtensionData。
+        /// 保存(Save)与加载(Load)均经此入口，确保三处持久化点保持一致：
+        /// 1. _dispenseSegmentStore.LastSegmentConfigPath（进程内共享存储）
+        /// 2. DispenserStationParams.LastSegmentConfigPath（配方池内站点参数，供 DispenseTask 运行时读取）
+        /// 3. 配方池 ExtensionData[CadPoint_CurrentFile]（pool 级别，不依赖站点参数加载状态）
         /// </summary>
         private void RecordSegmentConfigPath(string path)
         {
@@ -3972,6 +3990,47 @@ namespace Module.ViewModels
             _dispenseSegmentStore.LastSegmentConfigPath = path;
             SyncPathToStationParams(path);
             SegmentFilePath = path;
+            // 同步最新文件路径到配方池 ExtensionData（pool 级别持久化，参考 ProcessSequence/ZScan 模式）
+            _ = SaveCurrentFileToRecipePoolAsync(path);
+        }
+
+        /// <summary>
+        /// 将当前轨迹段配置文件路径保存到配方池 ExtensionData（参考 ProcessSequence/ZScan 模式）。
+        /// pool 级别持久化，不依赖站点参数加载状态，切换配方池后仍可恢复上次文件。
+        /// </summary>
+        private async Task SaveCurrentFileToRecipePoolAsync(string fullPath)
+        {
+            try
+            {
+                var recipePoolService = ContainerLocator.Container?.Resolve<IRecipePoolService>();
+                if (recipePoolService == null) return;
+                var poolName = recipePoolService.CurrentPoolName ?? "Default";
+                await recipePoolService.SetExtensionDataAsync(poolName, CadPointCurrentFileKey,
+                    new CadPointFileRecord { FilePath = fullPath });
+            }
+            catch
+            {
+                // 静默处理：配方池未就绪不阻断主流程，下次保存会再次尝试同步
+            }
+        }
+
+        /// <summary> 从配方池 ExtensionData 读取当前轨迹段配置文件路径（pool 级别恢复） </summary>
+        private async Task<string> GetLastFilePathFromRecipePoolAsync()
+        {
+            try
+            {
+                var recipePoolService = ContainerLocator.Container?.Resolve<IRecipePoolService>();
+                if (recipePoolService == null) return null;
+                var poolName = recipePoolService.CurrentPoolName ?? "Default";
+                var extData = await recipePoolService.GetExtensionDataAsync<CadPointFileRecord>(poolName, CadPointCurrentFileKey);
+                if (extData?.FilePath != null && System.IO.File.Exists(extData.FilePath))
+                    return extData.FilePath;
+            }
+            catch
+            {
+                // 静默处理：配方池未就绪时回退到共享存储路径
+            }
+            return null;
         }
 
         /// <summary>
@@ -4030,11 +4089,18 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 尝试恢复上次使用的轨迹段配置文件路径并自动加载
+        /// 尝试恢复上次使用的轨迹段配置文件路径并自动加载。
+        /// 优先从配方池 ExtensionData[CadPoint_CurrentFile] 恢复（pool 级别，参考 ProcessSequence/ZScan 模式），
+        /// 回退到 _dispenseSegmentStore.LastSegmentConfigPath（进程内共享存储 / 站点参数恢复值）。
+        /// 异步加载：先填入 SegmentFilePath 供 UI 显示，再执行 ExecuteLoadSegments 还原轨迹段与对齐参数。
         /// </summary>
-        public void TryAutoLoadLastConfig()
+        public async void TryAutoLoadLastConfig()
         {
-            var path = _dispenseSegmentStore?.LastSegmentConfigPath;
+            // 优先从配方池 ExtensionData 恢复（pool 级别持久化，不依赖站点参数加载状态）
+            var path = await GetLastFilePathFromRecipePoolAsync();
+            // 回退：共享存储路径（由 RestorePathFromStationParams 从站点参数恢复）
+            if (string.IsNullOrWhiteSpace(path))
+                path = _dispenseSegmentStore?.LastSegmentConfigPath;
             if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path)) return;
 
             SegmentFilePath = path;
@@ -4385,4 +4451,10 @@ namespace Module.ViewModels
     }
 
     #endregion
+
+    /// <summary> 配方池 ExtensionData 中记录当前轨迹段配置文件路径的扩展数据（参考 ZScanFileRecord / ProcessSequenceFileRecord） </summary>
+    public class CadPointFileRecord
+    {
+        public string FilePath { get; set; }
+    }
 }

@@ -20,6 +20,9 @@ namespace Module.Services
         /// <summary>抬升到参数中的安全高度</summary>
         Task MoveToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token);
 
+        /// <summary>抬升全部针尖 Z 轴（Dz₁、Dz₂、Dz₃）至安全高度，水平移动前防碰撞</summary>
+        Task MoveAllZToSafeHeightAsync(NeedleCalibrationParams parameters, int systemNumber, CancellationToken token);
+
         /// <summary>安全移动到搜索点 XY（保持当前 Z 或在安全高度）</summary>
         Task MoveToSearchPointXYAsync(NeedleCalibrationParams parameters, int systemNumber, double x, double y, CancellationToken token);
 

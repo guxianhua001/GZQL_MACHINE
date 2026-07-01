@@ -107,8 +107,9 @@ namespace StationTasks.Models
 
         public string Gripper { get; set; } = "Gripper 1";
         public int Slot { get; set; } = 1;
-        [JsonIgnore]
         private bool _isCurrent;
+        /// <summary> 当前执行步骤标记（运行时状态，不序列化） </summary>
+        [JsonIgnore]
         public bool IsCurrent
         {
             get => _isCurrent;
@@ -122,9 +123,9 @@ namespace StationTasks.Models
             }
         }
 
-        [JsonIgnore]
         private bool _isSingleExecuting;
-        /// <summary> 单步执行时高亮标记 </summary>
+        /// <summary> 单步执行时高亮标记（运行时状态，不序列化） </summary>
+        [JsonIgnore]
         public bool IsSingleExecuting
         {
             get => _isSingleExecuting;
@@ -440,25 +441,25 @@ namespace StationTasks.Models
             }
         }
 
-        [JsonIgnore]
         private bool _hasActiveAlarm;
-        /// <summary> 该步骤是否存在未确认的活跃报警（仅当实际触发报警后才为true，用于行背景色标识） </summary>
+        /// <summary> 该步骤是否存在未确认的活跃报警（仅当实际触发报警后才为true，用于行背景色标识；运行时状态，不序列化） </summary>
+        [JsonIgnore]
         public bool HasActiveAlarm
         {
             get => _hasActiveAlarm;
-            set 
-            { 
-                if (_hasActiveAlarm != value) 
-                { 
-                    _hasActiveAlarm = value; 
-                    OnPropertyChanged(); 
-                } 
+            set
+            {
+                if (_hasActiveAlarm != value)
+                {
+                    _hasActiveAlarm = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
-        [JsonIgnore]
         private string _errorMessage;
         /// <summary> 步骤执行错误信息（运行时设置，不序列化），用于步骤编辑器错误详情展示 </summary>
+        [JsonIgnore]
         public string ErrorMessage
         {
             get => _errorMessage;
@@ -477,9 +478,9 @@ namespace StationTasks.Models
         [JsonIgnore]
         public bool HasError => !string.IsNullOrEmpty(_errorMessage);
 
-        [JsonIgnore]
         private long _lastElapsedMs;
         /// <summary> 步骤最近一次执行的耗时（毫秒），运行时记录，不序列化 </summary>
+        [JsonIgnore]
         public long LastElapsedMs
         {
             get => _lastElapsedMs;

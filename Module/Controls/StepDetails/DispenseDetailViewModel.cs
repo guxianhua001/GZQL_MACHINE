@@ -68,65 +68,104 @@ namespace Module.ViewModels
                     // 加载配方时同步针头到 CAD 编辑器 Step3 统一入口
                     _eventAggregator?.GetEvent<DispenseNeedleIndexChangedEvent>()
                         .Publish(_step.DispenseDetail.NeedleIndex);
-                    RaisePropertyChanged(nameof(DispenseMode));
-                    RaisePropertyChanged(nameof(IsDotMode));
-                    RaisePropertyChanged(nameof(IsArcMode));
-                    RaisePropertyChanged(nameof(ShowImportLines));
-                    RaisePropertyChanged(nameof(ShowImportArcs));
-                    RaisePropertyChanged(nameof(SegmentImportTitle));
-                    RaisePropertyChanged(nameof(ZCompensation3D));
-                    RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
-                    RaisePropertyChanged(nameof(IsZCompensation3DLinked));
-                    RaisePropertyChanged(nameof(ZCompensationCalibrator));
-                    RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
-                    RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-                    RaisePropertyChanged(nameof(XCompensationCalibrator));
-                    RaisePropertyChanged(nameof(XCompensationCalibratorLinkedVar));
-                    RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
-                    RaisePropertyChanged(nameof(YCompensationCalibrator));
-                    RaisePropertyChanged(nameof(YCompensationCalibratorLinkedVar));
-                    RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
-                    RaisePropertyChanged(nameof(EnableComp));
-                    RaisePropertyChanged(nameof(NeedleIndex));
-                    RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
-                    RaisePropertyChanged(nameof(ActiveNeedleStatusHint));
-                    RaisePropertyChanged(nameof(XCompensation));
-                    RaisePropertyChanged(nameof(XCompensationLinkedVar));
-                    RaisePropertyChanged(nameof(IsXCompensationLinked));
-                    RaisePropertyChanged(nameof(YCompensation));
-                    RaisePropertyChanged(nameof(YCompensationLinkedVar));
-                    RaisePropertyChanged(nameof(IsYCompensationLinked));
-                    RaisePropertyChanged(nameof(EnableRotationComp));
-                    RaisePropertyChanged(nameof(RotationAngle));
-                    RaisePropertyChanged(nameof(RotationAngleLinkedVar));
-                    RaisePropertyChanged(nameof(IsRotationAngleLinked));
-                    RaisePropertyChanged(nameof(IsTransformAvailable));
-                    RaisePropertyChanged(nameof(SegmentRefs));
-                    RaisePropertyChanged(nameof(DefaultJumpSpeed));
-                    RaisePropertyChanged(nameof(DefaultInterpSpeed));
-                    RaisePropertyChanged(nameof(DefaultMoveSpeed));
-                    RaisePropertyChanged(nameof(DefaultSafeHeight));
-                    RaisePropertyChanged(nameof(DefaultApproachHeight));
-                    RaisePropertyChanged(nameof(DefaultDispenseAmount));
-                    RaisePropertyChanged(nameof(DefaultPreDelay));
-                    RaisePropertyChanged(nameof(DefaultPostDelay));
-                    RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
-                    RaisePropertyChanged(nameof(DefaultDispensingPressure));
-                    RaisePropertyChanged(nameof(DefaultSuckBackTime));
-                    RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
-                    RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
-                    RaisePropertyChanged(nameof(DefaultDispenseTime));
-                    RaisePropertyChanged(nameof(DefaultCornerDecel));
-                    RaisePropertyChanged(nameof(DefaultTeachHeight));
-                    RaisePropertyChanged(nameof(DefaultHeightCompensation));
-                    RaisePropertyChanged(nameof(IsDryRunMode));
-                    RaisePropertyChanged(nameof(IsRealDispenseMode));
-                    RaisePropertyChanged(nameof(StepDescription));
+                    // 统一刷新所有绑定属性（含 EnableZCalibration、AngleCompensationLinkedVar、
+                    // DefaultXyCompensationX/Y 等，确保从 JSON 加载的值正确显示到 UI）
+                    RaiseAllDispensePropertiesChanged();
+                    // 刷新校准显示值（RotationAngleDisplayValue / AngleCompensationDisplayValue 等）
+                    RefreshCalibrationDisplayValues();
                 }
             }
         }
 
         public string StepDescription => _step == null ? "—" : $"Seq{_step.Seq} - {_step.CompFeature ?? "—"} → {_step.SiteFeature ?? "—"}";
+
+        /// <summary>
+        /// 统一刷新所有从 DispenseDetail 读取的绑定属性。
+        /// Step setter 与 OnNavigatedTo 共用此方法，避免两处列表不一致导致部分参数
+        /// （如 EnableZCalibration、AngleCompensationLinkedVar、DefaultXyCompensationX/Y 等）
+        /// 从 JSON 加载后不刷新到 UI 的问题。
+        /// </summary>
+        private void RaiseAllDispensePropertiesChanged()
+        {
+            // 模式与导入
+            RaisePropertyChanged(nameof(DispenseMode));
+            RaisePropertyChanged(nameof(IsDotMode));
+            RaisePropertyChanged(nameof(IsArcMode));
+            RaisePropertyChanged(nameof(ShowImportLines));
+            RaisePropertyChanged(nameof(ShowImportArcs));
+            RaisePropertyChanged(nameof(SegmentImportTitle));
+
+            // Z 校准
+            RaisePropertyChanged(nameof(EnableZCalibration));
+            RaisePropertyChanged(nameof(ZCompensation3D));
+            RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
+            RaisePropertyChanged(nameof(IsZCompensation3DLinked));
+            RaisePropertyChanged(nameof(ZCompensationCalibrator));
+            RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
+            RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
+            RaisePropertyChanged(nameof(XCompensationCalibrator));
+            RaisePropertyChanged(nameof(XCompensationCalibratorLinkedVar));
+            RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
+            RaisePropertyChanged(nameof(YCompensationCalibrator));
+            RaisePropertyChanged(nameof(YCompensationCalibratorLinkedVar));
+            RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
+
+            // XY 补偿
+            RaisePropertyChanged(nameof(EnableComp));
+            RaisePropertyChanged(nameof(XCompensation));
+            RaisePropertyChanged(nameof(XCompensationLinkedVar));
+            RaisePropertyChanged(nameof(IsXCompensationLinked));
+            RaisePropertyChanged(nameof(YCompensation));
+            RaisePropertyChanged(nameof(YCompensationLinkedVar));
+            RaisePropertyChanged(nameof(IsYCompensationLinked));
+
+            // 旋转补偿与角度补偿
+            RaisePropertyChanged(nameof(EnableRotationComp));
+            RaisePropertyChanged(nameof(RotationAngle));
+            RaisePropertyChanged(nameof(RotationAngleLinkedVar));
+            RaisePropertyChanged(nameof(IsRotationAngleLinked));
+            RaisePropertyChanged(nameof(AngleCompensationLinkedVar));
+            RaisePropertyChanged(nameof(IsAngleCompensationLinked));
+
+            // CAD 对齐
+            RaisePropertyChanged(nameof(IsTransformAvailable));
+
+            // 分段
+            RaisePropertyChanged(nameof(SegmentRefs));
+
+            // 默认工艺参数
+            RaisePropertyChanged(nameof(DefaultJumpSpeed));
+            RaisePropertyChanged(nameof(DefaultInterpSpeed));
+            RaisePropertyChanged(nameof(DefaultMoveSpeed));
+            RaisePropertyChanged(nameof(DefaultSafeHeight));
+            RaisePropertyChanged(nameof(DefaultApproachHeight));
+            RaisePropertyChanged(nameof(DefaultDispenseAmount));
+            RaisePropertyChanged(nameof(DefaultPreDelay));
+            RaisePropertyChanged(nameof(DefaultPostDelay));
+            RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
+            RaisePropertyChanged(nameof(DefaultDispensingPressure));
+            RaisePropertyChanged(nameof(DefaultSuckBackTime));
+            RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
+            RaisePropertyChanged(nameof(DefaultPreDispenseDelay));
+            RaisePropertyChanged(nameof(DefaultDispenseTime));
+            RaisePropertyChanged(nameof(DefaultCornerDecel));
+            RaisePropertyChanged(nameof(DefaultTeachHeight));
+            RaisePropertyChanged(nameof(DefaultHeightCompensation));
+            RaisePropertyChanged(nameof(DefaultXyCompensationX));
+            RaisePropertyChanged(nameof(DefaultXyCompensationY));
+
+            // 针头
+            RaisePropertyChanged(nameof(NeedleIndex));
+            RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
+            RaisePropertyChanged(nameof(ActiveNeedleStatusHint));
+
+            // 执行控制
+            RaisePropertyChanged(nameof(IsDryRunMode));
+            RaisePropertyChanged(nameof(IsRealDispenseMode));
+
+            // 描述
+            RaisePropertyChanged(nameof(StepDescription));
+        }
 
         #endregion
 
@@ -2057,61 +2096,9 @@ namespace Module.ViewModels
             RefreshSourceSegmentInfo();
             HookSegmentRefsListeners(SegmentRefs);
 
-            RaisePropertyChanged(nameof(DispenseMode));
-            RaisePropertyChanged(nameof(IsDotMode));
-            RaisePropertyChanged(nameof(IsArcMode));
-            RaisePropertyChanged(nameof(ShowImportLines));
-            RaisePropertyChanged(nameof(ShowImportArcs));
-            RaisePropertyChanged(nameof(SegmentImportTitle));
-            RaisePropertyChanged(nameof(EnableZCalibration));
-            RaisePropertyChanged(nameof(ZCompensation3D));
-            RaisePropertyChanged(nameof(ZCompensation3DLinkedVar));
-            RaisePropertyChanged(nameof(IsZCompensation3DLinked));
-            RaisePropertyChanged(nameof(ZCompensationCalibrator));
-            RaisePropertyChanged(nameof(ZCompensationCalibratorLinkedVar));
-            RaisePropertyChanged(nameof(IsZCompensationCalibratorLinked));
-            RaisePropertyChanged(nameof(XCompensationCalibrator));
-            RaisePropertyChanged(nameof(XCompensationCalibratorLinkedVar));
-            RaisePropertyChanged(nameof(IsXCompensationCalibratorLinked));
-            RaisePropertyChanged(nameof(YCompensationCalibrator));
-            RaisePropertyChanged(nameof(YCompensationCalibratorLinkedVar));
-            RaisePropertyChanged(nameof(IsYCompensationCalibratorLinked));
-            RaisePropertyChanged(nameof(EnableComp));
-            RaisePropertyChanged(nameof(NeedleIndex));
-            RaisePropertyChanged(nameof(ActiveNeedleDisplayText));
-            RaisePropertyChanged(nameof(ActiveNeedleStatusHint));
-            RaisePropertyChanged(nameof(XCompensation));
-            RaisePropertyChanged(nameof(XCompensationLinkedVar));
-            RaisePropertyChanged(nameof(IsXCompensationLinked));
-            RaisePropertyChanged(nameof(YCompensation));
-            RaisePropertyChanged(nameof(YCompensationLinkedVar));
-            RaisePropertyChanged(nameof(IsYCompensationLinked));
-            RaisePropertyChanged(nameof(EnableRotationComp));
-            RaisePropertyChanged(nameof(RotationAngle));
-            RaisePropertyChanged(nameof(RotationAngleLinkedVar));
-            RaisePropertyChanged(nameof(IsRotationAngleLinked));
-            RaisePropertyChanged(nameof(IsTransformAvailable));
-            RaisePropertyChanged(nameof(SegmentRefs));
-            RaisePropertyChanged(nameof(DefaultJumpSpeed));
-            RaisePropertyChanged(nameof(DefaultInterpSpeed));
-            RaisePropertyChanged(nameof(DefaultMoveSpeed));
-            RaisePropertyChanged(nameof(DefaultSafeHeight));
-            RaisePropertyChanged(nameof(DefaultApproachHeight));
-            RaisePropertyChanged(nameof(DefaultDispenseAmount));
-            RaisePropertyChanged(nameof(DefaultPreDelay));
-            RaisePropertyChanged(nameof(DefaultPostDelay));
-            RaisePropertyChanged(nameof(DefaultEarlyCloseGlueDelayMs));
-            RaisePropertyChanged(nameof(DefaultDispensingPressure));
-            RaisePropertyChanged(nameof(DefaultSuckBackTime));
-            RaisePropertyChanged(nameof(DefaultGlueTriggerOffsetMm));
-            RaisePropertyChanged(nameof(DefaultCornerDecel));
-            RaisePropertyChanged(nameof(DefaultTeachHeight));
-            RaisePropertyChanged(nameof(DefaultHeightCompensation));
-            RaisePropertyChanged(nameof(DefaultXyCompensationX));
-            RaisePropertyChanged(nameof(DefaultXyCompensationY));
-            RaisePropertyChanged(nameof(IsDryRunMode));
-            RaisePropertyChanged(nameof(IsRealDispenseMode));
-            RaisePropertyChanged(nameof(StepDescription));
+            // 统一刷新所有绑定属性（与 Step setter 共用同一方法，避免遗漏）
+            RaiseAllDispensePropertiesChanged();
+            // 刷新校准显示值（RotationAngleDisplayValue / AngleCompensationDisplayValue 等）
             RefreshCalibrationDisplayValues();
         }
 

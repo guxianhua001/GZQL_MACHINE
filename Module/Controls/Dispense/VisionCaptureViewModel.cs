@@ -1102,6 +1102,17 @@ namespace Module.ViewModels
             _eventAggregator.GetEvent<RecipeChangedEvent>().Subscribe(OnRecipeChanged, ThreadOption.UIThread);
             _eventAggregator.GetEvent<StationParameterSavedEvent>().Subscribe(OnStationPositionSaved, ThreadOption.UIThread);
             _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Subscribe(OnGlobalVariablesChanged, ThreadOption.UIThread);
+
+            // 订阅配方池切换事件：切换池时从新池 ExtensionData 重新加载视觉采集配置文件（参考 ZScanDetailViewModel 模式）
+            _eventAggregator.GetEvent<RecipePoolChangedEvent>().Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
+        }
+
+        /// <summary>配方池切换时从新池 ExtensionData 重新加载视觉采集配置文件</summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            _ = TryAutoLoadConfigAsync();
+            _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_RecipePoolSwitchedReload",
+                "[VisionCapture] 配方池切换，已从新池重新加载配置（池={0}）"), poolName));
         }
 
         /// <summary>

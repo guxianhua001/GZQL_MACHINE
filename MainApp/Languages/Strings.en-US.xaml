@@ -2169,6 +2169,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="NeedleAligner_Log_Cleared">Log cleared</sys:String>
     <sys:String x:Key="NeedleAligner_Log_TeachAlignNoAxis">Teach align position failed: system {0} Dx/Dy/needle Z not read</sys:String>
     <sys:String x:Key="NeedleAligner_Log_RaiseSafeHeight">Phase 1: raise to safe height Z={0:F3}</sys:String>
+    <sys:String x:Key="NeedleAligner_Log_MoveToFirstSearchPoint">Interp speed move to first search point X={0:F3} Y={1:F3}</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SearchPointStart">── Search point {0} preset ({1:F3},{2:F3}) ──</sys:String>
     <sys:String x:Key="NeedleAligner_Log_SearchPointArrival">Point {0} at: X={1:F3} Y={2:F3} (search Z)</sys:String>
     <sys:String x:Key="NeedleAligner_Log_BoundaryScanStart">Point {0} {1} scan: center={2:F3} ±{3:F3} DI={4}</sys:String>
@@ -2999,6 +3000,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="OverView_Btn_SingleStep_On">Single Step (On)</sys:String>
     <sys:String x:Key="OverView_Btn_WorkLight">Work Light</sys:String>
     <sys:String x:Key="OverView_Door_Locked">Door: Locked</sys:String>
+    <sys:String x:Key="OverView_Door_Unlocked">Door: Unlocked</sys:String>
     <sys:String x:Key="OverView_Placeholder_MainVisual">Device Main Visual Area</sys:String>
     <sys:String x:Key="OverView_Speed">Speed</sys:String>
     <sys:String x:Key="OverView_TrioLight_Alarm">Trio Light: Alarm</sys:String>
@@ -4675,7 +4677,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DGCVM_Log_TransformVerifyFailed">Dual-gantry calibration: Coordinate transform verification failed</sys:String>
     <sys:String x:Key="DSS_Log_ReadStationParamsFailed">[DispenseSegmentSource] Failed to read station parameters: {0}</sys:String>
     <sys:String x:Key="DSS_Log_SegmentsLoadedFromFile">[DispenseSegmentSource] Loaded {0} segments from config file: {1}</sys:String>
-    <sys:String x:Key="DT_Log_AssemblyZDone">[{0}] Assembly Z axis completed, starting dispenser XY axis homing.</sys:String>
+    <sys:String x:Key="DT_Log_AssemblyZDone">[{0}] Assembly Z axis completed, starting Dx axis homing.</sys:String>
     <sys:String x:Key="DT_Log_AxisHoming">[{0}] {1} axis homing...</sys:String>
     <sys:String x:Key="DT_Log_DxConfigNotFound">[{0}] Dx axis config not found, CoordId falls back to 0</sys:String>
     <sys:String x:Key="DT_Log_DxMatchedCoordId">[{0}] Dx(actAxisId={1}) matched interpolation system CoordId={2}</sys:String>
@@ -4690,7 +4692,10 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DT_Log_IOTriggerSet">[{0}] IO trigger signal set: {1} (LogicalId={2})</sys:String>
     <sys:String x:Key="DT_Log_NotifyDispensingComplete">[{0}] Notified assembly: dispenser homing completed.</sys:String>
     <sys:String x:Key="DT_Log_NotifyZComplete">[{0}] Notified assembly/load-unload: dispenser Z axis homing completed.</sys:String>
-    <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] Phase 1: dispenser Z axis homing...</sys:String>
+    <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] Phase 1: dispenser Z axis (Dz₂/Dz₃) homing...</sys:String>
+    <sys:String x:Key="DT_Log_Phase2DyHoming">[{0}] Phase 2: Dy axis homing...</sys:String>
+    <sys:String x:Key="DT_Log_Phase3Dz1Homing">[{0}] Phase 3: Dz₁ axis homing...</sys:String>
+    <sys:String x:Key="DT_Log_Phase6DxHoming">[{0}] Phase 6: Dx axis homing...</sys:String>
     <sys:String x:Key="DT_Log_PositionLookupFailed">[{0}] Position lookup failed: {1}</sys:String>
     <sys:String x:Key="DT_Log_ReturnedToStandby">[{0}] Returned to standby position</sys:String>
     <sys:String x:Key="DT_Log_ReturnToStandbySpeedParams">[{0}] ReturnToStandby speed params: Dz1={1:F1}, Dz2={2:F1}, Dz3={3:F1}, interpolation={4:F1}</sys:String>
@@ -4909,6 +4914,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="SysState_Log_ResetButtonLongPressTrigger">Reset button long-pressed 5 seconds -&gt; triggered machine initialization.</sys:String>
     <sys:String x:Key="SysState_Log_ResetButtonPressed">Reset button pressed, long-press 5 seconds will trigger machine initialization...</sys:String>
     <sys:String x:Key="SysState_Log_TowerLightsConfigLoaded">TowerLights config loaded: [{0}], {1} items total</sys:String>
+    <sys:String x:Key="SysState_Log_DoorLocksResolved">Safety door lock DO resolved: {0} item(s) (LogicalIds: [{1}])</sys:String>
     <sys:String x:Key="SZCfg_Log_ConfigFileNotFound">[SafetyInterlock] Config file not found, using default machine rules</sys:String>
     <sys:String x:Key="SZCfg_Log_ConfigSaved">[SafetyInterlock] Config saved</sys:String>
     <sys:String x:Key="SZCfg_Log_LoadConfigFailed">[SafetyInterlock] Failed to load config: {0}, using default rules</sys:String>
@@ -5314,5 +5320,13 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ScriptDetail_CompileFailed">ScriptDetail_CompileFailed</sys:String>
     <sys:String x:Key="SeekDetail_Error_ImportFailed">SeekDetail_Error_ImportFailed</sys:String>
     <!-- ===== End auto-added missing log keys ===== -->
+
+    <!-- ===== Recipe pool switched: editors/services reload config file logs ===== -->
+    <sys:String x:Key="PSE_Log_RecipePoolSwitchedReload">[ProcessSequence] Recipe pool switched, reloaded process sequence from new pool (pool={0})</sys:String>
+    <sys:String x:Key="VisCap_Log_RecipePoolSwitchedReload">[VisionCapture] Recipe pool switched, reloaded config from new pool (pool={0})</sys:String>
+    <sys:String x:Key="NA_Log_RecipePoolSwitchedReload">[NeedleAligner] Recipe pool switched, reloaded system {0} calibration params from new pool (pool={1})</sys:String>
+    <sys:String x:Key="NCA_Log_RecipePoolSwitchedReload">[NeedleCamera] Recipe pool switched, reloaded system params from new pool (pool={0})</sys:String>
+    <sys:String x:Key="NCA_Log_RecipePoolSwitchedReloadFailed">[NeedleCamera] Recipe pool switch reload failed: {0}</sys:String>
+    <sys:String x:Key="NeedleVerify_Log_RecipePoolSwitchedReload">[NeedleVerify] Recipe pool switched, reloaded system {0} verification record from new pool (pool={1})</sys:String>
 </ResourceDictionary>
 

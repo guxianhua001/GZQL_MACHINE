@@ -107,7 +107,7 @@ namespace MotionControl.Services
                     {
                         Name = (string)sig.Attribute("name"),
                         LogicalId = ParseInt(sig.Attribute("io")?.Value),
-                        Polarity = (string)sig.Attribute("polarity") ?? "LowActive",
+                        Polarity = NormalizePolarity((string)sig.Attribute("polarity") ?? "LowActive"),
                         Type = (string)sig.Attribute("type") ?? "Momentary",
                         Group = groupName
                     });
@@ -124,7 +124,7 @@ namespace MotionControl.Services
                     {
                         Name = (string)os.Attribute("name"),
                         LogicalId = ParseInt(os.Attribute("io")?.Value),
-                        Polarity = (string)os.Attribute("polarity") ?? "LowActive",
+                        Polarity = NormalizePolarity((string)os.Attribute("polarity") ?? "LowActive"),
                         Group = groupName
                     });
                 }
@@ -170,6 +170,25 @@ namespace MotionControl.Services
         {
             if (string.IsNullOrWhiteSpace(s)) return null;
             return int.TryParse(s, out int val) ? val : null;
+        }
+
+        /// <summary>
+        /// 规范化极性字符串，统一别名到标准值：
+        /// "ActiveHigh"/"HighActive" → "HighActive"；"ActiveLow"/"LowActive" → "LowActive"。
+        /// 防止配置中 ActiveHigh 等别名与代码 == "HighActive" 精确比较不匹配，
+        /// 导致信号被静默误判为 LowActive（IsSignalActive 取反逻辑出错）。
+        /// </summary>
+        private static string NormalizePolarity(string polarity)
+        {
+            if (string.IsNullOrEmpty(polarity)) return "LowActive";
+            var p = polarity.Trim();
+            if (p.Equals("ActiveHigh", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("HighActive", StringComparison.OrdinalIgnoreCase))
+                return "HighActive";
+            if (p.Equals("ActiveLow", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("LowActive", StringComparison.OrdinalIgnoreCase))
+                return "LowActive";
+            return p; // 未知值原样返回，保留扩展性
         }
 
         /// <summary> 解析整数属性，缺省返回 defaultValue </summary>

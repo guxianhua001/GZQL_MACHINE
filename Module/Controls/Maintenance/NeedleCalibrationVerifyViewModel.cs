@@ -6,7 +6,9 @@ using Core.Utilities;
 using Module.Services;
 using Newtonsoft.Json;
 using Prism.Commands;
+using Prism.Events;
 using Prism.Mvvm;
+using Recipe.Events;
 using Recipe.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -29,6 +31,7 @@ namespace Module.ViewModels
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localization;
         private readonly IRecipePoolService _recipePoolService;
+        private readonly IEventAggregator _eventAggregator;
 
         /// <summary>验证记录文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
@@ -280,12 +283,14 @@ namespace Module.ViewModels
             INeedleAlignerMotionService needleMotion,
             ILoggerService logger,
             ILocalizationService localization,
-            IRecipePoolService recipePoolService)
+            IRecipePoolService recipePoolService,
+            IEventAggregator eventAggregator)
         {
             _needleMotion = needleMotion;
             _logger = logger;
             _localization = localization;
             _recipePoolService = recipePoolService;
+            _eventAggregator = eventAggregator;
 
             ExecuteVerificationCommand = new DelegateCommand(async () => await ExecuteVerificationAsync(), () => CanVerify)
                 .ObservesCanExecute(() => CanVerify);
@@ -297,7 +302,18 @@ namespace Module.ViewModels
             System1Command = new DelegateCommand(() => SelectedSystemNumber = 1);
             System2Command = new DelegateCommand(() => SelectedSystemNumber = 2);
 
+            // 订阅配方池切换事件：切换池时从新池 ExtensionData 重新加载验证记录（参考 ZScanDetailViewModel 模式）
+            _eventAggregator?.GetEvent<RecipePoolChangedEvent>().Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
+
             _ = InitializeAsync();
+        }
+
+        /// <summary>配方池切换时从新池 ExtensionData 重新加载当前系统的验证记录</summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            _ = TryAutoLoadConfigAsync();
+            _logger?.Info(string.Format(_localization.GetResourceOrDefault("NeedleVerify_Log_RecipePoolSwitchedReload",
+                "[NeedleVerify] 配方池切换，已从新池重新加载系统{0}验证记录（池={1}）"), SelectedSystemNumber, poolName));
         }
 
         /// <summary>初始化：加载基准参考值与最近验证记录</summary>
