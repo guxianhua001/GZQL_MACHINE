@@ -318,7 +318,7 @@ namespace Core.Models
             set { SetProperty(ref _defaultMoveSpeed, value); }
         }
 
-        private double _defaultSafeHeight = -25.0;
+        private double _defaultSafeHeight = -20.0;
         /// <summary>默认安全抬升高度 mm</summary>
         public double DefaultSafeHeight
         {
@@ -398,7 +398,7 @@ namespace Core.Models
             set => SetProperty(ref _defaultPreDispenseDelay, value);
         }
 
-        private double _defaultDispenseTime = 180.0;
+        private double _defaultDispenseTime = 1800.0;
         /// <summary>默认点胶时间 ms（单点模式出胶持续时间）</summary>
         public double DefaultDispenseTime
         {

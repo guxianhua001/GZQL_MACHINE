@@ -194,7 +194,7 @@ namespace Core.Models
             set => SetProperty(ref _earlyCloseGlueDelayMs, Math.Clamp(value, 0.0, 5000.0));
         }
 
-        private double _cornerDecel = 0.3;
+        private double _cornerDecel = 0.1;
         /// <summary>拐角减速系数（范围 0~1，越小减速越明显）</summary>
         public double CornerDecel
         {
@@ -246,7 +246,7 @@ namespace Core.Models
         [JsonIgnore]
         public double EffectiveZHeight => TeachHeight + HeightCompensation;
 
-        private double _safeHeight = 0.0;
+        private double _safeHeight = -20.0;
         /// <summary>安全抬升高度 mm（范围 0~200，跨段跳转时使用）</summary>
         public double SafeHeight
         {
@@ -254,7 +254,7 @@ namespace Core.Models
             set => SetProperty(ref _safeHeight, Math.Clamp(value, -50.0, 50.0));
         }
 
-        private double _glueTriggerOffsetMm = 0.5;
+        private double _glueTriggerOffsetMm = -0.5;
         /// <summary>开胶触发距离 mm（范围 0.05~5.0，Z轴下降过程中距目标高度此距离时触发开胶）</summary>
         public double GlueTriggerOffsetMm
         {
@@ -262,7 +262,7 @@ namespace Core.Models
             set => SetProperty(ref _glueTriggerOffsetMm, Math.Clamp(value, -5.0, 5.0));
         }
 
-        private double _dispenseTime = 180.0;
+        private double _dispenseTime = 1800.0;
         /// <summary>出胶时间 ms（范围 10~5000，单点模式下控制胶点大小）</summary>
         public double DispenseTime
         {
@@ -270,7 +270,7 @@ namespace Core.Models
             set => SetProperty(ref _dispenseTime, Math.Clamp(value, 10.0, 5000.0));
         }
 
-        private double _approachHeight = 3.0;
+        private double _approachHeight = -3.0;
         /// <summary>逼近高度 mm（范围 0~50，快速下降到此高度后转为慢速逼近）</summary>
         public double ApproachHeight
         {

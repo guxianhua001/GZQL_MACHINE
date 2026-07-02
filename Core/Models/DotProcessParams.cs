@@ -19,7 +19,7 @@ namespace Core.Models
             set => SetProperty(ref _moveSpeed, Math.Clamp(value, 0.1, 50.0));
         }
 
-        private double _safeHeight = 5.0;
+        private double _safeHeight = -20.0;
         /// <summary>安全抬升高度 mm（范围 0~200，跨点跳转时使用）</summary>
         public double SafeHeight
         {
@@ -27,7 +27,7 @@ namespace Core.Models
             set => SetProperty(ref _safeHeight, Math.Clamp(value, -50.0, 50.0));
         }
 
-        private double _approachHeight = 3.0;
+        private double _approachHeight = -3.0;
         /// <summary>逼近高度 mm（范围 0~50，快速下降到此高度后转为慢速逼近）</summary>
         public double ApproachHeight
         {
@@ -35,7 +35,7 @@ namespace Core.Models
             set => SetProperty(ref _approachHeight, Math.Clamp(value, -10.0, 10.0));
         }
 
-        private double _cornerDecel = 0.3;
+        private double _cornerDecel = 0.1;
         /// <summary>拐角减速系数（范围 0~1，越小减速越明显）</summary>
         public double CornerDecel
         {
@@ -47,7 +47,7 @@ namespace Core.Models
 
         #region 出胶参数
 
-        private double _dispenseTime = 180.0;
+        private double _dispenseTime = 1800.0;
         /// <summary>出胶时间 ms（范围 10~5000，控制胶点大小）</summary>
         public double DispenseTime
         {
@@ -71,7 +71,7 @@ namespace Core.Models
             set => SetProperty(ref _postDelay, Math.Clamp(value, 0.0, 5000.0));
         }
 
-        private double _dotGlueTriggerOffsetMm = 0.5;
+        private double _dotGlueTriggerOffsetMm = -0.5;
         /// <summary>点涂开胶触发距离 mm（范围 0.05~5.0，Z轴慢速下降过程中距目标位此距离时触发开胶）</summary>
         public double DotGlueTriggerOffsetMm
         {
