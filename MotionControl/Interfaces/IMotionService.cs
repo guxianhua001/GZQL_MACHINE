@@ -103,6 +103,13 @@ namespace MotionControl.Interfaces
         /// <summary> 等待坐标系运动完成（支持取消令牌以实现急停快速响应） </summary>
         Task<bool> WaitForCoordMotionCompletionAsync(int coordId, TimeSpan timeout, CancellationToken token = default);
 
+        /// <summary>
+        /// 判断给定逻辑轴是否全部位于同一张物理运动卡上。
+        /// 连续插补（ContiOpenList）只在单卡上打开插补表，跨卡轴会被静默错配到首卡物理轴号，
+        /// 故多轴插补前须用本方法校验。任一轴未映射或分属不同卡均返回 false。
+        /// </summary>
+        bool AreAxesOnSameCard(int[] axisIds);
+
         /// <summary> 读取单个模拟量通道并转换为物理量（通过雷赛卡AD输入） </summary>
         Task<double> ReadAnalogChannelAsync(int cardNo, int channel);
 

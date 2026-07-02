@@ -34,6 +34,10 @@ namespace Recipe
             containerRegistry.RegisterSingleton<IRecipePoolService, RecipePoolService>();
             containerRegistry.RegisterSingleton<IRecipeDialogService, RecipeDialogService>();
 
+            // 受保护文件提供者：扫描配方池 ExtensionData，供 ConfigFileRetentionService
+            // 清理时跳过被配方池引用的配置文件，防止切换池后配置丢失
+            containerRegistry.RegisterSingleton<IProtectedFileProvider, RecipePoolProtectedFileProvider>();
+
             // 导航视图注册
             containerRegistry.RegisterForNavigation<RecipeManagerView, RecipeManagerViewModel>();
             containerRegistry.RegisterForNavigation<MultiStationPositionEditorView, MultiStationPositionEditorViewModel>();

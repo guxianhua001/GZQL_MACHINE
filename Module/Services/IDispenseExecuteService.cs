@@ -16,18 +16,22 @@ namespace Module.Services
         /// </summary>
         /// <param name="segments">轨迹段集合</param>
         /// <param name="descendToWorkHeight">是否下降到工作高度</param>
-        /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
+        /// <param name="needleIndex">针头索引（0=针头1/Dz₂, 1=针头2/Dz₃）</param>
         /// <param name="token">取消令牌</param>
-        Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null);
+        /// <param name="pauseEvent">暂停事件</param>
+        /// <param name="zCorrectionEnabled">是否启用 Z 向校准（3 轴 XYZ 连续插补，跟随 CAD 表面 Z 轮廓）</param>
+        Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null, bool zCorrectionEnabled = false);
 
         /// <summary>
         /// 执行完整走胶路径：按段顺序执行出胶+插补运动
         /// </summary>
         /// <param name="segments">轨迹段集合</param>
         /// <param name="site">站点标识</param>
-        /// <param name="needleIndex">针头索引（0=针头1/Dz1, 1=针头2/Dz2）</param>
+        /// <param name="needleIndex">针头索引（0=针头1/Dz₂, 1=针头2/Dz₃）</param>
         /// <param name="token">取消令牌</param>
-        Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null);
+        /// <param name="pauseEvent">暂停事件</param>
+        /// <param name="zCorrectionEnabled">是否启用 Z 向校准（3 轴 XYZ 连续插补，跟随 CAD 表面 Z 轮廓）</param>
+        Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null, bool zCorrectionEnabled = false);
 
         /// <summary>
         /// 执行单点点胶：定点下降→开胶→延时→关胶→上升

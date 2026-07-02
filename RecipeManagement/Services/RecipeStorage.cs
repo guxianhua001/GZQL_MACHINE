@@ -33,8 +33,11 @@ namespace Recipe.Services
         public async Task SaveRecipePoolAsync(RecipePool pool)
         {
             var key = $"{RecipePoolPrefix}{pool.Name}";
-            // 备份现有文件（如果存在）
-            BackupRecipePoolFile(pool.CurrentRecipePoolName);
+            // 备份现有文件（如果存在）。必须用 pool.Name（存储键后缀）而非
+            // pool.CurrentRecipePoolName——后者是 SetCurrentRecipeInfo 的快照字段
+            // （默认 "Default"），非默认池克隆自源池后不会更新，会导致备份文件名
+            // 误标为 recipe_pool_Default.json_*.bak，备份目录也归到错误的池名下。
+            BackupRecipePoolFile(pool.Name);
             await _genericStorage.SaveAsync(key, pool);
         }
 

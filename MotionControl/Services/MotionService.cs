@@ -1154,6 +1154,27 @@ namespace MotionControl.Services
 
         #region 连续插补
 
+        /// <summary>
+        /// 判断给定逻辑轴是否全部位于同一张物理运动卡上。
+        /// 连续插补 ContiOpenList 只在单卡打开插补表，跨卡轴会被静默错配到首卡物理轴号，
+        /// 故多轴插补前须校验。任一轴未映射或分属不同卡均返回 false（不抛异常，由调用方决定如何处理）。
+        /// </summary>
+        public bool AreAxesOnSameCard(int[] axisIds)
+        {
+            if (axisIds == null || axisIds.Length == 0) return true; // 空集视为同卡
+            IMotionCard? first = null;
+            foreach (var id in axisIds)
+            {
+                if (!_axisCardMap.TryGetValue(id, out var card))
+                    return false; // 任一轴未映射到卡，视为不可同卡插补
+                if (first == null)
+                    first = card;
+                else if (!ReferenceEquals(first, card))
+                    return false; // 分属不同卡
+            }
+            return true;
+        }
+
         /// <summary> 初始化连续插补：设置速度曲线、前瞻模式、打开插补列表 </summary>
         public void InitializeContinuousInterpolation(int coordId, int[] axisIds, double startVel = 0, double maxVel = 5, double acc = 0.1, double dec = 0.1, double endVel = 0,double sPara = 0.05)
         {

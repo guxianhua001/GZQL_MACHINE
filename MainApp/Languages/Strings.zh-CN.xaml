@@ -2976,6 +2976,7 @@
     <sys:String x:Key="Step6_CheckBox_ZCorrection">Z向校准</sys:String>
     <sys:String x:Key="Step6_Desc_ContinuousInterpolation">沿轨迹连续运动，自动控制出胶开关</sys:String>
     <sys:String x:Key="Step6_Desc_SinglePoint">逐点运动到每个插补点，独立控制出胶</sys:String>
+    <sys:String x:Key="Step6_Desc_ZCorrection">启用XYZ轴连续插补，以第1个点的Z作为基准0，点胶高度=示教高度+deltaZ</sys:String>
     <sys:String x:Key="Step6_Description">选择目标线段和执行模式，执行点胶操作。</sys:String>
     <sys:String x:Key="Step6_Hint_SelectSegment">选择目标线段</sys:String>
     <sys:String x:Key="Step6_Radio_ContinuousInterpolation">连续插补</sys:String>
@@ -4040,6 +4041,9 @@
     <sys:String x:Key="DispenseExec_TriggerGlueOn">段 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_PointTriggerGlueOn">段[{0}]点{1} 位置触发开胶，triggerZ={2:F3}, targetZ={3:F3}, offset={4:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_ZNotReached">段 [{0}] Z轴未到位: 当前={1:F3}, 目标={2:F3}，重新下降</sys:String>
+    <sys:String x:Key="DispenseExec_ZCorrectionEnabled">段[{0}] 启用Z向校准: 基准Z={1:F3}mm, 点数={2}, deltaZ范围[{3:F3}~{4:F3}]mm, 校正后Z范围[{5:F3}~{6:F3}]mm</sys:String>
+    <sys:String x:Key="DispenseExec_ZCorrectionDeltaExceeded">段[{0}] Z向校准 deltaZ={1:F3}mm 超出安全阈值 {2:F3}mm，已中止防止碰撞</sys:String>
+    <sys:String x:Key="DispenseExec_ZCorrectionCrossCard">Z向校准需要 Dx/Dy/Dz 在同一运动卡上（当前跨卡），无法执行3轴插补</sys:String>
     <sys:String x:Key="DispenseExec_GlueOff">段 [{0}] 关胶</sys:String>
     <sys:String x:Key="DispenseExec_MotionTimeout">段 [{0}] {1}运动超时</sys:String>
     <sys:String x:Key="DispenseExec_SinglePointMissingCoord">单点点胶：点缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机</sys:String>

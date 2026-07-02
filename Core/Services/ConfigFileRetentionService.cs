@@ -43,20 +43,27 @@ namespace Core.Services
         private readonly IAppSettingService _appSettingService;
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localization;
+        private readonly IProtectedFileProvider _protectedFileProvider;
         private readonly object _settingsLock = new object();
         private ConfigFileRetentionSettings _settings;
 
         /// <summary>
-        /// 构造函数：注入应用配置服务和日志服务，并加载当前保留策略设置。
+        /// 构造函数：注入应用配置服务、日志服务和受保护文件提供者，并加载当前保留策略设置。
         /// </summary>
         /// <param name="appSettingService">应用配置服务</param>
         /// <param name="logger">日志服务</param>
         /// <param name="localization">本地化服务</param>
-        public ConfigFileRetentionService(IAppSettingService appSettingService, ILoggerService logger, ILocalizationService localization)
+        /// <param name="protectedFileProvider">受保护文件提供者（可选）；为 null 时清理不检查引用</param>
+        public ConfigFileRetentionService(
+            IAppSettingService appSettingService,
+            ILoggerService logger,
+            ILocalizationService localization,
+            IProtectedFileProvider protectedFileProvider = null)
         {
             _appSettingService = appSettingService ?? throw new ArgumentNullException(nameof(appSettingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _protectedFileProvider = protectedFileProvider;
             LoadSettings();
         }
 
@@ -147,6 +154,20 @@ namespace Core.Services
                 // 需要删除的文件数量
                 var deleteCount = files.Count - maxCount;
                 var cleanedCount = 0;
+                var skippedProtected = 0;
+
+                // 获取受保护文件路径集合（被配方池等引用的文件不应删除）。
+                // GetProtectedFilePaths 为同步方法，内部可能阻塞（扫描所有配方池），
+                // 但本方法通常在 Task.Run 后台线程中执行，阻塞安全。
+                HashSet<string> protectedPaths = null;
+                try
+                {
+                    protectedPaths = _protectedFileProvider?.GetProtectedFilePaths();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_GetProtectedFilesFailed", "[ConfigRetention] 获取受保护文件列表失败，本次清理不检查引用: {0}"), ex.Message));
+                }
 
                 foreach (var file in files)
                 {
@@ -159,6 +180,13 @@ namespace Core.Services
                     if (!string.IsNullOrEmpty(currentFilePath)
                         && string.Equals(file.FullName, currentFilePath, StringComparison.OrdinalIgnoreCase))
                     {
+                        continue;
+                    }
+
+                    // 跳过受配方池引用的文件（防止删除后切换池丢失配置）
+                    if (protectedPaths != null && protectedPaths.Contains(file.FullName))
+                    {
+                        skippedProtected++;
                         continue;
                     }
 
@@ -175,9 +203,9 @@ namespace Core.Services
                     }
                 }
 
-                if (cleanedCount > 0)
+                if (cleanedCount > 0 || skippedProtected > 0)
                 {
-                    _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_FolderCleanupSummary", "[ConfigRetention] 文件夹 {0} 本次清理了 {1} 个旧文件 (保留最大{2}个)"), folderKey, cleanedCount, maxCount));
+                    _logger.Info(string.Format(_localization.GetResourceOrDefault("CfgRet_Log_FolderCleanupSummary", "[ConfigRetention] 文件夹 {0} 本次清理了 {1} 个旧文件 (保留最大{2}个, 跳过{3}个受保护文件)"), folderKey, cleanedCount, maxCount, skippedProtected));
                 }
             }
             catch (Exception ex)

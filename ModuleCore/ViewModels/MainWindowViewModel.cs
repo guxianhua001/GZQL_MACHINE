@@ -33,6 +33,7 @@ using Core.Services;
 using Core.Abstraction;
 using Framework.Mvvm;
 using Recipe.Events;
+using Recipe.Interfaces;
 using Core.ViewModels;
 
 namespace ModuleCore.ViewModels
@@ -114,8 +115,10 @@ namespace ModuleCore.ViewModels
         private readonly ILoggerService _logger;
         private readonly IMotionService _motionService;
         private readonly IAxisOperationPanelState _axisPanelState;
+        private readonly IRecipePoolService _recipePoolService;
         private SubscriptionToken _refreshToken;
         private SubscriptionToken _secsCommandToken;
+        private SubscriptionToken _recipePoolChangedToken;
         public MainWindowViewModel(IDialogService dialogService,
                                    IRegionManager regionManager,
                                    IContainerExtension container,
@@ -124,7 +127,8 @@ namespace ModuleCore.ViewModels
                                    ILoggerService logger,
                                    IMotionService motionService,
                                    IAxisOperationPanelState axisPanelState,
-                                   ILocalizationService localizationService)
+                                   ILocalizationService localizationService,
+                                   IRecipePoolService recipePoolService)
             : base(localizationService, eventAggregator)
         {
             _regionManager = regionManager;
@@ -133,6 +137,7 @@ namespace ModuleCore.ViewModels
             _logger = logger;
             _motionService = motionService;
             _axisPanelState = axisPanelState;
+            _recipePoolService = recipePoolService;
             Model = container.Resolve<LoginModel>();
             Navigate = container.Resolve<NavigateModel>();
             RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
@@ -149,6 +154,13 @@ namespace ModuleCore.ViewModels
             _refreshToken = _eventAggregator
                 .GetEvent<RecipeChangedEvent>()
                 .Subscribe(OnProductNeedRefresh);
+
+            // 订阅配方池切换事件：池切换后当前配方也会变更（新池的 CurrentRecipeName）。
+            // RecipeChangedEvent 仅在池内切换配方时发布，池切换不会触发，故 MainWindow
+            // 需额外订阅 RecipePoolChangedEvent 以刷新底部状态栏的配方名显示。
+            _recipePoolChangedToken = _eventAggregator
+                .GetEvent<RecipePoolChangedEvent>()
+                .Subscribe(OnRecipePoolChanged, ThreadOption.UIThread);
 
             _eventAggregator.GetEvent<ThresholdWarningEvent>()
                  .Subscribe(ShowWarningDialog, ThreadOption.UIThread);
@@ -213,10 +225,26 @@ namespace ModuleCore.ViewModels
 
         private void OnProductNeedRefresh(string recipeName)
         {
-            // 带条件刷新的智能重载
-            if (!string.IsNullOrEmpty(recipeName))
+            // 池内切换配方时池名不变，但需刷新显示以保持与服务层状态一致
+            var poolName = _recipePoolService?.CurrentPoolName;
+            if (!string.IsNullOrEmpty(poolName))
             {
-                RecipeName = L("MainWindow_CurrentRecipePrefix") + recipeName;
+                RecipeName = L("MainWindow_RecipePoolPrefix") + poolName;
+            }
+        }
+
+        /// <summary>
+        /// 配方池切换事件处理：池切换后用新池名刷新底部状态栏显示。
+        /// SwitchToPoolAsync 仅发布 RecipePoolChangedEvent，不发布 RecipeChangedEvent，
+        /// 故此订阅是 MainWindow 在池切换后更新的唯一途径。
+        /// MainWindow 底部状态栏统一显示"配方池: 池名"，不显示配方名
+        /// （配方名在配方管理器页面查看），避免池名与配方名混淆。
+        /// </summary>
+        private void OnRecipePoolChanged(string poolName)
+        {
+            if (!string.IsNullOrEmpty(poolName))
+            {
+                RecipeName = L("MainWindow_RecipePoolPrefix") + poolName;
             }
         }
         public void IsAdmin(object sender, CanExecuteRoutedEventArgs e)
@@ -754,7 +782,13 @@ namespace ModuleCore.ViewModels
                 }
             }
 
-            RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
+            // 语言切换后刷新显示：优先用服务层当前配方池名（可能已切换池），
+            // 回退到 appConfig.RecipeName（启动初始值），避免切换池后语言切换将显示重置为旧值
+            var currentPool = _recipePoolService?.CurrentPoolName;
+            if (!string.IsNullOrEmpty(currentPool))
+                RecipeName = L("MainWindow_RecipePoolPrefix") + currentPool;
+            else
+                RecipeName = L("MainWindow_RecipePoolPrefix") + _appConfig.RecipeName;
             SecsStatusText = L("MainWindow_SecsOffline");
 
             // 刷新 EtherCAT 文案（保留当前错误码）

@@ -61,7 +61,16 @@ namespace MainApp
         protected override void Initialize()
         {
             BuildConfiguration();
-            base.Initialize();
+            try
+            {
+                base.Initialize();
+            }
+            catch (Exception ex)
+            {
+                // 捕获 Prism 引导过程异常（CreateShell/InitializeModules 等），_nlogLogger 始终可用
+                _nlogLogger.Fatal(ex, "[Initialize] Prism base.Initialize() failed");
+                throw;
+            }
         }
 
         protected override void OnInitialized()
@@ -257,7 +266,7 @@ namespace MainApp
             try
             {
                 string dumpPath = GenerateCrashDump(exceptionPointers);
-                _nlogLogger.Fatal(string.Format(_localization.GetResourceOrDefault("App_Log_UnmanagedException", "未处理非托管异常! 崩溃信息已保存: {0}"), dumpPath));
+                _nlogLogger.Fatal(string.Format(_localization?.GetResourceOrDefault("App_Log_UnmanagedException", "未处理非托管异常! 崩溃信息已保存: {0}") ?? "未处理非托管异常! 崩溃信息已保存: {0}", dumpPath));
             }
             catch { }
             finally
@@ -413,13 +422,16 @@ namespace MainApp
         {
             try
             {
+                // 先用 _nlogLogger 直接记录异常（_localization 可能为 null，避免 NRE 吞掉真正的异常）
+                _nlogLogger.Fatal(ex, $"[HandleException] isUIThread={isUIShread}, isTerminating={isTerminating}");
+
                 string threadContext = isUIShread
-                    ? _localization.GetResourceOrDefault("App_Log_UIThread", "UI线程")
-                    : _localization.GetResourceOrDefault("App_Log_BackgroundThread", "后台线程");
+                    ? (_localization?.GetResourceOrDefault("App_Log_UIThread", "UI线程") ?? "UI线程")
+                    : (_localization?.GetResourceOrDefault("App_Log_BackgroundThread", "后台线程") ?? "后台线程");
                 string terminatingSuffix = isTerminating
-                    ? _localization.GetResourceOrDefault("App_Log_TerminatingSuffix", "【将导致应用终止】")
+                    ? (_localization?.GetResourceOrDefault("App_Log_TerminatingSuffix", "【将导致应用终止】") ?? "【将导致应用终止】")
                     : string.Empty;
-                _nlogLogger.Fatal(ex, string.Format(_localization.GetResourceOrDefault("App_Log_UnhandledException", "{0}未处理异常{1}"), threadContext, terminatingSuffix));
+                _nlogLogger.Fatal(ex, string.Format(_localization?.GetResourceOrDefault("App_Log_UnhandledException", "{0}未处理异常{1}") ?? "{0}未处理异常{1}", threadContext, terminatingSuffix));
 
                 GenerateErrorReport(ex);
                 ShowFriendlyError();

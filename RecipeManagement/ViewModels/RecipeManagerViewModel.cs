@@ -144,16 +144,18 @@ namespace Recipe.ViewModels
             SelectNodeCommand = new DelegateCommand<TreeNode>(OnNodeSelected);
 
             // 订阅服务层的属性变化
+            // 关键：SwitchToPoolAsync 内部使用 ConfigureAwait(false)，CurrentPoolName 的
+            // PropertyChanged 可能在线程池线程上触发。WPF 跨线程 INPC 通知会被投递到
+            // Dispatcher 队列末尾，若此时 LoadPoolsAsync 等后续操作正在 Dispatcher 上执行，
+            // 绑定刷新可能延迟或丢失。必须统一 BeginInvoke 到 UI 线程，确保通知即时生效。
             if (_recipePoolService is INotifyPropertyChanged inpc)
             {
                 inpc.PropertyChanged += (s, e) =>
                 {
-                    // 将服务层变更的 CurrentPoolName / CurrentRecipeName 同步到 ViewModel 的 RaisePropertyChanged
                     if (e.PropertyName == nameof(IRecipePoolService.CurrentPoolName))
-                        RaisePropertyChanged(nameof(CurrentPoolName));
+                        Application.Current?.Dispatcher.BeginInvoke(new Action(() => RaisePropertyChanged(nameof(CurrentPoolName))));
                     else if (e.PropertyName == nameof(IRecipePoolService.CurrentRecipeName))
-                        RaisePropertyChanged(nameof(CurrentRecipeName));
-                    // CurrentPoolId 同理
+                        Application.Current?.Dispatcher.BeginInvoke(new Action(() => RaisePropertyChanged(nameof(CurrentRecipeName))));
                 };
             }
             _eventAggregator.GetEvent<StationParameterSavedEvent>().Subscribe(OnStationParameterSaved);
@@ -324,7 +326,9 @@ namespace Recipe.ViewModels
                 }
 
                 UpdateTreeCurrentState();
-                _eventAggregator.GetEvent<RecipeChangedEvent>().Publish(poolName);
+                // RecipeChangedEvent 载荷为配方名（非池名）：MainWindow 等订阅方将其作为
+                // 当前配方名显示。曾误传 poolName，导致 MainWindow 显示池名而非配方名。
+                _eventAggregator.GetEvent<RecipeChangedEvent>().Publish(recipeName);
                 StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchedRecipePool", "已切换到配方池: {0} -> 配方:{1}，时间: {2}"), poolName, recipeName, DateTime.Now.ToString("HH:mm:ss"));
             }
             catch (Exception ex)
@@ -518,15 +522,25 @@ namespace Recipe.ViewModels
             });
         }
 
+        /// <summary>
+        /// 加载当前选中配方池下的所有配方到 Recipes 集合。
+        /// 关键点: SelectedRecipePool 的 setter 以 fire-and-forget 方式调用本方法，
+        /// 在 await 期间 SelectedRecipePool 可能被再次赋值（甚至置 null，例如 CreatePoolAsync
+        /// 用错误字段匹配导致 FirstOrDefault 返回 null）。因此必须在方法入口将
+        /// SelectedRecipePool 快照到局部变量 pool，后续全程使用 pool，避免跨 await 读取到 null。
+        /// </summary>
         private async Task LoadRecipesAsync()
         {
-            if (SelectedRecipePool == null) return;
+            // 入口快照: 锁定本次加载对应的配方池，防止跨 await 被 UI 线程改写导致 NRE
+            var pool = SelectedRecipePool;
+            if (pool == null) return;
             try
             {
                 await Application.Current.Dispatcher.InvokeAsync(() => IsLoading = true);
-                await Application.Current.Dispatcher.InvokeAsync(() => StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_LoadingRecipes", "正在加载配方池 '{0}' 的配方..."), SelectedRecipePool.Name));
+                await Application.Current.Dispatcher.InvokeAsync(() => StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_LoadingRecipes", "正在加载配方池 '{0}' 的配方..."), pool.Name));
 
-                string poolId = SelectedRecipePool.Name;
+                // 配方池的存储键为其 Name（见 RecipeStorage.LoadRecipePoolAsync / SaveRecipePoolAsync）
+                string poolId = pool.Name;
                 var recipes = await _recipeStorage.LoadAllRecipesAsync(poolId);
 
                 await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -560,34 +574,44 @@ namespace Recipe.ViewModels
                     pools = await _recipePoolService.GetAllRecipePoolsAsync();
                 }
 
-                // 1. 加载使用的配方池
-                var defaultPool = pools.FirstOrDefault(p => p.IsDefault);
-                if (defaultPool != null)
+                // 1. 确定当前配方池：优先保留服务层已有的 CurrentPoolName（由 SwitchToPoolAsync
+                //    权威设置），仅在其为空或不在池列表中时才从磁盘 IsDefault 标记回退。
+                //    不能无条件用磁盘 IsDefault 覆盖——SwitchToPoolAsync 已在信号量内通过
+                //    SetDefaultRecipePoolAsync 写盘，但 RecipePoolChangedEvent 订阅者以
+                //    fire-and-forget 方式并发保存配方池，存在 lost-update 竞态窗口，
+                //    可能导致磁盘 Default.IsDefault 暂时为 true，从而错误回退。
+                var currentName = _recipePoolService.CurrentPoolName;
+                bool currentExists = !string.IsNullOrEmpty(currentName)
+                    && pools.Any(p => p.Name == currentName);
+                if (!currentExists)
                 {
-                    // 同步服务层状态（会触发 PropertyChanged，从而更新 ViewModel 代理属性）
-                    _recipePoolService.CurrentPoolName = defaultPool.Name;
-                    if (!string.IsNullOrEmpty(defaultPool.CurrentRecipeName))
+                    // 回退路径：CurrentPoolName 为空或不在列表中（首次加载 / 数据损坏）
+                    var defaultPool = pools.FirstOrDefault(p => p.IsDefault);
+                    if (defaultPool != null)
                     {
-                        _recipePoolService.CurrentRecipeName = defaultPool.CurrentRecipeName;
+                        _recipePoolService.CurrentPoolName = defaultPool.Name;
+                        if (!string.IsNullOrEmpty(defaultPool.CurrentRecipeName))
+                            _recipePoolService.CurrentRecipeName = defaultPool.CurrentRecipeName;
                     }
-                }
-                else
-                {
-                    // 容错：没有任何池标记为默认（极端情况，如数据损坏）
-                    var firstPool = pools.FirstOrDefault();
-                    if (firstPool != null)
+                    else
                     {
-                        firstPool.IsDefault = true;
-                        await _recipePoolService.SaveRecipePoolAsync(firstPool);
-                        _recipePoolService.CurrentPoolName = firstPool.Name;
-                        if (!string.IsNullOrEmpty(firstPool.CurrentRecipeName))
+                        // 容错：没有任何池标记为默认（极端情况，如数据损坏）
+                        var firstPool = pools.FirstOrDefault();
+                        if (firstPool != null)
                         {
-                            _recipePoolService.CurrentRecipeName = firstPool.CurrentRecipeName;
+                            firstPool.IsDefault = true;
+                            // 直接走存储层写入，保留内存中刚设置的 IsDefault=true。
+                            // 不能用 _recipePoolService.SaveRecipePoolAsync（公共方法）——
+                            // 它会重新从磁盘加载并丢弃内存中的 IsDefault 变更。
+                            await _recipeStorage.SaveRecipePoolAsync(firstPool);
+                            _recipePoolService.CurrentPoolName = firstPool.Name;
+                            if (!string.IsNullOrEmpty(firstPool.CurrentRecipeName))
+                                _recipePoolService.CurrentRecipeName = firstPool.CurrentRecipeName;
                         }
                     }
                 }
 
-                // 2. 构建树节点（使用服务层状态驱动界面表现）
+                // 2. 构建树节点（使用服务层状态驱动界面表现，含"当前"徽章）
                 TreeNodes.Clear();
                 foreach (var pool in pools)
                 {
@@ -598,6 +622,7 @@ namespace Recipe.ViewModels
                         Data = pool,
                         Type = NodeType.Pool,
                         IsExpanded = pool.Name == _recipePoolService.CurrentPoolName,
+                        IsCurrent = pool.Name == _recipePoolService.CurrentPoolName,
                         Description = pool.Description,
                         ModifiedTime = pool.ModifiedTime
                     });
@@ -709,10 +734,26 @@ namespace Recipe.ViewModels
                     var id = name.Replace(" ", "_");
                     try
                     {
-                        await _recipePoolService.CopyRecipePoolAsync(sourcePool.CurrentRecipePoolName, id, name, description);
+                        // 源池存储键为 sourcePool.Name（RecipeStorage 以 pool.Name 为键读写），
+                        // 不能用 sourcePool.CurrentRecipePoolName——它只是 SetCurrentRecipeInfo
+                        // 的快照（默认 "Default"），非默认池会指向错误的源池。
+                        await _recipePoolService.CopyRecipePoolAsync(sourcePool.Name, id, name, description);
                         await LoadPoolsAsync();
-                        SelectedRecipePool = RecipePools.FirstOrDefault(p => p.CurrentRecipePoolName == id);
-                        StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolCopied", "已复制配方池 '{0}' 为 '{1}'"), sourcePool.Name, name);
+                        // 新池由 CopyRecipePoolAsync 内部以 newName 保存（SaveRecipePoolAsync 用 pool.Name 为键），
+                        // 且 newPool.Id 是新生成的 GUID，与 id 无关。故必须按 Name 查找新池，
+                        // 不能按 CurrentRecipePoolName（快照字段）或 Id（GUID）匹配，否则 FirstOrDefault 返回 null。
+                        var newPool = RecipePools.FirstOrDefault(p => p.Name == name);
+                        if (newPool != null)
+                        {
+                            SelectedRecipePool = newPool;
+                            StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolCopied", "已复制配方池 '{0}' 为 '{1}'"), sourcePool.Name, name);
+                        }
+                        else
+                        {
+                            // 容错: 极端情况下未在 RecipePools 中找到刚创建的池，仅提示，不置 null 触发空加载
+                            StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_RecipePoolCopied", "已复制配方池 '{0}' 为 '{1}'"), sourcePool.Name, name);
+                            _logger.Info(string.Format(_localization.GetResourceOrDefault("RM_Log_LoadRecipesFail", "加载配方失败"), "新池 " + name + " 未在列表中匹配，跳过选中"));
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -797,8 +838,16 @@ namespace Recipe.ViewModels
 
                 await _recipePoolService.SwitchToPoolAsync(pool.Name, saveCurrentPool);
 
+                // SwitchToPoolAsync 内部 ConfigureAwait(false) 可能在非 UI 线程触发 PropertyChanged，
+                // 此处（UI 线程）显式刷新代理属性，确保绑定立即更新到新池名/配方名
+                RaisePropertyChanged(nameof(CurrentPoolName));
+                RaisePropertyChanged(nameof(CurrentRecipeName));
+
                 await LoadRecipesAsync();
                 await LoadPoolsAsync();
+                // 防御性刷新"当前"徽章：LoadPoolsAsync 重建树时已设置 IsCurrent，
+                // 此处再次调用确保在并发事件订阅者触发额外 LoadPoolsAsync 后徽章仍正确
+                UpdateTreeCurrentState();
 
                 StatusMessage = string.Format(_localization.GetResourceOrDefault("RM_Msg_SwitchedRecipePool", "已切换到配方池 '{0}'"), pool.Name);
                 RaisePropertyChanged(nameof(RecipePools));

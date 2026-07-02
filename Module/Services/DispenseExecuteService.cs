@@ -35,6 +35,9 @@ namespace Module.Services
 
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
+        /// <summary>Z 向校准单点 deltaZ 安全阈值(mm)：|deltaZ| 超此值视为可疑 CAD 数据，抛异常中止防碰撞。
+        /// 操作员应按工件最大表面起伏调整（默认 10mm 兼顾安全与常见 3D 表面跟随）。</summary>
+        private const double ZCorrectionMaxDeltaMm = 10.0;
 
         private int _isRunning;
 
@@ -73,19 +76,19 @@ namespace Module.Services
         /// <summary>
         /// 空跑仿真：按行业标准工艺流程执行，可选是否下降到工作高度，不出胶
         /// </summary>
-        public async Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null)
+        public async Task DryRunAsync(IEnumerable<DispenseSegment> segments, bool descendToWorkHeight = false, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null, bool zCorrectionEnabled = false)
         {
             var modeLabel = ResourceHelper.GetString("DispenseExec_DryRun");
-            await ExecuteSegmentsAsync(segments, descendToWorkHeight: descendToWorkHeight, dispenseGlue: false, modeLabel: modeLabel, needleIndex: needleIndex, token: token, pauseEvent: pauseEvent);
+            await ExecuteSegmentsAsync(segments, descendToWorkHeight: descendToWorkHeight, dispenseGlue: false, modeLabel: modeLabel, needleIndex: needleIndex, token: token, pauseEvent: pauseEvent, zCorrectionEnabled: zCorrectionEnabled);
         }
 
         /// <summary>
         /// 执行走胶路径：按行业标准工艺流程执行，下降到工作高度并出胶
         /// </summary>
-        public async Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null)
+        public async Task ExecutePathAsync(IEnumerable<DispenseSegment> segments, string site, int needleIndex = 0, CancellationToken token = default, ManualResetEventSlim? pauseEvent = null, bool zCorrectionEnabled = false)
         {
             var modeLabel = ResourceHelper.GetString("DispenseExec_Dispense", site);
-            await ExecuteSegmentsAsync(segments, descendToWorkHeight: true, dispenseGlue: true, modeLabel: modeLabel, needleIndex: needleIndex, token: token, pauseEvent: pauseEvent);
+            await ExecuteSegmentsAsync(segments, descendToWorkHeight: true, dispenseGlue: true, modeLabel: modeLabel, needleIndex: needleIndex, token: token, pauseEvent: pauseEvent, zCorrectionEnabled: zCorrectionEnabled);
         }
 
         /// <summary>
@@ -100,7 +103,8 @@ namespace Module.Services
             string modeLabel,
             int needleIndex,
             CancellationToken token,
-            ManualResetEventSlim? pauseEvent = null)
+            ManualResetEventSlim? pauseEvent = null,
+            bool zCorrectionEnabled = false)
         {
             SetRunning(true);
             PublishStatus("Running");
@@ -187,36 +191,69 @@ namespace Module.Services
                     }
 
                     // 4. 连续插补走轨迹（走胶：提前关胶 + 走完剩余路径 + PostDelay 泄压）
-                    var pathPoints = new List<(double X, double Y)>(seg.Points.Count);
-                    foreach (var pt in seg.Points)
-                    {
-                        if (!pt.MachineX.HasValue || !pt.MachineY.HasValue)
-                            throw new InvalidOperationException(
-                                ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId, ""));
-                        pathPoints.Add((pt.MachineX.Value, pt.MachineY.Value));
-                    }
-
                     Action<bool>? glueWriter = dispenseGlue ? on => WriteGlueIo(on, needleIndex) : null;
                     int earlyCloseMs = dispenseGlue ? (int)seg.EarlyCloseGlueDelayMs : 0;
                     int postDelayMs = dispenseGlue ? (int)seg.PostDelay : 0;
 
-                    await ArcContinuousDispenseHelper.RunContinuousInterpolationWithEarlyGlueOffAsync(
-                        _motionService,
-                        CoordIdContinuous,
-                        new[] { AxisDx, AxisDy },
-                        pathPoints,
-                        seg.InterpSpeed,
-                        startVel: 0,
-                        DefaultAcc,
-                        DefaultDec,
-                        endVel: 0,
-                        earlyCloseMs,
-                        postDelayMs,
-                        glueWriter,
-                        _logger,
-                        $"[DispenseExecute] 段[{seg.SegmentId}]",
-                        token,
-                        TimeSpan.FromMinutes(5));
+                    if (zCorrectionEnabled && descendToWorkHeight)
+                    {
+                        // Z 向校准：3 轴 XYZ 连续插补，针头跟随 CAD 表面 Z 轮廓
+                        // 同卡校验：连续插补 ContiOpenList 只在单卡打开，跨卡轴会被静默错配到首卡物理轴号
+                        int[] zCorrectAxes = { AxisDx, AxisDy, axisDz };
+                        if (!_motionService.AreAxesOnSameCard(zCorrectAxes))
+                            throw new InvalidOperationException(
+                                ResourceHelper.GetString("DispenseExec_ZCorrectionCrossCard"));
+
+                        // 基准高度 = EffectiveZHeight（保留换针/手动补偿），deltaZ 来自 CAD Z（Z 轴越往下数值越大）
+                        var pathPoints3D = BuildZCorrectedPath(seg, seg.EffectiveZHeight);
+                        await ArcContinuousDispenseHelper.RunContinuousInterpolationWithEarlyGlueOffAsync(
+                            _motionService,
+                            CoordIdContinuous,
+                            zCorrectAxes,
+                            pathPoints3D,
+                            seg.InterpSpeed,
+                            startVel: 0,
+                            DefaultAcc,
+                            DefaultDec,
+                            endVel: 0,
+                            earlyCloseMs,
+                            postDelayMs,
+                            glueWriter,
+                            _logger,
+                            $"[DispenseExecute] 段[{seg.SegmentId}]",
+                            token,
+                            TimeSpan.FromMinutes(5));
+                    }
+                    else
+                    {
+                        // XY 双轴连续插补（Z 保持 EffectiveZHeight 静止）
+                        var pathPoints = new List<(double X, double Y)>(seg.Points.Count);
+                        foreach (var pt in seg.Points)
+                        {
+                            if (!pt.MachineX.HasValue || !pt.MachineY.HasValue)
+                                throw new InvalidOperationException(
+                                    ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId, ""));
+                            pathPoints.Add((pt.MachineX.Value, pt.MachineY.Value));
+                        }
+
+                        await ArcContinuousDispenseHelper.RunContinuousInterpolationWithEarlyGlueOffAsync(
+                            _motionService,
+                            CoordIdContinuous,
+                            new[] { AxisDx, AxisDy },
+                            pathPoints,
+                            seg.InterpSpeed,
+                            startVel: 0,
+                            DefaultAcc,
+                            DefaultDec,
+                            endVel: 0,
+                            earlyCloseMs,
+                            postDelayMs,
+                            glueWriter,
+                            _logger,
+                            $"[DispenseExecute] 段[{seg.SegmentId}]",
+                            token,
+                            TimeSpan.FromMinutes(5));
+                    }
 
                     if (dispenseGlue)
                         _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_GlueOff", seg.SegmentId)}");
@@ -246,6 +283,59 @@ namespace Module.Services
             {
                 SetRunning(false);
             }
+        }
+
+        /// <summary>
+        /// 构建 Z 向校准后的 3D 插补路径：以段内第 1 个点的 CAD Z 为基准 0，
+        /// 每点 Z 目标 = baseZ + (pt.Z - firstZ)，Z 轴越往下数值越大。
+        /// 安全校验：MachineX/Y 缺失、Z 非有限、|deltaZ| 超阈值均抛 InvalidOperationException 中止防碰撞。
+        /// 第 1 点 deltaZ=0，Z=baseZ，与预下降目标(EffectiveZHeight)一致，无起点跳变。
+        /// </summary>
+        /// <param name="seg">点胶段（Points 已含 CAD Z 数据）</param>
+        /// <param name="baseZ">基准高度 = EffectiveZHeight（保留换针/手动补偿）</param>
+        /// <returns>3D 插补路径点列表 (X=MachineX, Y=MachineY, Z=baseZ+deltaZ)</returns>
+        private List<(double X, double Y, double Z)> BuildZCorrectedPath(DispenseSegment seg, double baseZ)
+        {
+            var pts = seg.Points;
+            if (pts == null || pts.Count == 0)
+                throw new InvalidOperationException(
+                    ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId, ""));
+
+            double firstZ = pts[0].Z;
+            if (!double.IsFinite(firstZ))
+                throw new InvalidOperationException(
+                    ResourceHelper.GetString("DispenseExec_ZCorrectionDeltaExceeded", seg.SegmentId, firstZ, ZCorrectionMaxDeltaMm));
+
+            var path = new List<(double X, double Y, double Z)>(pts.Count);
+            double minDelta = double.PositiveInfinity, maxDelta = double.NegativeInfinity;
+            double minZ = double.PositiveInfinity, maxZ = double.NegativeInfinity;
+
+            for (int i = 0; i < pts.Count; i++)
+            {
+                var pt = pts[i];
+                if (!pt.MachineX.HasValue || !pt.MachineY.HasValue)
+                    throw new InvalidOperationException(
+                        ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId,
+                            ResourceHelper.GetString("DispenseExec_PointLabel", i + 1)));
+
+                // deltaZ = 当前点 CAD Z - 第1点 CAD Z（Z 轴越往下数值越大，deltaZ>0 表示该点更低）
+                double deltaZ = pt.Z - firstZ;
+                if (!double.IsFinite(deltaZ) || Math.Abs(deltaZ) > ZCorrectionMaxDeltaMm)
+                    throw new InvalidOperationException(
+                        ResourceHelper.GetString("DispenseExec_ZCorrectionDeltaExceeded", seg.SegmentId, deltaZ, ZCorrectionMaxDeltaMm));
+
+                double z = baseZ + deltaZ;
+                path.Add((pt.MachineX.Value, pt.MachineY.Value, z));
+
+                if (deltaZ < minDelta) minDelta = deltaZ;
+                if (deltaZ > maxDelta) maxDelta = deltaZ;
+                if (z < minZ) minZ = z;
+                if (z > maxZ) maxZ = z;
+            }
+
+            // 记录基准 Z、deltaZ 范围、校正后 Z 范围，便于操作员核对 CAD Z 方向是否与机器一致
+            _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_ZCorrectionEnabled", seg.SegmentId, baseZ, pts.Count, minDelta, maxDelta, minZ, maxZ)}");
+            return path;
         }
 
         /// <summary>

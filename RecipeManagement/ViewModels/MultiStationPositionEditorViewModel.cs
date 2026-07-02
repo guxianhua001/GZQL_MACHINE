@@ -583,7 +583,7 @@ namespace Recipe.ViewModels
                 { "buttons", new ObservableCollection<DialogButton>
                     {
                         new DialogButton { Text = btnSingle, BackgroundHex = "#7B1FA2", IconKind = PackIconKind.ArrowRight, ButtonIndex = 0 },
-                        new DialogButton { Text = btnSimultaneous, BackgroundHex = "#512DA8", IconKind = PackIconKind.FastForward, ButtonIndex = 1 },
+                        //new DialogButton { Text = btnSimultaneous, BackgroundHex = "#512DA8", IconKind = PackIconKind.FastForward, ButtonIndex = 1 },
                         new DialogButton { Text = btnCancel, BackgroundHex = "#757575", IconKind = PackIconKind.Close, ButtonIndex = 2 }
                     }
                 }

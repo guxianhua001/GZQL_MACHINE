@@ -2976,6 +2976,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step6_CheckBox_ZCorrection">Z Correction</sys:String>
     <sys:String x:Key="Step6_Desc_ContinuousInterpolation">Continuous motion along trajectory, auto glue on/off control</sys:String>
     <sys:String x:Key="Step6_Desc_SinglePoint">Move to each interpolation point individually, independent glue control</sys:String>
+    <sys:String x:Key="Step6_Desc_ZCorrection">Enable XYZ continuous interpolation, 1st point Z as reference 0, dispense height = teach height + deltaZ</sys:String>
     <sys:String x:Key="Step6_Description">Select target segment and execution mode, then execute dispensing.</sys:String>
     <sys:String x:Key="Step6_Hint_SelectSegment">Select target segment</sys:String>
     <sys:String x:Key="Step6_Radio_ContinuousInterpolation">Continuous Interpolation</sys:String>
@@ -4040,6 +4041,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseExec_TriggerGlueOn">Segment [{0}] position trigger glue on, triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_PointTriggerGlueOn">Seg[{0}]Pt{1} position trigger glue on, triggerZ={2:F3}, targetZ={3:F3}, offset={4:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_ZNotReached">Segment [{0}] Z not in position: current={1:F3}, target={2:F3}, re-descending</sys:String>
+    <sys:String x:Key="DispenseExec_ZCorrectionEnabled">Seg[{0}] Z-correction enabled: baseZ={1:F3}mm, points={2}, deltaZ range[{3:F3}~{4:F3}]mm, corrected Z range[{5:F3}~{6:F3}]mm</sys:String>
+    <sys:String x:Key="DispenseExec_ZCorrectionDeltaExceeded">Seg[{0}] Z-correction deltaZ={1:F3}mm exceeds safety threshold {2:F3}mm, aborted to prevent collision</sys:String>
+    <sys:String x:Key="DispenseExec_ZCorrectionCrossCard">Z-correction requires Dx/Dy/Dz on the same motion card (currently cross-card), cannot execute 3-axis interpolation</sys:String>
     <sys:String x:Key="DispenseExec_GlueOff">Segment [{0}] glue off</sys:String>
     <sys:String x:Key="DispenseExec_MotionTimeout">Segment [{0}] {1} motion timeout</sys:String>
     <sys:String x:Key="DispenseExec_SinglePointMissingCoord">Single point: missing machine coordinates (alignment not performed), execution aborted to prevent collision</sys:String>

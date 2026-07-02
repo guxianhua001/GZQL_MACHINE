@@ -1024,8 +1024,8 @@ namespace Module.ViewModels
             }
         }
 
-        private bool _zCorrectionEnabled = true;
-        /// <summary>是否启用 Z 高度校正</summary>
+        private bool _zCorrectionEnabled = false;
+        /// <summary>是否启用 Z 向校准（3 轴 XYZ 连续插补，跟随 CAD 表面 Z 轮廓）。默认关闭，操作员显式开启。</summary>
         public bool ZCorrectionEnabled
         {
             get => _zCorrectionEnabled;
@@ -3124,7 +3124,8 @@ namespace Module.ViewModels
                         // 连续插补模式空跑
                         GlobalStatus = DescendInDryRun ? L("CadPoint_Status_DryRunStart_Descend") : L("CadPoint_Status_DryRunStart_Safe");
                         await _dispenseExecuteService.DryRunAsync(
-                            enabledSegments, DescendInDryRun, CurrentNeedleIndex, _simCts.Token, _simPauseEvent);
+                            enabledSegments, DescendInDryRun, CurrentNeedleIndex, _simCts.Token, _simPauseEvent,
+                            zCorrectionEnabled: ZCorrectionEnabled);
                     }
                     GlobalStatus = L("CadPoint_Status_DryRunCompleted");
                 }
@@ -3142,7 +3143,8 @@ namespace Module.ViewModels
                     {
                         GlobalStatus = L("LineBC_Status_ContinuousInterpolationExecuting");
                         await _dispenseExecuteService.ExecutePathAsync(
-                            enabledSegments, "B/C", CurrentNeedleIndex, _simCts.Token, _simPauseEvent);
+                            enabledSegments, "B/C", CurrentNeedleIndex, _simCts.Token, _simPauseEvent,
+                            zCorrectionEnabled: ZCorrectionEnabled);
                         GlobalStatus = L("LineBC_Status_ContinuousInterpolationCompleted");
                     }
                 }

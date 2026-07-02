@@ -32,6 +32,7 @@ namespace Module.ViewModels
         private readonly ILocalizationService _localization;
         private readonly IRecipePoolService _recipePoolService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IProtectedFileProvider _protectedFileProvider;
 
         /// <summary>验证记录文件保留天数</summary>
         private const int ConfigRetentionDays = 30;
@@ -284,13 +285,15 @@ namespace Module.ViewModels
             ILoggerService logger,
             ILocalizationService localization,
             IRecipePoolService recipePoolService,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            IProtectedFileProvider protectedFileProvider = null)
         {
             _needleMotion = needleMotion;
             _logger = logger;
             _localization = localization;
             _recipePoolService = recipePoolService;
             _eventAggregator = eventAggregator;
+            _protectedFileProvider = protectedFileProvider;
 
             ExecuteVerificationCommand = new DelegateCommand(async () => await ExecuteVerificationAsync(), () => CanVerify)
                 .ObservesCanExecute(() => CanVerify);
@@ -826,11 +829,27 @@ namespace Module.ViewModels
                 {
                     var cutoff = DateTime.Now.AddDays(-ConfigRetentionDays);
                     var cleanedCount = 0;
+                    var skippedProtected = 0;
+
+                    // 获取受配方池引用的文件路径，清理时跳过（防止切换池后配置丢失）
+                    HashSet<string> protectedPaths = null;
+                    try
+                    {
+                        protectedPaths = _protectedFileProvider?.GetProtectedFilePaths();
+                    }
+                    catch { /* 获取失败时按无保护处理，不阻塞清理 */ }
 
                     foreach (var file in Directory.EnumerateFiles(configDir, $"NeedleVerify_System{systemNumber}_*.json"))
                     {
                         if (string.Equals(file, currentFilePath, StringComparison.OrdinalIgnoreCase))
                             continue;
+
+                        // 跳过受配方池引用的文件
+                        if (protectedPaths != null && protectedPaths.Contains(file))
+                        {
+                            skippedProtected++;
+                            continue;
+                        }
 
                         try
                         {
@@ -847,8 +866,8 @@ namespace Module.ViewModels
                         }
                     }
 
-                    if (cleanedCount > 0)
-                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_CleanupSummary", "[NeedleVerify] 本次清理了 {0} 个过期文件 (保留{1}天)"), cleanedCount, ConfigRetentionDays));
+                    if (cleanedCount > 0 || skippedProtected > 0)
+                        _logger?.Info(string.Format(_localization.GetResourceOrDefault("NCV_Log_CleanupSummary", "[NeedleVerify] 本次清理了 {0} 个过期文件 (保留{1}天, 跳过{2}个受保护文件)"), cleanedCount, ConfigRetentionDays, skippedProtected));
                 }
                 catch (Exception ex)
                 {
