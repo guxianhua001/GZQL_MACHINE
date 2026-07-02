@@ -30,8 +30,8 @@ namespace Module.Services
         private const int AxisDzNeedle1 = 3;
         /// <summary>针头2对应的Z轴编号（Dz₃, LogicalId=4）</summary>
         private const int AxisDzNeedle2 = 4;
-        private const int GlueIoPort1 = 12;   // 1/Dz₂出胶IO端口编号（LogicalId=12）
-        private const int GlueIoPort2 = 13;   // 2/Dz₃出胶IO端口编号（LogicalId=13）
+        private const int GlueIoPort1 = 13;   // 1/Dz₂出胶IO端口编号（LogicalId=12）
+        private const int GlueIoPort2 = 12;   // 2/Dz₃出胶IO端口编号（LogicalId=13）
 
         private const double DefaultAcc = 0.05;
         private const double DefaultDec = 0.05;
