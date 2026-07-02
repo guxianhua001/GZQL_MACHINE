@@ -59,10 +59,13 @@ namespace ModuleCore.Services
             window.Initialize(vm, _themeService);
 
             // 设置 Owner：确保弹窗始终在主窗口上方，避免被遮挡后无法操作
-            // 同时使任务栏显示弹窗缩略图，Alt+Tab 可正常切换
-            if (Application.Current?.MainWindow != null)
+            // 同时使任务栏显示弹窗缩略图， Alt+Tab 可正常切换
+            // 防御：Application.Current.MainWindow 在启动闪屏自关闭场景下可能回落为当前新创建的 window 本身，
+            // 直接赋值会抛 "Cannot set Owner property to itself"，必须排除此情况（参考 AssemblyStepViewModel 同名防御）
+            var mainWindow = Application.Current?.MainWindow;
+            if (mainWindow != null && !ReferenceEquals(mainWindow, window))
             {
-                window.Owner = Application.Current.MainWindow;
+                window.Owner = mainWindow;
             }
 
             // 如果内容实现了 IDialogCloseable，订阅其关闭请求
