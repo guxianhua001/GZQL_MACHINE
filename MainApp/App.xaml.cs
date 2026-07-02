@@ -96,7 +96,9 @@ namespace MainApp
 
         private void BuildConfiguration()
         {
-            var basePath = Directory.GetCurrentDirectory();
+            // 使用应用程序基目录而非工作目录，确保从任意目录启动 exe 均能找到配置文件
+            // （与 ConfigurationService/JsonRecipeFileStorage 等统一使用 BaseDirectory 的模式一致）
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
             var configPath = Path.Combine(basePath, "Properties", "appsettings.json");
             var builder = new ConfigurationBuilder()
                 .SetBasePath(basePath)
