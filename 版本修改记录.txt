@@ -1,6 +1,21 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.07.03a — IF 分支内 RUNTASK 步骤未执行修复
+-------------------------------------------
+1. 问题
+   - 将 RUNTASK（调用 Passive 被动任务）插入 IF 工具的 Then/Else 分支后，子步骤被跳过，
+     日志：Step [N] type RUNTASK has no registered Action, skipping。
+2. 根因
+   - 顶层步骤序列对 RUNTASK 有专用执行路径（IRunTaskExecutor），但 IF 分支内子步骤
+     ExecuteStepListAsync 仅对 IF/BRANCH 特殊处理，其余类型走 _actionMap；
+     RUNTASK 未注册 IProcessStepAction，导致被跳过。
+3. 修复
+   - 抽取 ExecuteRunTaskStepAsync 共用方法；IF 子步骤列表增加 RUNTASK 分支，
+     与顶层步骤一致调用 IRunTaskExecutor.ExecutePassiveTaskAsync。
+4. 验证
+   - dotnet build StationTasks/StationTasks.csproj：0 error。
+
 v2026.07.01a — GOTO Ofs 取消链接后残留补偿值修复
 -------------------------------------------
 1. 问题

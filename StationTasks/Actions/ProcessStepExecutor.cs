@@ -431,31 +431,8 @@ namespace StationTasks.Actions
                     return currentIndex + 1;
 
                 case StepType.RUNTASK:
-                {
-                    // RUNTASK 步骤：调用被动任务，通过 CallStack 进行循环引用检测
-                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskStart", "[ProcessStepExecutor] 开始执行 RUNTASK 步骤 [{0}], 目标任务: {1}"), step.Seq, step.RunTaskDetail?.TargetTaskName));
-                    if (_runTaskExecutor == null)
-                    {
-                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNoExecutor", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未注入 IRunTaskExecutor，跳过"), step.Seq));
-                        return currentIndex + 1;
-                    }
-                    if (step.RunTaskDetail == null || string.IsNullOrEmpty(step.RunTaskDetail.TargetTaskName))
-                    {
-                        _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNoTarget", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未配置目标任务，跳过"), step.Seq));
-                        return currentIndex + 1;
-                    }
-                    // 通过 ExecuteStepSafeAsync 包装，享受暂停/急停/可恢复异常保护
-                    await _task.ExecuteStepSafeAsync(stepLabel, async () =>
-                    {
-                        await _runTaskExecutor.ExecutePassiveTaskAsync(
-                            step.RunTaskDetail.TargetTaskName,
-                            _task,
-                            CallStack,
-                            token);
-                    }, true, step.AlarmConfig);
-                    _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskCompleted", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 完成"), step.Seq));
+                    await ExecuteRunTaskStepAsync(stepLabel, step, token).ConfigureAwait(false);
                     return currentIndex + 1;
-                }
 
                 case StepType.BRANCH:
                     _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_BranchStart", "[ProcessStepExecutor] 开始执行 BRANCH 步骤 [{0}]"), step.Seq));
@@ -483,6 +460,37 @@ namespace StationTasks.Actions
                     _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_StepTypeNotImplemented", "步骤类型 {0} 尚未实现执行器，跳过步骤 [{1}]"), step.Step, step.Seq));
                     return currentIndex + 1;
             }
+        }
+
+        /// <summary>
+        /// 执行 RUNTASK 步骤：调用 Passive 被动任务，通过 CallStack 进行循环引用检测。
+        /// 顶层序列与 IF 分支内子步骤共用此路径（RUNTASK 未注册 IProcessStepAction）。
+        /// </summary>
+        private async Task ExecuteRunTaskStepAsync(string stepLabel, ProcessStep step, CancellationToken token)
+        {
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskStart", "[ProcessStepExecutor] 开始执行 RUNTASK 步骤 [{0}], 目标任务: {1}"), step.Seq, step.RunTaskDetail?.TargetTaskName));
+            if (_runTaskExecutor == null)
+            {
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNoExecutor", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未注入 IRunTaskExecutor，跳过"), step.Seq));
+                return;
+            }
+            if (step.RunTaskDetail == null || string.IsNullOrEmpty(step.RunTaskDetail.TargetTaskName))
+            {
+                _logger.Warn(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskNoTarget", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 未配置目标任务，跳过"), step.Seq));
+                return;
+            }
+
+            // 通过 ExecuteStepSafeAsync 包装，享受暂停/急停/可恢复异常保护
+            await _task.ExecuteStepSafeAsync(stepLabel, async () =>
+            {
+                await _runTaskExecutor.ExecutePassiveTaskAsync(
+                    step.RunTaskDetail.TargetTaskName,
+                    _task,
+                    CallStack,
+                    token).ConfigureAwait(false);
+            }, true, step.AlarmConfig).ConfigureAwait(false);
+
+            _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_RunTaskCompleted", "[ProcessStepExecutor] RUNTASK 步骤 [{0}] 完成"), step.Seq));
         }
 
         /// <summary>
@@ -1188,6 +1196,11 @@ namespace StationTasks.Actions
                             }
                             _logger.Info(string.Format(_localization.GetResourceOrDefault("PSE_Log_Exec_IfSubBranchDefaultContinue", "[IF-Sub] BRANCH 步骤 [{0}] 默认 Continue，继续块内下一步"), step.Seq));
                         }
+                    }
+                    else if (step.Step == StepType.RUNTASK)
+                    {
+                        // RUNTASK 无 IProcessStepAction 注册，需与顶层步骤一样走 IRunTaskExecutor
+                        await ExecuteRunTaskStepAsync(stepLabel, step, token).ConfigureAwait(false);
                     }
                     else
                     {
