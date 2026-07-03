@@ -77,7 +77,7 @@ namespace StationTasks.Tasks
                 PublishTaskStatusChanged(L("Init_Loading_AxesHoming"), State);
                 PublishInitProgress(55, L("Init_Loading_AxesHoming"));
 
-                int[] axes = { AxisY, AxisRz, AxisRx };
+                int[] axes = {  AxisRz, AxisRx , AxisY };
                 string[] axisNames = { "Y", "Rz", "Rx" };
                 int axisIndex = 0;
 

@@ -3840,3 +3840,96 @@ v2026.05.30d �� ArcԲ���㽺���㹫ʽ����������
   - Module/Views/OverView.xaml
   - MainApp/Languages/Strings.zh-CN.xaml
   - MainApp/Languages/Strings.en-US.xaml
+
+================================================================================
+日期: 2026-07-04
+版本: v1.0.184
+描述: 修复 DISPENSE 步骤二次打开对话框时 override 工艺参数被静默重置为 default 的问题
+问题根因:
+  DispenseDetailViewModel.SelectedSegmentRef setter 中调用 RefreshSelectedRefFromSource()，
+  该方法在每次选中行切换（含 DataGrid 自动选中首行）时，从 _dispenseSegmentStore.CurrentSegments
+  查找源段并无条件将其当前值拷贝到 _selectedSegmentRef.OverrideXxx 字段。
+  当源段集合被 CAD 重新导入或 store 切换重置为 default 参数后，再次打开 DISPENSE 对话框会
+  把用户已保存的 override 值（如 overrideJumpSpeed=60、overrideApproachHeight=-3、
+  overrideTeachHeight=34.553 等）静默覆盖为 default 值，导致工艺参数丢失。
+  典型表现: ProcessSequences_<时间戳>.json 中同一 sourceSegmentId 的 override* 字段
+  在两次保存间被重置为 default* 值，违反工业运动控制参数持久化与安全语义。
+  IDispenseSegmentStore 注册为 Singleton（App.xaml.cs:144），CurrentSegments 仅在
+  CadPointEditorViewModel.RegisterSegments 时填充且从不清除，store 切换后源段实例与
+  原修改对象非同一引用，使 SyncOverrideToSourceSegment 此前同步的修改值失效。
+修改内容:
+  1. SelectedSegmentRef setter (Module/Controls/StepDetails/DispenseDetailViewModel.cs:531):
+     - 移除 RefreshSelectedRefFromSource() 调用
+     - 保留 RaisePropertyChanged(Override*/Effective*) 列表以刷新 UI 读取该段既有 Override 值
+     - 添加注释说明 Override 同步已由三套机制覆盖、刻意不在选中行时反向覆盖的设计决策
+  2. 删除已无调用方的死代码方法 RefreshSelectedRefFromSource()（原 DispenseDetailViewModel.cs:1689）
+     避免后续误用再次引入同类缺陷，保留移除说明注释
+  3. 遵循用户规则: 方法与关键点添加注释；Override 字段持久化语义符合工业设备控制安全性
+验证: dotnet build GZQL_MACHINE.sln 0 error（仅既有警告）
+影响范围:
+  - Override 字段三套同步机制保持不变:
+    * CreateSegmentRef（导入时一次性初始化 override）
+    * SyncSegmentRefOverride（源段属性变更事件驱动 源→override）
+    * SyncOverrideToSourceSegment（用户编辑 override→源反向同步）
+  - 选中行切换仅刷新 UI 绑定，不再改写 Override 值，跨对话框会话参数持久化得以保证
+修改文件:
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+
+================================================================================
+日期: 2026-07-04
+版本: v1.0.184
+描述: 修复 DISPENSE 步骤二次打开对话框时 override 工艺参数被静默重置为 default 的问题
+问题根因:
+  DispenseDetailViewModel.SelectedSegmentRef setter 中调用 RefreshSelectedRefFromSource()，
+  该方法在每次选中行切换（含 DataGrid 自动选中首行）时，从 _dispenseSegmentStore.CurrentSegments
+  查找源段并无条件将其当前值拷贝到 _selectedSegmentRef.OverrideXxx 字段。
+  当源段集合被 CAD 重新导入或 store 切换重置为 default 参数后，再次打开 DISPENSE 对话框会
+  把用户已保存的 override 值（如 overrideJumpSpeed=60、overrideApproachHeight=-3、
+  overrideTeachHeight=34.553 等）静默覆盖为 default 值，导致工艺参数丢失。
+  典型表现: ProcessSequences_<时间戳>.json 中同一 sourceSegmentId 的 override* 字段
+  在两次保存间被重置为 default* 值，违反工业运动控制参数持久化与安全语义。
+  IDispenseSegmentStore 注册为 Singleton（App.xaml.cs:144），CurrentSegments 仅在
+  CadPointEditorViewModel.RegisterSegments 时填充且从不清除，store 切换后源段实例与
+  原修改对象非同一引用，使 SyncOverrideToSourceSegment 此前同步的修改值失效。
+修改内容:
+  1. SelectedSegmentRef setter (Module/Controls/StepDetails/DispenseDetailViewModel.cs:531):
+     - 移除 RefreshSelectedRefFromSource() 调用
+     - 保留 RaisePropertyChanged(Override*/Effective*) 列表以刷新 UI 读取该段既有 Override 值
+     - 添加注释说明 Override 同步已由三套机制覆盖、刻意不在选中行时反向覆盖的设计决策
+  2. 删除已无调用方的死代码方法 RefreshSelectedRefFromSource()（原 DispenseDetailViewModel.cs:1689）
+     避免后续误用再次引入同类缺陷，保留移除说明注释
+  3. 遵循用户规则: 方法与关键点添加注释；Override 字段持久化语义符合工业设备控制安全性
+验证: dotnet build GZQL_MACHINE.sln 0 error（仅既有警告）
+影响范围:
+  - Override 字段三套同步机制保持不变:
+    * CreateSegmentRef（导入时一次性初始化 override）
+    * SyncSegmentRefOverride（源段属性变更事件驱动 源→override）
+    * SyncOverrideToSourceSegment（用户编辑 override→源反向同步）
+  - 选中行切换仅刷新 UI 绑定，不再改写 Override 值，跨对话框会话参数持久化得以保证
+修改文件:
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs
+
+================================================================================
+日期: 2026-07-04
+版本: v1.0.184
+描述: DISPENSE 对话框打开时自动选中第一行分段引用，Override 参数面板立即显示选中段工艺参数
+问题现象:
+  打开 DISPENSE 步骤详情时，默认工艺参数区显示正确（defaultJumpSpeed=60 等），
+  但 Override 参数面板为空（需用户手动点击 DataGrid 行后才显示）。
+  原因：DataGrid SelectedItem 绑定到 SelectedSegmentRef，但 Step setter / OnNavigatedTo
+  未在加载后选中首行，_selectedSegmentRef 初始为 null → ShowOverrideParams=false。
+修改内容:
+  1. 新增 AutoSelectFirstSegmentRef() 辅助方法（DispenseDetailViewModel.cs:582）:
+     - 仅在 _selectedSegmentRef 为 null 且 SegmentRefs 非空时选中首行
+     - 避免覆盖用户已有选择；ViewModel 每次对话框打开均新解析（DI Resolve），故首行选中即初始状态
+     - 注：选中行仅触发 SelectedSegmentRef setter 刷新 UI 绑定，不再调用已移除的
+       RefreshSelectedRefFromSource，Override 值由该段既有持久化值提供，不会被源段覆盖
+  2. Step setter（DispenseDetailViewModel.cs:77）:
+     - 在 RaiseAllDispensePropertiesChanged / RefreshCalibrationDisplayValues 之后调用
+       AutoSelectFirstSegmentRef()，对话框打开路径
+  3. OnNavigatedTo（DispenseDetailViewModel.cs:2095）:
+     - 同上，Prism 区域导航进入路径，与 Step setter 保持一致
+验证: dotnet build Module 0 error；与上一条修复（移除 RefreshSelectedRefFromSource）协同：
+  打开对话框 → 自动选中首行 → Override 面板显示首段持久化值，且不会被重置为 default
+修改文件:
+  - Module/Controls/StepDetails/DispenseDetailViewModel.cs

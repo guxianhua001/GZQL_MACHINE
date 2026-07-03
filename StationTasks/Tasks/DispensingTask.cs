@@ -26,6 +26,9 @@ namespace StationTasks.Tasks
         private int AxisDx => ResolveAxisId("Dx");
         /// <summary> Dy轴 — Dispenser gantry Y </summary>
         private int AxisDy => ResolveAxisId("Dy");
+        /// <summary> Dy2轴 — Dispenser gantry Y </summary>
+        private int AxisDy2 => ResolveAxisId("Dy2");
+        
         /// <summary> Dz₁轴 — Dispenser head 1 Z </summary>
         private int AxisDz1 => ResolveAxisId("Dz₁");
         /// <summary> Dz₂轴 — Dispenser head 2 Z </summary>

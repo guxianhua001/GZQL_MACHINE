@@ -73,6 +73,8 @@ namespace Module.ViewModels
                     RaiseAllDispensePropertiesChanged();
                     // 刷新校准显示值（RotationAngleDisplayValue / AngleCompensationDisplayValue 等）
                     RefreshCalibrationDisplayValues();
+                    // 自动选中第一行分段引用，使 Override 参数面板立即显示选中段工艺参数
+                    AutoSelectFirstSegmentRef();
                 }
             }
         }
@@ -528,7 +530,7 @@ namespace Module.ViewModels
             {
                 if (SetProperty(ref _selectedSegmentRef, value))
                 {
-                    RefreshSelectedRefFromSource();
+                    // 注意：此处刻意不调用 RefreshSelectedRefFromSource()。
                     RaisePropertyChanged(nameof(ProcessParamsTitle));
                     RaisePropertyChanged(nameof(ShowOverrideParams));
                     RaisePropertyChanged(nameof(EffectiveJumpSpeed));
@@ -571,6 +573,21 @@ namespace Module.ViewModels
         }
 
         public bool ShowOverrideParams => _selectedSegmentRef != null && !_selectedSegmentRef.UseDefaultParams;
+
+        /// <summary>
+        /// 打开对话框/导航进入时自动选中第一行分段引用，使 Override 参数面板立即显示
+        /// 选中段的工艺参数（无需用户手动点击 DataGrid 行）。
+        /// 仅在当前无选中行且分段列表非空时触发，避免覆盖用户已有选择。
+        /// 注：此处仅切换 SelectedSegmentRef，不再调用 RefreshSelectedRefFromSource
+        /// （已移除），Override 值由该段既有持久化值提供，不会被源段覆盖。
+        /// </summary>
+        private void AutoSelectFirstSegmentRef()
+        {
+            if (_selectedSegmentRef != null) return;
+            var refs = SegmentRefs;
+            if (refs == null || refs.Count == 0) return;
+            SelectedSegmentRef = refs[0];
+        }
 
         #endregion
 
@@ -1683,36 +1700,10 @@ namespace Module.ViewModels
             RaisePropertyChanged(nameof(EffectiveXyCompensationY));
         }
 
-        /// <summary>
-        /// 从共享存储中的源段刷新当前选中引用的 Override 参数
-        /// </summary>
-        private void RefreshSelectedRefFromSource()
-        {
-            if (_selectedSegmentRef == null) return;
-            var seg = _dispenseSegmentStore?.CurrentSegments?
-                .FirstOrDefault(s => s.SegmentId == _selectedSegmentRef.SourceSegmentId);
-            if (seg == null) return;
-
-            _selectedSegmentRef.OverrideMoveSpeed = seg.MoveSpeed;
-            _selectedSegmentRef.OverrideJumpSpeed = seg.MoveSpeed;
-            _selectedSegmentRef.OverrideInterpSpeed = seg.InterpSpeed;
-            _selectedSegmentRef.OverrideSafeHeight = seg.SafeHeight;
-            _selectedSegmentRef.OverrideApproachHeight = seg.ApproachHeight;
-            _selectedSegmentRef.OverrideCornerDecel = seg.CornerDecel;
-            _selectedSegmentRef.OverrideDispenseAmount = seg.DispenseAmount;
-            _selectedSegmentRef.OverrideDispenseTime = seg.DispenseTime;
-            _selectedSegmentRef.OverridePreDelay = seg.PreDelay;
-            _selectedSegmentRef.OverridePostDelay = seg.PostDelay;
-            _selectedSegmentRef.OverrideEarlyCloseGlueDelayMs = seg.EarlyCloseGlueDelayMs;
-            _selectedSegmentRef.OverrideDispensingPressure = seg.DispensingPressure;
-            _selectedSegmentRef.OverrideSuckBackTime = seg.SuckBackTime;
-            _selectedSegmentRef.OverrideGlueTriggerOffsetMm = seg.GlueTriggerOffsetMm;
-            _selectedSegmentRef.OverrideTeachHeight = seg.TeachHeight;
-            _selectedSegmentRef.OverrideHeightCompensation = seg.HeightCompensation;
-            _selectedSegmentRef.OverrideXyCompensationX = seg.XyCompensationX;
-            _selectedSegmentRef.OverrideXyCompensationY = seg.XyCompensationY;
-            _selectedSegmentRef.UseDefaultParams = false;
-        }
+        // 已移除 RefreshSelectedRefFromSource()——该方法在 SelectedSegmentRef setter 中被调用，
+        // 会无条件用源段（_dispenseSegmentStore.CurrentSegments）当前值覆盖用户已保存的 Override 字段，
+        // 导致 CAD 重新导入或 store 切换后 Override 静默回退为 default，工艺参数丢失。
+        // Override 同步已由 CreateSegmentRef / SyncSegmentRefOverride / SyncOverrideToSourceSegment 三套机制覆盖。
 
         /// <summary>
         /// 响应 CadPointEditorViewModel.SinglePointProcessParams 变更——同步更新 DispenseDetail 默认参数
@@ -2100,6 +2091,8 @@ namespace Module.ViewModels
             RaiseAllDispensePropertiesChanged();
             // 刷新校准显示值（RotationAngleDisplayValue / AngleCompensationDisplayValue 等）
             RefreshCalibrationDisplayValues();
+            // 自动选中第一行分段引用，使 Override 参数面板立即显示选中段工艺参数
+            AutoSelectFirstSegmentRef();
         }
 
         public bool IsNavigationTarget(NavigationContext navigationContext) => true;

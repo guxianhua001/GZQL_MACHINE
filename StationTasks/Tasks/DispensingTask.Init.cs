@@ -58,7 +58,7 @@ namespace StationTasks.Tasks
                 PublishInitProgress(1, L("Init_EnableAxes"));
                 await EnableAxesSequentiallyAsync(new (int, string)[]
                 {
-                    (AxisDz2, "Dz₂"), (AxisDz3, "Dz₃"), (AxisDy, "Dy"), (AxisDz1, "Dz₁"), (AxisDx, "Dx")
+                    (AxisDz2, "Dz₂"), (AxisDz3, "Dz₃"), (AxisDy, "Dy"), (AxisDy2, "Dy2"), (AxisDz1, "Dz₁"), (AxisDx, "Dx")
                 }, axisName =>
                 {
                     PublishTaskStatusChanged(L("Init_EnableAxis", axisName), State);

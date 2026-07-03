@@ -125,7 +125,7 @@ namespace StationTasks.Tasks
             return -1;
         }
         /// <summary> 回零前逐轴上使能间隔（ms），避免多轴同时上使能冲击电流 </summary>
-        protected const int InitAxisEnableDelayMs = 3000;
+        protected const int InitAxisEnableDelayMs = 1500;
 
         /// <summary> 日志服务（公开给扩展方法和外部 Action 使用） </summary>
         public ILoggerService TaskLogger => Logger;
