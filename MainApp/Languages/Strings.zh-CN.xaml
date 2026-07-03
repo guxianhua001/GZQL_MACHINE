@@ -1458,6 +1458,8 @@
     <sys:String x:Key="Init_Idle">待机</sys:String>
     <sys:String x:Key="Init_Canceled">初始化取消</sys:String>
     <sys:String x:Key="Init_Failed">初始化失败</sys:String>
+    <sys:String x:Key="Init_EnableAxes">轴上使能中</sys:String>
+    <sys:String x:Key="Init_EnableAxis">上使能 {0}</sys:String>
     <sys:String x:Key="Init_Dispenser_Start">点胶系统初始化中</sys:String>
     <sys:String x:Key="Init_Dispenser_ZHoming">点胶Z轴回零中</sys:String>
     <sys:String x:Key="Init_Dispenser_ZStandby">点胶Z轴回到待机位</sys:String>
@@ -4406,6 +4408,7 @@
     <sys:String x:Key="Sig_Log_Wait_SignalReceived">[SignalWait] 步骤 [{0}] 收到信号: {1}，已自动复位（消费）</sys:String>
     <sys:String x:Key="Sig_Log_Wait_StartWait">[SignalWait] 步骤 [{0}] 开始等待信号: {1}, 超时: {2}</sys:String>
     <sys:String x:Key="Sig_Log_Wait_TimeoutError">[SignalWait] 步骤 [{0}] {1}</sys:String>
+    <sys:String x:Key="STB_Log_InitAxisEnabling">[{0}] {1} 轴上使能...</sys:String>
     <sys:String x:Key="STB_Log_AxesDiscovered">[{0}] 从硬件配置发现 {1} 个轴: {2}</sys:String>
     <sys:String x:Key="STB_Log_AxisConfigByNameNotFound">未找到名称为 '{0}' 的轴配置</sys:String>
     <sys:String x:Key="STB_Log_AxisConfigNotFound">[{0}] 未找到轴 '{1}' 的配置</sys:String>
@@ -4623,6 +4626,7 @@
     <sys:String x:Key="AT_Log_InitComplete">[{0}] 组装系统初始化完成，进入待机。</sys:String>
     <sys:String x:Key="AT_Log_InitFailed">[{0}] 组装系统初始化失败: {1}</sys:String>
     <sys:String x:Key="AT_Log_InitFailedSignalTimeout">[{0}] 组装系统初始化失败（等待信号超时）: {1}</sys:String>
+    <sys:String x:Key="AT_Log_Phase0AxisEnable">[{0}] 回零前逐轴上使能...</sys:String>
     <sys:String x:Key="AT_Log_InitStart">[{0}] 开始组装系统初始化...</sys:String>
     <sys:String x:Key="AT_Log_MainAxisHoming">[{0}] {1} 轴回零中...</sys:String>
     <sys:String x:Key="AT_Log_NotifyZComplete">[{0}] 已通知点胶/上下料：组装Z轴回零完成。</sys:String>
@@ -4696,6 +4700,7 @@
     <sys:String x:Key="DT_Log_IOTriggerSet">[{0}] IO 触发信号已置位: {1} (LogicalId={2})</sys:String>
     <sys:String x:Key="DT_Log_NotifyDispensingComplete">[{0}] 已通知组装：点胶回零完成。</sys:String>
     <sys:String x:Key="DT_Log_NotifyZComplete">[{0}] 已通知组装/上下料：点胶Z轴回零完成。</sys:String>
+    <sys:String x:Key="DT_Log_Phase0AxisEnable">[{0}] 回零前逐轴上使能...</sys:String>
     <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] 阶段1：点胶Z轴（Dz₂/Dz₃）回零...</sys:String>
     <sys:String x:Key="DT_Log_Phase2DyHoming">[{0}] 阶段2：Dy 轴回零...</sys:String>
     <sys:String x:Key="DT_Log_Phase3Dz1Homing">[{0}] 阶段3：Dz₁ 轴回零...</sys:String>
@@ -4729,6 +4734,7 @@
     <sys:String x:Key="LT_Log_InitCompleteStandby">[{0}] 上下料系统初始化完成，进入待机。</sys:String>
     <sys:String x:Key="LT_Log_InitFailed">[{0}] 上下料系统初始化失败: {1}</sys:String>
     <sys:String x:Key="LT_Log_InitFailedSignalTimeout">[{0}] 上下料系统初始化失败（等待信号超时）: {1}</sys:String>
+    <sys:String x:Key="LT_Log_Phase0AxisEnable">[{0}] 回零前逐轴上使能...</sys:String>
     <sys:String x:Key="LT_Log_InitStart">[{0}] 开始上下料系统初始化...</sys:String>
     <sys:String x:Key="LT_Log_StageVacuumOff">[{0}] 平台真空已关闭</sys:String>
     <sys:String x:Key="LT_Log_StageVacuumOn">[{0}] 平台真空已开启</sys:String>

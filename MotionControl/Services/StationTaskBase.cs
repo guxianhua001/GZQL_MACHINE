@@ -11,8 +11,11 @@ using MotionControl.Interfaces;
 using MotionControl.Models;
 using MotionControl.Services;
 using Prism.Events;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace StationTasks.Tasks
 {
@@ -121,6 +124,9 @@ namespace StationTasks.Tasks
             Logger.Warn(string.Format(_localization.GetResourceOrDefault("STB_Log_AxisConfigNotFound", "[{0}] 未找到轴 '{1}' 的配置"), TaskName, axisName));
             return -1;
         }
+        /// <summary> 回零前逐轴上使能间隔（ms），避免多轴同时上使能冲击电流 </summary>
+        protected const int InitAxisEnableDelayMs = 3000;
+
         /// <summary> 日志服务（公开给扩展方法和外部 Action 使用） </summary>
         public ILoggerService TaskLogger => Logger;
         /// <summary> 事件聚合器（公开给 ProcessStepExecutor 等外部类发布跨工站状态事件） </summary>
@@ -334,6 +340,33 @@ namespace StationTasks.Tasks
             finally
             {
                 _activeMotionAxes.Remove(axisId);
+            }
+        }
+
+        /// <summary>
+        /// 回零前逐轴上使能：每轴上使能后延时 InitAxisEnableDelayMs 再使能下一轴。
+        /// axisId小于0的项跳过；onAxisEnableStarted 可用于更新 UI 进度。
+        /// </summary>
+        protected async Task EnableAxesSequentiallyAsync(
+            IEnumerable<(int axisId, string axisName)> axes,
+            Action<string> onAxisEnableStarted = null)
+        {
+            var validAxes = axes.Where(a => a.axisId >= 0).ToList();
+            for (int i = 0; i < validAxes.Count; i++)
+            {
+                var (axisId, axisName) = validAxes[i];
+                CurrentToken.ThrowIfCancellationRequested();
+
+                onAxisEnableStarted?.Invoke(axisName);
+                Logger.Info(string.Format(
+                    _localization.GetResourceOrDefault("STB_Log_InitAxisEnabling", "[{0}] {1} 轴上使能..."),
+                    TaskName, axisName));
+
+                await Task.Run(() => _motion.EnableAxis(axisId), CurrentToken).ConfigureAwait(false);
+
+                // 非最后一轴：延时后再上使能下一轴
+                if (i < validAxes.Count - 1)
+                    await Task.Delay(InitAxisEnableDelayMs, CurrentToken).ConfigureAwait(false);
             }
         }
 

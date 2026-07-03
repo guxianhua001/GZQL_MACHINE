@@ -1,6 +1,35 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.07.03c — 三工站初始化回零前逐轴上使能
+-------------------------------------------
+1. 需求
+   - AssemblyTask / DispensingTask / LoadingTask 初始化回零前，先逐轴上使能；
+     每轴上使能后延时 1 秒再使能下一轴，避免多轴同时上使能冲击电流。
+2. 实现
+   - StationTaskBase 新增 EnableAxesSequentiallyAsync 与 InitAxisEnableDelayMs=1000；
+   - DispensingTask.Init：Dz₂→Dz₃→Dy→Dz₁→Dx 上使能后回零；
+   - AssemblyTask.Init：Z→Cy→Ey→X→Ry 上使能后回零；
+   - LoadingTask.Init：等待 Z 轴完成后，Y→Rz→Rx 上使能再回零。
+   - 新增多语言：Init_EnableAxes、Init_EnableAxis、STB_Log_InitAxisEnabling、
+     DT/AT/LT_Log_Phase0AxisEnable（中/英文）。
+3. 验证
+   - dotnet build StationTasks/StationTasks.csproj：0 error。
+
+v2026.07.03b — DispensingTask 初始化 DT_Log_AxisHoming 格式化参数修复
+-------------------------------------------
+1. 问题
+   - DispensingTask.Init 阶段3（Dz₁ 回零）抛出 System.FormatException：
+     Index must be greater than or equal to zero and less than the size of the argument list.
+2. 根因
+   - 本地化资源 DT_Log_AxisHoming 格式为 [{0}] {1} 轴回零中...（需任务名+轴名两个参数）；
+     Dy/Dz₁/Dx 三处 Logger.Info 仅传入 TaskName，缺少 {1} 对应轴名参数。
+   - 阶段1 循环内调用正确传入了 axisName；Dy 轴未配置时跳过阶段2 内层日志，故错误在阶段3 才暴露。
+3. 修复
+   - DispensingTask.Init.cs：Dy/Dz₁/Dx 三处 DT_Log_AxisHoming 调用补充第二参数，默认值同步为 [{0}] {1} 轴回零中...
+4. 验证
+   - dotnet build StationTasks/StationTasks.csproj：0 error。
+
 v2026.07.03a — IF 分支内 RUNTASK 步骤未执行修复
 -------------------------------------------
 1. 问题

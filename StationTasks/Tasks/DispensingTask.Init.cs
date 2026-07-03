@@ -25,6 +25,7 @@ namespace StationTasks.Tasks
         /// <summary>
         /// 点胶工站整机初始化（重写 HomeAsync）。
         /// 时序：
+        /// 0. 逐轴上使能（每轴间隔1秒）
         /// 1. 回零 Dz₂/Dz₃ → 回到待机位
         /// 2. Dy 轴回零 → 回到待机位
         /// 3. Dz₁ 轴回零 → 回到待机位
@@ -50,6 +51,19 @@ namespace StationTasks.Tasks
 
                 // 重置工站间协调信号（防止上次初始化残留）
                 ResetInitSignals();
+
+                // ===== 阶段0：逐轴上使能（回零前，每轴间隔1秒） =====
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_Phase0AxisEnable", "[{0}] 回零前逐轴上使能..."), TaskName));
+                PublishTaskStatusChanged(L("Init_EnableAxes"), State);
+                PublishInitProgress(1, L("Init_EnableAxes"));
+                await EnableAxesSequentiallyAsync(new (int, string)[]
+                {
+                    (AxisDz2, "Dz₂"), (AxisDz3, "Dz₃"), (AxisDy, "Dy"), (AxisDz1, "Dz₁"), (AxisDx, "Dx")
+                }, axisName =>
+                {
+                    PublishTaskStatusChanged(L("Init_EnableAxis", axisName), State);
+                    PublishInitProgress(2, L("Init_EnableAxis", axisName));
+                }).ConfigureAwait(false);
 
                 // ===== 阶段1：点胶Z轴（Dz₂, Dz₃）回零 → 待机位 =====
                 // Dz₁ 延后至 Dy 回零后执行，避免机械干涉
@@ -92,7 +106,7 @@ namespace StationTasks.Tasks
                 PublishInitProgress(25, L("Init_HomeAxis", "Dy"));
                 if (AxisDy >= 0)
                 {
-                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] Dy 轴回零中..."), TaskName));
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, "Dy"));
                     await ExecuteHomeAxisAsync(AxisDy);
                     PublishInitProgress(30, L("Init_StandbyPosition", "Dy"));
                     await ExecuteMoveAsync(AxisDy, "StandbyPosition", InitXYAxisVelocity);
@@ -104,7 +118,7 @@ namespace StationTasks.Tasks
                 PublishInitProgress(35, L("Init_HomeAxis", "Dz₁"));
                 if (AxisDz1 >= 0)
                 {
-                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] Dz₁ 轴回零中..."), TaskName));
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, "Dz₁"));
                     await ExecuteHomeAxisAsync(AxisDz1);
                     PublishInitProgress(40, L("Init_StandbyPosition", "Dz₁"));
                     await ExecuteMoveAsync(AxisDz1, "StandbyPosition", InitZAxisVelocity);
@@ -127,7 +141,7 @@ namespace StationTasks.Tasks
                 PublishInitProgress(65, L("Init_HomeAxis", "Dx"));
                 if (AxisDx >= 0)
                 {
-                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] Dx 轴回零中..."), TaskName));
+                    Logger.Info(string.Format(_localizationService.GetResourceOrDefault("DT_Log_AxisHoming", "[{0}] {1} 轴回零中..."), TaskName, "Dx"));
                     await ExecuteHomeAxisAsync(AxisDx);
                     PublishInitProgress(85, L("Init_StandbyPosition", "Dx"));
                     await ExecuteMoveAsync(AxisDx, "StandbyPosition", InitXYAxisVelocity);

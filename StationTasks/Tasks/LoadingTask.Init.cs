@@ -24,7 +24,8 @@ namespace StationTasks.Tasks
         /// 上下料工站整机初始化（重写 HomeAsync）。
         /// 时序：
         /// 1. 等待所有Z轴归零完成（点胶Z轴 + 组装Z轴）
-        /// 2. 回零 Y/Rz/Rx → 回到待机位
+        /// 2. 逐轴上使能（每轴间隔1秒）
+        /// 3. 回零 Y/Rz/Rx → 回到待机位
         /// </summary>
         public override async Task HomeAsync()
         {
@@ -59,7 +60,20 @@ namespace StationTasks.Tasks
                 Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_AssemblyZDoneStartHoming", "[{0}] 组装Z轴已完成，开始上下料轴回零。"), TaskName));
                 PublishInitProgress(50, L("Init_Loading_AssemblyZDone"));
 
-                // ===== 阶段2：上下料轴（Y, Rz, Rx）回零 =====
+                // ===== 阶段2：逐轴上使能（回零前，每轴间隔1秒） =====
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("LT_Log_Phase0AxisEnable", "[{0}] 回零前逐轴上使能..."), TaskName));
+                PublishTaskStatusChanged(L("Init_EnableAxes"), State);
+                PublishInitProgress(52, L("Init_EnableAxes"));
+                await EnableAxesSequentiallyAsync(new (int, string)[]
+                {
+                    (AxisY, "Y"), (AxisRz, "Rz"), (AxisRx, "Rx")
+                }, axisName =>
+                {
+                    PublishTaskStatusChanged(L("Init_EnableAxis", axisName), State);
+                    PublishInitProgress(53, L("Init_EnableAxis", axisName));
+                }).ConfigureAwait(false);
+
+                // ===== 阶段3：上下料轴（Y, Rz, Rx）回零 =====
                 PublishTaskStatusChanged(L("Init_Loading_AxesHoming"), State);
                 PublishInitProgress(55, L("Init_Loading_AxesHoming"));
 

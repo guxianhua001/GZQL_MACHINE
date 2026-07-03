@@ -27,6 +27,7 @@ namespace StationTasks.Tasks
         /// <summary>
         /// 组装工站整机初始化（重写 HomeAsync）。
         /// 时序：
+        /// 0. 逐轴上使能（每轴间隔1秒）
         /// 1. 回零 Z → 回到待机位
         /// 2. 通知点胶/上下料：组装Z轴完成
         /// 3. 等待点胶Z轴完成（所有Z轴归零前提）
@@ -51,6 +52,19 @@ namespace StationTasks.Tasks
 
                 // 重置工站间协调信号（防止上次初始化残留导致跳过等待）
                 ResetInitSignals();
+
+                // ===== 阶段0：逐轴上使能（回零前，每轴间隔1秒） =====
+                Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_Phase0AxisEnable", "[{0}] 回零前逐轴上使能..."), TaskName));
+                PublishTaskStatusChanged(L("Init_EnableAxes"), State);
+                PublishInitProgress(5, L("Init_EnableAxes"));
+                await EnableAxesSequentiallyAsync(new (int, string)[]
+                {
+                    (AxisZ, "Z"), (AxisCy, "Cy"), (AxisEy, "Ey"), (AxisX, "X"), (AxisRy, "Ry")
+                }, axisName =>
+                {
+                    PublishTaskStatusChanged(L("Init_EnableAxis", axisName), State);
+                    PublishInitProgress(8, L("Init_EnableAxis", axisName));
+                }).ConfigureAwait(false);
 
                 // ===== 阶段1：组装Z轴回零 → 待机位 =====
                 Logger.Info(string.Format(_localizationService.GetResourceOrDefault("AT_Log_Phase1ZHoming", "[{0}] 阶段1：组装Z轴回零..."), TaskName));

@@ -1473,6 +1473,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Init_Idle">Idle</sys:String>
     <sys:String x:Key="Init_Canceled">Initialization canceled</sys:String>
     <sys:String x:Key="Init_Failed">Initialization failed</sys:String>
+    <sys:String x:Key="Init_EnableAxes">Enabling axes</sys:String>
+    <sys:String x:Key="Init_EnableAxis">Enable {0}</sys:String>
     <sys:String x:Key="Init_Dispenser_Start">Dispensing system initializing</sys:String>
     <sys:String x:Key="Init_Dispenser_ZHoming">Dispensing Z axes homing</sys:String>
     <sys:String x:Key="Init_Dispenser_ZStandby">Dispensing Z axes returning to standby</sys:String>
@@ -4406,6 +4408,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Sig_Log_Wait_SignalReceived">[SignalWait] step [{0}] signal received: {1}, auto reset (consumed)</sys:String>
     <sys:String x:Key="Sig_Log_Wait_StartWait">[SignalWait] step [{0}] start waiting for signal: {1}, timeout: {2}</sys:String>
     <sys:String x:Key="Sig_Log_Wait_TimeoutError">[SignalWait] step [{0}] {1}</sys:String>
+    <sys:String x:Key="STB_Log_InitAxisEnabling">[{0}] {1} axis enabling servo...</sys:String>
     <sys:String x:Key="STB_Log_AxesDiscovered">[{0}] discovered {1} axes from hardware config: {2}</sys:String>
     <sys:String x:Key="STB_Log_AxisConfigByNameNotFound">Axis config with name '{0}' not found</sys:String>
     <sys:String x:Key="STB_Log_AxisConfigNotFound">[{0}] config for axis '{1}' not found</sys:String>
@@ -4623,6 +4626,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="AT_Log_InitComplete">[{0}] Assembly system initialization completed, entering standby.</sys:String>
     <sys:String x:Key="AT_Log_InitFailed">[{0}] Assembly system initialization failed: {1}</sys:String>
     <sys:String x:Key="AT_Log_InitFailedSignalTimeout">[{0}] Assembly system initialization failed (signal wait timeout): {1}</sys:String>
+    <sys:String x:Key="AT_Log_Phase0AxisEnable">[{0}] Enabling axes sequentially before homing...</sys:String>
     <sys:String x:Key="AT_Log_InitStart">[{0}] Starting assembly system initialization...</sys:String>
     <sys:String x:Key="AT_Log_MainAxisHoming">[{0}] {1} axis homing...</sys:String>
     <sys:String x:Key="AT_Log_NotifyZComplete">[{0}] Notified dispenser/load-unload: assembly Z axis homing completed.</sys:String>
@@ -4696,6 +4700,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DT_Log_IOTriggerSet">[{0}] IO trigger signal set: {1} (LogicalId={2})</sys:String>
     <sys:String x:Key="DT_Log_NotifyDispensingComplete">[{0}] Notified assembly: dispenser homing completed.</sys:String>
     <sys:String x:Key="DT_Log_NotifyZComplete">[{0}] Notified assembly/load-unload: dispenser Z axis homing completed.</sys:String>
+    <sys:String x:Key="DT_Log_Phase0AxisEnable">[{0}] Enabling axes sequentially before homing...</sys:String>
     <sys:String x:Key="DT_Log_Phase1ZHoming">[{0}] Phase 1: dispenser Z axis (Dz₂/Dz₃) homing...</sys:String>
     <sys:String x:Key="DT_Log_Phase2DyHoming">[{0}] Phase 2: Dy axis homing...</sys:String>
     <sys:String x:Key="DT_Log_Phase3Dz1Homing">[{0}] Phase 3: Dz₁ axis homing...</sys:String>
@@ -4729,6 +4734,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="LT_Log_InitCompleteStandby">[{0}] Load-unload system initialization completed, entering standby.</sys:String>
     <sys:String x:Key="LT_Log_InitFailed">[{0}] Load-unload system initialization failed: {1}</sys:String>
     <sys:String x:Key="LT_Log_InitFailedSignalTimeout">[{0}] Load-unload system initialization failed (signal wait timeout): {1}</sys:String>
+    <sys:String x:Key="LT_Log_Phase0AxisEnable">[{0}] Enabling axes sequentially before homing...</sys:String>
     <sys:String x:Key="LT_Log_InitStart">[{0}] Starting load-unload system initialization...</sys:String>
     <sys:String x:Key="LT_Log_StageVacuumOff">[{0}] Stage vacuum turned off</sys:String>
     <sys:String x:Key="LT_Log_StageVacuumOn">[{0}] Stage vacuum turned on</sys:String>
