@@ -66,19 +66,19 @@ namespace StationTasks.Tasks
                 PublishInitProgress(52, L("Init_EnableAxes"));
                 await EnableAxesSequentiallyAsync(new (int, string)[]
                 {
-                    (AxisY, "Y"), (AxisRz, "Rz"), (AxisRx, "Rx")
+                    (AxisRz, "Rz"), (AxisRx, "Rx"), (AxisY, "Y")
                 }, axisName =>
                 {
                     PublishTaskStatusChanged(L("Init_EnableAxis", axisName), State);
                     PublishInitProgress(53, L("Init_EnableAxis", axisName));
                 }).ConfigureAwait(false);
 
-                // ===== 阶段3：上下料轴（Y, Rz, Rx）回零 =====
+                // ===== 阶段3：上下料轴（Rz, Rx, Y,）回零 =====
                 PublishTaskStatusChanged(L("Init_Loading_AxesHoming"), State);
                 PublishInitProgress(55, L("Init_Loading_AxesHoming"));
 
                 int[] axes = {  AxisRz, AxisRx , AxisY };
-                string[] axisNames = { "Y", "Rz", "Rx" };
+                string[] axisNames = { "Rz", "Rx", "Y" };
                 int axisIndex = 0;
 
                 foreach (var (axisId, axisName) in axes.Zip(axisNames, (id, name) => (id, name)))
