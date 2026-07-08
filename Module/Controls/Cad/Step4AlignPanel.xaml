@@ -6,6 +6,7 @@
              xmlns:converters="clr-namespace:Module.Common.Converters">
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
         <converters:NonEmptyToVisibilityConverter x:Key="NullOrEmptyToCollapsedConverter"/>
     </UserControl.Resources>
     <StackPanel Margin="12">
@@ -87,16 +88,40 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- 相机示教子开关：勾选后改用「移动相机示教」，针头机械坐标 = 相机坐标 + 相机针头固定距离 + NeedleTCP偏差 -->
+                <Border Background="#FFF8E1" CornerRadius="4" Padding="6,4" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox IsChecked="{Binding IsUseCameraTeach}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <materialDesign:PackIcon Kind="Camera" VerticalAlignment="Center"
+                                                 Foreground="#F57C00" Width="18" Height="18" Margin="0,0,4,0"/>
+                        <TextBlock Text="{lang:Lang Step4_Check_UseCameraTeach}" FontSize="11"
+                                   VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="{lang:Lang Step4_UseCameraTeachHint}"
+                           FontSize="10" Foreground="#9E9E9E" Margin="0,0,0,6" TextWrapping="Wrap"/>
+
                 <!-- 仿射标定点 DataGrid -->
                 <DataGrid ItemsSource="{Binding AffineCalibrationPoints}" AutoGenerateColumns="False"
-                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False"
                           HeadersVisibility="Column" FontSize="10" MaxHeight="200"
                           BorderThickness="1" GridLinesVisibility="Horizontal"
                           SelectedItem="{Binding SelectedAffinePoint}">
+                    <DataGrid.Resources>
+                        <!-- 列 Visibility 绑定代理：DataGridColumn 不在可视化树，需经代理访问 DataContext -->
+                        <converters:BindingProxy x:Key="AffineVmProxy" Data="{Binding}"/>
+                    </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Pt" Binding="{Binding Name}" Width="36" IsReadOnly="True"/>
                         <DataGridTextColumn Header="CAD X" Binding="{Binding CadX, StringFormat=F3}" Width="55"/>
                         <DataGridTextColumn Header="CAD Y" Binding="{Binding CadY, StringFormat=F3}" Width="55"/>
+                        <!-- 相机示教模式专用：相机机械坐标列 -->
+                        <DataGridTextColumn Header="{lang:Lang Step4_Header_CamMX}"
+                                            Binding="{Binding CameraMachineX, StringFormat=F3}" Width="58" IsReadOnly="True"
+                                            Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource AffineVmProxy}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <DataGridTextColumn Header="{lang:Lang Step4_Header_CamMY}"
+                                            Binding="{Binding CameraMachineY, StringFormat=F3}" Width="58" IsReadOnly="True"
+                                            Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource AffineVmProxy}, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         <DataGridTextColumn Header="Mach X" Binding="{Binding MachineX, StringFormat=F3}" Width="58" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Mach Y" Binding="{Binding MachineY, StringFormat=F3}" Width="58" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Mach Dz" Binding="{Binding MachineDz, StringFormat=F3}" Width="55" IsReadOnly="True"/>
@@ -113,9 +138,16 @@
                                         </Button>
                                         <Button Command="{Binding DataContext.TeachAffineMachineCoordCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 CommandParameter="{Binding}"
-                                                ToolTip="{lang:Lang Step4_Btn_TeachMachine}"
+                                                ToolTip="{Binding DataContext.AffineTeachButtonToolTip, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 Style="{StaticResource MaterialDesignIconButton}" Padding="0" Width="22" Height="22">
-                                            <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14"/>
+                                            <Grid>
+                                                <!-- 相机示教模式图标 -->
+                                                <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14"
+                                                                         Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource AffineVmProxy}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                <!-- 针头示教模式图标 -->
+                                                <materialDesign:PackIcon Kind="AxisArrow" Width="14" Height="14"
+                                                                         Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource AffineVmProxy}, Converter={StaticResource InvertedBoolToVisibilityConverter}}"/>
+                                            </Grid>
                                         </Button>
                                         <Button Command="{Binding DataContext.DeleteAffinePointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 CommandParameter="{Binding}"
@@ -211,6 +243,57 @@
                 Style="{StaticResource MaterialDesignRaisedButton}"
                 HorizontalAlignment="Stretch" Padding="0,5"
                 FontSize="13" IsEnabled="{Binding HasAffineResult}"/>
+
+        <!-- 针头偏移来源确认（相机示教模式：展示 CalibrationDelta + TcpComp 以核对换算值） -->
+        <Border Background="#E3F2FD" CornerRadius="4" Padding="8" Margin="0,6,0,0"
+                Visibility="{Binding ShowNeedleOffsetInfo, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <materialDesign:PackIcon Kind="InformationOutline" Width="14" Height="14"
+                                             Foreground="#1565C0" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{lang:Lang Step4_Section_NeedleOffsetSource}" FontWeight="SemiBold"
+                               FontSize="11" Foreground="#1565C0"/>
+                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step4_Label_CameraDelta}"
+                               FontSize="10" Foreground="#616161" Margin="0,2,8,2" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1"
+                               Text="{Binding CameraCalibrationDeltaX, StringFormat='X={0:F3}'}"
+                               FontSize="10" FontWeight="SemiBold" Foreground="#424242" Margin="0,2"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2"
+                               Text="{Binding CameraCalibrationDeltaY, StringFormat='Y={0:F3}'}"
+                               FontSize="10" FontWeight="SemiBold" Foreground="#424242" Margin="0,2"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step4_Label_NeedleTcpComp}"
+                               FontSize="10" Foreground="#616161" Margin="0,2,8,2" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1"
+                               Text="{Binding NeedleTcpCompensationX, StringFormat='X={0:F3}'}"
+                               FontSize="10" FontWeight="SemiBold" Foreground="#424242" Margin="0,2"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2"
+                               Text="{Binding NeedleTcpCompensationY, StringFormat='Y={0:F3}'}"
+                               FontSize="10" FontWeight="SemiBold" Foreground="#424242" Margin="0,2"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step4_Label_OffsetTotal}"
+                               FontSize="10" Foreground="#1565C0" FontWeight="SemiBold" Margin="0,2,8,2" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1"
+                               Text="{Binding NeedleOffsetTotalX, StringFormat='X={0:F3}'}"
+                               FontSize="10" FontWeight="Bold" Foreground="#0D47A1" Margin="0,2"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2"
+                               Text="{Binding NeedleOffsetTotalY, StringFormat='Y={0:F3}'}"
+                               FontSize="10" FontWeight="Bold" Foreground="#0D47A1" Margin="0,2"/>
+                </Grid>
+                <TextBlock Text="{lang:Lang Step4_NeedleOffsetSourceHint}"
+                           FontSize="9" Foreground="#9E9E9E" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
 
         <!-- 状态 -->
         <TextBlock Text="{Binding TransformStatus}" Margin="0,8" FontSize="11" Foreground="#2E7D32" TextWrapping="Wrap"/>

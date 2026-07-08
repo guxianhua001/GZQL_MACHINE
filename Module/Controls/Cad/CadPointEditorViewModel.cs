@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -77,6 +79,9 @@ namespace Module.ViewModels
 
         // 运动控制服务（读取轴位置、示教高度）
         private readonly IMotionService _motionService;
+
+        // 针头相机标定提供者（读取 NeedleCameraAlignment CalibrationDelta）
+        private readonly INeedleCameraCalibrationProvider _needleCameraCalibProvider;
 
         private readonly IDispenseSegmentStore _dispenseSegmentStore;
         private readonly IEventAggregator _eventAggregator;
@@ -722,6 +727,8 @@ namespace Module.ViewModels
                 {
                     IsModePointMapping = false;
                     AlignMode = AlignMode.Affine;
+                    RaisePropertyChanged(nameof(ShowNeedleOffsetInfo));
+                    RefreshNeedleOffsetDisplay();
                 }
             }
         }
@@ -737,8 +744,95 @@ namespace Module.ViewModels
                 {
                     IsModeAffine = false;
                     AlignMode = AlignMode.PointMapping;
+                    RaisePropertyChanged(nameof(ShowNeedleOffsetInfo));
+                    RefreshNeedleOffsetDisplay();
                 }
             }
+        }
+
+        private bool _isUseCameraTeach;
+        /// <summary>
+        /// N点仿射模式下的「使用相机示教」子开关：
+        /// true  → 移动相机至目标点，读取 Dx/Dy 相机机械坐标，叠加偏移换算针头机械坐标；
+        /// false → 移动针头到目标点，直接读取 Dx/Dy 作为针头机械坐标。
+        /// 切换时在针头/相机两套示教快照间暂存与恢复，取消勾选可还原原有针头示教数据。
+        /// </summary>
+        public bool IsUseCameraTeach
+        {
+            get => _isUseCameraTeach;
+            set
+            {
+                if (value == _isUseCameraTeach) return;
+
+                // 离开当前模式前：将 UI 数据写入当前模式快照
+                StashAffineDataToTeachModeSnapshot(_currentNeedleIndex, _isUseCameraTeach);
+
+                if (!SetProperty(ref _isUseCameraTeach, value)) return;
+
+                // 进入目标模式：从对应快照恢复（快照为空时保留 CAD、清空机械示教）
+                RestoreAffineDataFromTeachModeSnapshot(_currentNeedleIndex, value);
+                SaveCurrentNeedleData(_currentNeedleIndex);
+
+                RaisePropertyChanged(nameof(AffineTeachButtonToolTip));
+                RaisePropertyChanged(nameof(ShowNeedleOffsetInfo));
+                RefreshNeedleOffsetDisplay();
+                RefreshSelectedSegmentMachineCoordDisplay();
+            }
+        }
+
+        /// <summary>仿射示教按钮 Tooltip 文本（随 IsUseCameraTeach 切换）</summary>
+        public string AffineTeachButtonToolTip =>
+            IsUseCameraTeach ? L("Step4_Btn_TeachCamera") : L("Step4_Btn_TeachMachine");
+
+        /// <summary>是否显示针头偏移来源信息（仅 N点仿射 + 相机示教模式）</summary>
+        public bool ShowNeedleOffsetInfo => IsModeAffine && IsUseCameraTeach;
+
+        private double _cameraCalibrationDeltaX;
+        /// <summary>相机-针头固定距离 X（来自 NeedleCameraAlignment CalibrationDelta）</summary>
+        public double CameraCalibrationDeltaX
+        {
+            get => _cameraCalibrationDeltaX;
+            private set => SetProperty(ref _cameraCalibrationDeltaX, value);
+        }
+
+        private double _cameraCalibrationDeltaY;
+        /// <summary>相机-针头固定距离 Y（来自 NeedleCameraAlignment CalibrationDelta）</summary>
+        public double CameraCalibrationDeltaY
+        {
+            get => _cameraCalibrationDeltaY;
+            private set => SetProperty(ref _cameraCalibrationDeltaY, value);
+        }
+
+        private double _needleTcpCompensationX;
+        /// <summary>校针 TCP 补偿 X（来自 NeedleTcp Compensation Details / 全局变量）</summary>
+        public double NeedleTcpCompensationX
+        {
+            get => _needleTcpCompensationX;
+            private set => SetProperty(ref _needleTcpCompensationX, value);
+        }
+
+        private double _needleTcpCompensationY;
+        /// <summary>校针 TCP 补偿 Y（来自 NeedleTcp Compensation Details / 全局变量）</summary>
+        public double NeedleTcpCompensationY
+        {
+            get => _needleTcpCompensationY;
+            private set => SetProperty(ref _needleTcpCompensationY, value);
+        }
+
+        private double _needleOffsetTotalX;
+        /// <summary>针头偏移合计 X = CalibrationDeltaX + TcpCompX</summary>
+        public double NeedleOffsetTotalX
+        {
+            get => _needleOffsetTotalX;
+            private set => SetProperty(ref _needleOffsetTotalX, value);
+        }
+
+        private double _needleOffsetTotalY;
+        /// <summary>针头偏移合计 Y = CalibrationDeltaY + TcpCompY</summary>
+        public double NeedleOffsetTotalY
+        {
+            get => _needleOffsetTotalY;
+            private set => SetProperty(ref _needleOffsetTotalY, value);
         }
 
         private string _transformStatus = string.Empty;
@@ -772,6 +866,12 @@ namespace Module.ViewModels
         private List<AffineCalibrationPoint> _affineCalibrationPointsNeedle1 = new();
         private List<AffineCalibrationPoint> _affineCalibrationPointsNeedle2 = new();
         private ObservableCollection<AffineCalibrationPoint> _affineCalibrationPoints = new();
+
+        // 双示教模式独立快照（针头示教 / 相机示教），切换模式时暂存与恢复，避免取消勾选后丢失原有数据
+        private readonly AffineTeachModeSnapshot _affineSnapNeedle1NeedleTeach = new();
+        private readonly AffineTeachModeSnapshot _affineSnapNeedle1CameraTeach = new();
+        private readonly AffineTeachModeSnapshot _affineSnapNeedle2NeedleTeach = new();
+        private readonly AffineTeachModeSnapshot _affineSnapNeedle2CameraTeach = new();
 
         /// <summary>针头1仿射标定点集合（备份）</summary>
         public List<AffineCalibrationPoint> AffineCalibrationPointsNeedle1
@@ -850,10 +950,16 @@ namespace Module.ViewModels
             get
             {
                 if (_affineResult == null) return string.Empty;
+
+                // 3 点恰定解：残差恒为 0，RMS 无意义，需提示用户添加第 4 点
+                if (_affineResult.PointCount <= 3)
+                    return L("Step4_Affine_Quality_Exact3Point");
+
                 var grade = _affineResult.RmsError < 0.05 ? L("Step4_Affine_Quality_Good")
                           : _affineResult.RmsError < 0.10 ? L("Step4_Affine_Quality_Acceptable")
                           : L("Step4_Affine_Quality_Poor");
-                return $"{L("Step4_Affine_RmsLabel")}: {_affineResult.RmsError:F4}mm | {grade}";
+                return string.Format(L("Step4_Affine_QualityFormat"),
+                    _affineResult.RmsError, _affineResult.MaxResidual, grade);
             }
         }
 
@@ -916,6 +1022,7 @@ namespace Module.ViewModels
                     RaisePropertyChanged(nameof(IsNeedle2Selected));
                     SwitchNeedleData();
                     SyncNeedleIndexToDispenseDetail();
+                    RefreshNeedleOffsetDisplay();
                     RefreshSelectedSegmentMachineCoordDisplay();
                 }
             }
@@ -948,16 +1055,19 @@ namespace Module.ViewModels
         /// <summary>保存指定针头的仿射标定数据和逐点映射数据</summary>
         private void SaveCurrentNeedleData(int needleIndex)
         {
+            // 同步当前示教模式快照
+            StashAffineDataToTeachModeSnapshot(needleIndex, _isUseCameraTeach);
+
             if (needleIndex == 0)
             {
-                _affineCalibrationPointsNeedle1 = new List<AffineCalibrationPoint>(_affineCalibrationPoints);
-                _affineResultNeedle1 = _affineResult;
+                _affineCalibrationPointsNeedle1 = CloneAffinePoints(_affineCalibrationPoints);
+                _affineResultNeedle1 = CloneAffineResult(_affineResult);
                 _pointMappingPointsNeedle1 = new List<PointMappingPoint>(_pointMappingPoints);
             }
             else
             {
-                _affineCalibrationPointsNeedle2 = new List<AffineCalibrationPoint>(_affineCalibrationPoints);
-                _affineResultNeedle2 = _affineResult;
+                _affineCalibrationPointsNeedle2 = CloneAffinePoints(_affineCalibrationPoints);
+                _affineResultNeedle2 = CloneAffineResult(_affineResult);
                 _pointMappingPointsNeedle2 = new List<PointMappingPoint>(_pointMappingPoints);
             }
         }
@@ -965,19 +1075,28 @@ namespace Module.ViewModels
         /// <summary>加载指定针头的仿射标定数据和逐点映射数据到UI集合</summary>
         private void LoadNeedleData(int needleIndex)
         {
-            // 切换仿射标定点（内容交换，保持同一ObservableCollection引用）
-            var affineSource = needleIndex == 0 ? _affineCalibrationPointsNeedle1 : _affineCalibrationPointsNeedle2;
-            _affineCalibrationPoints.Clear();
-            foreach (var p in affineSource)
-                _affineCalibrationPoints.Add(p);
+            // 仿射标定点：优先从当前示教模式快照恢复
+            var snap = GetTeachModeSnapshot(needleIndex, _isUseCameraTeach);
+            if (snap.Points != null && snap.Points.Count > 0)
+            {
+                RestoreAffineDataFromTeachModeSnapshot(needleIndex, _isUseCameraTeach);
+            }
+            else
+            {
+                var affineSource = needleIndex == 0 ? _affineCalibrationPointsNeedle1 : _affineCalibrationPointsNeedle2;
+                _affineCalibrationPoints.Clear();
+                foreach (var p in affineSource)
+                    _affineCalibrationPoints.Add(p);
 
-            // 切换仿射结果
-            _affineResult = needleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
-            RaisePropertyChanged(nameof(AffineResult));
-            RaisePropertyChanged(nameof(HasAffineResult));
-            RaisePropertyChanged(nameof(AffineQualityText));
-            RaisePropertyChanged(nameof(AffineResultDisplay));
-            ApplyTransformToSegmentsCommand.RaiseCanExecuteChanged();
+                _affineResult = needleIndex == 0 ? _affineResultNeedle1 : _affineResultNeedle2;
+                RaisePropertyChanged(nameof(AffineResult));
+                RaisePropertyChanged(nameof(HasAffineResult));
+                RaisePropertyChanged(nameof(AffineQualityText));
+                RaisePropertyChanged(nameof(AffineResultDisplay));
+                ApplyTransformToSegmentsCommand.RaiseCanExecuteChanged();
+
+                StashAffineDataToTeachModeSnapshot(needleIndex, _isUseCameraTeach);
+            }
 
             // 切换逐点映射点（内容交换）
             var mappingSource = needleIndex == 0 ? _pointMappingPointsNeedle1 : _pointMappingPointsNeedle2;
@@ -1562,12 +1681,27 @@ namespace Module.ViewModels
             if (affineResult != null)
             {
                 double avgDz = GetAffineZBaselineForNeedle(idx);
+                // 相机示教模式下，pt.MachineX/Y 为针头机械坐标；
+                // Step3 表格需展示相机机械坐标 = 针头机械坐标 - (相机针头固定距离 + NeedleTCP偏差)
+                bool useCamera = _isModeAffine && _isUseCameraTeach;
+                var (offX, offY) = useCamera ? ResolveNeedleOffsetTotal() : (0d, 0d);
                 foreach (var pt in seg.Points)
                 {
                     var (mx, my) = AffineCalibrationService.Transform(affineResult, pt.X, pt.Y);
                     pt.MachineX = Math.Round(mx + seg.XyCompensationX, 3);
                     pt.MachineY = Math.Round(my + seg.XyCompensationY, 3);
                     pt.MachineZ = avgDz;
+
+                    if (useCamera && pt.MachineX.HasValue && pt.MachineY.HasValue)
+                    {
+                        pt.CameraMachineX = Math.Round(pt.MachineX.Value - offX, 3);
+                        pt.CameraMachineY = Math.Round(pt.MachineY.Value - offY, 3);
+                    }
+                    else
+                    {
+                        pt.CameraMachineX = null;
+                        pt.CameraMachineY = null;
+                    }
                 }
                 return true;
             }
@@ -1586,6 +1720,8 @@ namespace Module.ViewModels
                     pt.MachineX = null;
                     pt.MachineY = null;
                     pt.MachineZ = null;
+                    pt.CameraMachineX = null;
+                    pt.CameraMachineY = null;
                 }
             }
 
@@ -1878,7 +2014,8 @@ namespace Module.ViewModels
             IMotionService motionService = null,
             ILocalizationService localizationService = null,
             IDispenseSegmentStore dispenseSegmentStore = null,
-            IEventAggregator eventAggregator = null)
+            IEventAggregator eventAggregator = null,
+            INeedleCameraCalibrationProvider needleCameraCalibProvider = null)
         {
             _dxfParser = dxfParser;
             _dxfImportHelper = dxfImportHelper;
@@ -1889,6 +2026,8 @@ namespace Module.ViewModels
             _localizationService = localizationService;
             _dispenseSegmentStore = dispenseSegmentStore;
             _eventAggregator = eventAggregator;
+            _needleCameraCalibProvider = needleCameraCalibProvider
+                ?? ContainerLocator.Container?.Resolve<INeedleCameraCalibrationProvider>();
 
             // 订阅语言变更事件以刷新所有本地化文本
             if (_localizationService != null)
@@ -2648,7 +2787,12 @@ namespace Module.ViewModels
             GlobalStatus = L("Step4_Status_PickCadCoord");
         }
 
-        /// <summary>示教仿射机械坐标——读取运动卡当前Dx/Dy位置</summary>
+        /// <summary>
+        /// 示教仿射机械坐标：
+        /// - 默认针头示教：移动针头到目标点，直接读取 Dx(8)/Dy(6) 作为针头机械坐标。
+        /// - 相机示教(IsUseCameraTeach)：移动相机到目标点，读取 Dx/Dy 作为相机机械坐标，
+        ///   针头机械坐标 = 相机机械坐标 + 相机针头固定距离 + NeedleTCP偏差(NeedleAlignComp)。
+        /// </summary>
         private void ExecuteTeachAffineMachineCoord(AffineCalibrationPoint point)
         {
             if (point == null) return;
@@ -2657,25 +2801,28 @@ namespace Module.ViewModels
             {
                 // 无运动卡时使用模拟数据
                 var rnd = new Random();
-                point.MachineX = Math.Round(rnd.NextDouble() * 200 - 100, 3);
-                point.MachineY = Math.Round(rnd.NextDouble() * 200 - 100, 3);
-                point.MachineDz = Math.Round(rnd.NextDouble() * 50 - 25, 3);
+                double camX = Math.Round(rnd.NextDouble() * 200 - 100, 3);
+                double camY = Math.Round(rnd.NextDouble() * 200 - 100, 3);
+                double dz = Math.Round(rnd.NextDouble() * 50 - 25, 3);
+                ApplyTeachToAffinePoint(point, camX, camY, dz);
             }
             else
             {
                 try
                 {
-                    // 读取Dx(8)/Dy(6)轴当前位置
+                    // 读取Dx(8)/Dy(6)轴当前位置（针头示教=针头坐标；相机示教=相机坐标）
                     const int AxisDx = 8;
                     const int AxisDy = 6;
-                    point.MachineX = Math.Round(_motionService.GetAxisState(AxisDx).ActualPosition, 3);
-                    point.MachineY = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
+                    double camX = Math.Round(_motionService.GetAxisState(AxisDx).ActualPosition, 3);
+                    double camY = Math.Round(_motionService.GetAxisState(AxisDy).ActualPosition, 3);
 
                     // 根据当前针头读取对应Dz轴：针头1→Dz₂(轴3), 针头2→Dz₃(轴4)
                     const int AxisDzNeedle1 = 3;
                     const int AxisDzNeedle2 = 4;
-                    point.MachineDz = Math.Round(
+                    double dz = Math.Round(
                         _motionService.GetAxisState(_currentNeedleIndex == 0 ? AxisDzNeedle1 : AxisDzNeedle2).ActualPosition, 3);
+
+                    ApplyTeachToAffinePoint(point, camX, camY, dz);
                 }
                 catch (Exception ex)
                 {
@@ -2685,7 +2832,452 @@ namespace Module.ViewModels
             }
 
             ComputeAffineTransformCommand.RaiseCanExecuteChanged();
-            GlobalStatus = string.Format(L("Step4_Status_TeachAffineSuccess"), point.Name, point.MachineX, point.MachineY, point.MachineDz);
+            GlobalStatus = _isUseCameraTeach
+                ? string.Format(L("Step4_Status_TeachCameraSuccess"), point.Name, point.CameraMachineX, point.CameraMachineY, point.MachineX, point.MachineY, point.MachineDz)
+                : string.Format(L("Step4_Status_TeachAffineSuccess"), point.Name, point.MachineX, point.MachineY, point.MachineDz);
+        }
+
+        /// <summary>
+        /// 将读取的相机/Dz坐标写入仿射标定点：
+        /// 相机示教模式时 MachineX/Y = 相机坐标 + 偏移；否则 MachineX/Y = 相机坐标（即针头直接示教）。
+        /// </summary>
+        private void ApplyTeachToAffinePoint(AffineCalibrationPoint point, double cameraOrNeedleX, double cameraOrNeedleY, double dz)
+        {
+            point.MachineDz = dz;
+            if (_isUseCameraTeach)
+            {
+                point.CameraMachineX = cameraOrNeedleX;
+                point.CameraMachineY = cameraOrNeedleY;
+                var (offX, offY) = ResolveNeedleOffsetTotal();
+                point.MachineX = Math.Round(cameraOrNeedleX + offX, 3);
+                point.MachineY = Math.Round(cameraOrNeedleY + offY, 3);
+                RefreshNeedleOffsetDisplay();
+            }
+            else
+            {
+                point.CameraMachineX = 0;
+                point.CameraMachineY = 0;
+                point.MachineX = cameraOrNeedleX;
+                point.MachineY = cameraOrNeedleY;
+            }
+        }
+
+        /// <summary>
+        /// 将当前 UI 仿射标定数据写入指定针头+示教模式快照（深拷贝，互不影响）。
+        /// </summary>
+        private void StashAffineDataToTeachModeSnapshot(int needleIndex, bool isCameraTeach)
+        {
+            var snap = GetTeachModeSnapshot(needleIndex, isCameraTeach);
+            snap.Points = CloneAffinePoints(_affineCalibrationPoints);
+            snap.Result = CloneAffineResult(_affineResult);
+            snap.TransformStatus = TransformStatus ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 从指定针头+示教模式快照恢复 UI 仿射标定数据。
+        /// 目标快照为空时：沿用另一模式的 CAD 坐标，清空机械/相机示教字段（首次进入该模式）。
+        /// </summary>
+        private void RestoreAffineDataFromTeachModeSnapshot(int needleIndex, bool isCameraTeach)
+        {
+            var snap = GetTeachModeSnapshot(needleIndex, isCameraTeach);
+            var otherSnap = GetTeachModeSnapshot(needleIndex, !isCameraTeach);
+
+            List<AffineCalibrationPoint> pointsToLoad;
+            if (snap.Points != null && snap.Points.Count > 0)
+            {
+                pointsToLoad = CloneAffinePoints(snap.Points);
+            }
+            else if (otherSnap.Points != null && otherSnap.Points.Count > 0)
+            {
+                pointsToLoad = CloneAffinePoints(otherSnap.Points);
+                foreach (var p in pointsToLoad)
+                {
+                    p.MachineX = 0;
+                    p.MachineY = 0;
+                    p.MachineDz = 0;
+                    p.CameraMachineX = 0;
+                    p.CameraMachineY = 0;
+                    p.Residual = 0;
+                }
+            }
+            else
+            {
+                pointsToLoad = new List<AffineCalibrationPoint>();
+            }
+
+            _affineCalibrationPoints.Clear();
+            foreach (var p in pointsToLoad)
+                _affineCalibrationPoints.Add(p);
+
+            var restoredResult = CloneAffineResult(snap.Result);
+            _affineResult = restoredResult;
+            if (needleIndex == 0)
+                _affineResultNeedle1 = restoredResult;
+            else
+                _affineResultNeedle2 = restoredResult;
+
+            RaisePropertyChanged(nameof(AffineResult));
+            RaisePropertyChanged(nameof(HasAffineResult));
+            RaisePropertyChanged(nameof(AffineQualityText));
+            RaisePropertyChanged(nameof(AffineResultDisplay));
+            TransformStatus = snap.TransformStatus ?? string.Empty;
+            RaisePropertyChanged(nameof(TransformStatus));
+            ApplyTransformToSegmentsCommand.RaiseCanExecuteChanged();
+            ComputeAffineTransformCommand.RaiseCanExecuteChanged();
+            DeleteAffinePointCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>文件加载后：从 AlignData 恢复双示教模式快照（含旧版单模式文件兼容）</summary>
+        private void RestoreTeachModeSnapshotsFromAlignData(Core.Models.CoordinateAlignData alignData)
+        {
+            if (alignData == null) return;
+
+            RestoreOneNeedleTeachSnapshots(0, alignData);
+            RestoreOneNeedleTeachSnapshots(1, alignData);
+            SyncNeedleListsFromActiveTeachModeSnapshot(0);
+            SyncNeedleListsFromActiveTeachModeSnapshot(1);
+        }
+
+        /// <summary>恢复单个针头的针头/相机双模式快照</summary>
+        private void RestoreOneNeedleTeachSnapshots(int needleIndex, Core.Models.CoordinateAlignData alignData)
+        {
+            var needleSnap = GetTeachModeSnapshot(needleIndex, false);
+            var cameraSnap = GetTeachModeSnapshot(needleIndex, true);
+
+            var dualNeedlePoints = needleIndex == 0
+                ? alignData.AffineCalibrationPointsNeedle1_NeedleTeach
+                : alignData.AffineCalibrationPointsNeedle2_NeedleTeach;
+            var dualCameraPoints = needleIndex == 0
+                ? alignData.AffineCalibrationPointsNeedle1_CameraTeach
+                : alignData.AffineCalibrationPointsNeedle2_CameraTeach;
+            var legacyPoints = needleIndex == 0
+                ? alignData.AffineCalibrationPointsNeedle1
+                : alignData.AffineCalibrationPointsNeedle2;
+            if ((legacyPoints == null || legacyPoints.Count == 0) && needleIndex == 0)
+                legacyPoints = alignData.AffineCalibrationPoints;
+
+            var dualNeedleResult = needleIndex == 0
+                ? alignData.AffineResultDataNeedle1_NeedleTeach
+                : alignData.AffineResultDataNeedle2_NeedleTeach;
+            var dualCameraResult = needleIndex == 0
+                ? alignData.AffineResultDataNeedle1_CameraTeach
+                : alignData.AffineResultDataNeedle2_CameraTeach;
+            var legacyResult = needleIndex == 0
+                ? alignData.AffineResultDataNeedle1
+                : alignData.AffineResultDataNeedle2;
+            if (legacyResult == null && needleIndex == 0)
+                legacyResult = alignData.AffineResultData;
+
+            bool hasDualNeedle = dualNeedlePoints != null && dualNeedlePoints.Count > 0;
+            bool hasDualCamera = dualCameraPoints != null && dualCameraPoints.Count > 0;
+
+            if (hasDualNeedle)
+                needleSnap.Points = CloneAffinePoints(dualNeedlePoints);
+            else if (!hasDualCamera && !alignData.UseCameraTeachForAffine && legacyPoints != null && legacyPoints.Count > 0)
+                needleSnap.Points = CloneAffinePoints(legacyPoints);
+            else
+                needleSnap.Points = new List<AffineCalibrationPoint>();
+
+            if (hasDualCamera)
+                cameraSnap.Points = CloneAffinePoints(dualCameraPoints);
+            else if (!hasDualNeedle && alignData.UseCameraTeachForAffine && legacyPoints != null && legacyPoints.Count > 0)
+                cameraSnap.Points = CloneAffinePoints(legacyPoints);
+            else
+                cameraSnap.Points = new List<AffineCalibrationPoint>();
+
+            if (dualNeedleResult != null)
+                needleSnap.Result = FromAffineResultData(dualNeedleResult);
+            else if (!hasDualCamera && !alignData.UseCameraTeachForAffine && legacyResult != null)
+                needleSnap.Result = FromAffineResultData(legacyResult);
+            else
+                needleSnap.Result = null;
+
+            if (dualCameraResult != null)
+                cameraSnap.Result = FromAffineResultData(dualCameraResult);
+            else if (!hasDualNeedle && alignData.UseCameraTeachForAffine && legacyResult != null)
+                cameraSnap.Result = FromAffineResultData(legacyResult);
+            else
+                cameraSnap.Result = null;
+
+            needleSnap.TransformStatus = string.Empty;
+            cameraSnap.TransformStatus = string.Empty;
+        }
+
+        /// <summary>将当前全局示教模式对应的快照同步到针头列表（供切换针头/旧字段序列化）</summary>
+        private void SyncNeedleListsFromActiveTeachModeSnapshot(int needleIndex)
+        {
+            var activeSnap = GetTeachModeSnapshot(needleIndex, _isUseCameraTeach);
+            if (needleIndex == 0)
+            {
+                _affineCalibrationPointsNeedle1 = CloneAffinePoints(activeSnap.Points);
+                _affineResultNeedle1 = CloneAffineResult(activeSnap.Result);
+            }
+            else
+            {
+                _affineCalibrationPointsNeedle2 = CloneAffinePoints(activeSnap.Points);
+                _affineResultNeedle2 = CloneAffineResult(activeSnap.Result);
+            }
+        }
+
+        /// <summary>保存前：暂存当前 UI 到快照，并构建含双模式的 AlignData</summary>
+        private Core.Models.CoordinateAlignData BuildAlignDataForSave()
+        {
+            StashAffineDataToTeachModeSnapshot(_currentNeedleIndex, _isUseCameraTeach);
+            SyncNeedleListsFromActiveTeachModeSnapshot(0);
+            SyncNeedleListsFromActiveTeachModeSnapshot(1);
+
+            return new Core.Models.CoordinateAlignData
+            {
+                AlignMode = IsModeAffine ? "Affine" : "PointMapping",
+                UseCameraTeachForAffine = IsUseCameraTeach,
+                // 旧字段：当前示教模式下各针头数据（向后兼容）
+                AffineCalibrationPointsNeedle1 = CloneAffinePoints(GetTeachModeSnapshot(0, _isUseCameraTeach).Points),
+                AffineCalibrationPointsNeedle2 = CloneAffinePoints(GetTeachModeSnapshot(1, _isUseCameraTeach).Points),
+                // 双模式独立持久化
+                AffineCalibrationPointsNeedle1_NeedleTeach = CloneAffinePoints(_affineSnapNeedle1NeedleTeach.Points),
+                AffineCalibrationPointsNeedle1_CameraTeach = CloneAffinePoints(_affineSnapNeedle1CameraTeach.Points),
+                AffineCalibrationPointsNeedle2_NeedleTeach = CloneAffinePoints(_affineSnapNeedle2NeedleTeach.Points),
+                AffineCalibrationPointsNeedle2_CameraTeach = CloneAffinePoints(_affineSnapNeedle2CameraTeach.Points),
+                PointMappingPointsNeedle1 = _pointMappingPointsNeedle1.ToList(),
+                PointMappingPointsNeedle2 = _pointMappingPointsNeedle2.ToList(),
+                CurrentNeedleIndex = CurrentNeedleIndex,
+                AffineResultDataNeedle1 = ToAffineResultData(GetTeachModeSnapshot(0, _isUseCameraTeach).Result),
+                AffineResultDataNeedle2 = ToAffineResultData(GetTeachModeSnapshot(1, _isUseCameraTeach).Result),
+                AffineResultDataNeedle1_NeedleTeach = ToAffineResultData(_affineSnapNeedle1NeedleTeach.Result),
+                AffineResultDataNeedle1_CameraTeach = ToAffineResultData(_affineSnapNeedle1CameraTeach.Result),
+                AffineResultDataNeedle2_NeedleTeach = ToAffineResultData(_affineSnapNeedle2NeedleTeach.Result),
+                AffineResultDataNeedle2_CameraTeach = ToAffineResultData(_affineSnapNeedle2CameraTeach.Result)
+            };
+        }
+
+        private static Core.Models.AffineResultData ToAffineResultData(AffineCalibrationResult r)
+        {
+            if (r == null) return null;
+            return new Core.Models.AffineResultData
+            {
+                A = r.A, B = r.B, C = r.C, D = r.D, Tx = r.Tx, Ty = r.Ty,
+                RmsError = r.RmsError, MaxResidual = r.MaxResidual, PointCount = r.PointCount
+            };
+        }
+
+        private static AffineCalibrationResult FromAffineResultData(Core.Models.AffineResultData d)
+        {
+            if (d == null) return null;
+            return new AffineCalibrationResult
+            {
+                A = d.A, B = d.B, C = d.C, D = d.D, Tx = d.Tx, Ty = d.Ty,
+                RmsError = d.RmsError, MaxResidual = d.MaxResidual, PointCount = d.PointCount
+            };
+        }
+
+        private AffineTeachModeSnapshot GetTeachModeSnapshot(int needleIndex, bool isCameraTeach)
+        {
+            if (needleIndex == 0)
+                return isCameraTeach ? _affineSnapNeedle1CameraTeach : _affineSnapNeedle1NeedleTeach;
+            return isCameraTeach ? _affineSnapNeedle2CameraTeach : _affineSnapNeedle2NeedleTeach;
+        }
+
+        private static List<AffineCalibrationPoint> CloneAffinePoints(IEnumerable<AffineCalibrationPoint> source)
+        {
+            if (source == null) return new List<AffineCalibrationPoint>();
+            return source.Select(CloneAffinePoint).ToList();
+        }
+
+        private static AffineCalibrationPoint CloneAffinePoint(AffineCalibrationPoint p) => new AffineCalibrationPoint
+        {
+            Index = p.Index,
+            Name = p.Name,
+            CadX = p.CadX,
+            CadY = p.CadY,
+            MachineX = p.MachineX,
+            MachineY = p.MachineY,
+            MachineDz = p.MachineDz,
+            CameraMachineX = p.CameraMachineX,
+            CameraMachineY = p.CameraMachineY,
+            Residual = p.Residual
+        };
+
+        private static AffineCalibrationResult CloneAffineResult(AffineCalibrationResult r)
+        {
+            if (r == null) return null;
+            return new AffineCalibrationResult
+            {
+                A = r.A,
+                B = r.B,
+                C = r.C,
+                D = r.D,
+                Tx = r.Tx,
+                Ty = r.Ty,
+                RmsError = r.RmsError,
+                MaxResidual = r.MaxResidual,
+                PointCount = r.PointCount,
+                Residuals = r.Residuals != null ? new List<double>(r.Residuals) : new List<double>()
+            };
+        }
+
+        /// <summary>仿射标定数据快照——按针头+示教模式独立存储，切换时互恢复</summary>
+        private class AffineTeachModeSnapshot
+        {
+            public List<AffineCalibrationPoint> Points { get; set; } = new();
+            public AffineCalibrationResult Result { get; set; }
+            public string TransformStatus { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// 刷新针头偏移来源显示（相机示教模式下在 Apply Transform 按钮下方展示）。
+        /// 数据来源：NeedleCameraAlignment CalibrationDelta + NeedleTcp Compensation Details。
+        /// </summary>
+        private void RefreshNeedleOffsetDisplay()
+        {
+            if (!IsModeAffine || !IsUseCameraTeach)
+            {
+                CameraCalibrationDeltaX = 0;
+                CameraCalibrationDeltaY = 0;
+                NeedleTcpCompensationX = 0;
+                NeedleTcpCompensationY = 0;
+                NeedleOffsetTotalX = 0;
+                NeedleOffsetTotalY = 0;
+                RaisePropertyChanged(nameof(ShowNeedleOffsetInfo));
+                return;
+            }
+
+            var breakdown = ResolveNeedleOffsetBreakdown(_currentNeedleIndex);
+            CameraCalibrationDeltaX = breakdown.CameraDeltaX;
+            CameraCalibrationDeltaY = breakdown.CameraDeltaY;
+            NeedleTcpCompensationX = breakdown.TcpCompX;
+            NeedleTcpCompensationY = breakdown.TcpCompY;
+            NeedleOffsetTotalX = breakdown.TotalX;
+            NeedleOffsetTotalY = breakdown.TotalY;
+            RaisePropertyChanged(nameof(ShowNeedleOffsetInfo));
+        }
+
+        /// <summary>获取针头偏移合计（CalibrationDelta + TcpComp），供相机示教坐标换算</summary>
+        private (double X, double Y) ResolveNeedleOffsetTotal()
+        {
+            var b = ResolveNeedleOffsetBreakdown(_currentNeedleIndex);
+            return (b.TotalX, b.TotalY);
+        }
+
+        /// <summary>
+        /// 解析针头偏移分量，不依赖 DispenseDetail：
+        /// 1) 相机-针头固定距离 ← NeedleCameraAlignment CalibrationDelta（INeedleCameraCalibrationProvider）
+        /// 2) 校针 TCP 补偿 ← NeedleTcp Compensation Details（标定 JSON 的 TcpTotalOffsetX/Y）
+        /// </summary>
+        private NeedleOffsetBreakdown ResolveNeedleOffsetBreakdown(int needleIndex)
+        {
+            int systemNumber = needleIndex + 1;
+
+            // 1) 相机-针头固定距离：NeedleCameraAlignment 标定文件中的 CalibrationDelta
+            double cameraDeltaX = 0, cameraDeltaY = 0;
+            var provider = _needleCameraCalibProvider
+                ?? ContainerLocator.Container?.Resolve<INeedleCameraCalibrationProvider>();
+            if (provider != null)
+            {
+                (cameraDeltaX, cameraDeltaY) = provider.GetCameraNeedleOffset(systemNumber);
+            }
+
+            // 2) 校针 TCP 补偿：NeedleTcp Apply 后写入的全局变量（Compensation Details）
+            var (tcpX, tcpY) = ResolveNeedleTcpCompensation(systemNumber);
+
+            return new NeedleOffsetBreakdown
+            {
+                CameraDeltaX = cameraDeltaX,
+                CameraDeltaY = cameraDeltaY,
+                TcpCompX = tcpX,
+                TcpCompY = tcpY
+            };
+        }
+
+        /// <summary>
+        /// 读取 NeedleTcp 有效补偿：标定 JSON 的 TcpTotalOffsetX/Y + CompensationX/Y 表达式，
+        /// 与 NeedleAligner CalculatedCompX/Y（= TcpTotalOffset + 表达式）一致，供相机示教换算使用。
+        /// 不读全局变量——避免未链接或自定义链接名导致与补偿详情不一致。
+        /// </summary>
+        private (double X, double Y) ResolveNeedleTcpCompensation(int systemNumber)
+        {
+            var alignerParams = LoadNeedleAlignerParams(systemNumber);
+            if (alignerParams == null) return (0d, 0d);
+
+            // 补偿详情本体（与 NeedleCompensationManager.LoadFromParameters 一致）
+            double tcpX = alignerParams.TcpTotalOffsetX ?? alignerParams.CompensationStorageX ?? 0;
+            double tcpY = alignerParams.TcpTotalOffsetY ?? alignerParams.CompensationStorageY ?? 0;
+            // 叠加表达式偏移（与 NeedleAligner CalculatedCompX/Y 一致）
+            double exprX = EvaluateCompensationExpression(alignerParams.CompensationXExpression);
+            double exprY = EvaluateCompensationExpression(alignerParams.CompensationYExpression);
+            return (tcpX + exprX, tcpY + exprY);
+        }
+
+        /// <summary>
+        /// 安全计算补偿数学表达式（如 "0.1+0.2"），与 NeedleAligner.EvaluateExpression 逻辑一致，失败返回 0。
+        /// </summary>
+        private static double EvaluateCompensationExpression(string expression)
+        {
+            if (string.IsNullOrWhiteSpace(expression))
+                return 0;
+            try
+            {
+                var result = new DataTable().Compute(expression, null);
+                return Convert.ToDouble(result);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>从配方池扩展记录或 Config/Calibration/System{N} 加载 NeedleAligner 标定参数</summary>
+        private NeedleCalibrationParams LoadNeedleAlignerParams(int systemNumber)
+        {
+            try
+            {
+                var recipePoolService = ContainerLocator.Container?.Resolve<IRecipePoolService>();
+                var poolName = recipePoolService?.CurrentPoolName ?? "Default";
+                var extKey = $"NeedleAligner_CurrentFile_System{systemNumber}";
+                var record = recipePoolService?
+                    .GetExtensionDataAsync<NeedleAlignerFileRecord>(poolName, extKey)
+                    .GetAwaiter().GetResult();
+
+                string filePath = record?.FilePath;
+                if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                {
+                    var dir = Path.Combine(
+                        AppDomain.CurrentDomain.BaseDirectory,
+                        "Config", "Calibration", $"System{systemNumber}");
+                    if (Directory.Exists(dir))
+                    {
+                        filePath = Directory
+                            .EnumerateFiles(dir, $"NeedleCalibration_System{systemNumber}_*.json")
+                            .OrderByDescending(File.GetLastWriteTime)
+                            .FirstOrDefault();
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+                    return Newtonsoft.Json.JsonConvert.DeserializeObject<NeedleCalibrationParams>(File.ReadAllText(filePath));
+            }
+            catch
+            {
+                // 静默处理：标定文件未就绪时回退 (0,0)
+            }
+
+            return null;
+        }
+
+        /// <summary>针头偏移分量——CalibrationDelta + TcpComp 及合计</summary>
+        private struct NeedleOffsetBreakdown
+        {
+            public double CameraDeltaX;
+            public double CameraDeltaY;
+            public double TcpCompX;
+            public double TcpCompY;
+            public double TotalX => CameraDeltaX + TcpCompX;
+            public double TotalY => CameraDeltaY + TcpCompY;
+        }
+
+        /// <summary>NeedleAligner 配方池扩展记录 DTO（仅需 FilePath）</summary>
+        private class NeedleAlignerFileRecord
+        {
+            public string FilePath { get; set; }
         }
 
         /// <summary>计算N点仿射变换——调用AffineCalibrationService.Solve()</summary>
@@ -2715,7 +3307,10 @@ namespace Module.ViewModels
                 }
 
                 AffineResult = result;
-                TransformStatus = $"✅ {L("Step4_Status_AffineComputed")}: {validPoints.Count} {L("Step4_Status_Points")}, RMS={result.RmsError:F4}mm";
+                TransformStatus = result.PointCount <= 3
+                    ? string.Format(L("Step4_Status_AffineComputedExact3"), validPoints.Count)
+                    : string.Format(L("Step4_Status_AffineComputedWithRms"),
+                        validPoints.Count, result.RmsError, result.MaxResidual);
                 GlobalStatus = TransformStatus;
             }
             catch (Exception ex)
@@ -3729,38 +4324,13 @@ namespace Module.ViewModels
 
             try
             {
-                // 保存当前针头数据到备份
+                // 保存当前针头数据到备份并构建对齐参数（含双示教模式快照）
                 SaveCurrentNeedleData(_currentNeedleIndex);
 
-                // 构建保存数据：轨迹段 + 坐标对齐参数
                 var saveData = new Core.Models.SegmentSaveData
                 {
                     Segments = Segments.ToList(),
-                    AlignData = new Core.Models.CoordinateAlignData
-                    {
-                        AlignMode = IsModeAffine ? "Affine" : "PointMapping",
-                        AffineCalibrationPointsNeedle1 = _affineCalibrationPointsNeedle1.ToList(),
-                        AffineCalibrationPointsNeedle2 = _affineCalibrationPointsNeedle2.ToList(),
-                        PointMappingPointsNeedle1 = _pointMappingPointsNeedle1.ToList(),
-                        PointMappingPointsNeedle2 = _pointMappingPointsNeedle2.ToList(),
-                        CurrentNeedleIndex = CurrentNeedleIndex,
-                        AffineResultDataNeedle1 = _affineResultNeedle1 != null ? new Core.Models.AffineResultData
-                        {
-                            A = _affineResultNeedle1.A, B = _affineResultNeedle1.B,
-                            C = _affineResultNeedle1.C, D = _affineResultNeedle1.D,
-                            Tx = _affineResultNeedle1.Tx, Ty = _affineResultNeedle1.Ty,
-                            RmsError = _affineResultNeedle1.RmsError,
-                            PointCount = _affineResultNeedle1.PointCount
-                        } : null,
-                        AffineResultDataNeedle2 = _affineResultNeedle2 != null ? new Core.Models.AffineResultData
-                        {
-                            A = _affineResultNeedle2.A, B = _affineResultNeedle2.B,
-                            C = _affineResultNeedle2.C, D = _affineResultNeedle2.D,
-                            Tx = _affineResultNeedle2.Tx, Ty = _affineResultNeedle2.Ty,
-                            RmsError = _affineResultNeedle2.RmsError,
-                            PointCount = _affineResultNeedle2.PointCount
-                        } : null
-                    },
+                    AlignData = BuildAlignDataForSave(),
                     PanelOptions = CapturePanelOptions()
                 };
 
@@ -3836,22 +4406,12 @@ namespace Module.ViewModels
                 // 恢复坐标对齐数据
                 if (alignData != null)
                 {
-                    // 恢复针头1仿射标定点
-                    if (alignData.AffineCalibrationPointsNeedle1 != null && alignData.AffineCalibrationPointsNeedle1.Count > 0)
-                    {
-                        _affineCalibrationPointsNeedle1 = new List<AffineCalibrationPoint>(alignData.AffineCalibrationPointsNeedle1);
-                    }
-                    // 恢复针头2仿射标定点
-                    if (alignData.AffineCalibrationPointsNeedle2 != null && alignData.AffineCalibrationPointsNeedle2.Count > 0)
-                    {
-                        _affineCalibrationPointsNeedle2 = new List<AffineCalibrationPoint>(alignData.AffineCalibrationPointsNeedle2);
-                    }
-                    // 兼容旧版数据：如果旧版 AffineCalibrationPoints 有数据，迁移到针头1
-                    if ((_affineCalibrationPointsNeedle1 == null || _affineCalibrationPointsNeedle1.Count == 0)
-                        && alignData.AffineCalibrationPoints != null && alignData.AffineCalibrationPoints.Count > 0)
-                    {
-                        _affineCalibrationPointsNeedle1 = new List<AffineCalibrationPoint>(alignData.AffineCalibrationPoints);
-                    }
+                    // 恢复针头索引（先设置 _currentNeedleIndex 但不触发切换）
+                    _currentNeedleIndex = alignData.CurrentNeedleIndex;
+                    _previousNeedleIndex = _currentNeedleIndex;
+                    RaisePropertyChanged(nameof(CurrentNeedleIndex));
+                    RaisePropertyChanged(nameof(IsNeedle1Selected));
+                    RaisePropertyChanged(nameof(IsNeedle2Selected));
 
                     // 恢复针头1逐点映射点
                     if (alignData.PointMappingPointsNeedle1 != null && alignData.PointMappingPointsNeedle1.Count > 0)
@@ -3870,59 +4430,6 @@ namespace Module.ViewModels
                         _pointMappingPointsNeedle1 = new List<PointMappingPoint>(alignData.PointMappingPoints);
                     }
 
-                    // 恢复针头索引（先设置 _currentNeedleIndex 但不触发切换）
-                    _currentNeedleIndex = alignData.CurrentNeedleIndex;
-                    _previousNeedleIndex = _currentNeedleIndex;
-                    RaisePropertyChanged(nameof(CurrentNeedleIndex));
-                    RaisePropertyChanged(nameof(IsNeedle1Selected));
-                    RaisePropertyChanged(nameof(IsNeedle2Selected));
-
-                    // 恢复针头1仿射结果
-                    if (alignData.AffineResultDataNeedle1 != null)
-                    {
-                        _affineResultNeedle1 = new AffineCalibrationResult
-                        {
-                            A = alignData.AffineResultDataNeedle1.A,
-                            B = alignData.AffineResultDataNeedle1.B,
-                            C = alignData.AffineResultDataNeedle1.C,
-                            D = alignData.AffineResultDataNeedle1.D,
-                            Tx = alignData.AffineResultDataNeedle1.Tx,
-                            Ty = alignData.AffineResultDataNeedle1.Ty,
-                            RmsError = alignData.AffineResultDataNeedle1.RmsError,
-                            PointCount = alignData.AffineResultDataNeedle1.PointCount
-                        };
-                    }
-                    // 恢复针头2仿射结果
-                    if (alignData.AffineResultDataNeedle2 != null)
-                    {
-                        _affineResultNeedle2 = new AffineCalibrationResult
-                        {
-                            A = alignData.AffineResultDataNeedle2.A,
-                            B = alignData.AffineResultDataNeedle2.B,
-                            C = alignData.AffineResultDataNeedle2.C,
-                            D = alignData.AffineResultDataNeedle2.D,
-                            Tx = alignData.AffineResultDataNeedle2.Tx,
-                            Ty = alignData.AffineResultDataNeedle2.Ty,
-                            RmsError = alignData.AffineResultDataNeedle2.RmsError,
-                            PointCount = alignData.AffineResultDataNeedle2.PointCount
-                        };
-                    }
-                    // 兼容旧版数据：如果旧版 AffineResultData 有数据，迁移到针头1
-                    if (_affineResultNeedle1 == null && alignData.AffineResultData != null)
-                    {
-                        _affineResultNeedle1 = new AffineCalibrationResult
-                        {
-                            A = alignData.AffineResultData.A,
-                            B = alignData.AffineResultData.B,
-                            C = alignData.AffineResultData.C,
-                            D = alignData.AffineResultData.D,
-                            Tx = alignData.AffineResultData.Tx,
-                            Ty = alignData.AffineResultData.Ty,
-                            RmsError = alignData.AffineResultData.RmsError,
-                            PointCount = alignData.AffineResultData.PointCount
-                        };
-                    }
-
                     // 恢复对齐模式
                     switch (alignData.AlignMode)
                     {
@@ -3937,7 +4444,14 @@ namespace Module.ViewModels
                             break;
                     }
 
-                    // 加载当前针头的数据到UI集合
+                    // 恢复「使用相机示教」子开关（直接写后备字段，避免 setter 触发模式切换）
+                    _isUseCameraTeach = alignData.UseCameraTeachForAffine;
+                    RaisePropertyChanged(nameof(IsUseCameraTeach));
+                    RaisePropertyChanged(nameof(AffineTeachButtonToolTip));
+                    RefreshNeedleOffsetDisplay();
+
+                    // 恢复双示教模式快照（针头/相机各自独立），再加载当前针头 UI
+                    RestoreTeachModeSnapshotsFromAlignData(alignData);
                     LoadNeedleData(_currentNeedleIndex);
                 }
 

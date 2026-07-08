@@ -65,6 +65,17 @@ namespace Core.Models
         /// </summary>
         public double? MachineZ { get => _machineZ; set => SetProperty(ref _machineZ, value); }
 
+        // 相机示教模式显示用：相机机械坐标（针头机械坐标 - 相机针头固定距离 - NeedleTCP偏差）。
+        // 仅在 Step4 启用「使用相机示教」时由 RefreshSegmentMachineCoordinates 计算填充，
+        // 供 Step3 采样点表格展示相机坐标列。其它模式下为 null，不影响现有数据。
+        private double? _cameraMachineX;
+        /// <summary>相机示教模式显示用：相机机械坐标X（= 针头机械X - 相机针头偏移 - 对针补偿X）</summary>
+        public double? CameraMachineX { get => _cameraMachineX; set => SetProperty(ref _cameraMachineX, value); }
+
+        private double? _cameraMachineY;
+        /// <summary>相机示教模式显示用：相机机械坐标Y（= 针头机械Y - 相机针头偏移 - 对针补偿Y）</summary>
+        public double? CameraMachineY { get => _cameraMachineY; set => SetProperty(ref _cameraMachineY, value); }
+
         /// <summary>偏移后坐标X（CAD_X + 全局偏移ΔX，步骤2完成后有值）</summary>
         private double? _offsetX;
         public double? OffsetX { get => _offsetX; set => SetProperty(ref _offsetX, value); }

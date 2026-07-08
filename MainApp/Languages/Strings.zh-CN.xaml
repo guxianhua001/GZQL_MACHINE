@@ -2712,6 +2712,7 @@
     <!-- CadPointEditor Align Status -->
     <sys:String x:Key="Step4_Status_TeachMachineFailed">示教机械坐标失败: {0}</sys:String>
     <sys:String x:Key="Step4_Status_TeachAffineSuccess">已示教 {0} 机械坐标: ({1:F3}, {2:F3}, Dz={3:F3})</sys:String>
+    <sys:String x:Key="Step4_Status_TeachCameraSuccess">已示教 {0} 相机坐标: ({1:F3}, {2:F3}) → 针头机械: ({3:F3}, {4:F3}, Dz={5:F3})</sys:String>
     <sys:String x:Key="Step4_Status_TeachMappingSuccess">已示教 {0} 机械坐标: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
     <sys:String x:Key="Step4_Status_ApplyTransformFailed">应用变换失败: {0}</sys:String>
     <sys:String x:Key="Step4_Status_OpenDiagramFailed">打开示意图失败: {0}</sys:String>
@@ -2859,6 +2860,8 @@
     <sys:String x:Key="Step3_Header_MX">机械X</sys:String>
     <sys:String x:Key="Step3_Header_MY">机械Y</sys:String>
     <sys:String x:Key="Step3_Header_MZ">机械Z</sys:String>
+    <sys:String x:Key="Step3_Header_CamMX">相机X</sys:String>
+    <sys:String x:Key="Step3_Header_CamMY">相机Y</sys:String>
     <sys:String x:Key="Step3_Header_PointCount">点数</sys:String>
     <sys:String x:Key="Step3_Header_Selected">选中</sys:String>
     <sys:String x:Key="Step3_Header_Speed">速度</sys:String>
@@ -2919,6 +2922,8 @@
     <sys:String x:Key="Step4_Header_MX">机械X</sys:String>
     <sys:String x:Key="Step4_Header_MY">机械Y</sys:String>
     <sys:String x:Key="Step4_Header_MZ">机械Z</sys:String>
+    <sys:String x:Key="Step4_Header_CamMX">相机X</sys:String>
+    <sys:String x:Key="Step4_Header_CamMY">相机Y</sys:String>
     <sys:String x:Key="Step4_Label_DirectionDistance">方向与距离</sys:String>
     <sys:String x:Key="Step4_Desc_DirectionDistance">方向向量长度（mm）</sys:String>
     <sys:String x:Key="Step4_Mode_Affine">N点仿射</sys:String>
@@ -2941,6 +2946,14 @@
     <sys:String x:Key="Step4_Btn_AddAffinePoint">添加标定点</sys:String>
     <sys:String x:Key="Step4_Btn_AddMappingPoint">添加映射点</sys:String>
     <sys:String x:Key="Step4_Btn_TeachMachine">示教机械坐标</sys:String>
+    <sys:String x:Key="Step4_Btn_TeachCamera">示教相机机械坐标</sys:String>
+    <sys:String x:Key="Step4_Check_UseCameraTeach">使用相机示教（移动相机至目标点，按 NeedleCameraAlignment 标定Δ + NeedleTcp 补偿换算针头机械坐标）</sys:String>
+    <sys:String x:Key="Step4_UseCameraTeachHint">勾选后示教流程：画布选CAD点 → 移动相机对准目标 → 点击示教按钮读取相机机械坐标并自动换算针头坐标。偏移来源：NeedleCameraAlignment CalibrationDelta + NeedleTcp Compensation Details。</sys:String>
+    <sys:String x:Key="Step4_Section_NeedleOffsetSource">针头偏移来源（当前针头）</sys:String>
+    <sys:String x:Key="Step4_Label_CameraDelta">相机标定Δ</sys:String>
+    <sys:String x:Key="Step4_Label_NeedleTcpComp">校针TCP补偿(含表达式)</sys:String>
+    <sys:String x:Key="Step4_Label_OffsetTotal">合计偏移</sys:String>
+    <sys:String x:Key="Step4_NeedleOffsetSourceHint">相机标定Δ 来自 NeedleCameraAlignment 标定文件；校针TCP补偿 = NeedleTcp 标定 JSON 的 TcpTotalOffsetX/Y + 表达式（与 CalculatedComp 一致）。针头机械坐标 = 相机坐标 + 合计偏移。</sys:String>
     <sys:String x:Key="Step4_Btn_DeletePoint">删除</sys:String>
     <sys:String x:Key="Step4_Btn_ComputeAffine">计算仿射变换</sys:String>
     <sys:String x:Key="Step4_Btn_ApplyTransform">应用变换到轨迹段</sys:String>
@@ -2955,6 +2968,11 @@
     <sys:String x:Key="Step4_Affine_Quality_Good">优秀</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Acceptable">可接受</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Poor">偏差过大</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Exact3Point">3点精确解（RMS=0，无冗余误差；添加第4点可评估拟合精度）</sys:String>
+    <sys:String x:Key="Step4_Affine_QualityFormat">RMS误差: {0:F4}mm | 最大残差: {1:F4}mm | {2}</sys:String>
+    <sys:String x:Key="Step4_Affine_MaxResidualLabel">最大残差</sys:String>
+    <sys:String x:Key="Step4_Status_AffineComputedExact3">✅ 仿射变换已计算: {0}点（3点精确解，RMS=0；添加第4点可显示拟合误差）</sys:String>
+    <sys:String x:Key="Step4_Status_AffineComputedWithRms">✅ 仿射变换已计算: {0}点, RMS={1:F4}mm, 最大残差={2:F4}mm</sys:String>
     <sys:String x:Key="Step4_Error_NeedleNotCalibrated">针头{0}尚未完成仿射标定，请先标定</sys:String>
     <sys:String x:Key="Step5_Label_NeedleSelect">针头选择</sys:String>
     <sys:String x:Key="Step6_Label_NeedleSelect">针头选择</sys:String>

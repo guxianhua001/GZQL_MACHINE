@@ -1,6 +1,129 @@
 GZQL_MACHINE 版本修改记录
 ============================
 
+v2026.07.08g — Step4 双示教模式数据持久化（重启后切换模式不丢数据）
+-------------------------------------------
+1. 问题
+   - 启用相机示教 → 保存 → 重启 → 取消勾选相机示教后，针头示教数据丢失。
+   - 根因：保存时仅写入当前激活模式的标定点/仿射结果；加载后 InitTeachModeSnapshotsAfterFileLoad
+     将非激活模式快照置空，针头示教数据未独立持久化。
+2. 修正
+   - CoordinateAlignData 新增双模式独立字段：
+     AffineCalibrationPointsNeedle1/2_NeedleTeach、_CameraTeach，
+     AffineResultDataNeedle1/2_NeedleTeach、_CameraTeach（含 MaxResidual）。
+   - BuildAlignDataForSave：保存前暂存当前 UI 到快照，序列化四套快照；旧字段仍写当前激活模式（向后兼容）。
+   - RestoreTeachModeSnapshotsFromAlignData：加载时恢复双模式快照；旧版单模式文件按 UseCameraTeachForAffine 迁移到对应快照。
+   - ExecuteLoadSegments 移除 InitTeachModeSnapshotsAfterFileLoad 及重复仿射结果恢复逻辑。
+3. 验证
+   - dotnet build Module/Module.csproj：0 error。
+
+v2026.07.08f — Step4 切换相机示教模式保留针头示教数据
+-------------------------------------------
+1. 问题
+   - 勾选/取消「使用相机示教」时 ClearCurrentNeedleAffineTeachData 清空全部标定数据，
+     取消勾选后原有针头示教数据丢失。
+2. 修正
+   - 为每个针头维护针头示教/相机示教两套独立快照（AffineTeachModeSnapshot，深拷贝）。
+   - 切换 IsUseCameraTeach：离开前暂存当前模式数据，进入后从目标模式快照恢复；
+     目标快照为空时保留另一模式 CAD 坐标、仅清空机械示教字段（首次进入相机模式）。
+   - SaveCurrentNeedleData / LoadNeedleData 与快照联动；文件加载后 InitTeachModeSnapshotsAfterFileLoad
+     初始化当前模式快照。
+3. 验证
+   - dotnet build Module/Module.csproj：0 error。
+
+v2026.07.08e — Step4 仿射 RMS 显示说明优化（3点精确解）
+-------------------------------------------
+1. 问题
+   - 用户反馈 Compute Affine Transform 的 RMS Error 一直显示 0.0000mm。
+   - 核查 AffineCalibrationService.Solve：公式正确；恰好 3 个标定点时方程恰定（6 未知数/6 方程），
+     残差恒为 0，RMS=0 属数学必然，非计算错误。>=4 点才有冗余约束，RMS 才能反映拟合误差。
+2. 改进
+   - AffineCalibrationResult 新增 MaxResidual（各点欧氏残差最大值）。
+   - 3 点时 AffineQualityText / TransformStatus 提示「3点精确解，添加第4点可评估拟合精度」，
+     不再误导为「优秀 RMS=0」。
+   - >=4 点时同时显示 RMS 与最大残差。
+3. 验证
+   - 临时数值测试：n=3 RMS=0；n=4 非对称点 RMS≈0.948mm，残差各不相同。
+   - dotnet build Module/Module.csproj：0 error。
+
+v2026.07.08d — Step4 校针TCP补偿换算叠加表达式
+-------------------------------------------
+1. 需求
+   - 相机示教换算时，校针TCP补偿除 TcpTotalOffsetX/Y 外还需叠加 CompensationX/Y 表达式，
+     与 NeedleAligner CalculatedCompX/Y 一致。
+2. 实现
+   - ResolveNeedleTcpCompensation：tcpX/Y + EvaluateCompensationExpression(表达式)，
+     表达式求值复用 NeedleAligner 同款 DataTable.Compute 逻辑。
+   - Step4 偏移面板标签更新为「校针TCP补偿(含表达式)」；提示文案同步（中/英）。
+3. 验证
+   - dotnet build Module/Module.csproj：0 error。
+
+v2026.07.08c — Step4 校针TCP补偿改从标定 JSON 读取（不读全局变量）
+-------------------------------------------
+1. 问题
+   - ResolveNeedleTcpCompensation 优先读配方池全局变量，存在两类风险：
+     * 未链接全局变量时，默认变量名可能读到无关旧值或 0，无法反映 Compensation Details；
+     * 链接自定义全局变量时，读到的可能是表达式合成值（CalculatedComp），与界面补偿详情不一致。
+2. 修正
+   - 校针TCP补偿改为仅从 NeedleAligner 标定 JSON 读取 TcpTotalOffsetX/Y
+     （与 NeedleCompensationManager.LoadFromParameters / 界面 CompensationX/Y 一致），
+     不再读取任何全局变量。
+   - 更新 Step4 偏移来源提示文案（中/英）。
+3. 验证
+   - dotnet build Module/Module.csproj：0 error。
+
+v2026.07.08b — Step4 相机示教偏移改从校准模块读取并显示确认
+-------------------------------------------
+1. 问题
+   - ResolveNeedleOffsetFromDetail 依赖 _dispenseSegmentStore.CurrentDispenseDetail，
+     在 CadPointEditor 独立打开时 CurrentDispenseDetail=null，偏移恒为 (0,0)。
+2. 修正
+   - 移除对 DispenseDetail 的依赖，改为直接读取维护模块标定数据：
+     * 相机-针头固定距离 ← INeedleCameraCalibrationProvider.GetCameraNeedleOffset
+       （NeedleCameraAlignment 标定 JSON 的 CalibrationDeltaX/Y）
+     * 校针 TCP 补偿 ← NeedleTcp Compensation Details
+       （配方池全局变量 NeedleAligner_CompX/Y_LinkedVar 优先，JSON TcpTotalOffset 回退）
+   - Step4「应用变换到轨迹段」按钮下方新增偏移来源确认面板（仅相机示教模式可见），
+     分行展示：相机标定Δ、校针TCP补偿、合计偏移，便于核对换算值是否正确。
+   - CadPointEditorViewModel 注入 INeedleCameraCalibrationProvider；
+     CadPointEditorControl 从 DI 容器解析并传入。
+   - 新增多语言：Step4_Section_NeedleOffsetSource、Step4_Label_CameraDelta、
+     Step4_Label_NeedleTcpComp、Step4_Label_OffsetTotal、Step4_NeedleOffsetSourceHint。
+3. 验证
+   - dotnet build Module/Module.csproj：0 error。
+   - dotnet build MainApp/MainApp.csproj：0 error。
+
+v2026.07.08 — Step4 N点仿射新增「使用相机示教」子模式
+-------------------------------------------
+1. 需求
+   - N点仿射标定除原有「移动针头示教针头机械坐标」外，兼容「移动相机至目标点，
+     利用相机与针头固定间距+NeedleTCP偏差换算针头机械坐标」的示教方式。
+   - Step3 采样点表格在相机示教模式下额外展示相机坐标列，不影响现有针头示教数据。
+2. 实现
+   - CadPointEditorViewModel 新增 IsUseCameraTeach 子开关（仅 IsModeAffine 下生效）：
+     * 勾选时 ExecuteTeachAffineMachineCoord 读取 Dx(8)/Dy(6) 作为相机机械坐标，
+       针头机械坐标 = 相机坐标 + ResolveNeedleOffsetFromDetail()（相机针头固定距离
+       + NeedleAlignComp/NeedleTCP偏差，链接全局变量优先从配方池读取，与
+       DispenseStepAction.ResolveNeedleOffset 逻辑一致）。
+     * 切换开关时 ClearCurrentNeedleAffineTeachData 清空已示教数据并失效仿射结果，
+       避免两种示教方式混用导致数据不一致。
+   - AffineCalibrationPoint 新增 CameraMachineX/Y（相机示教追溯）；
+     CadPoint 新增 CameraMachineX/Y（Step3 表格相机坐标列绑定）。
+   - RefreshSegmentMachineCoordinates 在相机示教模式下计算 CadPoint.CameraMachineX/Y
+     = 针头机械坐标 - 偏移总量，供 Step3 显示。
+   - CoordinateAlignData 新增 UseCameraTeachForAffine 持久化字段，保存/加载时还原。
+   - Step4AlignPanel：仿射卡片内新增「使用相机示教」CheckBox + 提示；示教按钮
+     Tooltip/图标随开关切换（AxisArrow↔Camera）；DataGrid 增加相机X/Y列（相机示教时可见）。
+   - Step3EditParamsPanel：连续插值/单点两张采样点表格均增加相机X/Y列，
+     通过 BindingProxy(MVVM 列可见性代理) 绑定 IsUseCameraTeach 控制显隐。
+   - 新增 BindingProxy(Freezable) 突破 DataGridColumn 不在可视化树的 DataContext 限制。
+   - 新增多语言（中/英）：Step4_Btn_TeachCamera、Step4_Check_UseCameraTeach、
+     Step4_UseCameraTeachHint、Step4_Status_TeachCameraSuccess、Step4_Header_CamMX/Y、
+     Step3_Header_CamMX/Y。
+3. 验证
+   - dotnet build Module/Module.csproj：0 error。
+   - dotnet build MainApp/MainApp.csproj：0 error。
+
 v2026.07.03c — 三工站初始化回零前逐轴上使能
 -------------------------------------------
 1. 需求

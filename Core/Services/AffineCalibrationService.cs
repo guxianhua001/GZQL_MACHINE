@@ -30,6 +30,9 @@ namespace Core.Services
         /// <summary>均方根误差 RMS (mm)</summary>
         public double RmsError { get; set; }
 
+        /// <summary>各标定点残差中的最大值 (mm)，用于评估最坏情况拟合偏差</summary>
+        public double MaxResidual { get; set; }
+
         /// <summary>每个标定点的残差 (计算机械坐标 - 实际机械坐标 的欧氏距离)</summary>
         public List<double> Residuals { get; set; } = new List<double>();
 
@@ -173,8 +176,11 @@ namespace Core.Services
                 PointCount = n
             };
 
-            // 计算每个点的残差和 RMS
+            // 计算每个点的残差、最大残差和 RMS
+            // 注意：恰好 3 点时方程组恰定（6 未知数 / 6 方程），残差恒为 0，RMS=0 属正常现象；
+            // 需 >=4 个标定点才有冗余约束，RMS 才能反映拟合误差。
             double sumResidualSq = 0;
+            double maxResidual = 0;
             for (int i = 0; i < n; i++)
             {
                 var (calcMx, calcMy) = Transform(result, cadPoints[i].Cx, cadPoints[i].Cy);
@@ -183,10 +189,12 @@ namespace Core.Services
                 double residual = Math.Sqrt(resX * resX + resY * resY);
                 result.Residuals.Add(Math.Round(residual, 6));
                 sumResidualSq += resX * resX + resY * resY;
+                if (residual > maxResidual) maxResidual = residual;
             }
 
-            // RMS = sqrt(Σ(residual²) / N)
+            // RMS = sqrt( Σ(Δx²+Δy²) / N )，即各点欧氏残差的均方根
             result.RmsError = Math.Round(Math.Sqrt(sumResidualSq / n), 6);
+            result.MaxResidual = Math.Round(maxResidual, 6);
 
             return result;
         }

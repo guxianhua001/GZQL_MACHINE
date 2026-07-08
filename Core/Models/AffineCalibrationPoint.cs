@@ -36,6 +36,17 @@ namespace Core.Models
         /// <summary>机械示教Z轴坐标（当前针头）</summary>
         public double MachineDz { get => _machineDz; set => SetProperty(ref _machineDz, value); }
 
+        // 相机示教模式专用：移动相机至目标点时读取的相机机械坐标。
+        // 针头机械坐标 = 相机机械坐标 + 相机针头固定距离 + NeedleTCP偏差（NeedleAlignComp）。
+        // 默认针头示教模式下这两个字段为 0，不参与仿射求解（Solve 仍使用 MachineX/Y）。
+        private double _cameraMachineX;
+        /// <summary>相机示教模式：相机机械坐标X（读取 Dx 轴），仅用于显示与追溯</summary>
+        public double CameraMachineX { get => _cameraMachineX; set => SetProperty(ref _cameraMachineX, value); }
+
+        private double _cameraMachineY;
+        /// <summary>相机示教模式：相机机械坐标Y（读取 Dy 轴），仅用于显示与追溯</summary>
+        public double CameraMachineY { get => _cameraMachineY; set => SetProperty(ref _cameraMachineY, value); }
+
         private double _residual;
         /// <summary>该点的标定残差(mm)，标定计算后填充</summary>
         public double Residual { get => _residual; set => SetProperty(ref _residual, value); }

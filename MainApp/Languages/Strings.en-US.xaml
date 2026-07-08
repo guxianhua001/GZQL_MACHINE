@@ -2712,6 +2712,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <!-- CadPointEditor Align Status -->
     <sys:String x:Key="Step4_Status_TeachMachineFailed">Teach machine coord failed: {0}</sys:String>
     <sys:String x:Key="Step4_Status_TeachAffineSuccess">Taught {0} machine coord: ({1:F3}, {2:F3}, Dz={3:F3})</sys:String>
+    <sys:String x:Key="Step4_Status_TeachCameraSuccess">Taught {0} camera coord: ({1:F3}, {2:F3}) → needle machine: ({3:F3}, {4:F3}, Dz={5:F3})</sys:String>
     <sys:String x:Key="Step4_Status_TeachMappingSuccess">Taught {0} machine coord: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
     <sys:String x:Key="Step4_Status_ApplyTransformFailed">Apply transform failed: {0}</sys:String>
     <sys:String x:Key="Step4_Status_OpenDiagramFailed">Open diagram failed: {0}</sys:String>
@@ -2859,6 +2860,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step3_Header_MX">Mach X</sys:String>
     <sys:String x:Key="Step3_Header_MY">Mach Y</sys:String>
     <sys:String x:Key="Step3_Header_MZ">Mach Z</sys:String>
+    <sys:String x:Key="Step3_Header_CamMX">Cam X</sys:String>
+    <sys:String x:Key="Step3_Header_CamMY">Cam Y</sys:String>
     <sys:String x:Key="Step3_Header_PointCount">Pts</sys:String>
     <sys:String x:Key="Step3_Header_Selected">Sel</sys:String>
     <sys:String x:Key="Step3_Header_Speed">Speed</sys:String>
@@ -2919,6 +2922,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step4_Header_MX">Mach X</sys:String>
     <sys:String x:Key="Step4_Header_MY">Mach Y</sys:String>
     <sys:String x:Key="Step4_Header_MZ">Mach Z</sys:String>
+    <sys:String x:Key="Step4_Header_CamMX">Cam X</sys:String>
+    <sys:String x:Key="Step4_Header_CamMY">Cam Y</sys:String>
     <sys:String x:Key="Step4_Label_DirectionDistance">Direction &amp; Distance</sys:String>
     <sys:String x:Key="Step4_Desc_DirectionDistance">Direction vector length (mm)</sys:String>
     <sys:String x:Key="Step4_Mode_Affine">N-Point Affine</sys:String>
@@ -2941,6 +2946,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step4_Btn_AddAffinePoint">Add Cal. Point</sys:String>
     <sys:String x:Key="Step4_Btn_AddMappingPoint">Add Mapping Point</sys:String>
     <sys:String x:Key="Step4_Btn_TeachMachine">Teach Machine Coord</sys:String>
+    <sys:String x:Key="Step4_Btn_TeachCamera">Teach Camera Machine Coord</sys:String>
+    <sys:String x:Key="Step4_Check_UseCameraTeach">Use camera teaching (move camera to target, convert needle machine coord via NeedleCameraAlignment Cal Δ + NeedleTcp comp)</sys:String>
+    <sys:String x:Key="Step4_UseCameraTeachHint">When enabled: pick CAD on canvas → move camera onto target → click teach to read camera machine coord and auto-convert to needle coord. Offset source: NeedleCameraAlignment CalibrationDelta + NeedleTcp Compensation Details.</sys:String>
+    <sys:String x:Key="Step4_Section_NeedleOffsetSource">Needle Offset Source (Current Needle)</sys:String>
+    <sys:String x:Key="Step4_Label_CameraDelta">Camera Cal Δ</sys:String>
+    <sys:String x:Key="Step4_Label_NeedleTcpComp">Needle TCP Comp (incl. expr)</sys:String>
+    <sys:String x:Key="Step4_Label_OffsetTotal">Total Offset</sys:String>
+    <sys:String x:Key="Step4_NeedleOffsetSourceHint">Camera Cal Δ from NeedleCameraAlignment JSON; Needle TCP Comp = TcpTotalOffsetX/Y + expression from NeedleTcp JSON (same as CalculatedComp). Needle machine = camera coord + total offset.</sys:String>
     <sys:String x:Key="Step4_Btn_DeletePoint">Delete</sys:String>
     <sys:String x:Key="Step4_Btn_ComputeAffine">Compute Affine Transform</sys:String>
     <sys:String x:Key="Step4_Btn_ApplyTransform">Apply Transform to Segments</sys:String>
@@ -2955,6 +2968,11 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Good">Excellent</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Acceptable">Acceptable</sys:String>
     <sys:String x:Key="Step4_Affine_Quality_Poor">Deviation too large</sys:String>
+    <sys:String x:Key="Step4_Affine_Quality_Exact3Point">Exact 3-point solution (RMS=0, no redundancy; add a 4th point to evaluate fit error)</sys:String>
+    <sys:String x:Key="Step4_Affine_QualityFormat">RMS: {0:F4}mm | Max residual: {1:F4}mm | {2}</sys:String>
+    <sys:String x:Key="Step4_Affine_MaxResidualLabel">Max residual</sys:String>
+    <sys:String x:Key="Step4_Status_AffineComputedExact3">✅ Affine computed: {0} points (exact 3-point, RMS=0; add 4th point to show fit error)</sys:String>
+    <sys:String x:Key="Step4_Status_AffineComputedWithRms">✅ Affine computed: {0} points, RMS={1:F4}mm, max residual={2:F4}mm</sys:String>
     <sys:String x:Key="Step4_Error_NeedleNotCalibrated">Needle{0} has not completed affine calibration, please calibrate first</sys:String>
     <sys:String x:Key="Step5_Label_NeedleSelect">Needle Select</sys:String>
     <sys:String x:Key="Step6_Label_NeedleSelect">Needle Select</sys:String>

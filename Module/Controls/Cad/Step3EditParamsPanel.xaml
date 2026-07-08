@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" 
              xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
-             xmlns:conv="clr-namespace:Module.Converters">
+             xmlns:conv="clr-namespace:Module.Converters"
+             xmlns:commonConv="clr-namespace:Module.Common.Converters">
     <UserControl.Resources>
         <ResourceDictionary>
             <conv:BooleanToVisibilityConverter x:Key="BoolToVisConv"/>
@@ -327,6 +328,10 @@
                               HeadersVisibility="Column"
                               MaxHeight="150" MinHeight="60"
                               GridLinesVisibility="Horizontal">
+                        <DataGrid.Resources>
+                            <!-- 列 Visibility 绑定代理：DataGridColumn 不在可视化树，需经代理访问 DataContext -->
+                            <commonConv:BindingProxy x:Key="Step3VmProxy" Data="{Binding}"/>
+                        </DataGrid.Resources>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="{lang:Lang Step3_Header_Index}" Width="45" IsReadOnly="True">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -338,6 +343,13 @@
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_X}" Binding="{Binding X, StringFormat=F3}" Width="60"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_Y}" Binding="{Binding Y, StringFormat=F3}" Width="60"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_Z}" Binding="{Binding Z, StringFormat=F3}" Width="60"/>
+                            <!-- 相机示教模式：展示相机机械坐标列（仅 IsUseCameraTeach 时可见） -->
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_CamMX}"
+                                                Binding="{Binding CameraMachineX, StringFormat=F2}" Width="55"
+                                                Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource Step3VmProxy}, Converter={StaticResource BoolToVisConv}}"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_CamMY}"
+                                                Binding="{Binding CameraMachineY, StringFormat=F2}" Width="55"
+                                                Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource Step3VmProxy}, Converter={StaticResource BoolToVisConv}}"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_MX}" Binding="{Binding MachineX, StringFormat=F2}" Width="50"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_MY}" Binding="{Binding MachineY, StringFormat=F2}" Width="50"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_MZ}" Binding="{Binding MachineZ, StringFormat=F2}" Width="50"/>
@@ -539,6 +551,10 @@
                               HeadersVisibility="Column"
                               MaxHeight="150" MinHeight="60"
                               GridLinesVisibility="Horizontal">
+                        <DataGrid.Resources>
+                            <!-- 列 Visibility 绑定代理：DataGridColumn 不在可视化树，需经代理访问 DataContext -->
+                            <commonConv:BindingProxy x:Key="Step3VmProxy" Data="{Binding}"/>
+                        </DataGrid.Resources>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="{lang:Lang Step3_Header_Index}" Width="45" IsReadOnly="True">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -550,9 +566,16 @@
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_X}" Binding="{Binding X, StringFormat=F3}" Width="60"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_Y}" Binding="{Binding Y, StringFormat=F3}" Width="60"/>
                             <DataGridTextColumn Header="{lang:Lang Step3_Header_Z}" Binding="{Binding Z, StringFormat=F3}" Width="60"/>
-                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MX}" Binding="{Binding MachineX, StringFormat=F2}" Width="50"/>
-                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MY}" Binding="{Binding MachineY, StringFormat=F2}" Width="50"/>
-                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MZ}" Binding="{Binding MachineZ, StringFormat=F2}" Width="50"/>
+                            <!-- 相机示教模式：展示相机机械坐标列（仅 IsUseCameraTeach 时可见） -->
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_CamMX}"
+                                                Binding="{Binding CameraMachineX, StringFormat=F3}" Width="55"
+                                                Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource Step3VmProxy}, Converter={StaticResource BoolToVisConv}}"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_CamMY}"
+                                                Binding="{Binding CameraMachineY, StringFormat=F3}" Width="55"
+                                                Visibility="{Binding Data.IsUseCameraTeach, Source={StaticResource Step3VmProxy}, Converter={StaticResource BoolToVisConv}}"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MX}" Binding="{Binding MachineX, StringFormat=F3}" Width="50"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MY}" Binding="{Binding MachineY, StringFormat=F3}" Width="50"/>
+                            <DataGridTextColumn Header="{lang:Lang Step3_Header_MZ}" Binding="{Binding MachineZ, StringFormat=F3}" Width="50"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

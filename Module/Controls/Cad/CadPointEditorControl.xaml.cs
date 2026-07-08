@@ -114,6 +114,7 @@ namespace Module.Controls
             ILocalizationService localizationService = null;
             IDispenseSegmentStore dispenseSegmentStore = null;
             IEventAggregator eventAggregator = null;
+            Core.Abstraction.INeedleCameraCalibrationProvider needleCameraCalibProvider = null;
             try
             {
                 var container = ContainerLocator.Container;
@@ -128,11 +129,12 @@ namespace Module.Controls
                     localizationService = container.Resolve<ILocalizationService>();
                     dispenseSegmentStore = container.Resolve<IDispenseSegmentStore>();
                     eventAggregator = container.Resolve<IEventAggregator>();
+                    needleCameraCalibProvider = container.Resolve<Core.Abstraction.INeedleCameraCalibrationProvider>();
                 }
             }
             catch { /* 服务未注册时忽略 */ }
 
-            _viewModel = new CadPointEditorViewModel(dxfParser, dxfImportHelper, roiTool, alignService, dispenseService, motionService, localizationService, dispenseSegmentStore, eventAggregator);
+            _viewModel = new CadPointEditorViewModel(dxfParser, dxfImportHelper, roiTool, alignService, dispenseService, motionService, localizationService, dispenseSegmentStore, eventAggregator, needleCameraCalibProvider);
             DataContext = _viewModel;
             Loaded += OnLoaded;
             SetupBindings();
