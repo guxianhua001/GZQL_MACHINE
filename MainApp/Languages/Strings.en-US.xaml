@@ -734,9 +734,13 @@
     <sys:String x:Key="VisionCapture_PositionInvalidTip">Position name does not exist in the position editor; movement is blocked to prevent collision</sys:String>
     <sys:String x:Key="VisionCapture_Status_MoveBlockedInvalidPos">Position '{0}' is invalid; movement blocked (please teach it in the position editor first)</sys:String>
     <sys:String x:Key="VisionCapture_Tip_XyOffset">Dispense XY compensation (mm), added to target mechanical coords: Mech = CameraCoord + CamNeedleDist + NeedleCalib + XY Offset</sys:String>
+    <sys:String x:Key="VisionCapture_Status_CaptureNGBlocked">Vision returned NG; dispense blocked (please re-capture or check vision result)</sys:String>
     <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] Position name '{0}' does not exist in the position editor; Dx/Dy/Dz₁ will remain 0, movement risks collision</sys:String>
     <sys:String x:Key="VisionCapture_VisionData">Vision Data</sys:String>
     <sys:String x:Key="VisionCapture_ProcessParams">Dispense Process Params</sys:String>
+    <sys:String x:Key="VisionCapture_NeedleSelect">Needle Select</sys:String>
+    <sys:String x:Key="VisionCapture_Needle1">Needle1 / Dz₂</sys:String>
+    <sys:String x:Key="VisionCapture_Needle2">Needle2 / Dz₃</sys:String>
     <sys:String x:Key="VisionCapture_RawResponse">Raw Response</sys:String>
     <sys:String x:Key="VisionCapture_ParsedData">Parsed Data</sys:String>
     <sys:String x:Key="VisionCapture_OffsetCompensation">Offset Compensation</sys:String>
@@ -762,7 +766,7 @@
     <sys:String x:Key="VisionCapture_TargetPoints">Target Points</sys:String>
     <sys:String x:Key="VisionCapture_TrajectoryType">Trajectory Type</sys:String>
     <sys:String x:Key="VisionCapture_DetectedType">Detected:</sys:String>
-    <sys:String x:Key="VisionCapture_OverrideType">Override:</sys:String>
+    <sys:String x:Key="VisionCapture_OverrideType">Type:</sys:String>
     <sys:String x:Key="VisionCapture_EffectiveType">Effective:</sys:String>
     <sys:String x:Key="VisionCapture_Header_PointX">PointX</sys:String>
     <sys:String x:Key="VisionCapture_Header_PointY">PointY</sys:String>

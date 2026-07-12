@@ -19,13 +19,6 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:BooleanToBrushConverter x:Key="LinkedToBrushConverter"
                                             TrueBrush="#1565C0" FalseBrush="#BDBDBD" />
-        <ObjectDataProvider x:Key="TrajectoryTypeValues"
-                            MethodName="GetValues"
-                            ObjectType="{x:Type vm:TrajectoryType}">
-            <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="vm:TrajectoryType" />
-            </ObjectDataProvider.MethodParameters>
-        </ObjectDataProvider>
         <ObjectDataProvider x:Key="RunModeValues"
                             MethodName="GetValues"
                             ObjectType="{x:Type vm:RunMode}">
@@ -395,7 +388,7 @@
                                         </DataGridTemplateColumn.CellTemplate>
                                         <DataGridTemplateColumn.CellEditingTemplate>
                                             <DataTemplate>
-                                                <ComboBox ItemsSource="{Binding Source={StaticResource TrajectoryTypeValues}}"
+                                                <ComboBox ItemsSource="{Binding DataContext.AvailableTrajectoryTypes, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                           SelectedItem="{Binding TrajectoryOverride, UpdateSourceTrigger=PropertyChanged}" FontSize="11" />
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellEditingTemplate>
@@ -487,37 +480,21 @@
                                            TextWrapping="Wrap"
                                            Margin="6,6,6,0" />
 
-                                <!-- 统一坐标转换面板：轨迹类型 + 目标点 + 偏移叠加 -->
+                                <!-- 统一坐标转换面板：轨迹类型（用户指定）+ 目标点 + 偏移叠加 -->
                                 <StackPanel Margin="4,8">
-                                    <!-- 轨迹类型：相机检测 / 用户覆盖 / 有效类型 -->
+                                    <!-- 轨迹类型：仅用户指定，取消自动检测 -->
                                     <Border Style="{StaticResource CoordCard}" Margin="0,0,0,6">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="{lang:Lang VisionCapture_TrajectoryType}"
                                                        FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"
                                                        VerticalAlignment="Center" Margin="0,0,8,0" />
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                                                <TextBlock Text="{lang:Lang VisionCapture_DetectedType}" FontSize="10"
-                                                           Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                                <TextBlock Text="{Binding CameraReportedType}" FontSize="11" FontWeight="Medium"
-                                                           Foreground="{StaticResource PrimaryBlue}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{lang:Lang VisionCapture_OverrideType}" FontSize="10"
-                                                       Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                            <ComboBox Grid.Column="3" Width="100" FontSize="11" Margin="0,0,12,0"
-                                                      ItemsSource="{Binding Source={StaticResource TrajectoryTypeValues}}"
+                                            <ComboBox Grid.Column="1" Width="120" FontSize="11" HorizontalAlignment="Left"
+                                                      ItemsSource="{Binding AvailableTrajectoryTypes}"
                                                       SelectedItem="{Binding SelectedRow.TrajectoryOverride, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Grid.Column="4" Text="{lang:Lang VisionCapture_EffectiveType}" FontSize="10"
-                                                       Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                            <TextBlock Grid.Column="5" Text="{Binding EffectiveTrajectoryType}" FontSize="11" FontWeight="Bold"
-                                                       Foreground="{StaticResource SuccessGreen}" VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
 
@@ -814,7 +791,17 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Dot(单点)模式工艺参数：绑定 SelectedRow.DotParams -->
+                                <!-- 双针头选择器（与 Step3EditParamsPanel 对齐） -->
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                                    <TextBlock Text="{lang:Lang VisionCapture_NeedleSelect}" VerticalAlignment="Center"
+                                               FontSize="12" Margin="0,0,8,0" Foreground="{StaticResource TextSecondary}" />
+                                    <RadioButton Content="{lang:Lang VisionCapture_Needle1}" IsChecked="{Binding IsNeedle1Selected}"
+                                                 GroupName="VisionCaptureNeedleSelector" FontSize="12" Margin="0,0,16,0" />
+                                    <RadioButton Content="{lang:Lang VisionCapture_Needle2}" IsChecked="{Binding IsNeedle2Selected}"
+                                                 GroupName="VisionCaptureNeedleSelector" FontSize="12" />
+                                </StackPanel>
+
+                                <!-- Dot(单点)模式工艺参数：绑定 CurrentDotParams（按当前针头） -->
                                 <Grid Visibility="{Binding IsDotMode, Converter={StaticResource BoolToVis}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -833,19 +820,19 @@
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_MoveSpeed}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="0" Grid.Column="2" Text="mm/s" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_SafeHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.SafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.SafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step3_Label_ApproachHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.ApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.ApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="2" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang Step3_Label_DecelFactor}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.CornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.CornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                         </Grid>
                                     </StackPanel>
 
@@ -860,19 +847,19 @@
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_DispenseTime}" FontSize="11" Foreground="#F57C00" FontWeight="Medium" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.DispenseTime, StringFormat=F0, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.DispenseTime, StringFormat=F0, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="0" Grid.Column="2" Text="ms" FontSize="11" Foreground="#F57C00" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_GlueTriggerOffset}" FontSize="11" Foreground="#F57C00" FontWeight="Medium" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.DotGlueTriggerOffsetMm, StringFormat=F2, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.DotGlueTriggerOffsetMm, StringFormat=F2, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" FontSize="11" Foreground="#F57C00" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step3_Label_PreDispenseDelay}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.PreDispenseDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.PreDispenseDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="2" Grid.Column="2" Text="ms" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang Step3_Label_PostDelay}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.PostDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentDotParams.PostDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="3" Grid.Column="2" Text="ms" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
@@ -888,30 +875,30 @@
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_TeachHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentDotParams.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="0" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_HeightCompensation}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.HeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentDotParams.HeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step3_Label_EffectiveHeight}" FontSize="11" Foreground="#757575" VerticalAlignment="Center" Margin="0,2,8,0"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRow.DotParams.EffectiveZHeight, StringFormat=F3}" VerticalAlignment="Center" Foreground="#424242" FontWeight="Medium" FontSize="11"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CurrentDotParams.EffectiveZHeight, StringFormat=F3}" VerticalAlignment="Center" Foreground="#424242" FontWeight="Medium" FontSize="11"/>
                                             <TextBlock Grid.Row="2" Grid.Column="2" Text="mm" FontSize="11" Foreground="#757575" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang Step3_Label_XyCompensationX}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"
                                                        ToolTip="{lang:Lang VisionCapture_Tip_XyOffset}"/>
                                             <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.XyCompensationX, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentDotParams.XyCompensationX, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="3" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="4" Grid.Column="0" Text="{lang:Lang Step3_Label_XyCompensationY}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"
                                                        ToolTip="{lang:Lang VisionCapture_Tip_XyOffset}"/>
                                             <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.DotParams.XyCompensationY, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentDotParams.XyCompensationY, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="4" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
                                 </Grid>
 
-                                <!-- 路径(连续插补)模式工艺参数：绑定 SelectedRow.ArcParams -->
+                                <!-- 路径(连续插补)模式工艺参数：绑定 CurrentArcParams（按当前针头） -->
                                 <Grid Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVis}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -930,22 +917,22 @@
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_MoveSpeed}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="0" Grid.Column="2" Text="mm/s" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_SafeHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.SafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.SafeHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step3_Label_ApproachHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.ApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.ApproachHeight, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="2" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang Step3_Label_DecelFactor}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.CornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.CornerDecel, StringFormat=F2, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="4" Grid.Column="0" Text="{lang:Lang Step3_Label_InterpolationSpeed}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.InterpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.InterpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="4" Grid.Column="2" Text="mm/s" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
@@ -961,19 +948,19 @@
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_GlueTriggerOffset}" FontSize="11" Foreground="#F57C00" FontWeight="Medium" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.GlueTriggerOffsetMm, StringFormat=F1, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.GlueTriggerOffsetMm, StringFormat=F1, UpdateSourceTrigger=LostFocus}" BorderBrush="#FFCC80" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="0" Grid.Column="2" Text="mm" FontSize="11" Foreground="#F57C00" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_PreDelay}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.PreDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.PreDelay, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="1" Grid.Column="2" Text="ms" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step3_Label_EarlyCloseGlueDelay}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.EarlyCloseGlueDelayMs, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.EarlyCloseGlueDelayMs, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="2" Grid.Column="2" Text="ms" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang Step3_Label_PostDelay}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.PostDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                                     Text="{Binding CurrentArcParams.PostDelay, StringFormat=F0, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="3" Grid.Column="2" Text="ms" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
@@ -989,24 +976,24 @@
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_TeachHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentArcParams.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="0" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{lang:Lang Step3_Label_HeightCompensation}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.HeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentArcParams.HeightCompensation, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="2" Grid.Column="0" Text="{lang:Lang Step3_Label_EffectiveHeight}" FontSize="11" Foreground="#757575" VerticalAlignment="Center" Margin="0,2,8,0"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRow.ArcParams.EffectiveZHeight, StringFormat=F3}" VerticalAlignment="Center" Foreground="#424242" FontWeight="Medium" FontSize="11"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CurrentArcParams.EffectiveZHeight, StringFormat=F3}" VerticalAlignment="Center" Foreground="#424242" FontWeight="Medium" FontSize="11"/>
                                             <TextBlock Grid.Row="2" Grid.Column="2" Text="mm" FontSize="11" Foreground="#757575" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="3" Grid.Column="0" Text="{lang:Lang Step3_Label_XyCompensationX}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"
                                                        ToolTip="{lang:Lang VisionCapture_Tip_XyOffset}"/>
                                             <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.XyCompensationX, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentArcParams.XyCompensationX, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="3" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="4" Grid.Column="0" Text="{lang:Lang Step3_Label_XyCompensationY}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"
                                                        ToolTip="{lang:Lang VisionCapture_Tip_XyOffset}"/>
                                             <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                     Text="{Binding SelectedRow.ArcParams.XyCompensationY, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
+                                                     Text="{Binding CurrentArcParams.XyCompensationY, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
                                             <TextBlock Grid.Row="4" Grid.Column="2" Text="mm" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>

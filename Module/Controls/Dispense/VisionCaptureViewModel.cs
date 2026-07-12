@@ -125,6 +125,8 @@ namespace Module.ViewModels
                 }
 
                 RaisePropertyChanged(nameof(HasSelectedRow));
+                RaisePropertyChanged(nameof(CurrentDotParams));
+                RaisePropertyChanged(nameof(CurrentArcParams));
 
                 if (value != null)
                 {
@@ -186,6 +188,14 @@ namespace Module.ViewModels
                     // 轨迹覆盖或旧 DispenseType 变化时，按 EffectiveTrajectoryType 刷新 Dot/路径模式
                     RaisePropertyChanged(nameof(EffectiveTrajectoryType));
                     SyncDotArcModeFromEffectiveType();
+                    break;
+                case nameof(PhotoPositionRow.DotParamsNeedle1):
+                case nameof(PhotoPositionRow.DotParamsNeedle2):
+                    RaisePropertyChanged(nameof(CurrentDotParams));
+                    break;
+                case nameof(PhotoPositionRow.ArcParamsNeedle1):
+                case nameof(PhotoPositionRow.ArcParamsNeedle2):
+                    RaisePropertyChanged(nameof(CurrentArcParams));
                     break;
             }
         }
@@ -560,30 +570,141 @@ namespace Module.ViewModels
             set => SetProperty(ref _capturedTargetPoints, value);
         }
 
-        /// <summary>相机回报的轨迹 Type（不按点数推断）</summary>
+        /// <summary>可选轨迹类型（排除 Auto，仅用户显式选择）</summary>
+        public TrajectoryType[] AvailableTrajectoryTypes { get; } =
+            { TrajectoryType.Dot, TrajectoryType.Line, TrajectoryType.Arc, TrajectoryType.Polyline };
+
+        /// <summary>
+        /// 相机回报 Type（已废弃自动检测，保留属性避免旧绑定残留；不再驱动有效类型）。
+        /// </summary>
         private TrajectoryType _cameraReportedType = TrajectoryType.Dot;
         public TrajectoryType CameraReportedType
         {
             get => _cameraReportedType;
+            set => SetProperty(ref _cameraReportedType, value);
+        }
+
+        private bool _isLastCaptureOk = true;
+        /// <summary>最近一次视觉拍照结果（分号格式 result 码：1=OK, 0=NG）。NG 时阻止点胶执行。</summary>
+        public bool IsLastCaptureOk
+        {
+            get => _isLastCaptureOk;
+            set => SetProperty(ref _isLastCaptureOk, value);
+        }
+
+        #region 双针头选择（与 Step3EditParamsPanel 对齐，每套参数独立）
+
+        private int _currentNeedleIndex;
+        /// <summary>当前针头索引（0=针头1/Dz₂, 1=针头2/Dz₃）</summary>
+        public int CurrentNeedleIndex
+        {
+            get => _currentNeedleIndex;
             set
             {
-                if (SetProperty(ref _cameraReportedType, value))
-                {
-                    RaisePropertyChanged(nameof(EffectiveTrajectoryType));
-                    SyncDotArcModeFromEffectiveType();
-                }
+                if (_currentNeedleIndex == value) return;
+                var oldIndex = _currentNeedleIndex;
+                SetProperty(ref _currentNeedleIndex, value);
+                // 切换偏移数据（相机针头距离/校针偏差按针头独立）
+                SwitchNeedleOffsetData(oldIndex, value);
+                RaisePropertyChanged(nameof(IsNeedle1Selected));
+                RaisePropertyChanged(nameof(IsNeedle2Selected));
+                // 刷新当前针头相关的计算属性
+                RaisePropertyChanged(nameof(CurrentDotParams));
+                RaisePropertyChanged(nameof(CurrentArcParams));
+                RaisePropertyChanged(nameof(CameraNeedleDistanceX));
+                RaisePropertyChanged(nameof(CameraNeedleDistanceY));
+                RaisePropertyChanged(nameof(NeedleOffsetX));
+                RaisePropertyChanged(nameof(NeedleOffsetY));
+                RaisePropertyChanged(nameof(CameraNeedleDistanceXLinkedVar));
+                RaisePropertyChanged(nameof(CameraNeedleDistanceYLinkedVar));
+                RaisePropertyChanged(nameof(NeedleOffsetXLinkedVar));
+                RaisePropertyChanged(nameof(NeedleOffsetYLinkedVar));
+                RaisePropertyChanged(nameof(IsCameraNeedleDistanceXLinked));
+                RaisePropertyChanged(nameof(IsCameraNeedleDistanceYLinked));
+                RaisePropertyChanged(nameof(IsNeedleOffsetXLinked));
+                RaisePropertyChanged(nameof(IsNeedleOffsetYLinked));
             }
         }
 
+        /// <summary>是否选中针头1（Dz₂）</summary>
+        public bool IsNeedle1Selected
+        {
+            get => _currentNeedleIndex == 0;
+            set { if (value) CurrentNeedleIndex = 0; }
+        }
+
+        /// <summary>是否选中针头2（Dz₃）</summary>
+        public bool IsNeedle2Selected
+        {
+            get => _currentNeedleIndex == 1;
+            set { if (value) CurrentNeedleIndex = 1; }
+        }
+
+        /// <summary>当前针头的 Dot 模式工艺参数（按 CurrentNeedleIndex 从 SelectedRow 取）</summary>
+        public DotProcessParams CurrentDotParams =>
+            _currentNeedleIndex == 0 ? SelectedRow?.DotParamsNeedle1 : SelectedRow?.DotParamsNeedle2;
+
+        /// <summary>当前针头的路径模式工艺参数（按 CurrentNeedleIndex 从 SelectedRow 取）</summary>
+        public DispenseSegment CurrentArcParams =>
+            _currentNeedleIndex == 0 ? SelectedRow?.ArcParamsNeedle1 : SelectedRow?.ArcParamsNeedle2;
+
+        // 双针头偏移数据备份（相机针头距离 + 校针偏差 + 链接变量名，每针头独立）
+        private readonly double[] _camDistXByNeedle = new double[2];
+        private readonly double[] _camDistYByNeedle = new double[2];
+        private readonly double[] _needleOffsetXByNeedle = new double[2];
+        private readonly double[] _needleOffsetYByNeedle = new double[2];
+        private readonly string[] _camDistXLinkedVarByNeedle = new string[2];
+        private readonly string[] _camDistYLinkedVarByNeedle = new string[2];
+        private readonly string[] _needleOffsetXLinkedVarByNeedle = new string[2];
+        private readonly string[] _needleOffsetYLinkedVarByNeedle = new string[2];
+
         /// <summary>
-        /// 有效轨迹类型：用户 TrajectoryOverride 优先于相机 Type；Override=Auto 时用 CameraReportedType
+        /// 切换针头时保存/恢复偏移数据（相机针头距离、校针偏差及其链接变量名）。
+        /// 使用 _isLoadingTransformParams 抑制链接变量 setter 的副作用。
+        /// </summary>
+        private void SwitchNeedleOffsetData(int oldIndex, int newIndex)
+        {
+            // 1. 保存当前值到旧针头槽位
+            _camDistXByNeedle[oldIndex] = CameraNeedleDistanceX;
+            _camDistYByNeedle[oldIndex] = CameraNeedleDistanceY;
+            _needleOffsetXByNeedle[oldIndex] = NeedleOffsetX;
+            _needleOffsetYByNeedle[oldIndex] = NeedleOffsetY;
+            _camDistXLinkedVarByNeedle[oldIndex] = CameraNeedleDistanceXLinkedVar;
+            _camDistYLinkedVarByNeedle[oldIndex] = CameraNeedleDistanceYLinkedVar;
+            _needleOffsetXLinkedVarByNeedle[oldIndex] = NeedleOffsetXLinkedVar;
+            _needleOffsetYLinkedVarByNeedle[oldIndex] = NeedleOffsetYLinkedVar;
+
+            // 2. 加载新针头槽位（抑制链接变量副作用）
+            var prevLoading = _isLoadingTransformParams;
+            _isLoadingTransformParams = true;
+            try
+            {
+                CameraNeedleDistanceX = _camDistXByNeedle[newIndex];
+                CameraNeedleDistanceY = _camDistYByNeedle[newIndex];
+                NeedleOffsetX = _needleOffsetXByNeedle[newIndex];
+                NeedleOffsetY = _needleOffsetYByNeedle[newIndex];
+                CameraNeedleDistanceXLinkedVar = _camDistXLinkedVarByNeedle[newIndex];
+                CameraNeedleDistanceYLinkedVar = _camDistYLinkedVarByNeedle[newIndex];
+                NeedleOffsetXLinkedVar = _needleOffsetXLinkedVarByNeedle[newIndex];
+                NeedleOffsetYLinkedVar = _needleOffsetYLinkedVarByNeedle[newIndex];
+            }
+            finally
+            {
+                _isLoadingTransformParams = prevLoading;
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 有效轨迹类型：直接使用用户 Override；Auto（旧配置）按 Dot 处理，不再自动检测。
         /// </summary>
         public TrajectoryType EffectiveTrajectoryType
         {
             get
             {
-                var ov = SelectedRow?.TrajectoryOverride ?? TrajectoryType.Auto;
-                return ov != TrajectoryType.Auto ? ov : CameraReportedType;
+                var ov = SelectedRow?.TrajectoryOverride ?? TrajectoryType.Dot;
+                return ov == TrajectoryType.Auto ? TrajectoryType.Dot : ov;
             }
         }
 
@@ -1251,7 +1372,6 @@ namespace Module.ViewModels
             Point2X = p2x; Point2Y = p2y;
             Point3X = p3x; Point3Y = p3y;
 
-            CameraReportedType = TrajectoryType.Arc;
             SyncDotArcModeFromEffectiveType();
         }
 
@@ -1959,53 +2079,63 @@ namespace Module.ViewModels
         private ((double X, double Y) CamDist, (double X, double Y) NeedleCalib, (double X, double Y) ManualComp) GetUnifiedOffsets(PhotoPositionRow row = null)
         {
             row ??= SelectedRow;
+            // 相机针头距离和校针偏差已按当前针头切换（SwitchNeedleOffsetData）
             var camDist = (CameraNeedleDistanceX, CameraNeedleDistanceY);
             var needleCalib = (NeedleOffsetX, NeedleOffsetY);
-            // XY补偿：Dot 模式取 DotParams，路径模式取 ArcParams
+            // XY补偿：按当前针头取对应工艺参数
             double compX, compY;
             if (EffectiveTrajectoryType == TrajectoryType.Dot)
             {
-                compX = row?.DotParams?.XyCompensationX ?? 0;
-                compY = row?.DotParams?.XyCompensationY ?? 0;
+                var dp = _currentNeedleIndex == 0 ? row?.DotParamsNeedle1 : row?.DotParamsNeedle2;
+                compX = dp?.XyCompensationX ?? 0;
+                compY = dp?.XyCompensationY ?? 0;
             }
             else
             {
-                compX = row?.ArcParams?.XyCompensationX ?? 0;
-                compY = row?.ArcParams?.XyCompensationY ?? 0;
+                var ap = _currentNeedleIndex == 0 ? row?.ArcParamsNeedle1 : row?.ArcParamsNeedle2;
+                compX = ap?.XyCompensationX ?? 0;
+                compY = ap?.XyCompensationY ?? 0;
             }
             return (camDist, needleCalib, (compX, compY));
         }
 
         /// <summary>
-        /// 从原始响应或数值字典解析相机 Type 字符串（不按点数推断）。
+        /// 解析视觉点胶工具分号格式：result;x1,y1;x2,y2;...
+        /// parts[0]=结果(1=OK,0=NG)，parts[1..]=点坐标 X,Y（InvariantCulture 解析）。
+        /// 例: "1;1.100,4.400;2.200,5.500" → OK, 点(1.1,4.4)(2.2,5.5)
         /// </summary>
-        private static bool TryParseCameraTypeString(string typeText, out TrajectoryType type)
+        private bool TryParseSemicolonPointsFormat(string raw, out bool isOk, out List<(double X, double Y)> points)
         {
-            type = TrajectoryType.Dot;
-            if (string.IsNullOrWhiteSpace(typeText)) return false;
-            switch (typeText.Trim().ToLowerInvariant())
+            isOk = false;
+            points = new List<(double X, double Y)>();
+            if (string.IsNullOrWhiteSpace(raw)) return false;
+
+            // 按分号分割；首段必须为纯整数结果码才认定为该格式
+            var parts = raw.Trim().Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 1) return false;
+            if (!int.TryParse(parts[0].Trim(), out var resultCode)) return false;
+
+            // 结果码仅允许 0/1；其它值不认定为该格式（避免误匹配旧 key=value）
+            if (resultCode != 0 && resultCode != 1) return false;
+
+            isOk = resultCode == 1;
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+
+            // 解析后续段为 X,Y 点对
+            for (int i = 1; i < parts.Length; i++)
             {
-                case "dot":
-                case "point":
-                    type = TrajectoryType.Dot;
-                    return true;
-                case "line":
-                    type = TrajectoryType.Line;
-                    return true;
-                case "arc":
-                    type = TrajectoryType.Arc;
-                    return true;
-                case "polyline":
-                case "poly":
-                    type = TrajectoryType.Polyline;
-                    return true;
-                default:
-                    return false;
+                var xy = parts[i].Split(',');
+                if (xy.Length < 2) continue;
+                if (!double.TryParse(xy[0].Trim(), System.Globalization.NumberStyles.Float, inv, out var x)) continue;
+                if (!double.TryParse(xy[1].Trim(), System.Globalization.NumberStyles.Float, inv, out var y)) continue;
+                points.Add((x, y));
             }
+            return true;
         }
 
         /// <summary>
         /// 解析相机返回的 Type + 目标点集（N / P1X..PnY）。兼容旧 CenterX+P1..P3 与 offsetX/Y 单点。
+        /// 优先解析视觉点胶工具的分号格式：result;x1,y1;x2,y2;...（1=OK,0=NG）。
         /// 当默认解析器因 Type=字符串 丢弃数值时，从 RawResponse 回退提取。
         /// </summary>
         private bool TryParseTargetPoints(Dictionary<string, double> pd, string rawResponse = null)
@@ -2013,41 +2143,44 @@ namespace Module.ViewModels
             CapturedTargetPoints.Clear();
             pd ??= new Dictionary<string, double>();
 
+            // 0) 优先：视觉点胶工具分号格式 result;x,y;x,y;...
+            if (TryParseSemicolonPointsFormat(rawResponse, out var semicolonOk, out var semicolonPoints))
+            {
+                IsLastCaptureOk = semicolonOk;
+                if (!semicolonOk)
+                {
+                    _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_CaptureResultNG",
+                        "[VisionCapture] 视觉返回结果 NG(0)，原始: {0}"), rawResponse));
+                }
+                // 分号格式不再自动检测轨迹类型，完全由用户 TrajectoryOverride 决定
+                for (int i = 0; i < semicolonPoints.Count; i++)
+                {
+                    CapturedTargetPoints.Add(new TargetPointItem
+                    {
+                        Index = i + 1,
+                        PointX = semicolonPoints[i].X,
+                        PointY = semicolonPoints[i].Y
+                    });
+                }
+                // 兼容旧 UI：填充 P1..P3 显示字段
+                if (semicolonPoints.Count >= 1) { Point1X = ParsedP1X = semicolonPoints[0].X; Point1Y = ParsedP1Y = semicolonPoints[0].Y; }
+                if (semicolonPoints.Count >= 2) { Point2X = ParsedP2X = semicolonPoints[1].X; Point2Y = ParsedP2Y = semicolonPoints[1].Y; }
+                if (semicolonPoints.Count >= 3) { Point3X = ParsedP3X = semicolonPoints[2].X; Point3Y = ParsedP3Y = semicolonPoints[2].Y; }
+                SyncDotArcModeFromEffectiveType();
+                RaisePropertyChanged(nameof(HasParsedArcData));
+                return semicolonPoints.Count > 0;
+            }
+
             // 若字典为空但有原始响应，尝试从 RawResponse 提取数值键（跳过 Type 等非数值）
             if (pd.Count == 0 && !string.IsNullOrEmpty(rawResponse))
                 pd = ExtractNumericPairsFromRaw(rawResponse);
 
             if (pd.Count == 0 && string.IsNullOrEmpty(rawResponse)) return false;
 
-            // 1) 解析 Type：优先 RawResponse 中的 Type=xxx，其次字典数值枚举
-            TrajectoryType reported = TrajectoryType.Dot;
-            bool typeFound = false;
-            if (!string.IsNullOrEmpty(rawResponse))
-            {
-                var m = System.Text.RegularExpressions.Regex.Match(
-                    rawResponse, @"Type\s*=\s*([A-Za-z]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (m.Success && TryParseCameraTypeString(m.Groups[1].Value, out reported))
-                    typeFound = true;
-            }
-            if (!typeFound)
-            {
-                // 字典中 Type 若为数值：0=Dot,1=Line,2=Arc,3=Polyline（兼容脚本把枚举写成数字）
-                if (pd.TryGetValue("Type", out var typeNum))
-                {
-                    reported = (int)typeNum switch
-                    {
-                        1 => TrajectoryType.Line,
-                        2 => TrajectoryType.Arc,
-                        3 => TrajectoryType.Polyline,
-                        _ => TrajectoryType.Dot
-                    };
-                    typeFound = true;
-                }
-            }
-
+            // 轨迹类型不再从相机数据解析，完全由用户 TrajectoryOverride 决定
             var points = new List<(double X, double Y)>();
 
-            // 2) 新格式：N 或顺序发现 PnX/PnY（不要求 CenterX）
+            // 1) 新格式：N 或顺序发现 PnX/PnY（不要求 CenterX）
             int maxN = 0;
             if (TryGetIgnoreCase(pd, "N", out var nVal) && nVal >= 1)
                 maxN = (int)nVal;
@@ -2072,7 +2205,7 @@ namespace Module.ViewModels
                 }
             }
 
-            // 3) 旧格式兼容：CenterX + P1X → 取 P1..P3，Type 缺省为 Arc
+            // 2) 旧格式兼容：CenterX + P1X → 取 P1..P3
             if (points.Count == 0 && TryGetIgnoreCase(pd, "CenterX", out var cxLegacy) && TryGetIgnoreCase(pd, "P1X", out _))
             {
                 TryGetIgnoreCase(pd, "CenterY", out var cyLegacy);
@@ -2084,34 +2217,21 @@ namespace Module.ViewModels
                     TryGetIgnoreCase(pd, $"P{i}Y", out var py);
                     points.Add((px, py));
                 }
-                if (!typeFound)
-                {
-                    reported = TrajectoryType.Arc;
-                    typeFound = true;
-                }
             }
 
-            // 4) 旧单点：offsetX/offsetY 或 X/Y → 单点 Dot
+            // 3) 旧单点：offsetX/offsetY 或 X/Y
             if (points.Count == 0)
             {
                 double ox = 0, oy = 0;
                 bool has = TryGetIgnoreCase(pd, "offsetX", out ox) || TryGetIgnoreCase(pd, "X", out ox);
                 bool hasY = TryGetIgnoreCase(pd, "offsetY", out oy) || TryGetIgnoreCase(pd, "Y", out oy);
                 if (has || hasY)
-                {
                     points.Add((ox, oy));
-                    if (!typeFound)
-                    {
-                        reported = TrajectoryType.Dot;
-                        typeFound = true;
-                    }
-                }
             }
 
             if (points.Count == 0) return false;
 
-            CameraReportedType = typeFound ? reported : TrajectoryType.Dot;
-
+            // 不再用相机 Type / 点数推断驱动有效轨迹；完全由用户 Override 决定
             for (int i = 0; i < points.Count; i++)
             {
                 CapturedTargetPoints.Add(new TargetPointItem
@@ -2566,6 +2686,15 @@ namespace Module.ViewModels
                 return;
             }
 
+            // 安全拦截：视觉返回 NG(0) 时禁止点胶
+            if (!IsLastCaptureOk)
+            {
+                StatusMessage = L("VisionCapture_Status_CaptureNGBlocked");
+                _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_DispenseBlockedByNG",
+                    "[VisionCapture] 点胶已阻止: 视觉返回结果 NG"));
+                return;
+            }
+
             IsExecuting = true;
             SelectedRow.IsExecuting = true;
             StatusMessage = L("VisionCapture_Status_Dispensing");
@@ -2574,8 +2703,8 @@ namespace Module.ViewModels
             _dispenseCts = new CancellationTokenSource();
             var token = _dispenseCts.Token;
             bool dryRun = CurrentRunMode == RunMode.DryRun;
-            // 相机引导点胶固定使用针头1(Dz₂)；如需双针头扩展可在此切换 needleIndex
-            const int needleIndex = 0;
+            // 双针头系统：使用当前选中针头索引（0=针头1/Dz₂, 1=针头2/Dz₃）
+            int needleIndex = CurrentNeedleIndex;
 
             try
             {
@@ -2620,7 +2749,8 @@ namespace Module.ViewModels
         private async Task ExecuteDotFlowAsync(bool dryRun, int needleIndex, CancellationToken token)
         {
             var row = SelectedRow;
-            var dotParams = row.DotParams ?? new DotProcessParams();
+            // 按当前针头取 Dot 工艺参数
+            var dotParams = needleIndex == 0 ? row.DotParamsNeedle1 : row.DotParamsNeedle2;
             var (camDist, needleCalib, manualComp) = GetUnifiedOffsets(row);
 
             double finalX, finalY;
@@ -2701,7 +2831,9 @@ namespace Module.ViewModels
                 ? CadEntityType.Arc
                 : CadEntityType.Line;
 
-            var arcParams = row.ArcParams ?? new DispenseSegment();
+            // 按当前针头取路径工艺参数
+            var arcParams = needleIndex == 0 ? row.ArcParamsNeedle1 : row.ArcParamsNeedle2;
+            if (arcParams == null) arcParams = new DispenseSegment();
             var segment = new DispenseSegment
             {
                 SegmentId = row.PositionName ?? "VisionPath",
@@ -3315,6 +3447,16 @@ namespace Module.ViewModels
                 });
             }
 
+            // 双针头：将当前单值字段写回当前针头数组槽位，确保两针头数据最新
+            _camDistXByNeedle[_currentNeedleIndex] = CameraNeedleDistanceX;
+            _camDistYByNeedle[_currentNeedleIndex] = CameraNeedleDistanceY;
+            _needleOffsetXByNeedle[_currentNeedleIndex] = NeedleOffsetX;
+            _needleOffsetYByNeedle[_currentNeedleIndex] = NeedleOffsetY;
+            _camDistXLinkedVarByNeedle[_currentNeedleIndex] = CameraNeedleDistanceXLinkedVar;
+            _camDistYLinkedVarByNeedle[_currentNeedleIndex] = CameraNeedleDistanceYLinkedVar;
+            _needleOffsetXLinkedVarByNeedle[_currentNeedleIndex] = NeedleOffsetXLinkedVar;
+            _needleOffsetYLinkedVarByNeedle[_currentNeedleIndex] = NeedleOffsetYLinkedVar;
+
             var config = new VisionCaptureConfig
             {
                 SafePositionName = SafePositionName,
@@ -3322,21 +3464,32 @@ namespace Module.ViewModels
                 DispensePositionName = DispensePositionName,
                 CameraCenterX = CameraCenterX,
                 CameraCenterY = CameraCenterY,
-                CameraNeedleDistanceX = CameraNeedleDistanceX,
-                CameraNeedleDistanceY = CameraNeedleDistanceY,
-                NeedleOffsetX = NeedleOffsetX,
-                NeedleOffsetY = NeedleOffsetY,
+                CurrentNeedleIndex = _currentNeedleIndex,
+                // 针头1 偏移
+                CameraNeedleDistanceX = _camDistXByNeedle[0],
+                CameraNeedleDistanceY = _camDistYByNeedle[0],
+                NeedleOffsetX = _needleOffsetXByNeedle[0],
+                NeedleOffsetY = _needleOffsetYByNeedle[0],
                 // 配置兼容：ArcNeedle* 与统一 NeedleOffset 同步写出
-                ArcNeedleOffsetX = NeedleOffsetX,
-                ArcNeedleOffsetY = NeedleOffsetY,
+                ArcNeedleOffsetX = _needleOffsetXByNeedle[0],
+                ArcNeedleOffsetY = _needleOffsetYByNeedle[0],
                 ArcNeedleCompX = ArcNeedleCompX,
                 ArcNeedleCompY = ArcNeedleCompY,
-                NeedleOffsetXLinkedVar = NeedleOffsetXLinkedVar,
-                NeedleOffsetYLinkedVar = NeedleOffsetYLinkedVar,
+                NeedleOffsetXLinkedVar = _needleOffsetXLinkedVarByNeedle[0],
+                NeedleOffsetYLinkedVar = _needleOffsetYLinkedVarByNeedle[0],
                 ArcNeedleOffsetXLinkedVar = ArcNeedleOffsetXLinkedVar,
                 ArcNeedleOffsetYLinkedVar = ArcNeedleOffsetYLinkedVar,
-                CameraNeedleDistanceXLinkedVar = CameraNeedleDistanceXLinkedVar,
-                CameraNeedleDistanceYLinkedVar = CameraNeedleDistanceYLinkedVar,
+                CameraNeedleDistanceXLinkedVar = _camDistXLinkedVarByNeedle[0],
+                CameraNeedleDistanceYLinkedVar = _camDistYLinkedVarByNeedle[0],
+                // 针头2 偏移（独立参数）
+                CameraNeedleDistanceXNeedle2 = _camDistXByNeedle[1],
+                CameraNeedleDistanceYNeedle2 = _camDistYByNeedle[1],
+                NeedleOffsetXNeedle2 = _needleOffsetXByNeedle[1],
+                NeedleOffsetYNeedle2 = _needleOffsetYByNeedle[1],
+                CameraNeedleDistanceXLinkedVarNeedle2 = _camDistXLinkedVarByNeedle[1],
+                CameraNeedleDistanceYLinkedVarNeedle2 = _camDistYLinkedVarByNeedle[1],
+                NeedleOffsetXLinkedVarNeedle2 = _needleOffsetXLinkedVarByNeedle[1],
+                NeedleOffsetYLinkedVarNeedle2 = _needleOffsetYLinkedVarByNeedle[1],
                 SelectedGroup = SelectedGroup,
                 CurrentRunMode = CurrentRunMode,
                 Groups = groupConfigs,
@@ -3371,8 +3524,10 @@ namespace Module.ViewModels
                 NeedleCompensationY = r.NeedleCompensationY,
                 CompensationXExpression = r.CompensationXExpression,
                 CompensationYExpression = r.CompensationYExpression,
-                DotParams = r.DotParams,
-                ArcParams = r.ArcParams,
+                DotParamsNeedle1 = r.DotParamsNeedle1,
+                DotParamsNeedle2 = r.DotParamsNeedle2,
+                ArcParamsNeedle1 = r.ArcParamsNeedle1,
+                ArcParamsNeedle2 = r.ArcParamsNeedle2,
                 ArcTrackType = r.ArcTrackType
             };
         }
@@ -3419,9 +3574,15 @@ namespace Module.ViewModels
                     row.TrajectoryOverride = TrajectoryType.Arc;
 #pragma warning restore CS0618
             }
+            // 旧 Auto（跟随相机）已取消自动检测，迁移为 Dot
+            if (row.TrajectoryOverride == TrajectoryType.Auto)
+                row.TrajectoryOverride = TrajectoryType.Dot;
 
-            if (rowConfig.DotParams != null) row.DotParams = rowConfig.DotParams;
-            if (rowConfig.ArcParams != null) row.ArcParams = rowConfig.ArcParams;
+            // 双针头工艺参数：旧配置 DotParams/ArcParams → Needle1；新配置直接加载两针头
+            if (rowConfig.DotParamsNeedle1 != null) row.DotParamsNeedle1 = rowConfig.DotParamsNeedle1;
+            if (rowConfig.DotParamsNeedle2 != null) row.DotParamsNeedle2 = rowConfig.DotParamsNeedle2;
+            if (rowConfig.ArcParamsNeedle1 != null) row.ArcParamsNeedle1 = rowConfig.ArcParamsNeedle1;
+            if (rowConfig.ArcParamsNeedle2 != null) row.ArcParamsNeedle2 = rowConfig.ArcParamsNeedle2;
 
             // 旧配置迁移：NeedleCompensationX/Y → XyCompensationX/Y（统一补偿入口）
             // 旧值非 0 且新值为默认 0 时，将旧补偿迁入 DotParams/ArcParams 的 XY 补偿字段
@@ -3438,15 +3599,16 @@ namespace Module.ViewModels
         {
             if (rowConfig.NeedleCompensationX == 0 && rowConfig.NeedleCompensationY == 0) return;
 
-            if (row.DotParams != null && row.DotParams.XyCompensationX == 0 && row.DotParams.XyCompensationY == 0)
+            // 旧配置仅迁移到针头1（DotParamsNeedle1/ArcParamsNeedle1）
+            if (row.DotParamsNeedle1 != null && row.DotParamsNeedle1.XyCompensationX == 0 && row.DotParamsNeedle1.XyCompensationY == 0)
             {
-                row.DotParams.XyCompensationX = rowConfig.NeedleCompensationX;
-                row.DotParams.XyCompensationY = rowConfig.NeedleCompensationY;
+                row.DotParamsNeedle1.XyCompensationX = rowConfig.NeedleCompensationX;
+                row.DotParamsNeedle1.XyCompensationY = rowConfig.NeedleCompensationY;
             }
-            if (row.ArcParams != null && row.ArcParams.XyCompensationX == 0 && row.ArcParams.XyCompensationY == 0)
+            if (row.ArcParamsNeedle1 != null && row.ArcParamsNeedle1.XyCompensationX == 0 && row.ArcParamsNeedle1.XyCompensationY == 0)
             {
-                row.ArcParams.XyCompensationX = rowConfig.NeedleCompensationX;
-                row.ArcParams.XyCompensationY = rowConfig.NeedleCompensationY;
+                row.ArcParamsNeedle1.XyCompensationX = rowConfig.NeedleCompensationX;
+                row.ArcParamsNeedle1.XyCompensationY = rowConfig.NeedleCompensationY;
             }
         }
 
@@ -3460,6 +3622,9 @@ namespace Module.ViewModels
             DispensePositionName = MigratePositionName(config.DispensePositionName ?? "DispensePosition");
             CameraCenterX = config.CameraCenterX;
             CameraCenterY = config.CameraCenterY;
+
+            // 双针头：先确保选中针头1，再加载针头1偏移到单值字段
+            _currentNeedleIndex = 0;
             CameraNeedleDistanceX = config.CameraNeedleDistanceX;
             CameraNeedleDistanceY = config.CameraNeedleDistanceY;
             // 统一校针偏差：优先 NeedleOffset；若为 0 且旧 ArcNeedleOffset 有值则迁移
@@ -3475,7 +3640,20 @@ namespace Module.ViewModels
             ArcNeedleOffsetYLinkedVar = NormalizeLinkedVarName(config.ArcNeedleOffsetYLinkedVar);
             CameraNeedleDistanceXLinkedVar = NormalizeLinkedVarName(config.CameraNeedleDistanceXLinkedVar);
             CameraNeedleDistanceYLinkedVar = NormalizeLinkedVarName(config.CameraNeedleDistanceYLinkedVar);
+
+            // 针头2 偏移直接写入数组槽位（不经过 setter，避免副作用）
+            _camDistXByNeedle[1] = config.CameraNeedleDistanceXNeedle2;
+            _camDistYByNeedle[1] = config.CameraNeedleDistanceYNeedle2;
+            _needleOffsetXByNeedle[1] = config.NeedleOffsetXNeedle2;
+            _needleOffsetYByNeedle[1] = config.NeedleOffsetYNeedle2;
+            _camDistXLinkedVarByNeedle[1] = NormalizeLinkedVarName(config.CameraNeedleDistanceXLinkedVarNeedle2);
+            _camDistYLinkedVarByNeedle[1] = NormalizeLinkedVarName(config.CameraNeedleDistanceYLinkedVarNeedle2);
+            _needleOffsetXLinkedVarByNeedle[1] = NormalizeLinkedVarName(config.NeedleOffsetXLinkedVarNeedle2);
+            _needleOffsetYLinkedVarByNeedle[1] = NormalizeLinkedVarName(config.NeedleOffsetYLinkedVarNeedle2);
+
             CurrentRunMode = config.CurrentRunMode;
+            // 应用保存的针头选择（触发 SwitchNeedleOffsetData 加载对应针头偏移）
+            CurrentNeedleIndex = config.CurrentNeedleIndex;
 
             _allPositions = await MergeAllPositionsAsync();
 
@@ -3562,6 +3740,9 @@ public class VisionCaptureConfig
     public string DispensePositionName { get; set; } = "DispensePosition";
     public double CameraCenterX { get; set; }
     public double CameraCenterY { get; set; }
+    /// <summary>当前选中针头索引（0=针头1, 1=针头2）</summary>
+    public int CurrentNeedleIndex { get; set; }
+    // 针头1 偏移（旧字段保持兼容，等价于 Needle1 后缀字段）
     public double CameraNeedleDistanceX { get; set; }
     public double CameraNeedleDistanceY { get; set; }
     public double NeedleOffsetX { get; set; }
@@ -3576,6 +3757,15 @@ public class VisionCaptureConfig
     public string ArcNeedleOffsetYLinkedVar { get; set; }
     public string CameraNeedleDistanceXLinkedVar { get; set; }
     public string CameraNeedleDistanceYLinkedVar { get; set; }
+    // 针头2 偏移（独立参数）
+    public double CameraNeedleDistanceXNeedle2 { get; set; }
+    public double CameraNeedleDistanceYNeedle2 { get; set; }
+    public double NeedleOffsetXNeedle2 { get; set; }
+    public double NeedleOffsetYNeedle2 { get; set; }
+    public string CameraNeedleDistanceXLinkedVarNeedle2 { get; set; }
+    public string CameraNeedleDistanceYLinkedVarNeedle2 { get; set; }
+    public string NeedleOffsetXLinkedVarNeedle2 { get; set; }
+    public string NeedleOffsetYLinkedVarNeedle2 { get; set; }
     public string SelectedGroup { get; set; }
     public RunMode CurrentRunMode { get; set; }
     /// <summary>各组配置（独立于 WorkOrder，含组名与拍照位行）</summary>
@@ -3627,10 +3817,19 @@ public class PhotoPositionRowConfig
     public string CompensationXExpression { get; set; }
     public string CompensationYExpression { get; set; }
 
-    /// <summary>Dot(单点)模式工艺参数。与 DotDispenseService 对齐。</summary>
-    public DotProcessParams DotParams { get; set; } = new DotProcessParams();
-    /// <summary>Arc(连续点胶)模式工艺参数。与 DispenseExecuteService 对齐。</summary>
-    public DispenseSegment ArcParams { get; set; } = new DispenseSegment();
+    /// <summary>针头1(Dz₂) Dot 模式工艺参数</summary>
+    public DotProcessParams DotParamsNeedle1 { get; set; } = new DotProcessParams();
+    /// <summary>针头2(Dz₃) Dot 模式工艺参数</summary>
+    public DotProcessParams DotParamsNeedle2 { get; set; } = new DotProcessParams();
+    /// <summary>针头1(Dz₂) 路径模式工艺参数</summary>
+    public DispenseSegment ArcParamsNeedle1 { get; set; } = new DispenseSegment();
+    /// <summary>针头2(Dz₃) 路径模式工艺参数</summary>
+    public DispenseSegment ArcParamsNeedle2 { get; set; } = new DispenseSegment();
+
+    /// <summary>Dot(单点)模式工艺参数（旧兼容，等价于 DotParamsNeedle1）</summary>
+    public DotProcessParams DotParams { get => DotParamsNeedle1; set => DotParamsNeedle1 = value; }
+    /// <summary>Arc(连续点胶)模式工艺参数（旧兼容，等价于 ArcParamsNeedle1）</summary>
+    public DispenseSegment ArcParams { get => ArcParamsNeedle1; set => ArcParamsNeedle1 = value; }
     /// <summary>Arc 模式轨迹子类型：弧线/直线（旧字段，保留兼容）</summary>
     public ArcTrackType ArcTrackType { get; set; } = ArcTrackType.Arc;
     /// <summary>轨迹类型覆盖；null 表示旧配置缺失，加载时按 DispenseType/ArcTrackType 迁移</summary>

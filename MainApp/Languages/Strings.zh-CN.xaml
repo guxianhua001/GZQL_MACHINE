@@ -728,9 +728,13 @@
     <sys:String x:Key="VisionCapture_PositionInvalidTip">位置名在位置编辑器中不存在，运动将被阻止以防碰撞</sys:String>
     <sys:String x:Key="VisionCapture_Status_MoveBlockedInvalidPos">位置 '{0}' 无效，运动已阻止（请先在位置编辑器中示教该位置）</sys:String>
     <sys:String x:Key="VisionCapture_Tip_XyOffset">点胶 XY 补偿(mm)，叠加到目标机械坐标：Mech = 相机坐标 + 相机针头距离 + 校针偏差 + XY补偿</sys:String>
+    <sys:String x:Key="VisionCapture_Status_CaptureNGBlocked">视觉返回 NG，点胶已阻止（请重新拍照或检查视觉结果）</sys:String>
     <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] 位置名 '{0}' 在位置编辑器中不存在，Dx/Dy/Dz₁ 将保持 0，运动有碰撞风险</sys:String>
     <sys:String x:Key="VisionCapture_VisionData">视觉数据</sys:String>
     <sys:String x:Key="VisionCapture_ProcessParams">点胶工艺参数</sys:String>
+    <sys:String x:Key="VisionCapture_NeedleSelect">针头选择</sys:String>
+    <sys:String x:Key="VisionCapture_Needle1">针头1 / Dz₂</sys:String>
+    <sys:String x:Key="VisionCapture_Needle2">针头2 / Dz₃</sys:String>
     <sys:String x:Key="VisionCapture_RawResponse">原始响应</sys:String>
     <sys:String x:Key="VisionCapture_ParsedData">解析数据</sys:String>
     <sys:String x:Key="VisionCapture_OffsetCompensation">偏移补偿</sys:String>
@@ -756,7 +760,7 @@
     <sys:String x:Key="VisionCapture_TargetPoints">目标点</sys:String>
     <sys:String x:Key="VisionCapture_TrajectoryType">轨迹类型</sys:String>
     <sys:String x:Key="VisionCapture_DetectedType">检测:</sys:String>
-    <sys:String x:Key="VisionCapture_OverrideType">覆盖:</sys:String>
+    <sys:String x:Key="VisionCapture_OverrideType">类型:</sys:String>
     <sys:String x:Key="VisionCapture_EffectiveType">有效:</sys:String>
     <sys:String x:Key="VisionCapture_Header_PointX">PointX</sys:String>
     <sys:String x:Key="VisionCapture_Header_PointY">PointY</sys:String>

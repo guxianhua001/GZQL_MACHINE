@@ -23,12 +23,12 @@ namespace Module.ViewModels
     }
 
     /// <summary>
-    /// 轨迹类型：由相机 ROI Type 或用户覆盖决定，不再按点数推断。
-    /// Auto = 使用相机返回的 Type。
+    /// 轨迹类型：由用户在 Override 中显式指定，不再自动检测。
+    /// Auto 仅保留兼容旧配置，运行时按 Dot 处理。
     /// </summary>
     public enum TrajectoryType
     {
-        /// <summary>跟随相机 Type</summary>
+        /// <summary>旧兼容：不再用于自动跟随相机，运行时等价 Dot</summary>
         Auto,
         /// <summary>画X 单点 → DotDispenseService</summary>
         Dot,
@@ -314,22 +314,54 @@ namespace Module.ViewModels
 
         #endregion
 
-        #region 点胶工艺参数子对象（与 CadPointEditor/DotDispenseService/DispenseExecuteService 对齐）
+        #region 点胶工艺参数子对象（双针头，每套参数独立）
 
-        private DotProcessParams _dotParams = new DotProcessParams();
-        /// <summary>Dot(单点)模式工艺参数。与 DotDispenseService.ExecuteDotDispenseAsync 入参对齐。</summary>
-        public DotProcessParams DotParams
+        private DotProcessParams _dotParamsNeedle1 = new DotProcessParams();
+        /// <summary>针头1(Dz₂) Dot 模式工艺参数</summary>
+        public DotProcessParams DotParamsNeedle1
         {
-            get => _dotParams;
-            set => SetProperty(ref _dotParams, value);
+            get => _dotParamsNeedle1;
+            set => SetProperty(ref _dotParamsNeedle1, value);
         }
 
-        private DispenseSegment _arcParams = new DispenseSegment();
-        /// <summary>Arc(连续点胶)模式工艺参数。仅使用其工艺字段，Points 由 ViewModel 执行时填充。与 DispenseExecuteService.ExecutePathAsync 入参对齐。</summary>
+        private DotProcessParams _dotParamsNeedle2 = new DotProcessParams();
+        /// <summary>针头2(Dz₃) Dot 模式工艺参数</summary>
+        public DotProcessParams DotParamsNeedle2
+        {
+            get => _dotParamsNeedle2;
+            set => SetProperty(ref _dotParamsNeedle2, value);
+        }
+
+        private DispenseSegment _arcParamsNeedle1 = new DispenseSegment();
+        /// <summary>针头1(Dz₂) 路径(连续插补)模式工艺参数</summary>
+        public DispenseSegment ArcParamsNeedle1
+        {
+            get => _arcParamsNeedle1;
+            set => SetProperty(ref _arcParamsNeedle1, value);
+        }
+
+        private DispenseSegment _arcParamsNeedle2 = new DispenseSegment();
+        /// <summary>针头2(Dz₃) 路径(连续插补)模式工艺参数</summary>
+        public DispenseSegment ArcParamsNeedle2
+        {
+            get => _arcParamsNeedle2;
+            set => SetProperty(ref _arcParamsNeedle2, value);
+        }
+
+        /// <summary>Dot 模式工艺参数（旧兼容，等价于 DotParamsNeedle1）</summary>
+        [Obsolete("使用 DotParamsNeedle1/DotParamsNeedle2 替代")]
+        public DotProcessParams DotParams
+        {
+            get => _dotParamsNeedle1;
+            set => SetProperty(ref _dotParamsNeedle1, value);
+        }
+
+        /// <summary>Arc 模式工艺参数（旧兼容，等价于 ArcParamsNeedle1）</summary>
+        [Obsolete("使用 ArcParamsNeedle1/ArcParamsNeedle2 替代")]
         public DispenseSegment ArcParams
         {
-            get => _arcParams;
-            set => SetProperty(ref _arcParams, value);
+            get => _arcParamsNeedle1;
+            set => SetProperty(ref _arcParamsNeedle1, value);
         }
 
         private ArcTrackType _arcTrackType = ArcTrackType.Arc;
@@ -341,9 +373,10 @@ namespace Module.ViewModels
             set => SetProperty(ref _arcTrackType, value);
         }
 
-        private TrajectoryType _trajectoryOverride = TrajectoryType.Auto;
+        private TrajectoryType _trajectoryOverride = TrajectoryType.Dot;
         /// <summary>
-        /// 轨迹类型覆盖：Auto 时使用相机返回 Type；否则强制为指定类型。
+        /// 轨迹类型（用户显式指定）：Dot/Line/Arc/Polyline。不再自动检测。
+        /// Auto 仅兼容旧配置，运行时按 Dot 处理。
         /// </summary>
         public TrajectoryType TrajectoryOverride
         {
@@ -353,9 +386,9 @@ namespace Module.ViewModels
                 if (SetProperty(ref _trajectoryOverride, value))
                 {
                     // 同步旧字段，便于旧 UI/配置过渡
-                    if (value == TrajectoryType.Dot)
+                    if (value == TrajectoryType.Dot || value == TrajectoryType.Auto)
                         DispenseType = DispenseType.Dot;
-                    else if (value != TrajectoryType.Auto)
+                    else
                         DispenseType = DispenseType.Arc;
                 }
             }
