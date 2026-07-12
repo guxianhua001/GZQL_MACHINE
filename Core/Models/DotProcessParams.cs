@@ -124,5 +124,25 @@ namespace Core.Models
         public double EffectiveZHeight => TeachHeight + HeightCompensation;
 
         #endregion
+
+        #region XY 补偿（与 Step3EditParamsPanel/DispenseSegment 对齐，统一作为点胶补偿入口）
+
+        private double _xyCompensationX;
+        /// <summary>XY 补偿 X(mm)，统一点胶补偿，叠加到目标机械坐标</summary>
+        public double XyCompensationX
+        {
+            get => _xyCompensationX;
+            set => SetProperty(ref _xyCompensationX, value);
+        }
+
+        private double _xyCompensationY;
+        /// <summary>XY 补偿 Y(mm)，统一点胶补偿，叠加到目标机械坐标</summary>
+        public double XyCompensationY
+        {
+            get => _xyCompensationY;
+            set => SetProperty(ref _xyCompensationY, value);
+        }
+
+        #endregion
     }
 }

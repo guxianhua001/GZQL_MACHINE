@@ -1,3 +1,4 @@
+using Core.Models;
 using MotionControl.Interfaces;
 using Prism.Mvvm;
 using System;
@@ -19,6 +20,81 @@ namespace Module.ViewModels
     {
         DryRun,
         Dispense
+    }
+
+    /// <summary>
+    /// 轨迹类型：由相机 ROI Type 或用户覆盖决定，不再按点数推断。
+    /// Auto = 使用相机返回的 Type。
+    /// </summary>
+    public enum TrajectoryType
+    {
+        /// <summary>跟随相机 Type</summary>
+        Auto,
+        /// <summary>画X 单点 → DotDispenseService</summary>
+        Dot,
+        /// <summary>直线 ROI → 连续插补</summary>
+        Line,
+        /// <summary>弧形 ROI → 连续插补（相机已采样）</summary>
+        Arc,
+        /// <summary>折线 ROI → 连续插补</summary>
+        Polyline
+    }
+
+    /// <summary>
+    /// Arc(连续点胶)模式下的轨迹子类型：弧线(贝塞尔)或直线(P1→P3)。已由 TrajectoryType 替代，保留兼容旧配置。
+    /// </summary>
+    [Obsolete("使用 TrajectoryType / TrajectoryOverride 替代")]
+    public enum ArcTrackType
+    {
+        /// <summary>弧线：贝塞尔二次曲线插补</summary>
+        Arc,
+        /// <summary>直线：P1→P3 等距采样直线插补</summary>
+        Line
+    }
+
+    /// <summary>
+    /// 相机返回的目标点显示项：PointX/Y 为相机坐标，MechX/Y 为叠加偏移后的针头坐标
+    /// </summary>
+    public class TargetPointItem : BindableBase
+    {
+        private int _index;
+        public int Index
+        {
+            get => _index;
+            set => SetProperty(ref _index, value);
+        }
+
+        private double _pointX;
+        /// <summary>相机返回的目标点机械坐标 X（9点仿射后）</summary>
+        public double PointX
+        {
+            get => _pointX;
+            set => SetProperty(ref _pointX, value);
+        }
+
+        private double _pointY;
+        /// <summary>相机返回的目标点机械坐标 Y（9点仿射后）</summary>
+        public double PointY
+        {
+            get => _pointY;
+            set => SetProperty(ref _pointY, value);
+        }
+
+        private double _mechX;
+        /// <summary>叠加固定间距+校针偏差+手动补偿后的针头坐标 X</summary>
+        public double MechX
+        {
+            get => _mechX;
+            set => SetProperty(ref _mechX, value);
+        }
+
+        private double _mechY;
+        /// <summary>叠加固定间距+校针偏差+手动补偿后的针头坐标 Y</summary>
+        public double MechY
+        {
+            get => _mechY;
+            set => SetProperty(ref _mechY, value);
+        }
     }
 
     /// <summary>
@@ -88,9 +164,82 @@ namespace Module.ViewModels
         }
     }
 
+    /// <summary>
+    /// Motion Params 区单轴显示项：实时位置 + 安全位置示教值
+    /// </summary>
+    public class AxisPositionDisplayItem : BindableBase
+    {
+        private string _axisName;
+        /// <summary>轴名称（如 Dx/Dy/Dz₁）</summary>
+        public string AxisName
+        {
+            get => _axisName;
+            set => SetProperty(ref _axisName, value);
+        }
+
+        private int _axisId = -1;
+        /// <summary>逻辑轴号，用于从 MotionService 缓存读取实时位置</summary>
+        public int AxisId
+        {
+            get => _axisId;
+            set => SetProperty(ref _axisId, value);
+        }
+
+        private double _realtimePosition;
+        /// <summary>轴实时位置（mm）</summary>
+        public double RealtimePosition
+        {
+            get => _realtimePosition;
+            set => SetProperty(ref _realtimePosition, value);
+        }
+
+        private double _safePosition;
+        /// <summary>安全位置示教值（mm，来自位置编辑器 SafePosition）</summary>
+        public double SafePosition
+        {
+            get => _safePosition;
+            set => SetProperty(ref _safePosition, value);
+        }
+
+        private bool _hasSafePosition;
+        /// <summary>是否已从位置编辑器解析到安全位置</summary>
+        public bool HasSafePosition
+        {
+            get => _hasSafePosition;
+            set => SetProperty(ref _hasSafePosition, value);
+        }
+    }
+
     public class PhotoPositionRow : BindableBase
     {
-        public string SiteFeatureName { get; }
+        private string _positionName;
+        /// <summary>
+        /// 拍照位名称（可编辑，手动输入，对应位置编辑器中的位置名）。
+        /// Dx/Dy/Dz₁/Y/Rx/Rz 坐标由 ViewModel 按 PositionName 从位置编辑器解析后填充。
+        /// </summary>
+        public string PositionName
+        {
+            get => _positionName;
+            set => SetProperty(ref _positionName, value);
+        }
+
+        /// <summary>
+        /// 旧版只读名称访问器（向后兼容 XAML/ViewModel 旧引用）。
+        /// 新逻辑请使用 <see cref="PositionName"/>。
+        /// </summary>
+        public string SiteFeatureName => PositionName;
+
+        private bool _isPositionInvalid;
+        /// <summary>
+        /// 位置名在位置编辑器中不存在（无任何轴坐标可解析）时为 true，UI 显示红色警告图标。
+        /// 由 ViewModel 在 RefreshRowParsedCoordinates 中根据解析结果设置。
+        /// 运动命令入口会检查此标志，为 true 时阻止运动以防碰撞。
+        /// </summary>
+        public bool IsPositionInvalid
+        {
+            get => _isPositionInvalid;
+            set => SetProperty(ref _isPositionInvalid, value);
+        }
 
         private ObservableCollection<string> _availablePositions = new ObservableCollection<string>();
         public ObservableCollection<string> AvailablePositions
@@ -99,33 +248,120 @@ namespace Module.ViewModels
             set => SetProperty(ref _availablePositions, value);
         }
 
-        private string _dxPositionName;
-        public string DxPositionName
+        #region 只读解析坐标（从位置编辑器按 PositionName 解析，由 ViewModel 调用 UpdateParsedCoordinates 填充）
+
+        private double _dx;
+        /// <summary>Dx 轴坐标（只读解析）</summary>
+        public double Dx
         {
-            get => _dxPositionName;
-            set => SetProperty(ref _dxPositionName, value);
+            get => _dx;
+            private set => SetProperty(ref _dx, value);
         }
 
-        private string _dyPositionName;
-        public string DyPositionName
+        private double _dy;
+        /// <summary>Dy 轴坐标（只读解析）</summary>
+        public double Dy
         {
-            get => _dyPositionName;
-            set => SetProperty(ref _dyPositionName, value);
+            get => _dy;
+            private set => SetProperty(ref _dy, value);
         }
 
-        private string _dz1PositionName;
-        public string Dz1PositionName
+        private double _dz1;
+        /// <summary>Dz₁ 轴坐标（只读解析）</summary>
+        public double Dz1
         {
-            get => _dz1PositionName;
-            set => SetProperty(ref _dz1PositionName, value);
+            get => _dz1;
+            private set => SetProperty(ref _dz1, value);
         }
 
-        private string _yPositionName;
-        public string YPositionName
+        private double _y;
+        /// <summary>Y 轴坐标（只读解析）</summary>
+        public double Y
         {
-            get => _yPositionName;
-            set => SetProperty(ref _yPositionName, value);
+            get => _y;
+            private set => SetProperty(ref _y, value);
         }
+
+        private double _rx;
+        /// <summary>Rx 轴坐标（只读解析）</summary>
+        public double Rx
+        {
+            get => _rx;
+            private set => SetProperty(ref _rx, value);
+        }
+
+        private double _rz;
+        /// <summary>Rz 轴坐标（只读解析）</summary>
+        public double Rz
+        {
+            get => _rz;
+            private set => SetProperty(ref _rz, value);
+        }
+
+        /// <summary>
+        /// 由 ViewModel 调用：按当前 PositionName 从位置编辑器解析的坐标值批量更新。
+        /// 解析失败的字段保持原值（不置 0，避免误用导致碰撞）。
+        /// </summary>
+        public void UpdateParsedCoordinates(double? dx, double? dy, double? dz1, double? y, double? rx, double? rz)
+        {
+            if (dx.HasValue) Dx = dx.Value;
+            if (dy.HasValue) Dy = dy.Value;
+            if (dz1.HasValue) Dz1 = dz1.Value;
+            if (y.HasValue) Y = y.Value;
+            if (rx.HasValue) Rx = rx.Value;
+            if (rz.HasValue) Rz = rz.Value;
+        }
+
+        #endregion
+
+        #region 点胶工艺参数子对象（与 CadPointEditor/DotDispenseService/DispenseExecuteService 对齐）
+
+        private DotProcessParams _dotParams = new DotProcessParams();
+        /// <summary>Dot(单点)模式工艺参数。与 DotDispenseService.ExecuteDotDispenseAsync 入参对齐。</summary>
+        public DotProcessParams DotParams
+        {
+            get => _dotParams;
+            set => SetProperty(ref _dotParams, value);
+        }
+
+        private DispenseSegment _arcParams = new DispenseSegment();
+        /// <summary>Arc(连续点胶)模式工艺参数。仅使用其工艺字段，Points 由 ViewModel 执行时填充。与 DispenseExecuteService.ExecutePathAsync 入参对齐。</summary>
+        public DispenseSegment ArcParams
+        {
+            get => _arcParams;
+            set => SetProperty(ref _arcParams, value);
+        }
+
+        private ArcTrackType _arcTrackType = ArcTrackType.Arc;
+        /// <summary>旧 Arc 轨迹子类型，保留兼容；新逻辑使用 TrajectoryOverride</summary>
+        [Obsolete("使用 TrajectoryOverride 替代")]
+        public ArcTrackType ArcTrackType
+        {
+            get => _arcTrackType;
+            set => SetProperty(ref _arcTrackType, value);
+        }
+
+        private TrajectoryType _trajectoryOverride = TrajectoryType.Auto;
+        /// <summary>
+        /// 轨迹类型覆盖：Auto 时使用相机返回 Type；否则强制为指定类型。
+        /// </summary>
+        public TrajectoryType TrajectoryOverride
+        {
+            get => _trajectoryOverride;
+            set
+            {
+                if (SetProperty(ref _trajectoryOverride, value))
+                {
+                    // 同步旧字段，便于旧 UI/配置过渡
+                    if (value == TrajectoryType.Dot)
+                        DispenseType = DispenseType.Dot;
+                    else if (value != TrajectoryType.Auto)
+                        DispenseType = DispenseType.Arc;
+                }
+            }
+        }
+
+        #endregion
 
         private double _speed = 10.0;
         public double Speed
@@ -156,6 +392,8 @@ namespace Module.ViewModels
         }
 
         private DispenseType _dispenseType = DispenseType.Dot;
+        /// <summary>旧点胶类型，保留兼容；新逻辑使用 TrajectoryOverride</summary>
+        [Obsolete("使用 TrajectoryOverride 替代")]
         public DispenseType DispenseType
         {
             get => _dispenseType;
@@ -363,9 +601,9 @@ namespace Module.ViewModels
             }
         }
 
-        public PhotoPositionRow(string siteFeatureName)
+        public PhotoPositionRow(string positionName)
         {
-            SiteFeatureName = siteFeatureName;
+            PositionName = positionName;
         }
 
         /// <summary>

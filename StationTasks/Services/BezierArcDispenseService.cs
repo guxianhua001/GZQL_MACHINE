@@ -88,6 +88,39 @@ namespace StationTasks.Services
         }
 
         /// <summary>
+        /// 新架构统一公式：相机返回的目标点机械坐标 + 相机中心与针头固定间距 + 校针偏差 + 手动补偿。
+        /// 相机端已完成与相机中心距离计算及9点仿射，本软件不再叠加 PhotoPos / (Center−Pn)。
+        /// </summary>
+        public static (double X, double Y) ComputeMachineFromCamera(
+            (double X, double Y) pointCoord,
+            (double X, double Y) camCenterToNeedleDist,
+            (double X, double Y) needleCalibOffset,
+            (double X, double Y) manualComp)
+        {
+            return (
+                pointCoord.X + camCenterToNeedleDist.X + needleCalibOffset.X + manualComp.X,
+                pointCoord.Y + camCenterToNeedleDist.Y + needleCalibOffset.Y + manualComp.Y);
+        }
+
+        /// <summary>
+        /// 对相机返回的目标点集合逐点叠加偏移（直线/折线/弧形 ROI 共用，不做再采样）。
+        /// </summary>
+        public static List<(double X, double Y)> ApplyOffsetsToPointSet(
+            IReadOnlyList<(double X, double Y)> pointCoords,
+            (double X, double Y) camCenterToNeedleDist,
+            (double X, double Y) needleCalibOffset,
+            (double X, double Y) manualComp)
+        {
+            var result = new List<(double X, double Y)>(pointCoords?.Count ?? 0);
+            if (pointCoords == null || pointCoords.Count == 0)
+                return result;
+
+            foreach (var p in pointCoords)
+                result.Add(ComputeMachineFromCamera(p, camCenterToNeedleDist, needleCalibOffset, manualComp));
+            return result;
+        }
+
+        /// <summary>
         /// 兼容旧调用：needleOffset 包含所有偏移分量之和
         /// </summary>
         public static (double X, double Y) ComputeMachineCoordinate(
@@ -129,6 +162,53 @@ namespace StationTasks.Services
             var mechP3 = ApplyOffset(photoPosition, center, p3, cameraNeedleDistance, needleOffset, needleCompensation);
 
             return DiscretizeQuadraticBezierFromMidPoint(mechP1, mechP2, mechP3, segmentCount, arcHeight, arcDirection);
+        }
+
+        /// <summary>
+        /// 生成Line模式的直线离散机械坐标点（P1→P3 等距采样）。
+        /// 视觉系统返回的 P1/P3 是9点标定后的机械坐标，公式与 GenerateArcMachinePoints 一致：
+        /// Mech_n = PhotoPos + (Center - P_n) + CamToNeedle + NeedleOffset + NeedleComp。
+        /// P2 在直线模式下不参与轨迹生成（可由调用方用于中点校验）。
+        /// </summary>
+        public static List<(double X, double Y)> GenerateLineMachinePoints(
+            (double Dx, double Dy) photoPosition,
+            (double X, double Y) center,
+            (double X, double Y) p1, (double X, double Y) p3,
+            (double X, double Y) cameraNeedleDistance,
+            (double X, double Y) needleOffset,
+            (double X, double Y) needleCompensation,
+            int samplePoints)
+        {
+            // P_n 是9点标定后的机械坐标，机械点需叠加相机到针头距离、偏移与补偿。
+            static (double X, double Y) ApplyOffset(
+                (double Dx, double Dy) photo,
+                (double X, double Y) ctr,
+                (double X, double Y) p,
+                (double X, double Y) cam, (double X, double Y) off, (double X, double Y) comp)
+                => (photo.Dx + (ctr.X - p.X) + cam.X + off.X + comp.X,
+                    photo.Dy + (ctr.Y - p.Y) + cam.Y + off.Y + comp.Y);
+
+            var mechP1 = ApplyOffset(photoPosition, center, p1, cameraNeedleDistance, needleOffset, needleCompensation);
+            var mechP3 = ApplyOffset(photoPosition, center, p3, cameraNeedleDistance, needleOffset, needleCompensation);
+
+            return DiscretizeLine(mechP1, mechP3, samplePoints);
+        }
+
+        /// <summary>
+        /// 直线等距采样：P0→P1 之间按 samplePoints 等分生成插补点。
+        /// 与 <see cref="DiscretizeQuadraticBezier"/> 对称，用于 Line 模式轨迹生成。
+        /// </summary>
+        public static List<(double X, double Y)> DiscretizeLine(
+            (double X, double Y) p0, (double X, double Y) p1, int samplePoints)
+        {
+            samplePoints = Math.Max(1, samplePoints);
+            var points = new List<(double X, double Y)>(samplePoints + 1);
+            for (int i = 0; i <= samplePoints; i++)
+            {
+                double t = (double)i / samplePoints;
+                points.Add((p0.X + (p1.X - p0.X) * t, p0.Y + (p1.Y - p0.Y) * t));
+            }
+            return points;
         }
 
 
