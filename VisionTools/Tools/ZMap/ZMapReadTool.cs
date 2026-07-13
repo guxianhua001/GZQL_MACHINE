@@ -1,21 +1,27 @@
 using HalconDotNet;
 using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security;
 using VisionTools.Tools;
 
 namespace VisionTools.Tools.ZMap
 {
     /// <summary>
     /// ZMAP高度图读取工具（命令：zmap-read）。
-    /// 用HALCON读取高度图，把原始float高度数组和归一化PNG预览
-    /// 写到指定输出文件，供主控程序（.NET 9）解析后做ROI采样和坐标变换。
-    /// 图像兼容策略：
-    ///   - 标准ZMAP：单通道32位浮点real图像（TIFF），灰度值即高度(mm)，原样输出；
-    ///   - 普通图片（测试用途）：8位灰度或RGB彩色图（PNG/JPG/BMP等），
-    ///     彩色先转灰度，再转为real类型，灰度值(0~255)直接作为高度值，
-    ///     用于在没有真实ZMAP数据时验证整条提取链路。
+    /// 读取高度图后，把原始float高度数组和归一化PNG预览写到指定输出文件，
+    /// 供主控程序（.NET 9）解析后做ROI采样和坐标变换。
+    /// 读取策略（按优先级）：
+    ///   1. HALCON读取：标准ZMAP（单通道real TIFF）原样输出；普通图片
+    ///      （PNG/JPG/BMP等，测试用途）彩色转灰度、再转real，灰度值即高度；
+    ///   2. 托管兜底解码：部分仪器导出的浮点TIFF会让HALCON原生解码器
+    ///      访问冲突崩溃（AccessViolationException），此时改用托管代码
+    ///      直接解析无压缩浮点TIFF，保证数据仍能读出；
+    ///   3. 两者都失败时，错误信息附带TIFF结构诊断，便于定位格式原因。
     /// 本工具不承担标定、坐标或运动逻辑，保持视觉与控制分层。
     /// </summary>
     public sealed class ZMapReadTool : IVisionTool
@@ -38,13 +44,83 @@ namespace VisionTools.Tools.ZMap
             string inputPath = args[0];
             string outputPath = args[1];
             string previewPath = args[2];
-            HImage image = null;
 
             try
             {
                 if (!File.Exists(inputPath))
                     throw new FileNotFoundException("ZMAP文件不存在", inputPath);
 
+                float[] pixels;
+                int width;
+                int height;
+                bool converted;
+                string source = "halcon";
+
+                if (!TryReadWithHalcon(inputPath, out pixels, out width, out height, out converted, out string halconError))
+                {
+                    // HALCON解码失败/崩溃 → 托管兜底解码（仅限无压缩浮点TIFF）
+                    string ext = Path.GetExtension(inputPath).ToLowerInvariant();
+                    bool isTiff = ext == ".tif" || ext == ".tiff";
+                    string fallbackError = isTiff ? null : "托管兜底解码仅支持TIFF文件";
+                    if (isTiff && TiffFloatReader.TryReadHeightData(inputPath, out width, out height, out pixels, out fallbackError))
+                    {
+                        converted = false;
+                        source = "managed";
+                        Console.Out.WriteLine("WARN HALCON解码失败已改用托管解码: " + halconError);
+                    }
+                    else
+                    {
+                        string diagnostics = isTiff ? TiffFloatReader.DescribeFile(inputPath) : null;
+                        throw new InvalidDataException(
+                            "HALCON读取失败: " + halconError +
+                            "；托管兜底解码失败: " + fallbackError +
+                            (diagnostics == null ? string.Empty : "；TIFF结构: " + diagnostics));
+                    }
+                }
+
+                GetFiniteRange(pixels, out double min, out double max);
+                WriteData(outputPath, width, height, min, max, pixels);
+                WritePreview(pixels, width, height, min, max, previewPath);
+
+                Console.Out.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "OK width={0} height={1} min={2:R} max={3:R} converted={4} source={5}",
+                    width, height, min, max, converted ? 1 : 0, source));
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.GetType().FullName + ": " + ex.Message);
+                return 1;
+            }
+        }
+
+        /// <summary>
+        /// 用HALCON读取并归一化为单通道real高度数组。
+        /// HALCON原生解码器碰到异常TIFF可能抛AccessViolationException（损坏状态异常），
+        /// 通过HandleProcessCorruptedStateExceptions + App.config的
+        /// legacyCorruptedStateExceptionsPolicy在此捕获，转为普通失败返回，
+        /// 让上层走托管兜底解码而不是整个进程崩溃。
+        /// </summary>
+        [HandleProcessCorruptedStateExceptions]
+        [SecurityCritical]
+        private static bool TryReadWithHalcon(
+            string inputPath,
+            out float[] pixels,
+            out int width,
+            out int height,
+            out bool converted,
+            out string error)
+        {
+            pixels = null;
+            width = 0;
+            height = 0;
+            converted = false;
+            error = null;
+            HImage image = null;
+
+            try
+            {
                 // 与参考Plugin.GrabImage一致的两步读图方式
                 image = new HImage();
                 image.ReadImage(inputPath);
@@ -54,12 +130,9 @@ namespace VisionTools.Tools.ZMap
 
                 // 非标准ZMAP图像统一归一化为单通道real：彩色转灰度、byte等类型转real，
                 // 灰度值直接作为高度，便于用普通图片测试整条提取链路
-                image = NormalizeToSingleChannelReal(image, out bool converted);
+                image = NormalizeToSingleChannelReal(image, out converted);
 
-                string imageType;
-                int width;
-                int height;
-                IntPtr pointer = image.GetImagePointer1(out imageType, out width, out height);
+                IntPtr pointer = image.GetImagePointer1(out string imageType, out width, out height);
                 if (!string.Equals(imageType, "real", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("图像类型转换失败，当前类型=" + imageType);
                 if (width <= 0 || height <= 0)
@@ -69,22 +142,15 @@ namespace VisionTools.Tools.ZMap
                 if (pixelCount64 > int.MaxValue)
                     throw new InvalidDataException("ZMAP高度图像素数量超过处理上限");
 
-                var pixels = new float[(int)pixelCount64];
+                pixels = new float[(int)pixelCount64];
                 Marshal.Copy(pointer, pixels, 0, pixels.Length);
-                GetFiniteRange(pixels, out double min, out double max);
-                WriteData(outputPath, width, height, min, max, pixels);
-                WritePreview(image, previewPath, min, max);
-
-                Console.Out.WriteLine(string.Format(
-                    CultureInfo.InvariantCulture,
-                    "OK width={0} height={1} min={2:R} max={3:R} converted={4}",
-                    width, height, min, max, converted ? 1 : 0));
-                return 0;
+                return true;
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex.GetType().FullName + ": " + ex.Message);
-                return 1;
+                pixels = null;
+                error = ex.GetType().Name + ": " + ex.Message;
+                return false;
             }
             finally
             {
@@ -170,24 +236,59 @@ namespace VisionTools.Tools.ZMap
             }
         }
 
-        /// <summary>生成8位PNG预览；预览失败不影响高度数据输出。</summary>
-        private static void WritePreview(HImage image, string previewPath, double min, double max)
+        /// <summary>
+        /// 用托管代码（System.Drawing）从float数组生成8位灰度PNG预览：
+        /// 高度归一化到0~255，NaN/Infinity显示为黑色。
+        /// 不依赖HALCON，即使HALCON解码崩溃后走托管兜底路径也能生成预览。
+        /// 预览失败不影响高度数据输出。
+        /// </summary>
+        private static void WritePreview(
+            float[] pixels, int width, int height, double min, double max, string previewPath)
         {
-            HImage scaled = null;
-            HImage byteImage = null;
+            Bitmap bitmap = null;
             try
             {
                 double range = max - min;
-                if (range < 1e-12)
+                double scale = range < 1e-12 ? 0 : 255.0 / range;
+
+                bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
+                ColorPalette palette = bitmap.Palette;
+                for (int i = 0; i < 256; i++)
+                    palette.Entries[i] = Color.FromArgb(i, i, i);
+                bitmap.Palette = palette;
+
+                BitmapData data = bitmap.LockBits(
+                    new Rectangle(0, 0, width, height),
+                    ImageLockMode.WriteOnly,
+                    PixelFormat.Format8bppIndexed);
+                try
                 {
-                    byteImage = image.ConvertImageType("byte");
+                    var rowBytes = new byte[data.Stride];
+                    for (int y = 0; y < height; y++)
+                    {
+                        int rowStart = y * width;
+                        for (int x = 0; x < width; x++)
+                        {
+                            float value = pixels[rowStart + x];
+                            if (float.IsNaN(value) || float.IsInfinity(value))
+                            {
+                                rowBytes[x] = 0;
+                                continue;
+                            }
+                            double normalized = (value - min) * scale;
+                            rowBytes[x] = normalized <= 0 ? (byte)0
+                                : normalized >= 255 ? (byte)255
+                                : (byte)normalized;
+                        }
+                        Marshal.Copy(rowBytes, 0, data.Scan0 + y * data.Stride, data.Stride);
+                    }
                 }
-                else
+                finally
                 {
-                    scaled = image.ScaleImage(255.0 / range, -255.0 * min / range);
-                    byteImage = scaled.ConvertImageType("byte");
+                    bitmap.UnlockBits(data);
                 }
-                byteImage.WriteImage("png", 0, previewPath);
+
+                bitmap.Save(previewPath, ImageFormat.Png);
             }
             catch
             {
@@ -195,8 +296,7 @@ namespace VisionTools.Tools.ZMap
             }
             finally
             {
-                try { byteImage?.Dispose(); } catch { }
-                try { scaled?.Dispose(); } catch { }
+                bitmap?.Dispose();
             }
         }
     }

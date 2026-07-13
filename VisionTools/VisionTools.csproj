@@ -20,5 +20,7 @@
     <Reference Include="halcondotnet">
       <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
     </Reference>
+    <!-- 托管预览PNG生成（HALCON崩溃兜底路径下也能出预览图） -->
+    <Reference Include="System.Drawing" />
   </ItemGroup>
 </Project>

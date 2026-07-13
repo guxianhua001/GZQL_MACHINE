@@ -4,6 +4,14 @@
       "commandName": "Project",
       "workingDirectory": "C:\\WorkFiles\\GZQL_MACHINE\\MainApp",
       "nativeDebugging": false
+    },
+    "MainApp (调试VisionTools子进程)": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\WorkFiles\\GZQL_MACHINE\\MainApp",
+      "nativeDebugging": false,
+      "environmentVariables": {
+        "VISIONTOOLS_DEBUG": "1"
+      }
     }
   }
 }
