@@ -39,8 +39,9 @@ namespace Module.Services
         /// <summary>
         /// 加载ZMAP高度图（要求单通道32位浮点real图像，灰度值即高度）。
         /// HALCON 21.11仅提供dotnet20/dotnet35托管接口，不能把其TIFF原生解码风险直接放在
-        /// .NET 9主控进程中。因此调用.NET Framework 4.7.2隔离读取器（与参考
-        /// Plugin.GrabImage运行环境一致），即使原生解码器崩溃也不会终止主控进程。
+        /// .NET 9主控进程中。因此调用VisionTools视觉工具进程（.NET Framework 4.7.2，
+        /// 与参考VM框架插件运行环境一致）执行zmap-read命令，即使原生解码器崩溃
+        /// 也不会终止主控进程。
         /// </summary>
         public bool LoadHeightMap(string filePath, out string error)
         {
@@ -60,11 +61,11 @@ namespace Module.Services
 
             string readerPath = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
-                "ZMapHalconReader",
-                "ZMapHalconReader.exe");
+                "VisionTools",
+                "VisionTools.exe");
             if (!File.Exists(readerPath))
             {
-                error = "未找到HALCON高度图读取器，请重新生成并部署ZMapHalconReader";
+                error = "未找到VisionTools视觉工具进程，请重新生成并部署VisionTools项目";
                 return false;
             }
 
@@ -101,7 +102,7 @@ namespace Module.Services
             }
         }
 
-        /// <summary>启动HALCON隔离读取器并限制最长执行时间，防止异常文件阻塞UI。</summary>
+        /// <summary>启动VisionTools视觉工具进程并限制最长执行时间，防止异常文件阻塞UI。</summary>
         private static bool RunReader(
             string readerPath,
             string inputPath,
@@ -120,9 +121,14 @@ namespace Module.Services
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8
             };
+            startInfo.ArgumentList.Add("zmap-read");
             startInfo.ArgumentList.Add(inputPath);
             startInfo.ArgumentList.Add(dataPath);
             startInfo.ArgumentList.Add(previewPath);
+
+            // 子进程需自行加载HALCON原生halcon.dll：主控程序输出目录已部署一份原生DLL，
+            // 把该目录与HALCON安装目录一并前置到子进程PATH，避免DllNotFoundException(halcon)
+            AppendHalconNativePath(startInfo);
 
             using (var process = new Process { StartInfo = startInfo })
             {
@@ -157,6 +163,35 @@ namespace Module.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// 把可能包含原生halcon.dll的目录前置到子进程PATH：
+        /// ① 主控程序输出目录（部署包内自带halcon.dll）
+        /// ② %HALCONROOT%\bin\%HALCONARCH%（标准HALCON安装位置）
+        /// </summary>
+        private static void AppendHalconNativePath(ProcessStartInfo startInfo)
+        {
+            var dirs = new List<string> { AppDomain.CurrentDomain.BaseDirectory };
+            string halconRoot = Environment.GetEnvironmentVariable("HALCONROOT");
+            if (!string.IsNullOrEmpty(halconRoot))
+            {
+                string arch = Environment.GetEnvironmentVariable("HALCONARCH");
+                dirs.Add(Path.Combine(halconRoot, "bin", string.IsNullOrEmpty(arch) ? "x64-win64" : arch));
+            }
+
+            string path = startInfo.EnvironmentVariables.ContainsKey("PATH")
+                ? startInfo.EnvironmentVariables["PATH"]
+                : string.Empty;
+            foreach (var dir in dirs)
+            {
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                    continue;
+                if (path.IndexOf(dir, StringComparison.OrdinalIgnoreCase) >= 0)
+                    continue;
+                path = dir + Path.PathSeparator + path;
+            }
+            startInfo.EnvironmentVariables["PATH"] = path;
         }
 
         /// <summary>读取并校验隔离进程输出，避免损坏或伪造尺寸导致主进程内存异常。</summary>

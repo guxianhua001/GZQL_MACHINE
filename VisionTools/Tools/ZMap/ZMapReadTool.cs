@@ -3,23 +3,30 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using VisionTools.Tools;
 
-namespace ZMapHalconReader
+namespace VisionTools.Tools.ZMap
 {
     /// <summary>
-    /// HALCON 21.11高度图隔离读取进程。
-    /// 仅负责把单通道real TIFF转换为受控二进制数据和PNG预览，不承担坐标或运动逻辑。
+    /// ZMAP高度图读取工具（命令：zmap-read）。
+    /// 用HALCON读取单通道32位浮点real TIFF，把原始float高度数组和归一化PNG预览
+    /// 写到指定输出文件，供主控程序（.NET 9）解析后做ROI采样和坐标变换。
+    /// 本工具不承担标定、坐标或运动逻辑，保持视觉与控制分层。
     /// </summary>
-    internal static class Program
+    public sealed class ZMapReadTool : IVisionTool
     {
         private const int DataMagic = 0x5A4D4150; // ASCII: ZMAP
         private const int DataVersion = 1;
 
-        private static int Main(string[] args)
+        public string Name => "zmap-read";
+
+        public string Usage => "zmap-read <input.tif> <output.bin> <preview.png>";
+
+        public int Execute(string[] args)
         {
             if (args == null || args.Length != 3)
             {
-                Console.Error.WriteLine("Usage: ZMapHalconReader <input.tif> <output.bin> <preview.png>");
+                Console.Error.WriteLine("Usage: " + Usage);
                 return 2;
             }
 
@@ -33,7 +40,7 @@ namespace ZMapHalconReader
                 if (!File.Exists(inputPath))
                     throw new FileNotFoundException("ZMAP文件不存在", inputPath);
 
-                // 与参考Plugin.GrabImage一致：在受HALCON 21.11支持的.NET Framework进程中读取。
+                // 与参考Plugin.GrabImage一致的两步读图方式
                 image = new HImage();
                 image.ReadImage(inputPath);
 
@@ -96,7 +103,7 @@ namespace ZMapHalconReader
                 throw new InvalidDataException("ZMAP高度图不包含有效有限数值");
         }
 
-        /// <summary>写入带固定头的高度数组，主进程会校验magic、版本和尺寸后再加载。</summary>
+        /// <summary>写入带固定头的高度数组，主控程序会校验magic、版本和尺寸后再加载。</summary>
         private static void WriteData(
             string outputPath,
             int width,
