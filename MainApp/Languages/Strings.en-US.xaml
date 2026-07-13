@@ -2977,9 +2977,15 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
 
     <!-- ZMap height extraction (floating tool window, additive feature, does not affect existing Step3 CAD Z aggregation) -->
     <sys:String x:Key="ZMap_Title">ZMap Height Extraction</sys:String>
-    <sys:String x:Key="ZMap_Description">After loading a ZMap height image and calibrating the pixel-to-machine affine mapping, extract Z heights for the selected segment's sample points by their machine coordinates, then apply to write back into the Z column.</sys:String>
+    <sys:String x:Key="ZMap_Description">Load a ZMap image, calibrate the pixel-to-machine mapping, then draw a trajectory ROI. XYZ is sampled at the selected segment's point count; applying changes only its Z column.</sys:String>
     <sys:String x:Key="ZMap_Section_LoadHeightMap">1. Load ZMap Height Image</sys:String>
     <sys:String x:Key="ZMap_Btn_Browse">Browse...</sys:String>
+    <sys:String x:Key="ZMap_Label_RoiType">Trajectory ROI:</sys:String>
+    <sys:String x:Key="ZMap_RoiType_Line">Line</sys:String>
+    <sys:String x:Key="ZMap_RoiType_Arc">Circular Arc</sys:String>
+    <sys:String x:Key="ZMap_RoiType_Polyline">Polyline</sys:String>
+    <sys:String x:Key="ZMap_Btn_ClearRoi">Clear ROI</sys:String>
+    <sys:String x:Key="ZMap_Tip_RoiSampling">Line: drag with the left mouse button. Arc: click start/middle/end. Polyline: left-click vertices and right-click or double-click to finish. The ROI is sampled to match the selected segment's point count.</sys:String>
     <sys:String x:Key="ZMap_Dialog_SelectHeightMap">Select ZMap Height Image File</sys:String>
     <sys:String x:Key="ZMap_Status_NotLoaded">No height image loaded</sys:String>
     <sys:String x:Key="ZMap_Status_Loaded">Loaded, size {0} x {1} px</sys:String>
@@ -3013,6 +3019,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZMap_Header_CorrectedZ">Corrected Z</sys:String>
     <sys:String x:Key="ZMap_Header_ErrorMessage">Note</sys:String>
     <sys:String x:Key="ZMap_Preview_Summary">Extracted {0} / {1} points</sys:String>
+    <sys:String x:Key="ZMap_Preview_RoiRequired">Draw and complete a trajectory ROI on the height image before previewing extraction.</sys:String>
     <sys:String x:Key="ZMap_Preview_SummaryWithMissing">Extracted {0} / {1} points ({2} points skipped due to missing machine coordinates, please complete Step4 alignment first)</sys:String>
     <sys:String x:Key="ZMap_Preview_Applied">Applied Z values to {0} points of the selected segment</sys:String>
     <sys:String x:Key="ZMap_Btn_Cancel">Cancel</sys:String>

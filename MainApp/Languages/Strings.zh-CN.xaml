@@ -2977,9 +2977,15 @@
 
     <!-- ZMap 高度提取（悬浮工具窗口，独立扩展功能，不影响Step3现有CAD Z聚合逻辑） -->
     <sys:String x:Key="ZMap_Title">ZMAP高度提取</sys:String>
-    <sys:String x:Key="ZMap_Description">加载ZMAP高度图并标定"像素↔机械坐标"仿射关系后，可按选中段各采样点的机械坐标提取对应Z高度，确认后写回该段各点的Z列。</sys:String>
+    <sys:String x:Key="ZMap_Description">加载ZMAP高度图并标定"像素↔机械坐标"仿射关系后，在图像上绘制轨迹ROI；系统按选中段点数等距采样XYZ，确认后仅写回该段各点的Z列。</sys:String>
     <sys:String x:Key="ZMap_Section_LoadHeightMap">1. 加载ZMAP高度图</sys:String>
     <sys:String x:Key="ZMap_Btn_Browse">浏览...</sys:String>
+    <sys:String x:Key="ZMap_Label_RoiType">轨迹ROI：</sys:String>
+    <sys:String x:Key="ZMap_RoiType_Line">直线</sys:String>
+    <sys:String x:Key="ZMap_RoiType_Arc">圆弧</sys:String>
+    <sys:String x:Key="ZMap_RoiType_Polyline">折线</sys:String>
+    <sys:String x:Key="ZMap_Btn_ClearRoi">清除ROI</sys:String>
+    <sys:String x:Key="ZMap_Tip_RoiSampling">直线：按住左键拖拽；圆弧：依次点击起点/弧中点/终点；折线：左键添加顶点、右键或双击结束。ROI会按当前选中线段的点数等距采样。</sys:String>
     <sys:String x:Key="ZMap_Dialog_SelectHeightMap">选择ZMAP高度图文件</sys:String>
     <sys:String x:Key="ZMap_Status_NotLoaded">尚未加载高度图</sys:String>
     <sys:String x:Key="ZMap_Status_Loaded">已加载，尺寸 {0} × {1} 像素</sys:String>
@@ -3013,6 +3019,7 @@
     <sys:String x:Key="ZMap_Header_CorrectedZ">修正后Z</sys:String>
     <sys:String x:Key="ZMap_Header_ErrorMessage">说明</sys:String>
     <sys:String x:Key="ZMap_Preview_Summary">有效提取 {0} / {1} 点</sys:String>
+    <sys:String x:Key="ZMap_Preview_RoiRequired">请先在高度图上完成轨迹ROI绘制，再执行提取预览。</sys:String>
     <sys:String x:Key="ZMap_Preview_SummaryWithMissing">有效提取 {0} / {1} 点（另有 {2} 点因缺少机械坐标未提取，请先完成Step4坐标标定）</sys:String>
     <sys:String x:Key="ZMap_Preview_Applied">已将 {0} 个有效点的Z值写回选中段</sys:String>
     <sys:String x:Key="ZMap_Btn_Cancel">取消</sys:String>

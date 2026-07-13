@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+        xmlns:zmap="clr-namespace:Module.Controls.ZMap"
         Title="{lang:Lang ZMap_Title}"
         Width="1080" Height="720"
         MinWidth="880" MinHeight="600"
@@ -67,9 +68,30 @@
                                          Style="{StaticResource MaterialDesignOutlinedTextBox}" Padding="4,2"/>
                             </DockPanel>
                             <TextBlock Text="{Binding HeightMapStatusText}" FontSize="11" Foreground="#00838F" TextWrapping="Wrap"/>
+                            <DockPanel Margin="0,8,0,4">
+                                <Button DockPanel.Dock="Right" Click="ClearRoi_Click"
+                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Eraser" Width="14" Height="14"
+                                                                 VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang ZMap_Btn_ClearRoi}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{lang:Lang ZMap_Label_RoiType}"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding RoiTypeOptions}"
+                                          SelectedItem="{Binding SelectedRoiTypeOption}"
+                                          DisplayMemberPath="DisplayName"
+                                          MinWidth="130" Height="28"/>
+                            </DockPanel>
                             <Border Height="220" Background="#212121" Margin="0,8,0,0" CornerRadius="2">
-                                <Image Source="{Binding PreviewBitmap}" Stretch="Uniform" Margin="2"/>
+                                <zmap:ZMapRoiCanvas x:Name="RoiCanvas"
+                                                    Source="{Binding PreviewBitmap}"
+                                                    RoiType="{Binding SelectedRoiTypeOption.Type}"
+                                                    Margin="2"/>
                             </Border>
+                            <TextBlock Text="{lang:Lang ZMap_Tip_RoiSampling}" FontSize="10"
+                                       Foreground="#9E9E9E" TextWrapping="Wrap" Margin="0,4,0,0"/>
                         </StackPanel>
                     </materialDesign:Card>
 

@@ -16,10 +16,10 @@ namespace Module.Controls.ZMap
     /// <summary>
     /// ZMAP高度提取悬浮工具窗口 ViewModel——独立扩展模块，不修改Step3现有的CAD Z聚合逻辑。
     ///
-    /// 坐标对齐核心思路（详见 IZMapHeightExtractionService 接口注释）：
-    /// 传入的轨迹点已经过Step4现有的"CAD→机械"仿射标定得到 MachineX/MachineY，
-    /// 本窗口只需再建立一套独立的"ZMAP像素↔机械坐标"仿射标定，即可通过机械坐标这个
-    /// 公共参照系，把ZMAP高度图与DXF轨迹点间接对齐，而不需要两个坐标系直接互转。
+    /// 坐标与高度提取顺序对齐参考Plugin.DispensePath：
+    /// 在ZMAP图像上绘制ROI并按当前CadPoint数量等距生成像素轨迹点，直接采样像素Z高度，
+    /// 再用"ZMAP像素→机械坐标"仿射标定生成预览机械XY。应用阶段只把逐点Z写回
+    /// 原CadPoint，既有CAD/机械XY轨迹保持不变。
     ///
     /// 用户确认提取结果后，点击"应用到Z列"才会真正写回 CadPoint.Z（不确认则不影响任何现有数据），
     /// 写回Z后续若启用 Step6 的"Z向纠偏(ZCorrectionEnabled)"，会按 CadPoint.Z 的相对高度差自动纠偏。
@@ -30,6 +30,13 @@ namespace Module.Controls.ZMap
         private readonly IZMapConfigService _zMapConfigService;
         private readonly List<CadPoint> _targetPoints;
         private readonly Window _dialogWindow;
+
+        /// <summary>ROI类型下拉项，显示文本从中英文资源加载。</summary>
+        public sealed class ZMapRoiTypeOption
+        {
+            public ZMapRoiType Type { get; set; }
+            public string DisplayName { get; set; }
+        }
 
         public ZMapExtractZViewModel(
             IZMapHeightExtractionService zMapService,
@@ -43,6 +50,14 @@ namespace Module.Controls.ZMap
             _targetPoints = targetPoints ?? new List<CadPoint>();
             _dialogWindow = dialogWindow;
             SegmentId = segmentId ?? string.Empty;
+
+            RoiTypeOptions.Add(new ZMapRoiTypeOption
+                { Type = ZMapRoiType.Line, DisplayName = L("ZMap_RoiType_Line") });
+            RoiTypeOptions.Add(new ZMapRoiTypeOption
+                { Type = ZMapRoiType.CircularArc, DisplayName = L("ZMap_RoiType_Arc") });
+            RoiTypeOptions.Add(new ZMapRoiTypeOption
+                { Type = ZMapRoiType.Polyline, DisplayName = L("ZMap_RoiType_Polyline") });
+            SelectedRoiTypeOption = RoiTypeOptions[2];
 
             LoadHeightMapCommand = new DelegateCommand(ExecuteLoadHeightMap);
             AddCalibrationPointCommand = new DelegateCommand(ExecuteAddCalibrationPoint);
@@ -58,6 +73,15 @@ namespace Module.Controls.ZMap
         }
 
         public string SegmentId { get; }
+
+        public ObservableCollection<ZMapRoiTypeOption> RoiTypeOptions { get; } = new();
+
+        private ZMapRoiTypeOption _selectedRoiTypeOption;
+        public ZMapRoiTypeOption SelectedRoiTypeOption
+        {
+            get => _selectedRoiTypeOption;
+            set => SetProperty(ref _selectedRoiTypeOption, value);
+        }
 
         #region 高度图加载
 
@@ -269,33 +293,36 @@ namespace Module.Controls.ZMap
         {
             PreviewResults.Clear();
 
-            // 未完成Step4坐标标定的点无 MachineX/MachineY，无法反查像素位置，单独提示
-            var withMachineCoord = _targetPoints.Where(p => p.MachineX.HasValue && p.MachineY.HasValue).ToList();
-            var missingCount = _targetPoints.Count - withMachineCoord.Count;
+            // 对齐参考Plugin.DispensePath：ROI按当前CadPoint数量等距采样，先从像素点取Z，
+            // 再将同一像素XY正向转换为机械XY。应用时只覆盖CadPoint.Z，不改变既有XY轨迹。
+            var roiWindow = _dialogWindow as ZMapExtractZWindow;
+            var pixelPoints = roiWindow?.GetRoiSamplePoints(_targetPoints.Count);
+            if (pixelPoints == null || pixelPoints.Count != _targetPoints.Count)
+            {
+                PreviewSummaryText = L("ZMap_Preview_RoiRequired");
+                ApplyCommand.RaiseCanExecuteChanged();
+                return;
+            }
 
-            var machinePoints = withMachineCoord.Select(p => (p.MachineX.Value, p.MachineY.Value));
-            var results = _zMapService.SampleHeights(machinePoints);
+            var results = _zMapService.SamplePixelHeights(pixelPoints);
 
             foreach (var r in results)
                 PreviewResults.Add(r);
 
             int validCount = results.Count(r => r.IsValid);
-            PreviewSummaryText = missingCount > 0
-                ? string.Format(L("ZMap_Preview_SummaryWithMissing"), validCount, results.Count, missingCount)
-                : string.Format(L("ZMap_Preview_Summary"), validCount, results.Count);
+            PreviewSummaryText = string.Format(L("ZMap_Preview_Summary"), validCount, results.Count);
 
             ApplyCommand.RaiseCanExecuteChanged();
         }
 
         private void ExecuteApply()
         {
-            // 仅把有效点按机械坐标一一对应回写到原始 CadPoint.Z，无效点保留原值不动
-            var withMachineCoord = _targetPoints.Where(p => p.MachineX.HasValue && p.MachineY.HasValue).ToList();
+            // ROI采样数与CadPoint数严格一致；仅覆盖Z，不改变CAD/机械XY，避免影响现有轨迹。
             int appliedCount = 0;
-            for (int i = 0; i < PreviewResults.Count && i < withMachineCoord.Count; i++)
+            for (int i = 0; i < PreviewResults.Count && i < _targetPoints.Count; i++)
             {
                 if (!PreviewResults[i].IsValid) continue;
-                withMachineCoord[i].Z = PreviewResults[i].CorrectedZ;
+                _targetPoints[i].Z = PreviewResults[i].CorrectedZ;
                 appliedCount++;
             }
 

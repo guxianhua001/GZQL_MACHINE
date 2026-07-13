@@ -1,3 +1,5 @@
+using Core.Models;
+using System.Collections.Generic;
 using System.Windows;
 
 namespace Module.Controls.ZMap
@@ -12,6 +14,20 @@ namespace Module.Controls.ZMap
         public ZMapExtractZWindow()
         {
             InitializeComponent();
+        }
+
+        /// <summary>
+        /// 按选中线段点数对当前ROI等距采样，确保提取结果与CadPoint严格一一对应。
+        /// </summary>
+        public IReadOnlyList<ZMapPixelPoint> GetRoiSamplePoints(int pointCount) =>
+            RoiCanvas.GetSamplePoints(pointCount);
+
+        public bool IsRoiComplete => RoiCanvas.IsRoiComplete;
+
+        /// <summary>清除ROI仅影响本悬浮窗口，不修改选中线段数据。</summary>
+        private void ClearRoi_Click(object sender, RoutedEventArgs e)
+        {
+            RoiCanvas.ClearRoi();
         }
     }
 }

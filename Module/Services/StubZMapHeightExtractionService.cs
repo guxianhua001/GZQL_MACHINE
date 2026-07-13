@@ -57,6 +57,9 @@ namespace Module.Services
         public List<ZMapHeightSampleResult> SampleHeights(IEnumerable<(double MachineX, double MachineY)> machinePoints)
             => new List<ZMapHeightSampleResult>();
 
+        public List<ZMapHeightSampleResult> SamplePixelHeights(IEnumerable<ZMapPixelPoint> pixelPoints)
+            => new List<ZMapHeightSampleResult>();
+
         public void CalibrateZOffset(double referenceMachineZ, double rawZAtReference) { }
 
         public ZMapCalibrationConfig ExportConfig() => new ZMapCalibrationConfig();
