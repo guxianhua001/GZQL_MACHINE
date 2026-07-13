@@ -52,20 +52,24 @@ namespace Module.Services
                 return false;
             }
 
+            // 标准ZMAP为.tif/.tiff（单通道real，灰度即高度mm）；
+            // 同时兼容普通图片（png/jpg/bmp），由VisionTools转灰度real，
+            // 灰度值(0~255)直接作为高度，用于无真实ZMAP数据时测试整条提取链路
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
-            if (ext != ".tif" && ext != ".tiff")
+            if (ext != ".tif" && ext != ".tiff" &&
+                ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".bmp")
             {
-                error = "ZMAP高度图仅支持 .tif/.tiff 格式";
+                error = "ZMAP高度图仅支持 .tif/.tiff，测试模式支持 .png/.jpg/.bmp";
                 return false;
             }
 
             string readerPath = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 "VisionTools",
-                "VisionTools.exe");
+                "VisionTools.Host.exe");
             if (!File.Exists(readerPath))
             {
-                error = "未找到VisionTools视觉工具进程，请重新生成并部署VisionTools项目";
+                error = "未找到VisionTools.Host视觉工具进程，请重新生成并部署VisionTools.Host项目";
                 return false;
             }
 

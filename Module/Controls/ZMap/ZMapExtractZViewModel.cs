@@ -103,7 +103,7 @@ namespace Module.Controls.ZMap
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "ZMAP高度图 (*.tif;*.tiff)|*.tif;*.tiff|所有文件 (*.*)|*.*",
+                Filter = "ZMAP高度图 (*.tif;*.tiff)|*.tif;*.tiff|普通图片-测试 (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|所有文件 (*.*)|*.*",
                 Title = L("ZMap_Dialog_SelectHeightMap")
             };
             if (dialog.ShowDialog() != true) return;

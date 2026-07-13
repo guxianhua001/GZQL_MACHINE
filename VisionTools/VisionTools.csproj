@@ -1,21 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net472</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>VisionTools</AssemblyName>
     <RootNamespace>VisionTools</RootNamespace>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!--
-      独立视觉工具项目（.NET Framework 4.7.2 / x64）：
+      视觉工具类库（.NET Framework 4.7.2 / x64）：
       与参考框架 E:\视觉最新框架\VM 的插件运行环境保持一致，未来VM 02Plugins
-      中的视觉工具（图像处理/检测识别等）将逐步迁移至本项目。
-      主控程序（.NET 9）通过命令行进程调用本项目暴露的视觉工具，
+      中的视觉工具（图像处理/检测识别等）将逐步迁移至本类库。
+      所有工具逻辑集中在此，便于扩展、复用与单元测试；进程入口由瘦启动壳
+      VisionTools.Host 提供，主控程序（.NET 9）通过命令行调用Host进程，
       既隔离HALCON原生层崩溃风险，也避免跨.NET运行时加载不兼容程序集。
     -->
-    <OutputPath>..\MainApp\bin\$(Configuration)\net9.0-windows7.0\VisionTools\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="halcondotnet">

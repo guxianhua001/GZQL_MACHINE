@@ -9,8 +9,13 @@ namespace VisionTools.Tools.ZMap
 {
     /// <summary>
     /// ZMAP高度图读取工具（命令：zmap-read）。
-    /// 用HALCON读取单通道32位浮点real TIFF，把原始float高度数组和归一化PNG预览
+    /// 用HALCON读取高度图，把原始float高度数组和归一化PNG预览
     /// 写到指定输出文件，供主控程序（.NET 9）解析后做ROI采样和坐标变换。
+    /// 图像兼容策略：
+    ///   - 标准ZMAP：单通道32位浮点real图像（TIFF），灰度值即高度(mm)，原样输出；
+    ///   - 普通图片（测试用途）：8位灰度或RGB彩色图（PNG/JPG/BMP等），
+    ///     彩色先转灰度，再转为real类型，灰度值(0~255)直接作为高度值，
+    ///     用于在没有真实ZMAP数据时验证整条提取链路。
     /// 本工具不承担标定、坐标或运动逻辑，保持视觉与控制分层。
     /// </summary>
     public sealed class ZMapReadTool : IVisionTool
@@ -20,7 +25,7 @@ namespace VisionTools.Tools.ZMap
 
         public string Name => "zmap-read";
 
-        public string Usage => "zmap-read <input.tif> <output.bin> <preview.png>";
+        public string Usage => "zmap-read <input.tif|input.png|...> <output.bin> <preview.png>";
 
         public int Execute(string[] args)
         {
@@ -46,15 +51,17 @@ namespace VisionTools.Tools.ZMap
 
                 if (!image.IsInitialized())
                     throw new InvalidDataException("HALCON未能初始化高度图");
-                if (image.CountChannels().I != 1)
-                    throw new InvalidDataException("ZMAP高度图必须为单通道图像");
+
+                // 非标准ZMAP图像统一归一化为单通道real：彩色转灰度、byte等类型转real，
+                // 灰度值直接作为高度，便于用普通图片测试整条提取链路
+                image = NormalizeToSingleChannelReal(image, out bool converted);
 
                 string imageType;
                 int width;
                 int height;
                 IntPtr pointer = image.GetImagePointer1(out imageType, out width, out height);
                 if (!string.Equals(imageType, "real", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("ZMAP高度图必须为32位浮点real类型，当前类型=" + imageType);
+                    throw new InvalidDataException("图像类型转换失败，当前类型=" + imageType);
                 if (width <= 0 || height <= 0)
                     throw new InvalidDataException("ZMAP高度图尺寸无效");
 
@@ -70,8 +77,8 @@ namespace VisionTools.Tools.ZMap
 
                 Console.Out.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,
-                    "OK width={0} height={1} min={2:R} max={3:R}",
-                    width, height, min, max));
+                    "OK width={0} height={1} min={2:R} max={3:R} converted={4}",
+                    width, height, min, max, converted ? 1 : 0));
                 return 0;
             }
             catch (Exception ex)
@@ -83,6 +90,43 @@ namespace VisionTools.Tools.ZMap
             {
                 try { image?.Dispose(); } catch { }
             }
+        }
+
+        /// <summary>
+        /// 把任意可读图像归一化为单通道real高度图：
+        /// 3通道彩色先Rgb1ToGray转灰度，非real类型（byte/uint2等）再转real，
+        /// 灰度值直接作为高度。标准ZMAP（单通道real）原样返回不做转换。
+        /// converted=true表示发生过转换（普通图片测试模式）。
+        /// 转换过程中产生的中间图像会被及时释放，原图被替换时也会释放。
+        /// </summary>
+        private static HImage NormalizeToSingleChannelReal(HImage image, out bool converted)
+        {
+            converted = false;
+            HImage current = image;
+
+            int channels = current.CountChannels().I;
+            if (channels == 3)
+            {
+                HImage gray = current.Rgb1ToGray();
+                current.Dispose();
+                current = gray;
+                converted = true;
+            }
+            else if (channels != 1)
+            {
+                throw new InvalidDataException("不支持的图像通道数: " + channels + "（仅支持单通道或RGB三通道）");
+            }
+
+            string imageType = current.GetImageType();
+            if (!string.Equals(imageType, "real", StringComparison.OrdinalIgnoreCase))
+            {
+                HImage real = current.ConvertImageType("real");
+                current.Dispose();
+                current = real;
+                converted = true;
+            }
+
+            return current;
         }
 
         /// <summary>计算有限高度范围，忽略NaN和Infinity，供预览归一化使用。</summary>
