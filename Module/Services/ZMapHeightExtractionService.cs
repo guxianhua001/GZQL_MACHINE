@@ -35,6 +35,16 @@ namespace Module.Services
         /// <summary>
         /// 加载ZMAP高度图（要求单通道图像，灰度值即高度）。
         /// 加载成功后额外生成一张归一化灰度PNG供悬浮窗口预览显示（不影响原始浮点数据的采样精度）。
+        ///
+        /// 注意：读图统一采用"先构造空HImage、再调用ReadImage()"的两步方式，而不是
+        /// new HImage(filePath) 单参构造重载——本仓库其它Halcon读图代码
+        /// （见 HalconWrapper/VMHWindowControl.cs 的 OpenImage）均采用两步方式，
+        /// 已被现场验证更稳定。部分HALCON版本下单参构造在解析某些32位浮点/非常规TIFF
+        /// （常见于第三方3D传感器导出的ZMAP高度图）时曾出现过原生层崩溃
+        /// （表现为.NET侧不可捕获的 System.ExecutionEngineException），
+        /// 且该类崩溃通常源于"halcondotnet.dll接口版本"与"已安装HALCON运行时引擎版本"
+        /// 不一致，或32/64位不匹配，属于环境/SDK版本问题，try/catch无法根治，
+        /// 只能尽量规避触发路径 + 提前做防御性校验，尽量减少复现概率。
         /// </summary>
         public bool LoadHeightMap(string filePath, out string error)
         {
@@ -45,13 +55,26 @@ namespace Module.Services
                 return false;
             }
 
+            var ext = Path.GetExtension(filePath).ToLowerInvariant();
+            if (ext != ".tif" && ext != ".tiff")
+            {
+                error = "ZMAP高度图仅支持 .tif/.tiff 格式";
+                return false;
+            }
+
+            HImage image = null;
             try
             {
-                var image = new HImage(filePath);
+                // 两步读图：先构造空对象，再显式调用ReadImage，避免单参构造重载在个别HALCON
+                // 版本/非常规TIFF变体下触发的原生层不稳定问题（详见上方方法注释）
+                image = new HImage();
+                image.ReadImage(filePath);
+
                 int channels = image.CountChannels().I;
                 if (channels != 1)
                 {
                     error = $"ZMAP高度图须为单通道图像，当前通道数={channels}";
+                    image.Dispose();
                     return false;
                 }
 
@@ -68,6 +91,13 @@ namespace Module.Services
             }
             catch (Exception ex)
             {
+                // 仅能捕获HALCON以标准.NET异常形式抛出的错误（如许可证/参数错误）；
+                // 若原生层发生更严重的内存访问错误，可能以.NET无法安全捕获的方式终止进程，
+                // 此时应排查：①halcondotnet.dll版本与已安装HALCON运行时版本是否一致
+                // ②项目是否确实以x64运行（而非AnyCPU/x86）③该ZMAP文件在HDevelop中
+                // 能否正常打开（若HDevelop也无法打开，说明是文件本身或HALCON安装问题，
+                // 与本服务代码无关）
+                try { image?.Dispose(); } catch { /* 忽略释放异常 */ }
                 error = $"加载ZMAP高度图失败: {ex.Message}";
                 return false;
             }
