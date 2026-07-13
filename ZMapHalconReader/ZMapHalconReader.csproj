@@ -15,11 +15,9 @@
     -->
     <OutputPath>..\MainApp\bin\$(Configuration)\net9.0-windows7.0\ZMapHalconReader\</OutputPath>
   </PropertyGroup>
-
   <ItemGroup>
     <Reference Include="halcondotnet">
-      <HintPath>$(HALCONROOT)\bin\dotnet35\halcondotnet.dll</HintPath>
-      <Private>true</Private>
+      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
