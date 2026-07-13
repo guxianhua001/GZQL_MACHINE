@@ -218,6 +218,32 @@ namespace Core.Services
         }
 
         /// <summary>
+        /// 仿射逆变换——由机械坐标反算CAD/像素坐标 (Mx,My) → (Cx,Cy)。
+        /// 用于"机械坐标系→图像像素坐标系"场景（例如ZMAP高度图标定后，按机械XY反查对应像素位置）。
+        /// 正变换: Mx=A·Cx+B·Cy+Tx, My=C·Cx+D·Cy+Ty；
+        /// 逆变换通过对2×2线性部分矩阵[[A,B],[C,D]]求逆，再减去平移量得到。
+        /// </summary>
+        /// <param name="calib">仿射标定结果（正变换：Cx,Cy → Mx,My）</param>
+        /// <param name="mx">机械坐标X</param>
+        /// <param name="my">机械坐标Y</param>
+        /// <returns>反算得到的 (Cx, Cy)</returns>
+        /// <exception cref="InvalidOperationException">仿射矩阵奇异（不可逆）时抛出</exception>
+        public static (double Cx, double Cy) InverseTransform(AffineCalibrationResult calib, double mx, double my)
+        {
+            if (calib == null) throw new ArgumentNullException(nameof(calib));
+
+            double det = calib.A * calib.D - calib.B * calib.C;
+            if (Math.Abs(det) < 1e-12)
+                throw new InvalidOperationException("Affine calibration is singular and cannot be inverted.");
+
+            double dx = mx - calib.Tx;
+            double dy = my - calib.Ty;
+            double cx = (calib.D * dx - calib.B * dy) / det;
+            double cy = (calib.A * dy - calib.C * dx) / det;
+            return (cx, cy);
+        }
+
+        /// <summary>
         /// 求解3×3对称线性方程组 M·x = b (使用Cramer法则)
         /// M 为 3×3 矩阵, b 为 3×1 向量
         /// 返回解向量 x

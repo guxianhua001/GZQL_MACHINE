@@ -1,0 +1,215 @@
+<Window x:Class="Module.Controls.ZMap.ZMapExtractZWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
+        Title="{lang:Lang ZMap_Title}"
+        Width="1080" Height="720"
+        MinWidth="880" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="ToolWindow"
+        Background="#FAFAFA"
+        TextElement.FontFamily="Microsoft YaHei UI">
+    <Window.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#607D8B"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题区 -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <materialDesign:PackIcon Kind="Terrain" Width="24" Height="24" Foreground="#00838F" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <StackPanel>
+                <TextBlock Text="{lang:Lang ZMap_Title}" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Text="{lang:Lang ZMap_Description}" FontSize="11" Foreground="#757575" TextWrapping="Wrap"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- 主体：左（高度图+标定） 右（提取预览） -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.05*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左列 -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- 1. 加载ZMAP高度图 -->
+                    <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="{lang:Lang ZMap_Section_LoadHeightMap}"/>
+                            <DockPanel Margin="0,0,0,6">
+                                <Button DockPanel.Dock="Right" Command="{Binding LoadHeightMapCommand}"
+                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3" Margin="6,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FolderOpen" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang ZMap_Btn_Browse}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBox Text="{Binding HeightMapFilePath, Mode=OneWay}" IsReadOnly="True" FontSize="11"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" Padding="4,2"/>
+                            </DockPanel>
+                            <TextBlock Text="{Binding HeightMapStatusText}" FontSize="11" Foreground="#00838F" TextWrapping="Wrap"/>
+                            <Border Height="220" Background="#212121" Margin="0,8,0,0" CornerRadius="2">
+                                <Image Source="{Binding PreviewBitmap}" Stretch="Uniform" Margin="2"/>
+                            </Border>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 2. 像素↔机械坐标标定 -->
+                    <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Command="{Binding AddCalibrationPointCommand}" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2" Margin="0,0,4,0">
+                                        <materialDesign:PackIcon Kind="Plus" Width="14" Height="14"/>
+                                    </Button>
+                                    <Button Command="{Binding ComputeCalibrationCommand}" Style="{StaticResource MaterialDesignFlatButton}" Padding="8,2">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="FunctionVariant" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{lang:Lang ZMap_Btn_ComputeCalibration}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="{lang:Lang ZMap_Section_Calibration}" Margin="0"/>
+                            </DockPanel>
+                            <DataGrid ItemsSource="{Binding CalibrationPoints}" AutoGenerateColumns="False"
+                                      CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                                      MaxHeight="150" MinHeight="80" GridLinesVisibility="Horizontal" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="{lang:Lang ZMap_Header_Id}" Binding="{Binding Id}" Width="30" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelCol}" Binding="{Binding PixelCol, StringFormat=F1}" Width="60"/>
+                                    <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelRow}" Binding="{Binding PixelRow, StringFormat=F1}" Width="60"/>
+                                    <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineX}" Binding="{Binding MachineX, StringFormat=F3}" Width="65"/>
+                                    <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineY}" Binding="{Binding MachineY, StringFormat=F3}" Width="65"/>
+                                    <DataGridTemplateColumn Header="" Width="34">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.RemoveCalibrationPointCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="2" Foreground="#D32F2F">
+                                                    <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Text="{Binding CalibrationStatusText}" FontSize="11" Foreground="#1565C0" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                            <TextBlock Text="{lang:Lang ZMap_Tip_Calibration}" FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </materialDesign:Card>
+
+                    <!-- 3. Z基准偏移标定（可选） -->
+                    <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="{lang:Lang ZMap_Section_ZOffset}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="{lang:Lang ZMap_Label_RefPixelCol}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RefPixelCol, StringFormat=F1}" Margin="0,0,8,4" Padding="4,2" FontSize="11"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="{lang:Lang ZMap_Label_RefPixelRow}"/>
+                                <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding RefPixelRow, StringFormat=F1}" Margin="0,0,0,4" Padding="4,2" FontSize="11"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="{lang:Lang ZMap_Label_RefMachineZ}"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding RefMachineZ, StringFormat=F3}" Margin="0,0,8,0" Padding="4,2" FontSize="11"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="{lang:Lang ZMap_Label_ZOffset}"/>
+                                <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding ZOffset, StringFormat=F3}" Margin="0" Padding="4,2" FontSize="11"/>
+                            </Grid>
+                            <DockPanel Margin="0,8,0,0">
+                                <Button DockPanel.Dock="Right" Command="{Binding CalibrateZOffsetCommand}"
+                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ArrowExpandVertical" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang ZMap_Btn_CalibrateZOffset}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button DockPanel.Dock="Right" Command="{Binding SaveCalibrationCommand}"
+                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3" Margin="0,0,6,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ContentSaveOutline" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang ZMap_Btn_SaveCalibration}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{lang:Lang ZMap_Tip_ZOffset}" FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </materialDesign:Card>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 右列：提取预览 -->
+            <materialDesign:Card Grid.Column="2" Padding="10">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Command="{Binding ExtractPreviewCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}" Padding="10,4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="PlayBoxOutline" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <TextBlock Text="{lang:Lang ZMap_Btn_ExtractPreview}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="{lang:Lang ZMap_Section_Preview}" Margin="0"/>
+                    </DockPanel>
+
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding PreviewSummaryText}" FontSize="11" Foreground="#F57C00"
+                               Margin="0,6,0,0" TextWrapping="Wrap"/>
+
+                    <DataGrid ItemsSource="{Binding PreviewResults}" AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal" FontSize="11">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                        <Setter Property="Background" Value="#FFEBEE"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_Index}" Binding="{Binding Index}" Width="35"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineX}" Binding="{Binding MachineX, StringFormat=F3}" Width="65"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineY}" Binding="{Binding MachineY, StringFormat=F3}" Width="65"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelCol}" Binding="{Binding PixelCol, StringFormat=F1}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelRow}" Binding="{Binding PixelRow, StringFormat=F1}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_RawZ}" Binding="{Binding RawZ, StringFormat=F3}" Width="60"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_CorrectedZ}" Binding="{Binding CorrectedZ, StringFormat=F3}" Width="65"/>
+                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_ErrorMessage}" Binding="{Binding ErrorMessage}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </materialDesign:Card>
+        </Grid>
+
+        <!-- 底部操作栏 -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="{lang:Lang ZMap_Btn_Cancel}" Command="{Binding CancelCommand}"
+                    Style="{StaticResource MaterialDesignFlatButton}" Padding="14,6" Margin="0,0,8,0" IsCancel="True"/>
+            <Button Content="{lang:Lang ZMap_Btn_Apply}" Command="{Binding ApplyCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}" Padding="14,6"/>
+        </StackPanel>
+    </Grid>
+</Window>

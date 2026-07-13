@@ -89,6 +89,11 @@ namespace Module.ViewModels
         // 本地化服务（多语言支持）
         private ILocalizationService _localizationService;
 
+        // ZMAP高度图Z值提取服务（独立扩展功能：基于视觉高度图提取选中段的逐点Z坐标，
+        // 通过机械坐标系间接对齐ZMAP像素坐标与DXF轨迹点，不影响现有CAD Z聚合逻辑）
+        private readonly IZMapHeightExtractionService _zMapHeightService;
+        private readonly IZMapConfigService _zMapConfigService;
+
         #endregion
 
         #region 步骤信息模型
@@ -419,6 +424,7 @@ namespace Module.ViewModels
                     ApplySegmentSplitCommand.RaiseCanExecuteChanged();
                     ApplyXyCompensationCommand.RaiseCanExecuteChanged();
                     ExtractCADZValuesCommand.RaiseCanExecuteChanged();
+                    OpenZMapExtractToolCommand.RaiseCanExecuteChanged();
 
                     _dispenseSegmentStore.CurrentSelectedSegment = _selectedSegment;
                     _eventAggregator?.GetEvent<SelectedSegmentChangedEvent>().Publish(
@@ -1549,6 +1555,41 @@ namespace Module.ViewModels
             }
         }
 
+        private DelegateCommand _openZMapExtractToolCommand;
+        /// <summary>
+        /// 打开"ZMAP高度提取"悬浮工具窗口——独立扩展功能，不影响 ExtractCADZValuesCommand 现有逻辑。
+        /// 窗口内基于ZMAP高度图（结合独立的像素↔机械坐标标定）逐点提取Z值，用户确认后才写回选中段
+        /// 各采样点的 CadPoint.Z（写回后续若启用Step6 Z向纠偏，会按各点Z的相对高度差自动纠偏）。
+        /// </summary>
+        public DelegateCommand OpenZMapExtractToolCommand =>
+            _openZMapExtractToolCommand ??= new DelegateCommand(ExecuteOpenZMapExtractTool,
+                () => _selectedSegment != null && _selectedSegment.Points != null && _selectedSegment.Points.Count > 0);
+
+        private void ExecuteOpenZMapExtractTool()
+        {
+            if (_selectedSegment == null || _selectedSegment.Points == null || _selectedSegment.Points.Count == 0)
+                return;
+
+            if (_zMapHeightService == null || _zMapConfigService == null)
+            {
+                GlobalStatus = L("ZMap_Error_ServiceUnavailable");
+                return;
+            }
+
+            // ZMapExtractZViewModel 需要持有窗口引用以便在"取消/应用"时设置 DialogResult 关闭窗口，
+            // 因此先创建窗口实例，再把窗口本身传入 ViewModel 构造函数，最后设置 DataContext
+            var view = new Module.Controls.ZMap.ZMapExtractZWindow { Owner = Application.Current.MainWindow };
+            var vm = new Module.Controls.ZMap.ZMapExtractZViewModel(
+                _zMapHeightService, _zMapConfigService, _selectedSegment.Points, _selectedSegment.SegmentId, view);
+            view.DataContext = vm;
+
+            bool? applied = view.ShowDialog();
+            if (applied == true)
+            {
+                GlobalStatus = L("ZMap_Status_AppliedToSegment");
+            }
+        }
+
         /// <summary>
         /// 应用采样点数——按 SegmentSplitCount 对选中段的原始图元重新离散化
         /// 只更新采样点 Points，不替换 SourceEntity，保持原始轨迹形状不变
@@ -2015,7 +2056,9 @@ namespace Module.ViewModels
             ILocalizationService localizationService = null,
             IDispenseSegmentStore dispenseSegmentStore = null,
             IEventAggregator eventAggregator = null,
-            INeedleCameraCalibrationProvider needleCameraCalibProvider = null)
+            INeedleCameraCalibrationProvider needleCameraCalibProvider = null,
+            IZMapHeightExtractionService zMapHeightService = null,
+            IZMapConfigService zMapConfigService = null)
         {
             _dxfParser = dxfParser;
             _dxfImportHelper = dxfImportHelper;
@@ -2028,6 +2071,10 @@ namespace Module.ViewModels
             _eventAggregator = eventAggregator;
             _needleCameraCalibProvider = needleCameraCalibProvider
                 ?? ContainerLocator.Container?.Resolve<INeedleCameraCalibrationProvider>();
+            _zMapHeightService = zMapHeightService
+                ?? ContainerLocator.Container?.Resolve<IZMapHeightExtractionService>();
+            _zMapConfigService = zMapConfigService
+                ?? ContainerLocator.Container?.Resolve<IZMapConfigService>();
 
             // 订阅语言变更事件以刷新所有本地化文本
             if (_localizationService != null)

@@ -2972,6 +2972,53 @@
     <sys:String x:Key="Step3_ToggleBtn_Arc">圆弧</sys:String>
     <sys:String x:Key="Step3_ToggleBtn_LineSegment">线段</sys:String>
     <sys:String x:Key="Step3_ToggleBtn_Polyline">多段线</sys:String>
+    <sys:String x:Key="Step3_Btn_ExtractZMapZ">ZMAP提取Z</sys:String>
+    <sys:String x:Key="Step3_Tip_ExtractZMapZ">基于视觉ZMAP高度图逐点提取选中段的Z坐标（需先在悬浮窗口内完成像素↔机械坐标标定，且本段已完成Step4坐标标定获得机械XY）</sys:String>
+
+    <!-- ZMap 高度提取（悬浮工具窗口，独立扩展功能，不影响Step3现有CAD Z聚合逻辑） -->
+    <sys:String x:Key="ZMap_Title">ZMAP高度提取</sys:String>
+    <sys:String x:Key="ZMap_Description">加载ZMAP高度图并标定"像素↔机械坐标"仿射关系后，可按选中段各采样点的机械坐标提取对应Z高度，确认后写回该段各点的Z列。</sys:String>
+    <sys:String x:Key="ZMap_Section_LoadHeightMap">1. 加载ZMAP高度图</sys:String>
+    <sys:String x:Key="ZMap_Btn_Browse">浏览...</sys:String>
+    <sys:String x:Key="ZMap_Dialog_SelectHeightMap">选择ZMAP高度图文件</sys:String>
+    <sys:String x:Key="ZMap_Status_NotLoaded">尚未加载高度图</sys:String>
+    <sys:String x:Key="ZMap_Status_Loaded">已加载，尺寸 {0} × {1} 像素</sys:String>
+    <sys:String x:Key="ZMap_Status_LoadFailed">加载失败：{0}</sys:String>
+    <sys:String x:Key="ZMap_Section_Calibration">2. 像素↔机械坐标标定</sys:String>
+    <sys:String x:Key="ZMap_Btn_ComputeCalibration">计算标定</sys:String>
+    <sys:String x:Key="ZMap_Header_Id">序号</sys:String>
+    <sys:String x:Key="ZMap_Header_PixelCol">像素列</sys:String>
+    <sys:String x:Key="ZMap_Header_PixelRow">像素行</sys:String>
+    <sys:String x:Key="ZMap_Header_MachineX">机械X</sys:String>
+    <sys:String x:Key="ZMap_Header_MachineY">机械Y</sys:String>
+    <sys:String x:Key="ZMap_Status_NotCalibrated">尚未标定</sys:String>
+    <sys:String x:Key="ZMap_Status_Calibrated">标定完成：RMS={0:F4}mm，最大残差={1:F4}mm，质量：{2}</sys:String>
+    <sys:String x:Key="ZMap_Status_CalibrateFailed">标定失败：{0}</sys:String>
+    <sys:String x:Key="ZMap_Status_Saved">标定结果已保存</sys:String>
+    <sys:String x:Key="ZMap_Tip_Calibration">至少添加3个不共线的标定点（图上已知像素位置 + 该位置的已知机械坐标），点击"计算标定"求解仿射矩阵</sys:String>
+    <sys:String x:Key="ZMap_Section_ZOffset">3.（可选）Z基准偏移标定</sys:String>
+    <sys:String x:Key="ZMap_Label_RefPixelCol">参考点像素列</sys:String>
+    <sys:String x:Key="ZMap_Label_RefPixelRow">参考点像素行</sys:String>
+    <sys:String x:Key="ZMap_Label_RefMachineZ">参考点机械Z</sys:String>
+    <sys:String x:Key="ZMap_Label_ZOffset">Z基准偏移</sys:String>
+    <sys:String x:Key="ZMap_Btn_CalibrateZOffset">标定Z基准</sys:String>
+    <sys:String x:Key="ZMap_Btn_SaveCalibration">保存标定</sys:String>
+    <sys:String x:Key="ZMap_Tip_ZOffset">用于修正ZMAP采集零点与机械Z=0基准不一致的问题：提取的Z = ZMAP灰度值 + Z基准偏移</sys:String>
+    <sys:String x:Key="ZMap_Status_ZOffsetFailed">Z基准标定失败：参考点超出图像范围或高度无效</sys:String>
+    <sys:String x:Key="ZMap_Status_ZOffsetDone">Z基准偏移已更新为 {0:F3}mm</sys:String>
+    <sys:String x:Key="ZMap_Section_Preview">4. 提取预览</sys:String>
+    <sys:String x:Key="ZMap_Btn_ExtractPreview">提取预览</sys:String>
+    <sys:String x:Key="ZMap_Header_Index">序号</sys:String>
+    <sys:String x:Key="ZMap_Header_RawZ">原始高度</sys:String>
+    <sys:String x:Key="ZMap_Header_CorrectedZ">修正后Z</sys:String>
+    <sys:String x:Key="ZMap_Header_ErrorMessage">说明</sys:String>
+    <sys:String x:Key="ZMap_Preview_Summary">有效提取 {0} / {1} 点</sys:String>
+    <sys:String x:Key="ZMap_Preview_SummaryWithMissing">有效提取 {0} / {1} 点（另有 {2} 点因缺少机械坐标未提取，请先完成Step4坐标标定）</sys:String>
+    <sys:String x:Key="ZMap_Preview_Applied">已将 {0} 个有效点的Z值写回选中段</sys:String>
+    <sys:String x:Key="ZMap_Btn_Cancel">取消</sys:String>
+    <sys:String x:Key="ZMap_Btn_Apply">应用到Z列</sys:String>
+    <sys:String x:Key="ZMap_Error_ServiceUnavailable">ZMAP高度提取服务不可用（可能未安装Halcon SDK）</sys:String>
+    <sys:String x:Key="ZMap_Status_AppliedToSegment">已应用ZMAP提取的Z值到选中段</sys:String>
 
     <!-- Step4 Align -->
     <sys:String x:Key="Step4_Btn_CalculateTransform">计算变换</sys:String>

@@ -115,6 +115,8 @@ namespace Module.Controls
             IDispenseSegmentStore dispenseSegmentStore = null;
             IEventAggregator eventAggregator = null;
             Core.Abstraction.INeedleCameraCalibrationProvider needleCameraCalibProvider = null;
+            Core.Abstraction.IZMapHeightExtractionService zMapHeightService = null;
+            Core.Abstraction.IZMapConfigService zMapConfigService = null;
             try
             {
                 var container = ContainerLocator.Container;
@@ -130,11 +132,13 @@ namespace Module.Controls
                     dispenseSegmentStore = container.Resolve<IDispenseSegmentStore>();
                     eventAggregator = container.Resolve<IEventAggregator>();
                     needleCameraCalibProvider = container.Resolve<Core.Abstraction.INeedleCameraCalibrationProvider>();
+                    zMapHeightService = container.Resolve<Core.Abstraction.IZMapHeightExtractionService>();
+                    zMapConfigService = container.Resolve<Core.Abstraction.IZMapConfigService>();
                 }
             }
             catch { /* 服务未注册时忽略 */ }
 
-            _viewModel = new CadPointEditorViewModel(dxfParser, dxfImportHelper, roiTool, alignService, dispenseService, motionService, localizationService, dispenseSegmentStore, eventAggregator, needleCameraCalibProvider);
+            _viewModel = new CadPointEditorViewModel(dxfParser, dxfImportHelper, roiTool, alignService, dispenseService, motionService, localizationService, dispenseSegmentStore, eventAggregator, needleCameraCalibProvider, zMapHeightService, zMapConfigService);
             DataContext = _viewModel;
             Loaded += OnLoaded;
             SetupBindings();

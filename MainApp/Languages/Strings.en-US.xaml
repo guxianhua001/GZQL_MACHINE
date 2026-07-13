@@ -2972,6 +2972,53 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step3_ToggleBtn_Arc">Arc</sys:String>
     <sys:String x:Key="Step3_ToggleBtn_LineSegment">Line</sys:String>
     <sys:String x:Key="Step3_ToggleBtn_Polyline">Polyline</sys:String>
+    <sys:String x:Key="Step3_Btn_ExtractZMapZ">ZMap Extract Z</sys:String>
+    <sys:String x:Key="Step3_Tip_ExtractZMapZ">Extract per-point Z from a vision ZMap height image (requires pixel-to-machine calibration in the popup tool, and the segment must already have machine XY from Step4 alignment)</sys:String>
+
+    <!-- ZMap height extraction (floating tool window, additive feature, does not affect existing Step3 CAD Z aggregation) -->
+    <sys:String x:Key="ZMap_Title">ZMap Height Extraction</sys:String>
+    <sys:String x:Key="ZMap_Description">After loading a ZMap height image and calibrating the pixel-to-machine affine mapping, extract Z heights for the selected segment's sample points by their machine coordinates, then apply to write back into the Z column.</sys:String>
+    <sys:String x:Key="ZMap_Section_LoadHeightMap">1. Load ZMap Height Image</sys:String>
+    <sys:String x:Key="ZMap_Btn_Browse">Browse...</sys:String>
+    <sys:String x:Key="ZMap_Dialog_SelectHeightMap">Select ZMap Height Image File</sys:String>
+    <sys:String x:Key="ZMap_Status_NotLoaded">No height image loaded</sys:String>
+    <sys:String x:Key="ZMap_Status_Loaded">Loaded, size {0} x {1} px</sys:String>
+    <sys:String x:Key="ZMap_Status_LoadFailed">Load failed: {0}</sys:String>
+    <sys:String x:Key="ZMap_Section_Calibration">2. Pixel-to-Machine Calibration</sys:String>
+    <sys:String x:Key="ZMap_Btn_ComputeCalibration">Compute Calibration</sys:String>
+    <sys:String x:Key="ZMap_Header_Id">No.</sys:String>
+    <sys:String x:Key="ZMap_Header_PixelCol">Pixel Col</sys:String>
+    <sys:String x:Key="ZMap_Header_PixelRow">Pixel Row</sys:String>
+    <sys:String x:Key="ZMap_Header_MachineX">Machine X</sys:String>
+    <sys:String x:Key="ZMap_Header_MachineY">Machine Y</sys:String>
+    <sys:String x:Key="ZMap_Status_NotCalibrated">Not calibrated yet</sys:String>
+    <sys:String x:Key="ZMap_Status_Calibrated">Calibrated: RMS={0:F4}mm, MaxResidual={1:F4}mm, Quality: {2}</sys:String>
+    <sys:String x:Key="ZMap_Status_CalibrateFailed">Calibration failed: {0}</sys:String>
+    <sys:String x:Key="ZMap_Status_Saved">Calibration saved</sys:String>
+    <sys:String x:Key="ZMap_Tip_Calibration">Add at least 3 non-collinear calibration points (known pixel position + known machine coordinate at that position), then click "Compute Calibration" to solve the affine matrix</sys:String>
+    <sys:String x:Key="ZMap_Section_ZOffset">3. (Optional) Z Baseline Offset Calibration</sys:String>
+    <sys:String x:Key="ZMap_Label_RefPixelCol">Reference Pixel Col</sys:String>
+    <sys:String x:Key="ZMap_Label_RefPixelRow">Reference Pixel Row</sys:String>
+    <sys:String x:Key="ZMap_Label_RefMachineZ">Reference Machine Z</sys:String>
+    <sys:String x:Key="ZMap_Label_ZOffset">Z Offset</sys:String>
+    <sys:String x:Key="ZMap_Btn_CalibrateZOffset">Calibrate Z Offset</sys:String>
+    <sys:String x:Key="ZMap_Btn_SaveCalibration">Save Calibration</sys:String>
+    <sys:String x:Key="ZMap_Tip_ZOffset">Corrects the mismatch between the ZMap capture zero point and the machine Z=0 baseline: extracted Z = ZMap gray value + Z Offset</sys:String>
+    <sys:String x:Key="ZMap_Status_ZOffsetFailed">Z offset calibration failed: reference point out of image range or invalid height</sys:String>
+    <sys:String x:Key="ZMap_Status_ZOffsetDone">Z offset updated to {0:F3}mm</sys:String>
+    <sys:String x:Key="ZMap_Section_Preview">4. Extraction Preview</sys:String>
+    <sys:String x:Key="ZMap_Btn_ExtractPreview">Extract Preview</sys:String>
+    <sys:String x:Key="ZMap_Header_Index">Index</sys:String>
+    <sys:String x:Key="ZMap_Header_RawZ">Raw Z</sys:String>
+    <sys:String x:Key="ZMap_Header_CorrectedZ">Corrected Z</sys:String>
+    <sys:String x:Key="ZMap_Header_ErrorMessage">Note</sys:String>
+    <sys:String x:Key="ZMap_Preview_Summary">Extracted {0} / {1} points</sys:String>
+    <sys:String x:Key="ZMap_Preview_SummaryWithMissing">Extracted {0} / {1} points ({2} points skipped due to missing machine coordinates, please complete Step4 alignment first)</sys:String>
+    <sys:String x:Key="ZMap_Preview_Applied">Applied Z values to {0} points of the selected segment</sys:String>
+    <sys:String x:Key="ZMap_Btn_Cancel">Cancel</sys:String>
+    <sys:String x:Key="ZMap_Btn_Apply">Apply to Z Column</sys:String>
+    <sys:String x:Key="ZMap_Error_ServiceUnavailable">ZMap height extraction service unavailable (Halcon SDK may not be installed)</sys:String>
+    <sys:String x:Key="ZMap_Status_AppliedToSegment">ZMap-extracted Z values applied to the selected segment</sys:String>
 
     <!-- Step4 Align -->
     <sys:String x:Key="Step4_Btn_CalculateTransform">Calculate Transform</sys:String>

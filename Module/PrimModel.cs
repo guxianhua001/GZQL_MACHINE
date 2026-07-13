@@ -159,6 +159,15 @@ namespace Module
             // === 双龙门标定 ===
             containerRegistry.RegisterSingleton<Core.Abstraction.IDualGantryCalibrationService, Module.Services.DualGantryCalibrationService>();
             containerRegistry.RegisterForNavigation<DualGantryCalibrationView, DualGantryCalibrationViewModel>();
+
+            // === ZMAP高度图Z值提取（悬浮工具窗口，Step3可选功能，不影响原有Z流程）===
+            containerRegistry.RegisterSingleton<Core.Abstraction.IZMapConfigService, Core.Services.ZMapConfigService>();
+#if HAS_HALCON
+            containerRegistry.RegisterSingleton<Core.Abstraction.IZMapHeightExtractionService, Module.Services.ZMapHeightExtractionService>();
+#else
+            // Halcon SDK 未安装时，ZMapHeightExtractionService 被条件编译排除，注册空实现占位
+            containerRegistry.RegisterSingleton<Core.Abstraction.IZMapHeightExtractionService, Module.Services.StubZMapHeightExtractionService>();
+#endif
         }
     }
 }
