@@ -548,7 +548,7 @@
                                                         UnlinkCommand="{Binding UnlinkNeedleDistanceXCommand}"
                                                         LinkedVariableName="{Binding CameraNeedleDistanceXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                         LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                                        ComboBoxWidth="80" />
+                                                        ComboBoxWidth="200" />
                                                     <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="12" Height="12"
                                                                              Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
                                                     <common:GlobalVariableLinkControl Grid.Row="1" Grid.Column="1"
@@ -558,7 +558,7 @@
                                                         UnlinkCommand="{Binding UnlinkNeedleDistanceYCommand}"
                                                         LinkedVariableName="{Binding CameraNeedleDistanceYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                         LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                                        ComboBoxWidth="80" />
+                                                        ComboBoxWidth="200" />
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
@@ -590,7 +590,7 @@
                                                         UnlinkCommand="{Binding UnlinkNeedleOffsetXCommand}"
                                                         LinkedVariableName="{Binding NeedleOffsetXLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                         LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                                        ComboBoxWidth="80" />
+                                                        ComboBoxWidth="200" />
                                                     <materialDesign:PackIcon Grid.Row="1" Grid.Column="0" Kind="AxisYArrow" Width="12" Height="12"
                                                                              Foreground="#43A047" VerticalAlignment="Center" Margin="0,0,4,0" />
                                                     <common:GlobalVariableLinkControl Grid.Row="1" Grid.Column="1"
@@ -600,7 +600,7 @@
                                                         UnlinkCommand="{Binding UnlinkNeedleOffsetYCommand}"
                                                         LinkedVariableName="{Binding NeedleOffsetYLinkedVar, UpdateSourceTrigger=PropertyChanged}"
                                                         LinkableGlobalVariables="{Binding LinkableGlobalVariables}"
-                                                        ComboBoxWidth="80" />
+                                                        ComboBoxWidth="200" />
                                                 </Grid>
                                             </StackPanel>
                                         </Border>

@@ -1,26 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <TargetFramework>net472</TargetFramework>
-    <PlatformTarget>x64</PlatformTarget>
-    <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>7.3</LangVersion>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
     <AssemblyName>VisionTools</AssemblyName>
     <RootNamespace>VisionTools</RootNamespace>
+    <OutputType>Library</OutputType>
+    <Nullable>disable</Nullable>
     <!--
-      视觉工具类库（.NET Framework 4.7.2 / x64）：
-      与参考框架 E:\视觉最新框架\VM 的插件运行环境保持一致，未来VM 02Plugins
-      中的视觉工具（图像处理/检测识别等）将逐步迁移至本类库。
-      所有工具逻辑集中在此，便于扩展、复用与单元测试；进程入口由瘦启动壳
-      VisionTools.Host 提供，主控程序（.NET 9）通过命令行调用Host进程，
-      既隔离HALCON原生层崩溃风险，也避免跨.NET运行时加载不兼容程序集。
+      视觉工具类库（纯托管，无HALCON依赖）：
+      承载与图像处理相关、可在主进程（.NET 9）内直接复用的工具逻辑。
+      当前仅含 TiffFloatReader（无压缩浮点TIFF托管解码器），用于安全读取
+      仪器导出的ZMAP高度图（避免HALCON原生TIFF解码器对个别文件访问冲突）。
+      HALCON相关的显示/采样由主程序 HalconWrapper / Module 在进程内完成，
+      不再需要独立进程与命令分发（已移除 VisionTools.Host / ToolRunner）。
     -->
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="halcondotnet">
-      <HintPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HintPath>
-    </Reference>
-    <!-- 托管预览PNG生成（HALCON崩溃兜底路径下也能出预览图） -->
-    <Reference Include="System.Drawing" />
-  </ItemGroup>
 </Project>

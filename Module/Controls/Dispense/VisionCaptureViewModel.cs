@@ -173,7 +173,10 @@ namespace Module.ViewModels
                 case nameof(PhotoPositionRow.PositionName):
                     // 输入拍照位名称后，从位置编辑器所有工站解析各轴坐标并显示
                     if (sender is PhotoPositionRow namedRow)
+                    {
                         RefreshRowParsedCoordinates(namedRow);
+                        TryRecalculateMachinePointsIfCaptured();
+                    }
                     break;
                 case nameof(PhotoPositionRow.CalculatedOffsetX):
                 case nameof(PhotoPositionRow.CalculatedOffsetY):
@@ -182,6 +185,7 @@ namespace Module.ViewModels
                 case nameof(PhotoPositionRow.OffsetXExpression):
                 case nameof(PhotoPositionRow.OffsetYExpression):
                     NotifyTargetOffsetChanged();
+                    TryRecalculateMachinePointsIfCaptured();
                     break;
                 case nameof(PhotoPositionRow.DispenseType):
                 case nameof(PhotoPositionRow.TrajectoryOverride):
@@ -562,7 +566,7 @@ namespace Module.ViewModels
         /// </summary>
         public bool HasParsedArcData => CapturedTargetPoints.Count > 0;
 
-        /// <summary>相机返回的目标点集合（PointX/Y=相机坐标，MechX/Y=叠加偏移后）</summary>
+        /// <summary>相机返回的目标点集合（PointX/Y=相机坐标，MechX/Y=PhotoDx/Dy+target+偏移叠加后）</summary>
         private ObservableCollection<TargetPointItem> _capturedTargetPoints = new ObservableCollection<TargetPointItem>();
         public ObservableCollection<TargetPointItem> CapturedTargetPoints
         {
@@ -623,6 +627,7 @@ namespace Module.ViewModels
                 RaisePropertyChanged(nameof(IsCameraNeedleDistanceYLinked));
                 RaisePropertyChanged(nameof(IsNeedleOffsetXLinked));
                 RaisePropertyChanged(nameof(IsNeedleOffsetYLinked));
+                TryRecalculateMachinePointsIfCaptured();
             }
         }
 
@@ -1460,11 +1465,23 @@ namespace Module.ViewModels
                 {
                     SelectedRow?.NotifyCalculatedPropertiesChanged();
                 }
+
+                TryRecalculateMachinePointsIfCaptured();
             }
             catch (Exception ex)
             {
                 _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_GlobalVarChangeSyncFailed", "[VisionCapture] 全局变量变更同步失败: {0}"), ex.Message));
             }
+        }
+
+        /// <summary>
+        /// 偏移/拍照位变更后，若已有相机目标点则按新公式重算 MechX/Y 预览。
+        /// </summary>
+        private void TryRecalculateMachinePointsIfCaptured()
+        {
+            if (SelectedRow == null || CapturedTargetPoints.Count == 0)
+                return;
+            _ = ComputeMachinePointsFromCameraAsync(SelectedRow);
         }
 
         /// <summary>
@@ -2072,31 +2089,26 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 统一偏移三元组：固定间距 + 校针偏差 + XY补偿（Dot/路径共用）。
-        /// XY补偿按 EffectiveTrajectoryType 从 DotParams 或 ArcParams 读取，
-        /// 与 Step3EditParamsPanel 的 XyCompensationX/Y 统一入口。
+        /// 统一偏移：相机针头间距 + 校针补偿（ViewModel 级 NeedleOffset）。
+        /// XY 工艺补偿已移至 DotParams/ArcParams，不参与 Mech 公式。
         /// </summary>
-        private ((double X, double Y) CamDist, (double X, double Y) NeedleCalib, (double X, double Y) ManualComp) GetUnifiedOffsets(PhotoPositionRow row = null)
+        private ((double X, double Y) CamDist, (double X, double Y) NeedleCalib) GetVisionCaptureNeedleOffsets()
         {
-            row ??= SelectedRow;
-            // 相机针头距离和校针偏差已按当前针头切换（SwitchNeedleOffsetData）
-            var camDist = (CameraNeedleDistanceX, CameraNeedleDistanceY);
-            var needleCalib = (NeedleOffsetX, NeedleOffsetY);
-            // XY补偿：按当前针头取对应工艺参数
-            double compX, compY;
-            if (EffectiveTrajectoryType == TrajectoryType.Dot)
-            {
-                var dp = _currentNeedleIndex == 0 ? row?.DotParamsNeedle1 : row?.DotParamsNeedle2;
-                compX = dp?.XyCompensationX ?? 0;
-                compY = dp?.XyCompensationY ?? 0;
-            }
-            else
-            {
-                var ap = _currentNeedleIndex == 0 ? row?.ArcParamsNeedle1 : row?.ArcParamsNeedle2;
-                compX = ap?.XyCompensationX ?? 0;
-                compY = ap?.XyCompensationY ?? 0;
-            }
-            return (camDist, needleCalib, (compX, compY));
+            return ((CameraNeedleDistanceX, CameraNeedleDistanceY), (NeedleOffsetX, NeedleOffsetY));
+        }
+
+        /// <summary>本次拍照结果是否包含视觉中心 CenterX/Y</summary>
+        private bool _captureHasVisionCenter;
+
+        /// <summary>
+        /// 解析 targetX/Y：相机中心与目标点的间距。
+        /// 若拍照结果含 CenterX/Y，则 target = Point - Center；否则 Point 即为 target 偏移。
+        /// </summary>
+        private (double X, double Y) ResolveTargetOffset(double pointX, double pointY)
+        {
+            if (_captureHasVisionCenter)
+                return (pointX - ParsedCenterX, pointY - ParsedCenterY);
+            return (pointX, pointY);
         }
 
         /// <summary>
@@ -2141,6 +2153,7 @@ namespace Module.ViewModels
         private bool TryParseTargetPoints(Dictionary<string, double> pd, string rawResponse = null)
         {
             CapturedTargetPoints.Clear();
+            _captureHasVisionCenter = false;
             pd ??= new Dictionary<string, double>();
 
             // 0) 优先：视觉点胶工具分号格式 result;x,y;x,y;...
@@ -2177,6 +2190,17 @@ namespace Module.ViewModels
 
             if (pd.Count == 0 && string.IsNullOrEmpty(rawResponse)) return false;
 
+            // 检测视觉中心：CenterX/Y 可与 PnX 同包返回，用于计算 target = Point - Center
+            if (TryGetIgnoreCase(pd, "CenterX", out var centerXVal))
+            {
+                TryGetIgnoreCase(pd, "CenterY", out var centerYVal);
+                ParsedCenterX = centerXVal;
+                ParsedCenterY = centerYVal;
+                VisionCenterX = centerXVal;
+                VisionCenterY = centerYVal;
+                _captureHasVisionCenter = true;
+            }
+
             // 轨迹类型不再从相机数据解析，完全由用户 TrajectoryOverride 决定
             var points = new List<(double X, double Y)>();
 
@@ -2211,6 +2235,7 @@ namespace Module.ViewModels
                 TryGetIgnoreCase(pd, "CenterY", out var cyLegacy);
                 ParsedCenterX = cxLegacy; ParsedCenterY = cyLegacy;
                 VisionCenterX = cxLegacy; VisionCenterY = cyLegacy;
+                _captureHasVisionCenter = true;
                 for (int i = 1; i <= 3; i++)
                 {
                     if (!TryGetIgnoreCase(pd, $"P{i}X", out var px)) break;
@@ -2219,12 +2244,16 @@ namespace Module.ViewModels
                 }
             }
 
-            // 3) 旧单点：offsetX/offsetY 或 X/Y
+            // 3) 单点：targetX/targetY（相机中心与目标点间距）或 offsetX/offsetY / X/Y
             if (points.Count == 0)
             {
                 double ox = 0, oy = 0;
-                bool has = TryGetIgnoreCase(pd, "offsetX", out ox) || TryGetIgnoreCase(pd, "X", out ox);
-                bool hasY = TryGetIgnoreCase(pd, "offsetY", out oy) || TryGetIgnoreCase(pd, "Y", out oy);
+                bool has = TryGetIgnoreCase(pd, "targetX", out ox)
+                    || TryGetIgnoreCase(pd, "offsetX", out ox)
+                    || TryGetIgnoreCase(pd, "X", out ox);
+                bool hasY = TryGetIgnoreCase(pd, "targetY", out oy)
+                    || TryGetIgnoreCase(pd, "offsetY", out oy)
+                    || TryGetIgnoreCase(pd, "Y", out oy);
                 if (has || hasY)
                     points.Add((ox, oy));
             }
@@ -2287,22 +2316,26 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 对 CapturedTargetPoints 叠加统一偏移，填充 Mech/MachinePoints，进入 Step2 预览。
-        /// 公式：Mech = PointCoord + CamCenterToNeedleDist + NeedleCalibOffset + ManualComp（不做贝塞尔再采样）
+        /// 对 CapturedTargetPoints 计算 Mech/MachinePoints，进入 Step2 预览。
+        /// 公式：Mech = PhotoDx/Dy + targetX/Y + 相机针头间距 + 校针补偿 + OFFSET
         /// </summary>
         private async Task ComputeMachinePointsFromCameraAsync(PhotoPositionRow row)
         {
             try
             {
                 _allPositions = await MergeAllPositionsAsync();
+                RefreshRowParsedCoordinates(row);
 
-                double photoDx = 0, photoDy = 0;
+                double photoDx = row?.Dx ?? 0;
+                double photoDy = row?.Dy ?? 0;
                 if (row != null && !string.IsNullOrEmpty(row.PositionName))
                 {
                     var dxKey = ResolvePositionKey(row.PositionName, "Dx");
                     var dyKey = ResolvePositionKey(row.PositionName, "Dy");
-                    if (dxKey != null) _allPositions.TryGetValue(dxKey, out photoDx);
-                    if (dyKey != null) _allPositions.TryGetValue(dyKey, out photoDy);
+                    if (dxKey != null && _allPositions.TryGetValue(dxKey, out var resolvedDx))
+                        photoDx = resolvedDx;
+                    if (dyKey != null && _allPositions.TryGetValue(dyKey, out var resolvedDy))
+                        photoDy = resolvedDy;
                 }
                 PhotoDx = photoDx;
                 PhotoDy = photoDy;
@@ -2310,18 +2343,26 @@ namespace Module.ViewModels
                 // 配置兼容：ArcNeedle* 与统一 NeedleOffset 同步显示
                 ArcNeedleOffsetX = NeedleOffsetX;
                 ArcNeedleOffsetY = NeedleOffsetY;
-                // XY补偿统一入口：按有效轨迹类型从 DotParams/ArcParams 读取（兼容旧全局变量）
-                var (camDist, needleCalib, manualComp) = GetUnifiedOffsets(row);
-                ArcNeedleCompX = manualComp.X;
-                ArcNeedleCompY = manualComp.Y;
 
-                var coords = CapturedTargetPoints.Select(p => (p.PointX, p.PointY)).ToList();
-                var mech = BezierArcDispenseService.ApplyOffsetsToPointSet(coords, camDist, needleCalib, manualComp);
+                var (camDist, needleCalib) = GetVisionCaptureNeedleOffsets();
+                var rowOffset = (X: row?.CalculatedOffsetX ?? 0, Y: row?.CalculatedOffsetY ?? 0);
+
+                var targetOffsets = CapturedTargetPoints
+                    .Select(p => ResolveTargetOffset(p.PointX, p.PointY))
+                    .ToList();
+                var mech = BezierArcDispenseService.ApplyVisionCaptureTransform(
+                    (photoDx, photoDy), targetOffsets, camDist, needleCalib, rowOffset);
 
                 for (int i = 0; i < CapturedTargetPoints.Count && i < mech.Count; i++)
                 {
                     CapturedTargetPoints[i].MechX = mech[i].X;
                     CapturedTargetPoints[i].MechY = mech[i].Y;
+                }
+
+                if (targetOffsets.Count > 0)
+                {
+                    TargetDeltaX = targetOffsets[0].X;
+                    TargetDeltaY = targetOffsets[0].Y;
                 }
 
                 MachinePoints.Clear();
@@ -2338,9 +2379,27 @@ namespace Module.ViewModels
                 if (mech.Count >= 3) { P3MechX = mech[2].X; P3MechY = mech[2].Y; }
                 BezierPointCount = mech.Count;
 
-                var details = mech
-                    .Select(p => new CoordinateTransformDetail { PhotoDx = photoDx, PhotoDy = photoDy, FinalX = p.X, FinalY = p.Y })
-                    .ToList();
+                var details = new List<CoordinateTransformDetail>(mech.Count);
+                for (int i = 0; i < mech.Count && i < targetOffsets.Count; i++)
+                {
+                    details.Add(new CoordinateTransformDetail
+                    {
+                        PhotoDx = photoDx,
+                        PhotoDy = photoDy,
+                        DeltaToCenterX = targetOffsets[i].X,
+                        DeltaToCenterY = targetOffsets[i].Y,
+                        TargetOffsetX = targetOffsets[i].X,
+                        TargetOffsetY = targetOffsets[i].Y,
+                        CameraNeedleDistanceX = camDist.X,
+                        CameraNeedleDistanceY = camDist.Y,
+                        NeedleOffsetX = needleCalib.X,
+                        NeedleOffsetY = needleCalib.Y,
+                        NeedleCompensationX = rowOffset.X,
+                        NeedleCompensationY = rowOffset.Y,
+                        FinalX = mech[i].X,
+                        FinalY = mech[i].Y
+                    });
+                }
                 GenerateArcPathGeometry(details);
 
                 CurrentStep = WorkflowStep.Step2_PreviewDispense;
@@ -2743,22 +2802,22 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// Dot 单点：ComputeMachineFromCamera(首点) → 构建 DotPoint → DotDispenseService。
-        /// 不修改 DotDispenseService；公式不含拍照位叠加。
+        /// Dot 单点：PhotoDx/Dy + target + 偏移 → 构建 DotPoint → DotDispenseService。
         /// </summary>
         private async Task ExecuteDotFlowAsync(bool dryRun, int needleIndex, CancellationToken token)
         {
             var row = SelectedRow;
-            // 按当前针头取 Dot 工艺参数
             var dotParams = needleIndex == 0 ? row.DotParamsNeedle1 : row.DotParamsNeedle2;
-            var (camDist, needleCalib, manualComp) = GetUnifiedOffsets(row);
+            var (camDist, needleCalib) = GetVisionCaptureNeedleOffsets();
+            var rowOffset = (X: row.CalculatedOffsetX, Y: row.CalculatedOffsetY);
 
             double finalX, finalY;
             if (CapturedTargetPoints.Count > 0)
             {
                 var pt = CapturedTargetPoints[0];
-                (finalX, finalY) = BezierArcDispenseService.ComputeMachineFromCamera(
-                    (pt.PointX, pt.PointY), camDist, needleCalib, manualComp);
+                var target = ResolveTargetOffset(pt.PointX, pt.PointY);
+                (finalX, finalY) = BezierArcDispenseService.ComputeMachineForVisionCapture(
+                    (PhotoDx, PhotoDy), target, camDist, needleCalib, rowOffset);
             }
             else
             {
@@ -2799,8 +2858,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 路径点胶（Line/Arc/Polyline）：ApplyOffsetsToPointSet → DispenseSegment → DispenseExecuteService。
-        /// 不做贝塞尔再采样；不修改 DispenseExecuteService。
+        /// 路径点胶（Line/Arc/Polyline）：ApplyVisionCaptureTransform → DispenseSegment → DispenseExecuteService。
         /// </summary>
         private async Task ExecutePathFlowAsync(bool dryRun, int needleIndex, CancellationToken token)
         {
@@ -2814,9 +2872,13 @@ namespace Module.ViewModels
                 return;
             }
 
-            var (camDist, needleCalib, manualComp) = GetUnifiedOffsets(row);
-            var coords = CapturedTargetPoints.Select(p => (p.PointX, p.PointY)).ToList();
-            var machinePoints = BezierArcDispenseService.ApplyOffsetsToPointSet(coords, camDist, needleCalib, manualComp);
+            var (camDist, needleCalib) = GetVisionCaptureNeedleOffsets();
+            var rowOffset = (X: row.CalculatedOffsetX, Y: row.CalculatedOffsetY);
+            var targetOffsets = CapturedTargetPoints
+                .Select(p => ResolveTargetOffset(p.PointX, p.PointY))
+                .ToList();
+            var machinePoints = BezierArcDispenseService.ApplyVisionCaptureTransform(
+                (PhotoDx, PhotoDy), targetOffsets, camDist, needleCalib, rowOffset);
 
             if (machinePoints == null || machinePoints.Count == 0)
             {

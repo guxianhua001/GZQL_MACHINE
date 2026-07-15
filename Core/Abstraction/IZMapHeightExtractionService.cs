@@ -5,15 +5,14 @@ using Core.Services;
 namespace Core.Abstraction
 {
     /// <summary>
-    /// ZMAP高度图Z值提取服务——核心作用是把ROI像素轨迹的XYZ与机械坐标系对齐。
-    /// 主要流程对齐参考Plugin.DispensePath：ROI按目标CadPoint数量生成像素轨迹点，
-    /// 双线性采样Z，并将像素XY正向转换为机械XY供预览，确认后由Step3仅写回CadPoint.Z。
-    /// 同时保留按机械XY反查像素的接口，供标定验证和后续扩展使用。
+    /// ZMAP高度图Z值提取服务——核心作用是把CadPoint机械XY与ZMAP像素坐标系对齐。
+    /// 主流程为每个CadPoint机械XY反查ZMAP像素后双线性采样Z，确认后只写回同一CadPoint.Z；
+    /// 不依赖ROI与CadPoint的Index顺序，避免轨迹起点/方向/离散点数不同造成错位。
+    /// ROI仅用于ZMAP图像上的示教、可视化与范围检查。
     ///
     /// 对齐链路：
-    ///   ROI --等距采样到目标点数--> ZMAP像素(PixelCol,PixelRow)
-    ///   ZMAP像素 --双线性采样--> RawZ --+ZOffset--> CorrectedZ
-    ///   ZMAP像素 --像素↔机械仿射正变换--> 机械坐标(MachineX,MachineY)
+    ///   CadPoint.MachineXY --像素↔机械仿射逆变换--> ZMAP像素(PixelCol,PixelRow)
+    ///   ZMAP像素 --双线性采样--> RawZ --+ZOffset--> CadPoint.Z
     ///
     /// 接口方法签名只使用基础数值类型，不暴露Halcon类型，保证Core层可独立编译；
     /// 具体图像读取/像素采样由Module层实现（依赖Halcon，见 ZMapHeightExtractionService）。
@@ -31,9 +30,6 @@ namespace Core.Abstraction
 
         /// <summary>当前加载的ZMAP文件路径</summary>
         string LoadedFilePath { get; }
-
-        /// <summary>用于预览显示的归一化灰度图路径（PNG临时文件），未加载时为空</summary>
-        string PreviewImagePath { get; }
 
         /// <summary>ZMAP图像中代表"无效/未测量"的高度值，默认-1</summary>
         double InvalidHeightValue { get; set; }
@@ -94,6 +90,13 @@ namespace Core.Abstraction
 
         /// <summary>从持久化配置恢复标定点/仿射矩阵/ZOffset（不加载图像本身）</summary>
         void ImportConfig(ZMapCalibrationConfig config);
+
+        /// <summary>
+        /// 获取用于窗口显示的高度图对象（装箱的 HalconDotNet.HImage，未加载时为 null）。
+        /// 返回 object 以避免在 Core 层引入 Halcon 类型依赖；由 Module 层的
+        /// VMHWindowControl 直接强转为 HImage 显示（与点胶工具一致，进程内显示）。
+        /// </summary>
+        object GetDisplayImage();
 
         /// <summary>释放已加载的高度图及预览图临时文件</summary>
         void Unload();

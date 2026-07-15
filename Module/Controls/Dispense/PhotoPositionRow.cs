@@ -65,7 +65,7 @@ namespace Module.ViewModels
         }
 
         private double _pointX;
-        /// <summary>相机返回的目标点机械坐标 X（9点仿射后）</summary>
+        /// <summary>相机返回的目标点 X（含 Center 时为绝对坐标，否则即为 targetX 偏移）</summary>
         public double PointX
         {
             get => _pointX;
@@ -73,7 +73,7 @@ namespace Module.ViewModels
         }
 
         private double _pointY;
-        /// <summary>相机返回的目标点机械坐标 Y（9点仿射后）</summary>
+        /// <summary>相机返回的目标点 Y（含 Center 时为绝对坐标，否则即为 targetY 偏移）</summary>
         public double PointY
         {
             get => _pointY;
@@ -81,7 +81,7 @@ namespace Module.ViewModels
         }
 
         private double _mechX;
-        /// <summary>叠加固定间距+校针偏差+手动补偿后的针头坐标 X</summary>
+        /// <summary>最终针头机械坐标 X：PhotoDx + targetX + 相机针头间距 + 校针补偿 + OFFSET</summary>
         public double MechX
         {
             get => _mechX;
@@ -89,7 +89,7 @@ namespace Module.ViewModels
         }
 
         private double _mechY;
-        /// <summary>叠加固定间距+校针偏差+手动补偿后的针头坐标 Y</summary>
+        /// <summary>最终针头机械坐标 Y：PhotoDy + targetY + 相机针头间距 + 校针补偿 + OFFSET</summary>
         public double MechY
         {
             get => _mechY;

@@ -5,7 +5,7 @@
              xmlns:prism="http://prismlibrary.com/"
              xmlns:converters="clr-namespace:Module.Converters"
              xmlns:controls="clr-namespace:Module.Controls"
-             MinHeight="600">
+             MinHeight="500">
     <!-- 薄包装：内嵌新的 CadPointEditorControl -->
     <controls:CadPointEditorControl x:Name="CadEditor"
         Segments="{Binding Segments}"

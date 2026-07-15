@@ -28,6 +28,39 @@ namespace Core.Models
         /// <summary>反查得到的ZMAP像素行坐标</summary>
         public double PixelRow { get => _pixelRow; set => SetProperty(ref _pixelRow, value); }
 
+        private double _cadX;
+        /// <summary>按ROI顺序对应的DXF/CadPoint X（不使用机械坐标）。</summary>
+        public double CadX { get => _cadX; set { if (SetProperty(ref _cadX, value)) RaisePropertyChanged(nameof(DisplayX)); } }
+
+        private double _cadY;
+        /// <summary>按ROI顺序对应的DXF/CadPoint Y（不使用机械坐标）。</summary>
+        public double CadY { get => _cadY; set { if (SetProperty(ref _cadY, value)) RaisePropertyChanged(nameof(DisplayY)); } }
+
+        private bool _displayRawImageData = true;
+        /// <summary>预览显示模式：true=图像原始PixelX/Y/RawZ，false=对应DXF X/Y与提取Z。</summary>
+        public bool DisplayRawImageData
+        {
+            get => _displayRawImageData;
+            set
+            {
+                if (SetProperty(ref _displayRawImageData, value))
+                {
+                    RaisePropertyChanged(nameof(DisplayX));
+                    RaisePropertyChanged(nameof(DisplayY));
+                    RaisePropertyChanged(nameof(DisplayZ));
+                }
+            }
+        }
+
+        /// <summary>随预览模式切换显示的X。</summary>
+        public double DisplayX => DisplayRawImageData ? PixelCol : CadX;
+
+        /// <summary>随预览模式切换显示的Y。</summary>
+        public double DisplayY => DisplayRawImageData ? PixelRow : CadY;
+
+        /// <summary>随预览模式切换显示的Z（原始图像高度/待写入的DXF高度）。</summary>
+        public double DisplayZ => DisplayRawImageData ? RawZ : CorrectedZ;
+
         private double _rawZ;
         /// <summary>ZMAP双线性采样得到的原始高度值（未叠加ZOffset基准修正）</summary>
         public double RawZ { get => _rawZ; set => SetProperty(ref _rawZ, value); }

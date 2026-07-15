@@ -12,7 +12,7 @@ namespace VisionTools.Tools.ZMap
     /// 兼容classic TIFF与BigTIFF、小端(II)与大端(MM)。
     /// 同时提供仅解析元数据的诊断能力，用于在解码失败时报告文件结构。
     /// </summary>
-    internal static class TiffFloatReader
+    public static class TiffFloatReader
     {
         // TIFF标签号（仅列出解码与诊断所需）
         private const int TagImageWidth = 256;

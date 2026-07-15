@@ -74,16 +74,6 @@
     <WriteLinesToFile File="$(OutputPath)VersionInfo.txt" Lines="@(VersionInfoLines)" Overwrite="true" />
     <Message Importance="high" Text="已生成版本记录: $(OutputPath)VersionInfo.txt" />
   </Target>
-  <!--
-    VisionTools.Host（net472视觉工具进程壳，引用VisionTools类库）与主程序目标框架不同，
-    使用MSBuild任务建立构建顺序，避免把net472可执行项目当成net9托管程序集引用
-    而产生NU1702兼容性警告。
-  -->
-  <Target Name="BuildVisionTools" BeforeTargets="Build">
-    <MSBuild Projects="..\VisionTools.Host\VisionTools.Host.csproj"
-             Targets="Build"
-             Properties="Configuration=$(Configuration)" />
-  </Target>
   <ItemGroup>
     <EmbeddedResource Update="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

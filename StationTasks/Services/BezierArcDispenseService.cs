@@ -88,9 +88,48 @@ namespace StationTasks.Services
         }
 
         /// <summary>
-        /// 新架构统一公式：相机返回的目标点机械坐标 + 相机中心与针头固定间距 + 校针偏差 + 手动补偿。
-        /// 相机端已完成与相机中心距离计算及9点仿射，本软件不再叠加 PhotoPos / (Center−Pn)。
+        /// VisionCapture 机械坐标统一公式：
+        /// Mech = PhotoPos + TargetOffset + CameraNeedleDistance + NeedleCalibComp + RowOffset
+        /// TargetOffset 为相机中心与目标点间距（targetX/Y）。
         /// </summary>
+        public static (double X, double Y) ComputeMachineForVisionCapture(
+            (double Dx, double Dy) photoPosition,
+            (double X, double Y) targetOffset,
+            (double X, double Y) cameraNeedleDistance,
+            (double X, double Y) needleCalibCompensation,
+            (double X, double Y) rowOffset)
+        {
+            double mechX = photoPosition.Dx + targetOffset.X + cameraNeedleDistance.X
+                + needleCalibCompensation.X + rowOffset.X;
+            double mechY = photoPosition.Dy + targetOffset.Y + cameraNeedleDistance.Y
+                + needleCalibCompensation.Y + rowOffset.Y;
+            return (mechX, mechY);
+        }
+
+        /// <summary>
+        /// 对目标点集合逐点计算 VisionCapture 机械坐标（直线/折线/弧形 ROI 共用，不做再采样）。
+        /// </summary>
+        public static List<(double X, double Y)> ApplyVisionCaptureTransform(
+            (double Dx, double Dy) photoPosition,
+            IReadOnlyList<(double X, double Y)> targetOffsets,
+            (double X, double Y) cameraNeedleDistance,
+            (double X, double Y) needleCalibCompensation,
+            (double X, double Y) rowOffset)
+        {
+            var result = new List<(double X, double Y)>(targetOffsets?.Count ?? 0);
+            if (targetOffsets == null || targetOffsets.Count == 0)
+                return result;
+
+            foreach (var target in targetOffsets)
+                result.Add(ComputeMachineForVisionCapture(
+                    photoPosition, target, cameraNeedleDistance, needleCalibCompensation, rowOffset));
+            return result;
+        }
+
+        /// <summary>
+        /// 旧公式（仅兼容）：PointCoord + 相机针头间距 + 校针偏差 + 手动补偿，不含拍照位与 target 偏移。
+        /// </summary>
+        [Obsolete("VisionCapture 请使用 ComputeMachineForVisionCapture / ApplyVisionCaptureTransform")]
         public static (double X, double Y) ComputeMachineFromCamera(
             (double X, double Y) pointCoord,
             (double X, double Y) camCenterToNeedleDist,
@@ -103,8 +142,9 @@ namespace StationTasks.Services
         }
 
         /// <summary>
-        /// 对相机返回的目标点集合逐点叠加偏移（直线/折线/弧形 ROI 共用，不做再采样）。
+        /// 旧公式批量应用（仅兼容）。
         /// </summary>
+        [Obsolete("VisionCapture 请使用 ApplyVisionCaptureTransform")]
         public static List<(double X, double Y)> ApplyOffsetsToPointSet(
             IReadOnlyList<(double X, double Y)> pointCoords,
             (double X, double Y) camCenterToNeedleDist,

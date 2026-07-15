@@ -637,5 +637,7 @@
     <ProjectReference Include="..\StationTasks\StationTasks.csproj" />
     <ProjectReference Include="..\RecipeManagement\Recipe.csproj" />
     <ProjectReference Include="..\TCPIPModule\TCPIPModule.csproj" />
+    <!-- 纯托管视觉工具库（ZMAP浮点TIFF托管解码等），主进程内直接复用 -->
+    <ProjectReference Include="..\VisionTools\VisionTools.csproj" />
   </ItemGroup>
 </Project>

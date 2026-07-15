@@ -1580,7 +1580,14 @@ namespace Module.ViewModels
             // 因此先创建窗口实例，再把窗口本身传入 ViewModel 构造函数，最后设置 DataContext
             var view = new Module.Controls.ZMap.ZMapExtractZWindow { Owner = Application.Current.MainWindow };
             var vm = new Module.Controls.ZMap.ZMapExtractZViewModel(
-                _zMapHeightService, _zMapConfigService, _selectedSegment.Points, _selectedSegment.SegmentId, view);
+                _zMapHeightService, _zMapConfigService, _selectedSegment, _motionService,
+                pointCount =>
+                {
+                    // 复用Step3成熟的原图元离散化与机械坐标重算，避免ZMAP工具自行改写运动轨迹。
+                    _segmentSplitCount = pointCount;
+                    ExecuteApplySegmentSplit();
+                },
+                view);
             view.DataContext = vm;
 
             bool? applied = view.ShowDialog();
@@ -3740,6 +3747,15 @@ namespace Module.ViewModels
                 return;
             }
 
+            // Z向校准会驱动针头随表面起伏升降，执行前必须安全预检+人工确认，防止撞针。
+            bool willUseZCorrection = ZCorrectionEnabled
+                && LineDispenseMode != LineDispenseMode.SinglePoint
+                && (realDispenseOnly
+                    || IsRealDispenseMode
+                    || (IsRealDryRunMode && DescendInDryRun));
+            if (willUseZCorrection && !ConfirmZCorrectionSafety(enabledSegments))
+                return;
+
             _simCts = new CancellationTokenSource();
             PrepareSimTaskState();
             SimProgress = 0;
@@ -3809,6 +3825,149 @@ namespace Module.ViewModels
                 _dispenseExecuteService.ProgressChanged -= OnExecuteProgressChanged;
                 CleanupSimTaskState();
             }
+        }
+
+        /// <summary>
+        /// Z向校准安全阈值(mm)，须与 DispenseExecuteService.ZCorrectionMaxDeltaMm 保持一致。
+        /// 相对第1点的 |deltaZ| 超此值视为可疑数据，禁止下发运动以防撞针。
+        /// </summary>
+        private const double ZCorrectionMaxDeltaMm = 10.0;
+
+        /// <summary>
+        /// 执行前预检Z向校准数据并弹窗确认。超阈值直接拦截；通过则要求操作员确认防撞针风险后才继续。
+        /// </summary>
+        private bool ConfirmZCorrectionSafety(IReadOnlyList<DispenseSegment> segments)
+        {
+            if (!TryEvaluateZCorrectionDelta(segments, out double globalMinDelta, out double globalMaxDelta, out string failMessage))
+            {
+                MessageBox.Show(
+                    failMessage,
+                    L("Step6_ZCorrection_SafetyTitle"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                GlobalStatus = failMessage;
+                return false;
+            }
+
+            var confirm = MessageBox.Show(
+                string.Format(L("Step6_ZCorrection_SafetyConfirm"),
+                    globalMinDelta, globalMaxDelta, ZCorrectionMaxDeltaMm),
+                L("Step6_ZCorrection_SafetyTitle"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            return confirm == MessageBoxResult.Yes;
+        }
+
+        /// <summary>
+        /// 预扫描各段：优先拦截ZMAP提取无效点（说明区已提示的不合格），再校验Z有限性与deltaZ阈值。
+        /// 与执行服务 BuildZCorrectedPath 规则一致，提前拦截避免运动中途抛错撞针。
+        /// </summary>
+        private bool TryEvaluateZCorrectionDelta(
+            IReadOnlyList<DispenseSegment> segments,
+            out double globalMinDelta,
+            out double globalMaxDelta,
+            out string failMessage)
+        {
+            globalMinDelta = double.PositiveInfinity;
+            globalMaxDelta = double.NegativeInfinity;
+            failMessage = string.Empty;
+
+            foreach (var seg in segments)
+            {
+                var pts = seg.Points;
+                if (pts == null || pts.Count == 0)
+                {
+                    failMessage = string.Format(L("DispenseExec_MissingMachineCoord"), seg.SegmentId, "");
+                    return false;
+                }
+
+                // 1) 段级ZMAP提取摘要：预览说明区已有不合格记录时，直接拦截（覆盖“旧Z仍有限但提取失败”的情况）。
+                var profile = seg.ZMapProfile;
+                if (profile != null && profile.HasUnresolvedInvalidZ)
+                {
+                    string indexText = FormatIndexPreview(profile.LastInvalidZIndices ?? new List<int>(), maxShow: 8);
+                    string summary = string.IsNullOrWhiteSpace(profile.LastExtractSummary)
+                        ? string.Format(L("ZMap_Preview_Summary"), profile.LastExtractValidCount, profile.LastExtractTotalCount)
+                        : profile.LastExtractSummary;
+                    failMessage = string.Format(L("Step6_ZCorrection_ExtractInvalid"),
+                        seg.SegmentId,
+                        profile.LastExtractValidCount,
+                        profile.LastExtractTotalCount,
+                        indexText,
+                        summary);
+                    return false;
+                }
+
+                // 2) 点级标记：应用时标记为提取失败的点（即使Z仍是原CAD有限值）。
+                var markedInvalid = new List<int>();
+                for (int i = 0; i < pts.Count; i++)
+                {
+                    if (pts[i].IsZMapHeightValid == false)
+                        markedInvalid.Add(i + 1);
+                }
+                if (markedInvalid.Count > 0)
+                {
+                    failMessage = string.Format(L("Step6_ZCorrection_InvalidZPoints"),
+                        seg.SegmentId, markedInvalid.Count, pts.Count, FormatIndexPreview(markedInvalid, 8));
+                    return false;
+                }
+
+                // 3) 数值无效：NaN/Infinity
+                var invalidZIndices = new List<int>();
+                for (int i = 0; i < pts.Count; i++)
+                {
+                    if (!double.IsFinite(pts[i].Z))
+                        invalidZIndices.Add(i + 1);
+                }
+                if (invalidZIndices.Count > 0)
+                {
+                    string indexText = FormatIndexPreview(invalidZIndices, maxShow: 8);
+                    failMessage = string.Format(L("Step6_ZCorrection_InvalidZPoints"),
+                        seg.SegmentId, invalidZIndices.Count, pts.Count, indexText);
+                    return false;
+                }
+
+                double firstZ = pts[0].Z;
+
+                for (int i = 0; i < pts.Count; i++)
+                {
+                    var pt = pts[i];
+                    if (!pt.MachineX.HasValue || !pt.MachineY.HasValue)
+                    {
+                        failMessage = string.Format(L("DispenseExec_MissingMachineCoord"),
+                            seg.SegmentId, string.Format(L("DispenseExec_PointLabel"), i + 1));
+                        return false;
+                    }
+
+                    double deltaZ = pt.Z - firstZ;
+                    if (!double.IsFinite(deltaZ) || Math.Abs(deltaZ) > ZCorrectionMaxDeltaMm)
+                    {
+                        failMessage = string.Format(L("DispenseExec_ZCorrectionDeltaExceeded"),
+                            seg.SegmentId, deltaZ, ZCorrectionMaxDeltaMm);
+                        return false;
+                    }
+
+                    if (deltaZ < globalMinDelta) globalMinDelta = deltaZ;
+                    if (deltaZ > globalMaxDelta) globalMaxDelta = deltaZ;
+                }
+            }
+
+            if (!double.IsFinite(globalMinDelta) || !double.IsFinite(globalMaxDelta))
+            {
+                failMessage = L("Step6_ZCorrection_NoValidDelta");
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>将点序号列表格式化为简短预览（超过maxShow时追加“…”）。</summary>
+        private static string FormatIndexPreview(IReadOnlyList<int> indices, int maxShow)
+        {
+            if (indices == null || indices.Count == 0) return string.Empty;
+            if (indices.Count <= maxShow)
+                return string.Join(", ", indices);
+            return string.Join(", ", indices.Take(maxShow)) + ", …";
         }
 
         /// <summary>执行进度回调——更新进度条和高亮当前段</summary>

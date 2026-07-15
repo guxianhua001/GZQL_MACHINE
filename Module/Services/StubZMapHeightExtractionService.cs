@@ -16,7 +16,6 @@ namespace Module.Services
         public int HeightMapWidth => 0;
         public int HeightMapHeight => 0;
         public string LoadedFilePath => string.Empty;
-        public string PreviewImagePath => string.Empty;
         public double InvalidHeightValue { get; set; } = -1.0;
         public double ZOffset { get; set; }
         public AffineCalibrationResult CurrentCalibration => null;
@@ -65,6 +64,8 @@ namespace Module.Services
         public ZMapCalibrationConfig ExportConfig() => new ZMapCalibrationConfig();
 
         public void ImportConfig(ZMapCalibrationConfig config) { }
+
+        public object GetDisplayImage() => null;
 
         public void Unload() { }
     }

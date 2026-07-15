@@ -756,7 +756,7 @@
     <sys:String x:Key="VisionCapture_NeedleOffset">针头偏移</sys:String>
     <sys:String x:Key="VisionCapture_ArcNeedleOffset">Arc针头偏移</sys:String>
     <sys:String x:Key="VisionCapture_ArcNeedleComp">Arc针头补偿</sys:String>
-    <sys:String x:Key="VisionCapture_FinalCoordinateFormula">Mech = PointCoord + CamCenterToNeedleDist + NeedleCalibOffset + XY Offset</sys:String>
+    <sys:String x:Key="VisionCapture_FinalCoordinateFormula">Mech = 拍照位Dx/Dy + targetX/Y + 相机针头间距 + 校针补偿 + OFFSET</sys:String>
     <sys:String x:Key="VisionCapture_TargetPoints">目标点</sys:String>
     <sys:String x:Key="VisionCapture_TrajectoryType">轨迹类型</sys:String>
     <sys:String x:Key="VisionCapture_DetectedType">检测:</sys:String>
@@ -2980,12 +2980,36 @@
     <sys:String x:Key="ZMap_Description">加载ZMAP高度图并标定"像素↔机械坐标"仿射关系后，在图像上绘制轨迹ROI；系统按选中段点数等距采样XYZ，确认后仅写回该段各点的Z列。</sys:String>
     <sys:String x:Key="ZMap_Section_LoadHeightMap">1. 加载ZMAP高度图</sys:String>
     <sys:String x:Key="ZMap_Btn_Browse">浏览...</sys:String>
+    <sys:String x:Key="ZMap_Label_TrajectoryCount">连续轨迹点数：</sys:String>
+    <sys:String x:Key="ZMap_Chk_ShowCadPointProjection">仅显示提取点与连线（X青/线黄）</sys:String>
+    <sys:String x:Key="ZMap_Chk_ReverseRoiDirection">反向采样</sys:String>
+    <sys:String x:Key="ZMap_Btn_SetStartVertex">设为起点</sys:String>
+    <sys:String x:Key="ZMap_Chk_PreviewRawData">显示图像原始XYZ（关闭为生成的DXF XYZ）</sys:String>
+    <sys:String x:Key="ZMap_Preview_RoiPixelInvalid">ROI采样点超出图像范围或高度无效。</sys:String>
+    <sys:String x:Key="ZMap_Btn_ApplyTrajectoryCount">重离散化</sys:String>
+    <sys:String x:Key="ZMap_Status_TrajectoryResampled">连续轨迹已按 {0} 个点重离散化；请重新执行ZMAP提取预览。</sys:String>
     <sys:String x:Key="ZMap_Label_RoiType">轨迹ROI：</sys:String>
     <sys:String x:Key="ZMap_RoiType_Line">直线</sys:String>
     <sys:String x:Key="ZMap_RoiType_Arc">圆弧</sys:String>
     <sys:String x:Key="ZMap_RoiType_Polyline">折线</sys:String>
-    <sys:String x:Key="ZMap_Btn_ClearRoi">清除ROI</sys:String>
-    <sys:String x:Key="ZMap_Tip_RoiSampling">直线：按住左键拖拽；圆弧：依次点击起点/弧中点/终点；折线：左键添加顶点、右键或双击结束。ROI会按当前选中线段的点数等距采样。</sys:String>
+    <sys:String x:Key="ZMap_RoiType_SinglePoint">单点示教</sys:String>
+    <sys:String x:Key="ZMap_Btn_ClearRoi">重置ROI</sys:String>
+    <sys:String x:Key="ZMap_Tip_RoiSampling">直线/圆弧：拖动手柄调整，按选中段点数沿轨迹等距采样；折线：点击图像追加顶点、拖拽顶点、显示连线，按弧长等距重采样；单点示教：点击图像逐点追加，每点即一个采样点。</sys:String>
+    <sys:String x:Key="ZMap_Chk_TeachMode">点击图像追加点</sys:String>
+    <sys:String x:Key="ZMap_Label_TeachDir">方向：</sys:String>
+    <sys:String x:Key="ZMap_TeachDir_Auto">自动</sys:String>
+    <sys:String x:Key="ZMap_TeachDir_Head">向前</sys:String>
+    <sys:String x:Key="ZMap_TeachDir_Tail">向后</sys:String>
+    <sys:String x:Key="ZMap_Btn_AddVertex">添加</sys:String>
+    <sys:String x:Key="ZMap_Btn_InsertVertex">插入</sys:String>
+    <sys:String x:Key="ZMap_Btn_DeleteVertex">删除</sys:String>
+    <sys:String x:Key="ZMap_Btn_DeleteAll">清空</sys:String>
+    <sys:String x:Key="ZMap_Header_VertexId">序号</sys:String>
+    <sys:String x:Key="ZMap_Header_VertexCol">列(X)</sys:String>
+    <sys:String x:Key="ZMap_Header_VertexRow">行(Y)</sys:String>
+    <sys:String x:Key="ZMap_Hint_Polyline">折线顶点将按选中段点数（{0}）沿折线累计弧长等距重采样。</sys:String>
+    <sys:String x:Key="ZMap_Hint_PolylineClosed">【已自动闭合】首尾点已重合，骨架与采样包含末→首连线。</sys:String>
+    <sys:String x:Key="ZMap_Hint_SinglePoint">单点示教：需示教 {0} 个点（当前 {1} 个），数量须与选中段点数一致方可提取。</sys:String>
     <sys:String x:Key="ZMap_Dialog_SelectHeightMap">选择ZMAP高度图文件</sys:String>
     <sys:String x:Key="ZMap_Status_NotLoaded">尚未加载高度图</sys:String>
     <sys:String x:Key="ZMap_Status_Loaded">已加载，尺寸 {0} × {1} 像素</sys:String>
@@ -2997,6 +3021,14 @@
     <sys:String x:Key="ZMap_Header_PixelRow">像素行</sys:String>
     <sys:String x:Key="ZMap_Header_MachineX">机械X</sys:String>
     <sys:String x:Key="ZMap_Header_MachineY">机械Y</sys:String>
+    <sys:String x:Key="ZMap_Header_PixelPick">取像素</sys:String>
+    <sys:String x:Key="ZMap_Header_MachineTeach">示教</sys:String>
+    <sys:String x:Key="ZMap_Tooltip_PixelPick">点击后在ZMAP图像上单击，自动填入该行像素列/行</sys:String>
+    <sys:String x:Key="ZMap_Tooltip_MachineTeach">读取当前Dx(8)/Dy(6)实际位置，填入该行机械X/Y</sys:String>
+    <sys:String x:Key="ZMap_Status_PixelPicked">标定点 {0} 已取像素坐标：({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="ZMap_Status_MachineTaught">标定点 {0} 已示教机械坐标：({1:F3}, {2:F3})</sys:String>
+    <sys:String x:Key="ZMap_Status_MachineUnavailable">运动控制服务不可用，无法读取机械坐标；可手动编辑X/Y。</sys:String>
+    <sys:String x:Key="ZMap_Status_MachineTeachFailed">机械坐标示教失败：{0}</sys:String>
     <sys:String x:Key="ZMap_Status_NotCalibrated">尚未标定</sys:String>
     <sys:String x:Key="ZMap_Status_Calibrated">标定完成：RMS={0:F4}mm，最大残差={1:F4}mm，质量：{2}</sys:String>
     <sys:String x:Key="ZMap_Status_CalibrateFailed">标定失败：{0}</sys:String>
@@ -3020,8 +3052,15 @@
     <sys:String x:Key="ZMap_Header_ErrorMessage">说明</sys:String>
     <sys:String x:Key="ZMap_Preview_Summary">有效提取 {0} / {1} 点</sys:String>
     <sys:String x:Key="ZMap_Preview_RoiRequired">请先在高度图上完成轨迹ROI绘制，再执行提取预览。</sys:String>
+    <sys:String x:Key="ZMap_Preview_NoCadPoints">当前轨迹段没有CadPoint，无法提取Z高度。</sys:String>
+    <sys:String x:Key="ZMap_Preview_MissingMachineCoordinate">该CadPoint缺少机械X/Y；请先完成Step4坐标标定。</sys:String>
+    <sys:String x:Key="ZMap_Preview_MachineLookupFailed">机械XY反查ZMAP像素失败。</sys:String>
     <sys:String x:Key="ZMap_Preview_SummaryWithMissing">有效提取 {0} / {1} 点（另有 {2} 点因缺少机械坐标未提取，请先完成Step4坐标标定）</sys:String>
     <sys:String x:Key="ZMap_Preview_Applied">已将 {0} 个有效点的Z值写回选中段</sys:String>
+    <sys:String x:Key="ZMap_Preview_Warn_Title">提取预览提醒</sys:String>
+    <sys:String x:Key="ZMap_Preview_Warn_AllInvalid">全部 {0} 个采样点均无效，请检查ROI是否在高度图有效区域内，或高度图数据是否异常。</sys:String>
+    <sys:String x:Key="ZMap_Preview_Warn_PartialInvalid">有效提取 {0}/{1} 点，另有 {2} 点无效。请核对ROI覆盖范围与高度图后再应用。</sys:String>
+    <sys:String x:Key="ZMap_Preview_Warn_ApplyPartial">将仅写入 {0} 个有效点的Z值，另有 {1} 个无效点保持原Z不变。是否继续？</sys:String>
     <sys:String x:Key="ZMap_Btn_Cancel">取消</sys:String>
     <sys:String x:Key="ZMap_Btn_Apply">应用到Z列</sys:String>
     <sys:String x:Key="ZMap_Error_ServiceUnavailable">ZMAP高度提取服务不可用（可能未安装Halcon SDK）</sys:String>
@@ -3114,6 +3153,12 @@
     <sys:String x:Key="Step6_Desc_ContinuousInterpolation">沿轨迹连续运动，自动控制出胶开关</sys:String>
     <sys:String x:Key="Step6_Desc_SinglePoint">逐点运动到每个插补点，独立控制出胶</sys:String>
     <sys:String x:Key="Step6_Desc_ZCorrection">启用XYZ轴连续插补，以第1个点的Z作为基准0，点胶高度=示教高度+deltaZ</sys:String>
+    <sys:String x:Key="Step6_ZCorrection_SafetyTitle">Z向校准安全确认</sys:String>
+    <sys:String x:Key="Step6_ZCorrection_SafetyConfirm">即将启用Z向校准（3轴跟随表面起伏）。&#x0a;当前 deltaZ 范围：[{0:F3} ~ {1:F3}] mm（安全阈值 ±{2:F1} mm）。&#x0a;&#x0a;请确认：&#x0a;1. 针头已正确安装且无异常伸出；&#x0a;2. CadPoint.Z / ZMAP提取方向与机器Z方向一致；&#x0a;3. 工件表面起伏在阈值内，不会撞针。&#x0a;&#x0a;是否继续执行？</sys:String>
+    <sys:String x:Key="Step6_ZCorrection_NoValidDelta">未找到可用于Z向校准的有效deltaZ数据，已中止以防撞针。</sys:String>
+    <sys:String x:Key="Step6_ZCorrection_InvalidZPoints">段[{0}] 存在 {1}/{2} 个无效Z点（NaN/Infinity），点序号：{3}。请先完成ZMAP有效提取后再执行，已中止以防撞针。</sys:String>
+    <sys:String x:Key="Step6_ZCorrection_ExtractInvalid">段[{0}] ZMAP提取存在无效点（有效 {1}/{2}，序号：{3}）。&#x0a;预览说明：{4}&#x0a;请回到ZMAP工具修正ROI/高度图并重新提取全部有效点后再执行，已中止以防撞针。</sys:String>
+    <sys:String x:Key="Step6_ZCorrection_SafetyHint">启用后执行前将预检ZMAP无效点、数值无效Z与|deltaZ|并弹窗确认，不合格拒绝运动以防撞针</sys:String>
     <sys:String x:Key="Step6_Description">选择目标线段和执行模式，执行点胶操作。</sys:String>
     <sys:String x:Key="Step6_Hint_SelectSegment">选择目标线段</sys:String>
     <sys:String x:Key="Step6_Radio_ContinuousInterpolation">连续插补</sys:String>

@@ -2,46 +2,47 @@
 using Core.Abstraction;
 using Core.Models;
 using Core.Services;
+using HalconDotNet;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Runtime.InteropServices;
+using VisionTools.Tools.ZMap;
 
 namespace Module.Services
 {
     /// <summary>
-    /// ZMAP高度图Z值提取服务——通过HALCON 21.11隔离进程加载单通道高度图（灰度值即高度mm），
+    /// ZMAP高度图Z值提取服务——在主进程(.NET 9)内直接读取单通道高度图（灰度值即高度mm），
     /// 用"像素↔机械"标定点求解仿射矩阵，并按机械坐标反查像素位置、双线性采样得到Z高度。
-    /// 详细对齐原理见 <see cref="IZMapHeightExtractionService"/> 接口注释。
+    ///
+    /// 读取策略（不再使用独立进程/命令分发，HALCON已在主进程内可用，与点胶工具一致）：
+    ///   ① .tif/.tiff：一律走纯托管浮点TIFF解码器（VisionTools.TiffFloatReader），
+    ///      避免HALCON原生TIFF解码器对个别浮点文件访问冲突连带崩溃主进程；
+    ///   ② .png/.jpg/.bmp：进程内 HImage 读取→转单通道real灰度，灰度值(0~255)直接作为高度，
+    ///      用于无真实ZMAP数据时测试整条提取链路。
+    /// 读取得到行优先 float[] 高度数组用于采样，并据此构建 real HImage 供
+    /// VMHWindowControl 在悬浮窗内直接显示（详见 <see cref="IZMapHeightExtractionService"/>）。
     /// </summary>
     public class ZMapHeightExtractionService : IZMapHeightExtractionService
     {
-        private const int DataMagic = 0x5A4D4150;
-        private const int DataVersion = 1;
-        private const int ReaderTimeoutMilliseconds = 30000;
         private float[] _heightData;
         private int _width;
         private int _height;
-        private string _previewImagePath;
+        // 供窗口显示的高度图（real单通道，进程内构建，随Unload释放）
+        private HImage _displayImage;
         private List<ZMapCalibrationPoint> _lastCalibrationPoints = new List<ZMapCalibrationPoint>();
 
         public bool IsHeightMapLoaded => _heightData != null;
         public int HeightMapWidth => _width;
         public int HeightMapHeight => _height;
         public string LoadedFilePath { get; private set; } = string.Empty;
-        public string PreviewImagePath => _previewImagePath ?? string.Empty;
         public double InvalidHeightValue { get; set; } = -1.0;
         public double ZOffset { get; set; }
         public AffineCalibrationResult CurrentCalibration { get; private set; }
 
         /// <summary>
-        /// 加载ZMAP高度图（要求单通道32位浮点real图像，灰度值即高度）。
-        /// HALCON 21.11仅提供dotnet20/dotnet35托管接口，不能把其TIFF原生解码风险直接放在
-        /// .NET 9主控进程中。因此调用VisionTools视觉工具进程（.NET Framework 4.7.2，
-        /// 与参考VM框架插件运行环境一致）执行zmap-read命令，即使原生解码器崩溃
-        /// 也不会终止主控进程。
+        /// 加载ZMAP高度图（要求单通道，灰度值即高度）。TIFF走托管浮点解码，普通图片走进程内HImage。
         /// </summary>
         public bool LoadHeightMap(string filePath, out string error)
         {
@@ -52,43 +53,50 @@ namespace Module.Services
                 return false;
             }
 
-            // 标准ZMAP为.tif/.tiff（单通道real，灰度即高度mm）；
-            // 同时兼容普通图片（png/jpg/bmp），由VisionTools转灰度real，
-            // 灰度值(0~255)直接作为高度，用于无真实ZMAP数据时测试整条提取链路
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
-            if (ext != ".tif" && ext != ".tiff" &&
-                ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".bmp")
+            bool isTiff = ext == ".tif" || ext == ".tiff";
+            bool isCommon = ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp";
+            if (!isTiff && !isCommon)
             {
                 error = "ZMAP高度图仅支持 .tif/.tiff，测试模式支持 .png/.jpg/.bmp";
                 return false;
             }
 
-            string readerPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "VisionTools",
-                "VisionTools.Host.exe");
-            if (!File.Exists(readerPath))
-            {
-                error = "未找到VisionTools.Host视觉工具进程，请重新生成并部署VisionTools.Host项目";
-                return false;
-            }
-
-            string token = Guid.NewGuid().ToString("N");
-            string dataPath = Path.Combine(Path.GetTempPath(), $"zmap_data_{token}.bin");
-            string previewPath = Path.Combine(Path.GetTempPath(), $"zmap_preview_{token}.png");
             try
             {
-                if (!RunReader(readerPath, filePath, dataPath, previewPath, out error))
-                    return false;
-                if (!TryReadHeightData(dataPath, out float[] pixels, out int width, out int height, out error))
-                    return false;
+                float[] pixels;
+                int width;
+                int height;
 
+                if (isTiff)
+                {
+                    // 浮点TIFF一律托管解码，安全且不依赖HALCON原生库
+                    if (!TiffFloatReader.TryReadHeightData(filePath, out width, out height, out pixels, out string tiffError))
+                    {
+                        error = "读取浮点TIFF高度图失败：" + tiffError + Environment.NewLine +
+                                TiffFloatReader.DescribeFile(filePath);
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (!TryReadCommonImage(filePath, out width, out height, out pixels, out error))
+                        return false;
+                }
+
+                if (pixels == null || width <= 0 || height <= 0 || (long)width * height != pixels.Length)
+                {
+                    error = "高度图尺寸无效或与像素数据不一致";
+                    return false;
+                }
+
+                // 先释放旧状态，再写入新数据（Unload会清空_heightData/LoadedFilePath并释放旧显示图）
                 Unload();
                 _heightData = pixels;
                 _width = width;
                 _height = height;
                 LoadedFilePath = filePath;
-                _previewImagePath = File.Exists(previewPath) ? previewPath : null;
+                _displayImage = BuildDisplayImage(pixels, width, height);
                 return true;
             }
             catch (Exception ex)
@@ -96,154 +104,72 @@ namespace Module.Services
                 error = $"加载ZMAP高度图失败: {ex.Message}";
                 return false;
             }
-            finally
-            {
-                try { if (File.Exists(dataPath)) File.Delete(dataPath); } catch { }
-                if (_previewImagePath != previewPath)
-                {
-                    try { if (File.Exists(previewPath)) File.Delete(previewPath); } catch { }
-                }
-            }
-        }
-
-        /// <summary>启动VisionTools视觉工具进程并限制最长执行时间，防止异常文件阻塞UI。</summary>
-        private static bool RunReader(
-            string readerPath,
-            string inputPath,
-            string dataPath,
-            string previewPath,
-            out string error)
-        {
-            error = null;
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = readerPath,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8
-            };
-            startInfo.ArgumentList.Add("zmap-read");
-            startInfo.ArgumentList.Add(inputPath);
-            startInfo.ArgumentList.Add(dataPath);
-            startInfo.ArgumentList.Add(previewPath);
-
-            // 子进程需自行加载HALCON原生halcon.dll：主控程序输出目录已部署一份原生DLL，
-            // 把该目录与HALCON安装目录一并前置到子进程PATH，避免DllNotFoundException(halcon)
-            AppendHalconNativePath(startInfo);
-
-            using (var process = new Process { StartInfo = startInfo })
-            {
-                if (!process.Start())
-                {
-                    error = "无法启动HALCON高度图读取器";
-                    return false;
-                }
-
-                if (!process.WaitForExit(ReaderTimeoutMilliseconds))
-                {
-                    try { process.Kill(true); } catch { }
-                    error = "HALCON读取ZMAP超时，已终止隔离读取进程";
-                    return false;
-                }
-                string stdout = process.StandardOutput.ReadToEnd();
-                string stderr = process.StandardError.ReadToEnd();
-                if (process.ExitCode != 0)
-                {
-                    error = string.IsNullOrWhiteSpace(stderr)
-                        ? $"HALCON读取进程异常退出（代码 {process.ExitCode}）"
-                        : stderr.Trim();
-                    return false;
-                }
-                if (!File.Exists(dataPath))
-                {
-                    error = string.IsNullOrWhiteSpace(stdout)
-                        ? "HALCON读取器未生成高度数据"
-                        : stdout.Trim();
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         /// <summary>
-        /// 把可能包含原生halcon.dll的目录前置到子进程PATH：
-        /// ① 主控程序输出目录（部署包内自带halcon.dll）
-        /// ② %HALCONROOT%\bin\%HALCONARCH%（标准HALCON安装位置）
+        /// 进程内读取普通图片并转为行优先real高度数组（多通道自动转灰度）。
         /// </summary>
-        private static void AppendHalconNativePath(ProcessStartInfo startInfo)
+        private static bool TryReadCommonImage(
+            string filePath, out int width, out int height, out float[] pixels, out string error)
         {
-            var dirs = new List<string> { AppDomain.CurrentDomain.BaseDirectory };
-            string halconRoot = Environment.GetEnvironmentVariable("HALCONROOT");
-            if (!string.IsNullOrEmpty(halconRoot))
-            {
-                string arch = Environment.GetEnvironmentVariable("HALCONARCH");
-                dirs.Add(Path.Combine(halconRoot, "bin", string.IsNullOrEmpty(arch) ? "x64-win64" : arch));
-            }
-
-            string path = startInfo.EnvironmentVariables.ContainsKey("PATH")
-                ? startInfo.EnvironmentVariables["PATH"]
-                : string.Empty;
-            foreach (var dir in dirs)
-            {
-                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
-                    continue;
-                if (path.IndexOf(dir, StringComparison.OrdinalIgnoreCase) >= 0)
-                    continue;
-                path = dir + Path.PathSeparator + path;
-            }
-            startInfo.EnvironmentVariables["PATH"] = path;
-        }
-
-        /// <summary>读取并校验隔离进程输出，避免损坏或伪造尺寸导致主进程内存异常。</summary>
-        private static bool TryReadHeightData(
-            string dataPath,
-            out float[] pixels,
-            out int width,
-            out int height,
-            out string error)
-        {
-            pixels = null;
             width = 0;
             height = 0;
+            pixels = null;
             error = null;
+
+            HImage raw = null;
+            HImage gray = null;
+            HImage real = null;
             try
             {
-                using (var stream = new FileStream(dataPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                using (var reader = new BinaryReader(stream))
-                {
-                    if (reader.ReadInt32() != DataMagic || reader.ReadInt32() != DataVersion)
-                        throw new InvalidDataException("高度数据头或版本无效");
-                    width = reader.ReadInt32();
-                    height = reader.ReadInt32();
-                    reader.ReadDouble(); // min，仅供协议诊断保留
-                    reader.ReadDouble(); // max，仅供协议诊断保留
-
-                    long count64 = (long)width * height;
-                    if (width <= 0 || height <= 0 || count64 > int.MaxValue)
-                        throw new InvalidDataException("高度图尺寸无效或超过处理上限");
-                    long expectedLength = 32L + count64 * sizeof(float);
-                    if (stream.Length != expectedLength)
-                        throw new InvalidDataException("高度数据长度与图像尺寸不一致");
-
-                    pixels = new float[(int)count64];
-                    for (int i = 0; i < pixels.Length; i++)
-                        pixels[i] = reader.ReadSingle();
-                }
+                raw = new HImage();
+                raw.ReadImage(filePath);
+                int channels = raw.CountChannels().I;
+                gray = channels >= 3 ? raw.Rgb1ToGray() : raw.CopyImage();
+                real = gray.ConvertImageType("real");
+                real.GetImageSize(out width, out height);
+                pixels = ExtractRealPixels(real, width, height);
                 return true;
             }
             catch (Exception ex)
             {
-                error = $"解析HALCON高度数据失败: {ex.Message}";
-                pixels = null;
-                width = 0;
-                height = 0;
+                error = "读取普通图片失败: " + ex.Message;
                 return false;
             }
+            finally
+            {
+                try { raw?.Dispose(); } catch { }
+                try { gray?.Dispose(); } catch { }
+                try { real?.Dispose(); } catch { }
+            }
         }
+
+        /// <summary>从real单通道HImage中拷出行优先float像素数组。</summary>
+        private static float[] ExtractRealPixels(HImage real, int width, int height)
+        {
+            IntPtr ptr = real.GetImagePointer1(out HTuple _, out HTuple _, out HTuple _);
+            int count = width * height;
+            float[] data = new float[count];
+            Marshal.Copy(ptr, data, 0, count);
+            return data;
+        }
+
+        /// <summary>由行优先float高度数组构建real单通道HImage（gen_image1内部拷贝，构建后可释放托管数组固定）。</summary>
+        private static HImage BuildDisplayImage(float[] pixels, int width, int height)
+        {
+            GCHandle handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+            try
+            {
+                return new HImage("real", width, height, handle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        /// <summary>供窗口显示的real高度图（装箱HImage，未加载时null）。</summary>
+        public object GetDisplayImage() => _displayImage;
 
         public AffineCalibrationResult ComputeCalibration(IList<ZMapCalibrationPoint> calibrationPoints, out string error)
         {
@@ -313,7 +239,6 @@ namespace Module.Services
             double fc = pixelCol - c0;
             double fr = pixelRow - r0;
 
-            // 高度数组由HALCON隔离进程一次性导出；主进程采样不再跨越旧版原生接口边界。
             double g00 = _heightData[r0 * _width + c0];
             double g01 = _heightData[r0 * _width + c1];
             double g10 = _heightData[r1 * _width + c0];
@@ -488,11 +413,11 @@ namespace Module.Services
             _height = 0;
             LoadedFilePath = string.Empty;
 
-            if (!string.IsNullOrEmpty(_previewImagePath) && File.Exists(_previewImagePath))
+            if (_displayImage != null)
             {
-                try { File.Delete(_previewImagePath); } catch { /* 临时文件删除失败不影响主流程 */ }
+                try { if (_displayImage.IsInitialized()) _displayImage.Dispose(); } catch { }
+                _displayImage = null;
             }
-            _previewImagePath = null;
         }
     }
 }

@@ -35,7 +35,8 @@
                            FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap" Margin="24,2,0,4"/>
                 <CheckBox Content="{lang:Lang Step6_CheckBox_ZCorrection}" IsChecked="{Binding ZCorrectionEnabled}" Margin="0,8,0,0"/>
                 <!-- Z 向校准说明：启用 XYZ 三轴连续插补，以第1个点的 Z 作为基准 0，点胶高度=示教高度+deltaZ -->
-                <TextBlock Text="{lang:Lang Step6_Desc_ZCorrection}" FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap" Margin="24,2,0,4"/>
+                <TextBlock Text="{lang:Lang Step6_Desc_ZCorrection}" FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap" Margin="24,2,0,0"/>
+                <TextBlock Text="{lang:Lang Step6_ZCorrection_SafetyHint}" FontSize="10" Foreground="#C62828" TextWrapping="Wrap" Margin="24,2,0,4"/>
             </StackPanel>
         </materialDesign:Card>
 

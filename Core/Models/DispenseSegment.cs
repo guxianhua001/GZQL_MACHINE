@@ -76,6 +76,17 @@ namespace Core.Models
             set => SetProperty(ref _samplePointCount, value);
         }
 
+        private ZMapSegmentProfile _zMapProfile = new ZMapSegmentProfile();
+        /// <summary>
+        /// 本段ZMAP高度提取配置。随 segments JSON 与配方内嵌段数据自动序列化，
+        /// 使ROI、像素↔机械标定及Z基准不再依赖全局单文件。
+        /// </summary>
+        public ZMapSegmentProfile ZMapProfile
+        {
+            get => _zMapProfile ??= new ZMapSegmentProfile();
+            set => SetProperty(ref _zMapProfile, value ?? new ZMapSegmentProfile());
+        }
+
         /// <summary>
         /// 分段总长度（只读计算属性，遍历Points累加相邻点距离）
         /// </summary>

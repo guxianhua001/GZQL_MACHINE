@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:lang="clr-namespace:Core.Markup;assembly=Core"
-        xmlns:zmap="clr-namespace:Module.Controls.ZMap"
         Title="{lang:Lang ZMap_Title}"
         Width="1080" Height="720"
         MinWidth="880" MinHeight="600"
@@ -12,6 +11,7 @@
         Background="#FAFAFA"
         TextElement.FontFamily="Microsoft YaHei UI">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="SectionTitle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="13"/>
@@ -68,6 +68,19 @@
                                          Style="{StaticResource MaterialDesignOutlinedTextBox}" Padding="4,2"/>
                             </DockPanel>
                             <TextBlock Text="{Binding HeightMapStatusText}" FontSize="11" Foreground="#00838F" TextWrapping="Wrap"/>
+                            <!-- 连续轨迹点数：必须先真实重离散化CadPoint，避免Z与运动插补点错位 -->
+                            <DockPanel Margin="0,8,0,0">
+                                <Button DockPanel.Dock="Right" Command="{Binding ApplyTrajectoryPointCountCommand}"
+                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FunctionVariant" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{lang:Lang ZMap_Btn_ApplyTrajectoryCount}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{lang:Lang ZMap_Label_TrajectoryCount}" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding TrajectoryPointCount, UpdateSourceTrigger=PropertyChanged}" Width="72"
+                                         Padding="4,2" FontSize="11" Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </DockPanel>
                             <DockPanel Margin="0,8,0,4">
                                 <Button DockPanel.Dock="Right" Click="ClearRoi_Click"
                                         Style="{StaticResource MaterialDesignFlatButton}" Padding="8,3">
@@ -84,19 +97,84 @@
                                           DisplayMemberPath="DisplayName"
                                           MinWidth="130" Height="28"/>
                             </DockPanel>
-                            <Border Height="220" Background="#212121" Margin="0,8,0,0" CornerRadius="2">
-                                <zmap:ZMapRoiCanvas x:Name="RoiCanvas"
-                                                    Source="{Binding PreviewBitmap}"
-                                                    RoiType="{Binding SelectedRoiTypeOption.Type}"
-                                                    Margin="2"/>
+                            <Border Height="260" Background="#212121" Margin="0,8,0,0" CornerRadius="2">
+                                <!-- 使用Halcon窗口(VMHWindowControl)进程内显示高度图并绘制ROI，与点胶工具一致 -->
+                                <WindowsFormsHost x:Name="winFormHost" Margin="2"/>
                             </Border>
                             <TextBlock Text="{lang:Lang ZMap_Tip_RoiSampling}" FontSize="10"
                                        Foreground="#9E9E9E" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                            <!-- 折线/单点：示教工具栏 + 顶点表格（与点胶工具Dispense Path对齐；仅顶点类ROI可见） -->
+                            <StackPanel Margin="0,6,0,0"
+                                        Visibility="{Binding IsVertexRoi, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}">
+                                <DockPanel Margin="0,0,0,4">
+                                    <CheckBox DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,10,0"
+                                              IsChecked="{Binding TeachModeEnabled, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Content="{lang:Lang ZMap_Chk_TeachMode}" FontSize="11"/>
+                                    <TextBlock Text="{lang:Lang ZMap_Label_TeachDir}" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox MinWidth="70" Height="26"
+                                              SelectedIndex="{Binding TeachDirectionIndex, RelativeSource={RelativeSource AncestorType=Window}}">
+                                        <ComboBoxItem Content="{lang:Lang ZMap_TeachDir_Auto}"/>
+                                        <ComboBoxItem Content="{lang:Lang ZMap_TeachDir_Head}"/>
+                                        <ComboBoxItem Content="{lang:Lang ZMap_TeachDir_Tail}"/>
+                                    </ComboBox>
+                                    <CheckBox Margin="10,0,0,0" VerticalAlignment="Center"
+                                              IsChecked="{Binding ReverseRoiDirection, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Content="{lang:Lang ZMap_Chk_ReverseRoiDirection}" FontSize="11"/>
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <Button Click="AddVertex_Click" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2" Margin="0,0,4,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Plus" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                            <TextBlock Text="{lang:Lang ZMap_Btn_AddVertex}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Click="InsertVertex_Click" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2" Margin="0,0,4,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="PlaylistPlus" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                            <TextBlock Text="{lang:Lang ZMap_Btn_InsertVertex}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Click="SetStartVertex_Click" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2" Margin="0,0,4,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="PlayBoxOutline" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                            <TextBlock Text="{lang:Lang ZMap_Btn_SetStartVertex}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Click="DeleteVertex_Click" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2" Margin="0,0,4,0" Foreground="#D32F2F">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Minus" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                            <TextBlock Text="{lang:Lang ZMap_Btn_DeleteVertex}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Click="DeleteAllVertices_Click" Style="{StaticResource MaterialDesignFlatButton}" Padding="6,2">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Eraser" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                            <TextBlock Text="{lang:Lang ZMap_Btn_DeleteAll}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                                <DataGrid x:Name="VerticesDataGrid"
+                                          ItemsSource="{Binding Vertices, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          SelectedItem="{Binding SelectedVertex, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                                          AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                          SelectionMode="Single" SelectionUnit="FullRow"
+                                          HeadersVisibility="Column" MaxHeight="140" MinHeight="70"
+                                          GridLinesVisibility="Horizontal" FontSize="11">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="{lang:Lang ZMap_Header_VertexId}" Binding="{Binding Id}" Width="40" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="{lang:Lang ZMap_Header_VertexCol}" Binding="{Binding Col, StringFormat=F1}" Width="*"/>
+                                        <DataGridTextColumn Header="{lang:Lang ZMap_Header_VertexRow}" Binding="{Binding Row, StringFormat=F1}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock Text="{Binding VertexHint, RelativeSource={RelativeSource AncestorType=Window}}"
+                                           FontSize="10" Foreground="#00838F" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                     </materialDesign:Card>
 
                     <!-- 2. 像素↔机械坐标标定 -->
-                    <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                    <materialDesign:Card Padding="10" Margin="0,0,0,8" Visibility="Collapsed">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -121,6 +199,28 @@
                                     <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelRow}" Binding="{Binding PixelRow, StringFormat=F1}" Width="60"/>
                                     <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineX}" Binding="{Binding MachineX, StringFormat=F3}" Width="65"/>
                                     <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineY}" Binding="{Binding MachineY, StringFormat=F3}" Width="65"/>
+                                    <DataGridTemplateColumn Header="{lang:Lang ZMap_Header_PixelPick}" Width="48">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.PickCalibrationPixelCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}" ToolTip="{lang:Lang ZMap_Tooltip_PixelPick}"
+                                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="2">
+                                                    <materialDesign:PackIcon Kind="CrosshairsGps" Width="15" Height="15"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="{lang:Lang ZMap_Header_MachineTeach}" Width="48">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.TeachCalibrationMachineCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}" ToolTip="{lang:Lang ZMap_Tooltip_MachineTeach}"
+                                                        Style="{StaticResource MaterialDesignFlatButton}" Padding="2">
+                                                    <materialDesign:PackIcon Kind="Robot" Width="15" Height="15"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
                                     <DataGridTemplateColumn Header="" Width="34">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -140,7 +240,7 @@
                     </materialDesign:Card>
 
                     <!-- 3. Z基准偏移标定（可选） -->
-                    <materialDesign:Card Padding="10" Margin="0,0,0,8">
+                    <materialDesign:Card Padding="10" Margin="0,0,0,8" Visibility="Collapsed">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitle}" Text="{lang:Lang ZMap_Section_ZOffset}"/>
                             <Grid>
@@ -193,32 +293,61 @@
                                 <TextBlock Text="{lang:Lang ZMap_Btn_ExtractPreview}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <CheckBox DockPanel.Dock="Right" Margin="0,0,10,0" VerticalAlignment="Center"
+                                  IsChecked="{Binding IsPreviewRawData}"
+                                  Content="{lang:Lang ZMap_Chk_PreviewRawData}" FontSize="11"/>
+                        <CheckBox DockPanel.Dock="Right" Margin="0,0,10,0" VerticalAlignment="Center"
+                                  IsChecked="{Binding ShowCadPointProjection, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Content="{lang:Lang ZMap_Chk_ShowCadPointProjection}" FontSize="11" Foreground="#00796B"/>
                         <TextBlock Style="{StaticResource SectionTitle}" Text="{lang:Lang ZMap_Section_Preview}" Margin="0"/>
                     </DockPanel>
 
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding PreviewSummaryText}" FontSize="11" Foreground="#F57C00"
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding PreviewSummaryText}" FontSize="11" Foreground="#E65100"
                                Margin="0,6,0,0" TextWrapping="Wrap"/>
 
+                    <!-- 显式浅底深字：MaterialDesign主题下默认DataGrid可能出现白底白字 -->
                     <DataGrid ItemsSource="{Binding PreviewResults}" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectedItem="{Binding SelectedPreviewResult, Mode=TwoWay}"
                               CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal" FontSize="11">
+                              GridLinesVisibility="Horizontal" FontSize="11"
+                              Background="White" Foreground="#212121" RowBackground="White"
+                              AlternatingRowBackground="#FAFAFA"
+                              BorderBrush="#BDBDBD" BorderThickness="1">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Foreground" Value="#212121"/>
+                                <Setter Property="Background" Value="#EEEEEE"/>
+                                <Setter Property="Padding" Value="4,2"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Foreground" Value="#212121"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#BBDEFB"/>
+                                        <Setter Property="Foreground" Value="#0D47A1"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.CellStyle>
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
+                                <Setter Property="Foreground" Value="#212121"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsValid}" Value="False">
                                         <Setter Property="Background" Value="#FFEBEE"/>
+                                        <Setter Property="Foreground" Value="#B71C1C"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="{lang:Lang ZMap_Header_Index}" Binding="{Binding Index}" Width="35"/>
-                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineX}" Binding="{Binding MachineX, StringFormat=F3}" Width="65"/>
-                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_MachineY}" Binding="{Binding MachineY, StringFormat=F3}" Width="65"/>
-                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelCol}" Binding="{Binding PixelCol, StringFormat=F1}" Width="60"/>
-                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_PixelRow}" Binding="{Binding PixelRow, StringFormat=F1}" Width="60"/>
-                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_RawZ}" Binding="{Binding RawZ, StringFormat=F3}" Width="60"/>
-                            <DataGridTextColumn Header="{lang:Lang ZMap_Header_CorrectedZ}" Binding="{Binding CorrectedZ, StringFormat=F3}" Width="65"/>
+                            <DataGridTextColumn Header="X" Binding="{Binding DisplayX, StringFormat=F3}" Width="75"/>
+                            <DataGridTextColumn Header="Y" Binding="{Binding DisplayY, StringFormat=F3}" Width="75"/>
+                            <DataGridTextColumn Header="Z" Binding="{Binding DisplayZ, StringFormat=F3}" Width="75"/>
                             <DataGridTextColumn Header="{lang:Lang ZMap_Header_ErrorMessage}" Binding="{Binding ErrorMessage}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>

@@ -859,6 +859,7 @@ namespace HalconWrapper.Model
                 {
                     ROIManager.PaintData(window, imageWidth);
                 }
+                ShowTransientOverlay(window);
                 HSystem.SetSystem("flush_graphic", "true");
                 //ע�����������,�ᵼ�´����޷�ʵ�����ź��϶�
                 window.SetColor("black");
@@ -1075,6 +1076,8 @@ namespace HalconWrapper.Model
         /// roiTextList�����洢�������ʾ�ı�
         /// </summary>
         private List<HText> roiTextList = new List<HText>();
+        // 独立的瞬态叠加层：用于表格选中等高频交互，避免重建所有常驻图形对象。
+        private HObjectWithColor transientOverlay;
 
         /// <summary>
         /// Ĭ�Ϻ���ɫ��ʾ
@@ -1152,6 +1155,24 @@ namespace HalconWrapper.Model
         }
 
         /// <summary>
+        /// 设置窗口顶部的瞬态叠加对象。该对象不进入常驻叠加层，适用于频繁变化的选中高亮；
+        /// 每次替换仅重绘窗口，不会清空或重新生成已有ROI、骨架和业务叠加层。
+        /// </summary>
+        public void SetTransientOverlay(HObject hObj, string color)
+        {
+            lock (this)
+            {
+                transientOverlay?.HObject?.Dispose();
+                transientOverlay = null;
+
+                if (hObj != null && hObj.IsInitialized())
+                    transientOverlay = new HObjectWithColor(new HObject(hObj), color, false);
+
+                Repaint();
+            }
+        }
+
+        /// <summary>
         /// ��hObjectList�е�HObject,�����Ⱥ�˳����ʾ����
         /// </summary>
         private void ShowHObjectList()
@@ -1195,6 +1216,17 @@ namespace HalconWrapper.Model
                 Debug.WriteLine(ex.Message);
                 //��ʱ��hobj��dispose��,�����䱾���Ϊnull,��ʱ�򱨴�. �Ѿ�ʹ��IsInitialized����� 
             }
+        }
+
+        /// <summary>在常驻图形和交互ROI之后绘制瞬态叠加层，确保选中高亮始终位于最上层。</summary>
+        private void ShowTransientOverlay(HWindow window)
+        {
+            if (transientOverlay?.HObject == null || !transientOverlay.HObject.IsInitialized())
+                return;
+
+            window.SetDraw(transientOverlay.IsFill ? "fill" : "margin");
+            window.SetColor(string.IsNullOrEmpty(transientOverlay.Color) ? "red" : transientOverlay.Color);
+            window.DispObj(transientOverlay.HObject);
         }
 
         #endregion

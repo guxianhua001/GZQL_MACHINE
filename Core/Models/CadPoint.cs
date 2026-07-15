@@ -91,6 +91,18 @@ namespace Core.Models
         /// <summary>Halcon图像像素列号（由CadToImage转换，FitToAll后有值）</summary>
         private double? _imageCol;
         public double? ImageCol { get => _imageCol; set => SetProperty(ref _imageCol, value); }
+
+        private bool? _isZMapHeightValid;
+        /// <summary>
+        /// 最近一次ZMAP提取对该点是否有效：true=已写入有效高度；false=提取失败未覆盖；
+        /// null=尚未参与ZMAP提取。Step6 Z向校准据此拦截无效点，防止撞针。
+        /// </summary>
+        public bool? IsZMapHeightValid
+        {
+            get => _isZMapHeightValid;
+            set => SetProperty(ref _isZMapHeightValid, value);
+        }
+
         // 无参构造函数（供对象初始化器使用）
         public CadPoint()
         {

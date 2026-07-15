@@ -304,7 +304,7 @@ namespace Module.Services
             double firstZ = pts[0].Z;
             if (!double.IsFinite(firstZ))
                 throw new InvalidOperationException(
-                    ResourceHelper.GetString("DispenseExec_ZCorrectionDeltaExceeded", seg.SegmentId, firstZ, ZCorrectionMaxDeltaMm));
+                    ResourceHelper.GetString("Step6_ZCorrection_InvalidZPoints", seg.SegmentId, 1, pts.Count, "1"));
 
             var path = new List<(double X, double Y, double Z)>(pts.Count);
             double minDelta = double.PositiveInfinity, maxDelta = double.NegativeInfinity;
@@ -317,6 +317,12 @@ namespace Module.Services
                     throw new InvalidOperationException(
                         ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId,
                             ResourceHelper.GetString("DispenseExec_PointLabel", i + 1)));
+
+                // 逐点校验Z有效性，避免无效高度进入3轴插补导致撞针。
+                if (!double.IsFinite(pt.Z))
+                    throw new InvalidOperationException(
+                        ResourceHelper.GetString("Step6_ZCorrection_InvalidZPoints",
+                            seg.SegmentId, 1, pts.Count, (i + 1).ToString()));
 
                 // deltaZ = 当前点 CAD Z - 第1点 CAD Z（Z 轴越往下数值越大，deltaZ>0 表示该点更低）
                 double deltaZ = pt.Z - firstZ;
