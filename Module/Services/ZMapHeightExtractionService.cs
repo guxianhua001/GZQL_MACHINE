@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using VisionTools.Tools.ZMap;
+using VisionTools.Tools.GrabImage;
 
 namespace Module.Services
 {
@@ -16,16 +16,15 @@ namespace Module.Services
     /// ZMAP高度图Z值提取服务——在主进程(.NET 9)内直接读取单通道高度图（灰度值即高度mm），
     /// 用"像素↔机械"标定点求解仿射矩阵，并按机械坐标反查像素位置、双线性采样得到Z高度。
     ///
-    /// 读取策略（不再使用独立进程/命令分发，HALCON已在主进程内可用，与点胶工具一致）：
-    ///   ① .tif/.tiff：一律走纯托管浮点TIFF解码器（VisionTools.TiffFloatReader），
-    ///      避免HALCON原生TIFF解码器对个别浮点文件访问冲突连带崩溃主进程；
-    ///   ② .png/.jpg/.bmp：进程内 HImage 读取→转单通道real灰度，灰度值(0~255)直接作为高度，
-    ///      用于无真实ZMAP数据时测试整条提取链路。
+    /// 读取策略：所有支持格式均由 HALCON 原生 HImage.ReadImage 在主进程读取。
+    ///   ① .tif/.tiff：必须为单通道 32 位 real 浮点图，像素值即高度；
+    ///   ② .png/.jpg/.bmp：转为单通道 real，灰度值(0~255)作为测试高度。
     /// 读取得到行优先 float[] 高度数组用于采样，并据此构建 real HImage 供
     /// VMHWindowControl 在悬浮窗内直接显示（详见 <see cref="IZMapHeightExtractionService"/>）。
     /// </summary>
     public class ZMapHeightExtractionService : IZMapHeightExtractionService
     {
+        private readonly IGrabImageReader _grabImageReader;
         private float[] _heightData;
         private int _width;
         private int _height;
@@ -41,15 +40,22 @@ namespace Module.Services
         public double ZOffset { get; set; }
         public AffineCalibrationResult CurrentCalibration { get; private set; }
 
+        /// <summary>复用 GrabImage 的文件读图服务，保证 ZMap 与未来视觉流程使用相同原生读图入口。</summary>
+        public ZMapHeightExtractionService(IGrabImageReader grabImageReader)
+        {
+            _grabImageReader = grabImageReader ?? throw new ArgumentNullException(nameof(grabImageReader));
+        }
+
         /// <summary>
-        /// 加载ZMAP高度图（要求单通道，灰度值即高度）。TIFF走托管浮点解码，普通图片走进程内HImage。
+        /// 加载ZMAP高度图（要求单通道，灰度值即高度）。TIFF使用 HALCON 原生读取，
+        /// 再复制为托管数组供标定与快速采样使用。
         /// </summary>
         public bool LoadHeightMap(string filePath, out string error)
         {
             error = null;
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
-                error = "文件不存在";
+                error = "ZMap_LoadError_FileNotFound";
                 return false;
             }
 
@@ -58,7 +64,7 @@ namespace Module.Services
             bool isCommon = ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp";
             if (!isTiff && !isCommon)
             {
-                error = "ZMAP高度图仅支持 .tif/.tiff，测试模式支持 .png/.jpg/.bmp";
+                error = "ZMap_LoadError_UnsupportedFormat";
                 return false;
             }
 
@@ -68,25 +74,31 @@ namespace Module.Services
                 int width;
                 int height;
 
-                if (isTiff)
+                var readResult = _grabImageReader.ReadFile(filePath);
+                if (!readResult.IsSuccess)
                 {
-                    // 浮点TIFF一律托管解码，安全且不依赖HALCON原生库
-                    if (!TiffFloatReader.TryReadHeightData(filePath, out width, out height, out pixels, out string tiffError))
-                    {
-                        error = "读取浮点TIFF高度图失败：" + tiffError + Environment.NewLine +
-                                TiffFloatReader.DescribeFile(filePath);
-                        return false;
-                    }
+                    error = MapReadError(readResult.ErrorCode);
+                    return false;
                 }
-                else
+
+                using (readResult.Image)
                 {
-                    if (!TryReadCommonImage(filePath, out width, out height, out pixels, out error))
-                        return false;
+                    if (isTiff)
+                    {
+                        // 与后续视觉工具统一使用 HALCON 原生读图；仅接受ZMap定义的单通道real高度图。
+                        if (!TryReadNativeTiffHeightMap(readResult.Image.Image, out width, out height, out pixels, out error))
+                            return false;
+                    }
+                    else
+                    {
+                        if (!TryReadCommonImage(readResult.Image.Image, out width, out height, out pixels, out error))
+                            return false;
+                    }
                 }
 
                 if (pixels == null || width <= 0 || height <= 0 || (long)width * height != pixels.Length)
                 {
-                    error = "高度图尺寸无效或与像素数据不一致";
+                    error = "ZMap_LoadError_InvalidSize";
                     return false;
                 }
 
@@ -99,31 +111,67 @@ namespace Module.Services
                 _displayImage = BuildDisplayImage(pixels, width, height);
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                error = $"加载ZMAP高度图失败: {ex.Message}";
+                error = "ZMap_LoadError_ReadFailed";
                 return false;
             }
         }
 
         /// <summary>
-        /// 进程内读取普通图片并转为行优先real高度数组（多通道自动转灰度）。
+        /// 对 GrabImageReader 已读取的 HALCON 图像校验 ZMap 浮点 TIFF，并复制为托管数组。
+        /// 严格校验单通道 real，避免将普通 TIFF 的灰度值误用作真实高度。
         /// </summary>
-        private static bool TryReadCommonImage(
-            string filePath, out int width, out int height, out float[] pixels, out string error)
+        private static bool TryReadNativeTiffHeightMap(
+            HImage image, out int width, out int height, out float[] pixels, out string error)
         {
             width = 0;
             height = 0;
             pixels = null;
             error = null;
 
-            HImage raw = null;
+            try
+            {
+                image.GetImageSize(out width, out height);
+
+                if (image.CountChannels().I != 1)
+                {
+                    error = "ZMap_LoadError_RequiresSingleChannel";
+                    return false;
+                }
+
+                string pixelType = image.GetImageType().ToString().Trim().Trim('"');
+                if (!string.Equals(pixelType, "real", StringComparison.OrdinalIgnoreCase))
+                {
+                    error = "ZMap_LoadError_RequiresReal";
+                    return false;
+                }
+
+                pixels = ExtractRealPixels(image, width, height);
+                return true;
+            }
+            catch (Exception)
+            {
+                error = "ZMap_LoadError_ReadFailed";
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 将 GrabImageReader 已读取的普通图片转为行优先real高度数组（多通道自动转灰度）。
+        /// </summary>
+        private static bool TryReadCommonImage(
+            HImage raw, out int width, out int height, out float[] pixels, out string error)
+        {
+            width = 0;
+            height = 0;
+            pixels = null;
+            error = null;
+
             HImage gray = null;
             HImage real = null;
             try
             {
-                raw = new HImage();
-                raw.ReadImage(filePath);
                 int channels = raw.CountChannels().I;
                 gray = channels >= 3 ? raw.Rgb1ToGray() : raw.CopyImage();
                 real = gray.ConvertImageType("real");
@@ -131,16 +179,29 @@ namespace Module.Services
                 pixels = ExtractRealPixels(real, width, height);
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                error = "读取普通图片失败: " + ex.Message;
+                error = "ZMap_LoadError_ReadFailed";
                 return false;
             }
             finally
             {
-                try { raw?.Dispose(); } catch { }
                 try { gray?.Dispose(); } catch { }
                 try { real?.Dispose(); } catch { }
+            }
+        }
+
+        /// <summary>把读图服务错误转换为界面资源键，避免将 HALCON 异常文本直接展示给操作员。</summary>
+        private static string MapReadError(VisionImageReadErrorCode errorCode)
+        {
+            switch (errorCode)
+            {
+                case VisionImageReadErrorCode.FileNotFound:
+                    return "ZMap_LoadError_FileNotFound";
+                case VisionImageReadErrorCode.UnsupportedFileType:
+                    return "ZMap_LoadError_UnsupportedFormat";
+                default:
+                    return "ZMap_LoadError_ReadFailed";
             }
         }
 

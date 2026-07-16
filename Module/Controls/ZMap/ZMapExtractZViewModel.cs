@@ -183,9 +183,18 @@ namespace Module.Controls.ZMap
             };
             if (dialog.ShowDialog() != true) return;
 
-            if (_zMapService.LoadHeightMap(dialog.FileName, out string error))
+            LoadHeightMapFromFile(dialog.FileName);
+        }
+
+        /// <summary>
+        /// 统一处理手动选择和配置恢复的高度图加载，确保二者共用 GrabImageReader 的读图链路
+        /// 以及相同的多语言错误提示与 HALCON 显示刷新逻辑。
+        /// </summary>
+        private bool LoadHeightMapFromFile(string filePath)
+        {
+            if (_zMapService.LoadHeightMap(filePath, out string error))
             {
-                HeightMapFilePath = dialog.FileName;
+                HeightMapFilePath = filePath;
                 IsHeightMapLoaded = true;
                 HeightMapStatusText = string.Format(L("ZMap_Status_Loaded"), _zMapService.HeightMapWidth, _zMapService.HeightMapHeight);
                 // 进程内用Halcon窗口显示高度图并生成默认ROI（与点胶工具一致）
@@ -196,12 +205,13 @@ namespace Module.Controls.ZMap
             else
             {
                 IsHeightMapLoaded = false;
-                HeightMapStatusText = string.Format(L("ZMap_Status_LoadFailed"), error);
+                HeightMapStatusText = string.Format(L("ZMap_Status_LoadFailed"), LocalizeLoadError(error));
             }
 
             ExtractPreviewCommand.RaiseCanExecuteChanged();
             CalibrateZOffsetCommand.RaiseCanExecuteChanged();
             PickCalibrationPixelCommand.RaiseCanExecuteChanged();
+            return IsHeightMapLoaded;
         }
 
         #endregion
@@ -391,19 +401,7 @@ namespace Module.Controls.ZMap
             if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
                 return;
 
-            if (!_zMapService.LoadHeightMap(filePath, out string error))
-            {
-                HeightMapStatusText = string.Format(L("ZMap_Status_LoadFailed"), error);
-                return;
-            }
-
-            HeightMapFilePath = filePath;
-            IsHeightMapLoaded = true;
-            HeightMapStatusText = string.Format(L("ZMap_Status_Loaded"),
-                _zMapService.HeightMapWidth, _zMapService.HeightMapHeight);
-            (_dialogWindow as ZMapExtractZWindow)?.ShowHeightMap(
-                _zMapService.GetDisplayImage(),
-                SelectedRoiTypeOption?.Type ?? ZMapRoiType.Line);
+            LoadHeightMapFromFile(filePath);
         }
 
         /// <summary>
@@ -717,6 +715,14 @@ namespace Module.Controls.ZMap
             if (string.IsNullOrEmpty(key)) return string.Empty;
             var resource = Application.Current?.TryFindResource(key);
             return resource?.ToString() ?? $"[{key}]";
+        }
+
+        /// <summary>服务层返回资源键；资源缺失时保留原始值，避免错误原因完全丢失。</summary>
+        private static string LocalizeLoadError(string errorKey)
+        {
+            if (string.IsNullOrWhiteSpace(errorKey)) return string.Empty;
+            string localized = L(errorKey);
+            return localized == $"[{errorKey}]" ? errorKey : localized;
         }
     }
 }

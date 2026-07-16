@@ -220,7 +220,8 @@ namespace Module.Services
                             throw new InvalidOperationException(
                                 ResourceHelper.GetString("DispenseExec_ZCorrectionCrossCard"));
 
-                        // 基准高度 = EffectiveZHeight（保留换针/手动补偿），deltaZ 来自 CAD Z（Z 轴越往下数值越大）
+                        // 基准高度 = EffectiveZHeight（保留换针/手动补偿）；ZMap 值越小表示表面越低，
+                        // 因机械 Z 数值越大越向下，deltaZ 需按反向高度差计算。
                         var pathPoints3D = BuildZCorrectedPath(seg, seg.EffectiveZHeight);
                         await ArcContinuousDispenseHelper.RunContinuousInterpolationWithEarlyGlueOffAsync(
                             _motionService,
@@ -305,8 +306,9 @@ namespace Module.Services
         }
 
         /// <summary>
-        /// 构建 Z 向校准后的 3D 插补路径：以段内第 1 个点的 CAD Z 为基准 0，
-        /// 每点 Z 目标 = baseZ + (pt.Z - firstZ)，Z 轴越往下数值越大。
+        /// 构建 Z 向校准后的 3D 插补路径：以段内第 1 个点的 ZMap 高度为基准 0。
+        /// ZMap 值越小表示表面越低；机械 Z 数值越大越向下，
+        /// 故每点 Z 目标 = baseZ + (firstZ - pt.Z)，使针头向下跟随低洼面。
         /// 安全校验：MachineX/Y 缺失、Z 非有限、|deltaZ| 超阈值均抛 InvalidOperationException 中止防碰撞。
         /// 第 1 点 deltaZ=0，Z=baseZ，与预下降目标(EffectiveZHeight)一致，无起点跳变。
         /// </summary>
@@ -343,8 +345,9 @@ namespace Module.Services
                         ResourceHelper.GetString("Step6_ZCorrection_InvalidZPoints",
                             seg.SegmentId, 1, pts.Count, (i + 1).ToString()));
 
-                // deltaZ = 当前点 CAD Z - 第1点 CAD Z（Z 轴越往下数值越大，deltaZ>0 表示该点更低）
-                double deltaZ = pt.Z - firstZ;
+                // ZMap 值越小表示表面越低；机械 Z 数值越大越向下。
+                // 因此 deltaZ = 第1点 ZMap 值 - 当前点 ZMap 值，deltaZ>0 表示当前点更低、针头需下移。
+                double deltaZ = firstZ - pt.Z;
                 if (!double.IsFinite(deltaZ) || Math.Abs(deltaZ) > ZCorrectionMaxDeltaMm)
                     throw new InvalidOperationException(
                         ResourceHelper.GetString("DispenseExec_ZCorrectionDeltaExceeded", seg.SegmentId, deltaZ, ZCorrectionMaxDeltaMm));

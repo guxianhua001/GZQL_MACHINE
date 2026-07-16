@@ -2996,7 +2996,7 @@
 
     <!-- ZMap 高度提取（悬浮工具窗口，独立扩展功能，不影响Step3现有CAD Z聚合逻辑） -->
     <sys:String x:Key="ZMap_Title">ZMAP高度提取</sys:String>
-    <sys:String x:Key="ZMap_Description">加载ZMAP高度图并标定"像素↔机械坐标"仿射关系后，在图像上绘制轨迹ROI；系统按选中段点数等距采样XYZ，确认后仅写回该段各点的Z列。</sys:String>
+    <sys:String x:Key="ZMap_Description">加载ZMAP高度图并标定"像素↔机械坐标"仿射关系后，在图像上绘制轨迹ROI；系统按选中段点数等距采样XYZ，确认后仅写回该段各点的Z列。注意：ZMAP值越小表示工件表面越低；启用Z向校准时，机械Z将增大并向下跟随低洼面。</sys:String>
     <sys:String x:Key="ZMap_Section_LoadHeightMap">1. 加载ZMAP高度图</sys:String>
     <sys:String x:Key="ZMap_Btn_Browse">浏览...</sys:String>
     <sys:String x:Key="ZMap_Label_TrajectoryCount">连续轨迹点数：</sys:String>
@@ -3033,6 +3033,12 @@
     <sys:String x:Key="ZMap_Status_NotLoaded">尚未加载高度图</sys:String>
     <sys:String x:Key="ZMap_Status_Loaded">已加载，尺寸 {0} × {1} 像素</sys:String>
     <sys:String x:Key="ZMap_Status_LoadFailed">加载失败：{0}</sys:String>
+    <sys:String x:Key="ZMap_LoadError_FileNotFound">未找到指定的图像文件。</sys:String>
+    <sys:String x:Key="ZMap_LoadError_UnsupportedFormat">仅支持 TIFF 高度图或 PNG/JPG/BMP 测试图片。</sys:String>
+    <sys:String x:Key="ZMap_LoadError_InvalidSize">图像尺寸或像素数据无效。</sys:String>
+    <sys:String x:Key="ZMap_LoadError_RequiresSingleChannel">ZMAP TIFF 必须为单通道图像。</sys:String>
+    <sys:String x:Key="ZMap_LoadError_RequiresReal">ZMAP TIFF 必须为 32 位 real 浮点图像。</sys:String>
+    <sys:String x:Key="ZMap_LoadError_ReadFailed">HALCON 原生读取图像失败。</sys:String>
     <sys:String x:Key="ZMap_Section_Calibration">2. 像素↔机械坐标标定</sys:String>
     <sys:String x:Key="ZMap_Btn_ComputeCalibration">计算标定</sys:String>
     <sys:String x:Key="ZMap_Header_Id">序号</sys:String>

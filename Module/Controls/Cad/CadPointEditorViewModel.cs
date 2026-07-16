@@ -4076,7 +4076,9 @@ namespace Module.ViewModels
                         return false;
                     }
 
-                    double deltaZ = pt.Z - firstZ;
+                    // 与执行服务一致：ZMap 值越小表示表面越低，机械 Z 数值越大越向下。
+                    // 使用反向高度差，确保预检范围与实际 3 轴插补方向一致。
+                    double deltaZ = firstZ - pt.Z;
                     if (!double.IsFinite(deltaZ) || Math.Abs(deltaZ) > ZCorrectionMaxDeltaMm)
                     {
                         failMessage = string.Format(L("DispenseExec_ZCorrectionDeltaExceeded"),

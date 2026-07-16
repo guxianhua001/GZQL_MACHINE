@@ -5,13 +5,19 @@
     <RootNamespace>VisionTools</RootNamespace>
     <OutputType>Library</OutputType>
     <Nullable>disable</Nullable>
-    <!--
-      视觉工具类库（纯托管，无HALCON依赖）：
-      承载与图像处理相关、可在主进程（.NET 9）内直接复用的工具逻辑。
-      当前仅含 TiffFloatReader（无压缩浮点TIFF托管解码器），用于安全读取
-      仪器导出的ZMAP高度图（避免HALCON原生TIFF解码器对个别文件访问冲突）。
-      HALCON相关的显示/采样由主程序 HalconWrapper / Module 在进程内完成，
-      不再需要独立进程与命令分发（已移除 VisionTools.Host / ToolRunner）。
-    -->
+    <!-- 视觉算法类库：承载可复用的 HALCON 读图和后续视觉工具能力，不包含 WPF/Prism/UI。 -->
+    <HalconDllPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HalconDllPath>
+    <DefineConstants Condition="Exists('$(HalconDllPath)')">$(DefineConstants);HAS_HALCON</DefineConstants>
   </PropertyGroup>
+
+  <!-- HALCON SDK 缺失时生成空程序集，主程序会使用既有的无 HALCON 降级实现。 -->
+  <ItemGroup Condition="!Exists('$(HalconDllPath)')">
+    <Compile Remove="Tools\GrabImage\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="halcondotnet" Condition="Exists('$(HalconDllPath)')">
+      <HintPath>$(HalconDllPath)</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

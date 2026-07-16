@@ -2996,7 +2996,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
 
     <!-- ZMap height extraction (floating tool window, additive feature, does not affect existing Step3 CAD Z aggregation) -->
     <sys:String x:Key="ZMap_Title">ZMap Height Extraction</sys:String>
-    <sys:String x:Key="ZMap_Description">Load a ZMap image, calibrate the pixel-to-machine mapping, then draw a trajectory ROI. XYZ is sampled at the selected segment's point count; applying changes only its Z column.</sys:String>
+    <sys:String x:Key="ZMap_Description">Load a ZMap image, calibrate the pixel-to-machine mapping, then draw a trajectory ROI. XYZ is sampled at the selected segment's point count; applying changes only its Z column. Note: a smaller ZMap value means a lower workpiece surface; with Z correction enabled, the machine Z value increases to follow the lower surface downward.</sys:String>
     <sys:String x:Key="ZMap_Section_LoadHeightMap">1. Load ZMap Height Image</sys:String>
     <sys:String x:Key="ZMap_Btn_Browse">Browse...</sys:String>
     <sys:String x:Key="ZMap_Label_TrajectoryCount">Continuous trajectory points:</sys:String>
@@ -3033,6 +3033,12 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZMap_Status_NotLoaded">No height image loaded</sys:String>
     <sys:String x:Key="ZMap_Status_Loaded">Loaded, size {0} x {1} px</sys:String>
     <sys:String x:Key="ZMap_Status_LoadFailed">Load failed: {0}</sys:String>
+    <sys:String x:Key="ZMap_LoadError_FileNotFound">The specified image file was not found.</sys:String>
+    <sys:String x:Key="ZMap_LoadError_UnsupportedFormat">Only TIFF height maps or PNG/JPG/BMP test images are supported.</sys:String>
+    <sys:String x:Key="ZMap_LoadError_InvalidSize">The image size or pixel data is invalid.</sys:String>
+    <sys:String x:Key="ZMap_LoadError_RequiresSingleChannel">A ZMAP TIFF must be a single-channel image.</sys:String>
+    <sys:String x:Key="ZMap_LoadError_RequiresReal">A ZMAP TIFF must be a 32-bit real floating-point image.</sys:String>
+    <sys:String x:Key="ZMap_LoadError_ReadFailed">HALCON failed to read the image.</sys:String>
     <sys:String x:Key="ZMap_Section_Calibration">2. Pixel-to-Machine Calibration</sys:String>
     <sys:String x:Key="ZMap_Btn_ComputeCalibration">Compute Calibration</sys:String>
     <sys:String x:Key="ZMap_Header_Id">No.</sys:String>

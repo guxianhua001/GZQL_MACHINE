@@ -165,6 +165,9 @@ namespace Module
             // === ZMAP高度图Z值提取（悬浮工具窗口，Step3可选功能，不影响原有Z流程）===
             containerRegistry.RegisterSingleton<Core.Abstraction.IZMapConfigService, Core.Services.ZMapConfigService>();
 #if HAS_HALCON
+            // 迁移自 GrabImage 的统一文件读图能力：ZMap 是首个消费者，后续流程工具复用此服务。
+            containerRegistry.RegisterSingleton<VisionTools.Tools.GrabImage.IGrabImageReader,
+                VisionTools.Tools.GrabImage.GrabImageReader>();
             containerRegistry.RegisterSingleton<Core.Abstraction.IZMapHeightExtractionService, Module.Services.ZMapHeightExtractionService>();
 #else
             // Halcon SDK 未安装时，ZMapHeightExtractionService 被条件编译排除，注册空实现占位
