@@ -82,7 +82,8 @@ namespace Module.Services
                 _logger?.Info(L("DotDisp_Log_DryRunStart", "[DotDispense] 开始空跑，针头{0}/Dz{1}(轴{2})，共 {3} 点", needleIndex + 1, needleIndex == 0 ? "₂" : "₃", axisDz, total));
 
                 double moveSpeed = processParams.MoveSpeed;
-                double safeHeight = processParams.SafeHeight;
+                // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+                double safeHeight = processParams.EffectiveSafeHeight;
                 double approachOffset = processParams.ApproachHeight;
                 double slowVel = moveSpeed * processParams.CornerDecel;
                 double dotGlueTriggerOffset = processParams.DotGlueTriggerOffsetMm;
@@ -174,7 +175,8 @@ namespace Module.Services
                 _logger?.Info(L("DotDisp_Log_DispenseStart", "[DotDispense] 开始点胶，针头{0}/Dz{1}(轴{2})，共 {3} 点，全选={4}", needleIndex + 1, needleIndex == 0 ? "₂" : "₃", axisDz, total, allPointsSelected));
 
                 double moveSpeed = processParams.MoveSpeed;
-                double safeHeight = processParams.SafeHeight;
+                // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+                double safeHeight = processParams.EffectiveSafeHeight;
                 double approachOffset = processParams.ApproachHeight;
                 double slowVel = moveSpeed * processParams.CornerDecel;
                 double dotGlueTriggerOffset = processParams.DotGlueTriggerOffsetMm;
@@ -194,6 +196,11 @@ namespace Module.Services
                     double targetZ = GetPointEffectiveZ(point, needleIndex);
                     if (targetZ == 0)
                         targetZ = processParams.TeachHeight + processParams.HeightCompensation;
+
+                    // 记录下发运动前的目标坐标；审计日志按点记录而非高频轮询，避免影响运动响应。
+                    _logger?.Info(L("DotDisp_Log_PointMotionPlan",
+                        "[DotDispense] 点 [{0}] ({1}/{2}) 运动目标: Dx={3:F3}, Dy={4:F3}, Y={5:F3}, Dz={6:F3}, 安全高度={7:F3}mm",
+                        point.PointId, index + 1, total, point.Dx, point.Dy, point.Y, targetZ, safeHeight));
 
                     if (!allPointsSelected)
                     {
@@ -222,7 +229,10 @@ namespace Module.Services
                     // 两段式慢速下降：先移到触发位开胶，再移到目标位
                     await _motionService.MoveAbsAsync(axisDz, triggerZ, slowVel, token);
                     WriteGlueIo(true);
-                    _logger?.Debug(L("DotDisp_Log_PointTriggerGlueOn", "[DotDispense] 点 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm", point.PointId, triggerZ, targetZ, dotGlueTriggerOffset));
+                    var glueOnPosition = GetActualPosition(axisDz);
+                    _logger?.Info(L("DotDisp_Log_PointGlueOnPosition",
+                        "[DotDispense] 点 [{0}] 开胶确认: triggerZ={1:F3}, targetZ={2:F3}, 实际(Dx={3:F3}, Dy={4:F3}, Y={5:F3}, Dz={6:F3})",
+                        point.PointId, triggerZ, targetZ, glueOnPosition.Dx, glueOnPosition.Dy, glueOnPosition.Y, glueOnPosition.Dz));
 
                     // 继续慢速移到目标位
                     await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
@@ -232,6 +242,10 @@ namespace Module.Services
 
                     // 关胶
                     WriteGlueIo(false);
+                    var glueOffPosition = GetActualPosition(axisDz);
+                    _logger?.Info(L("DotDisp_Log_PointGlueOffPosition",
+                        "[DotDispense] 点 [{0}] 关胶确认: 实际(Dx={1:F3}, Dy={2:F3}, Y={3:F3}, Dz={4:F3})",
+                        point.PointId, glueOffPosition.Dx, glueOffPosition.Dy, glueOffPosition.Y, glueOffPosition.Dz));
 
                     // 关胶后延时
                     if (processParams.PostDelay > 0)
@@ -356,6 +370,16 @@ namespace Module.Services
             try { _motionService.WriteDo(GlueIoPort, false); }
             catch { }
         }
+
+        /// <summary>
+        /// 读取点胶相关轴的编码器实际位置，用于低频工艺审计日志。
+        /// 不参与运动控制判定，避免日志读取改变运动时序。
+        /// </summary>
+        private (double Dx, double Dy, double Y, double Dz) GetActualPosition(int axisDz) =>
+            (_motionService.GetAxisPosition(AxisDx),
+             _motionService.GetAxisPosition(AxisDy),
+             _motionService.GetAxisPosition(AxisY),
+             _motionService.GetAxisPosition(axisDz));
 
         private void SetRunning(bool running) => Interlocked.Exchange(ref _isRunning, running ? 1 : 0);
 

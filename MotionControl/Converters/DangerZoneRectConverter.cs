@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace Module.Converters
+namespace MotionControl.Converters
 {
     /// <summary>
     /// 计算危险区矩形在Canvas上的位置和尺寸

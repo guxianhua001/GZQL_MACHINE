@@ -29,7 +29,7 @@ namespace Recipe.Views
             {
                 if (e.Column is DataGridTextColumn textColumn)
                 {
-                    textColumn.Width = 150;
+                    textColumn.Width = 200;
                 }
             }
             // 为 Comment 列设置最小宽度

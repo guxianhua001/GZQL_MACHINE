@@ -56,6 +56,8 @@ namespace Module.ViewModels
 
         private Dictionary<string, double> _allPositions = new Dictionary<string, double>();
         private CancellationTokenSource _dispenseCts;
+        /// <summary>拍照位行运动（移动/拍照/回安全）取消令牌</summary>
+        private CancellationTokenSource _rowMotionCts;
         private readonly ManualResetEventSlim _pauseEvent = new ManualResetEventSlim(true);
 
         /// <summary>各组拍照位行缓存（组名 → 行列表），切换组时保存/恢复，不依赖 WorkOrder</summary>
@@ -63,17 +65,6 @@ namespace Module.ViewModels
 
         /// <summary>切换组时抑制 SelectedGroup setter 触发的自动加载，避免与手动切换逻辑冲突</summary>
         private bool _suppressGroupChangeReload;
-
-        /// <summary>轴实时位置刷新定时器（读取 MotionService 缓存，不直接读硬件）</summary>
-        private DispatcherTimer _axisRealtimeTimer;
-
-        private ObservableCollection<AxisPositionDisplayItem> _axisPositionItems = new ObservableCollection<AxisPositionDisplayItem>();
-        /// <summary>Motion Params：各轴实时位置与安全位置显示列表</summary>
-        public ObservableCollection<AxisPositionDisplayItem> AxisPositionItems
-        {
-            get => _axisPositionItems;
-            set => SetProperty(ref _axisPositionItems, value);
-        }
 
         private ObservableCollection<string> _groups = new ObservableCollection<string>();
         public ObservableCollection<string> Groups
@@ -144,8 +135,11 @@ namespace Module.ViewModels
                         NeedleOffsetY = 0;
                     RaisePropertyChanged(nameof(IsOffsetXExpressionLinked));
                     RaisePropertyChanged(nameof(IsOffsetYExpressionLinked));
-                    RaisePropertyChanged(nameof(EffectiveTrajectoryType));
-                    SyncDotArcModeFromEffectiveType();
+                    RaisePropertyChanged(nameof(NeedleOffsetRowXExpression));
+                    RaisePropertyChanged(nameof(NeedleOffsetRowYExpression));
+                    RaisePropertyChanged(nameof(NeedleOffsetRowX));
+                    RaisePropertyChanged(nameof(NeedleOffsetRowY));
+                    ApplyTrajectoryTypeSideEffects();
                     RefreshPhotoPosition(value);
                 }
 
@@ -162,6 +156,70 @@ namespace Module.ViewModels
         /// 目标偏移 ΔY，与 Offset Compensation 区域的 CalculatedOffsetY 保持同步
         /// </summary>
         public double TargetOffsetY => SelectedRow?.CalculatedOffsetY ?? 0;
+
+        /// <summary>
+        /// 当前选中行针头X偏移表达式（UI 双向绑定，避免嵌套路径刷新问题）
+        /// </summary>
+        public string NeedleOffsetRowXExpression
+        {
+            get => SelectedRow?.NeedleOffsetXExpression ?? string.Empty;
+            set
+            {
+                if (SelectedRow == null) return;
+                if (SelectedRow.NeedleOffsetXExpression == value) return;
+                SelectedRow.NeedleOffsetXExpression = value ?? string.Empty;
+                NotifyTargetOffsetChanged();
+                TryRecalculateMachinePointsIfCaptured();
+            }
+        }
+
+        /// <summary>
+        /// 当前选中行针头Y偏移表达式（UI 双向绑定）
+        /// </summary>
+        public string NeedleOffsetRowYExpression
+        {
+            get => SelectedRow?.NeedleOffsetYExpression ?? string.Empty;
+            set
+            {
+                if (SelectedRow == null) return;
+                if (SelectedRow.NeedleOffsetYExpression == value) return;
+                SelectedRow.NeedleOffsetYExpression = value ?? string.Empty;
+                NotifyTargetOffsetChanged();
+                TryRecalculateMachinePointsIfCaptured();
+            }
+        }
+
+        /// <summary>
+        /// 当前选中行针头X基础值（行级，参与 CalculatedOffsetX；与全局标定 NeedleOffsetX 分离）
+        /// </summary>
+        public double NeedleOffsetRowX
+        {
+            get => SelectedRow?.NeedleOffsetX ?? 0;
+            set
+            {
+                if (SelectedRow == null) return;
+                if (Math.Abs(SelectedRow.NeedleOffsetX - value) < 1e-9) return;
+                SelectedRow.NeedleOffsetX = value;
+                NotifyTargetOffsetChanged();
+                TryRecalculateMachinePointsIfCaptured();
+            }
+        }
+
+        /// <summary>
+        /// 当前选中行针头Y基础值（行级，参与 CalculatedOffsetY）
+        /// </summary>
+        public double NeedleOffsetRowY
+        {
+            get => SelectedRow?.NeedleOffsetY ?? 0;
+            set
+            {
+                if (SelectedRow == null) return;
+                if (Math.Abs(SelectedRow.NeedleOffsetY - value) < 1e-9) return;
+                SelectedRow.NeedleOffsetY = value;
+                NotifyTargetOffsetChanged();
+                TryRecalculateMachinePointsIfCaptured();
+            }
+        }
 
         /// <summary>
         /// 选中行偏移属性变化时，刷新目标偏移显示；PositionName 变化时自动解析各轴坐标
@@ -182,6 +240,8 @@ namespace Module.ViewModels
                 case nameof(PhotoPositionRow.CalculatedOffsetY):
                 case nameof(PhotoPositionRow.NeedleOffsetX):
                 case nameof(PhotoPositionRow.NeedleOffsetY):
+                case nameof(PhotoPositionRow.NeedleOffsetXExpression):
+                case nameof(PhotoPositionRow.NeedleOffsetYExpression):
                 case nameof(PhotoPositionRow.OffsetXExpression):
                 case nameof(PhotoPositionRow.OffsetYExpression):
                     NotifyTargetOffsetChanged();
@@ -189,9 +249,8 @@ namespace Module.ViewModels
                     break;
                 case nameof(PhotoPositionRow.DispenseType):
                 case nameof(PhotoPositionRow.TrajectoryOverride):
-                    // 轨迹覆盖或旧 DispenseType 变化时，按 EffectiveTrajectoryType 刷新 Dot/路径模式
-                    RaisePropertyChanged(nameof(EffectiveTrajectoryType));
-                    SyncDotArcModeFromEffectiveType();
+                    // 轨迹类型变更：Dot 与 Arc/Line/Polyline 切换工艺参数面板
+                    ApplyTrajectoryTypeSideEffects();
                     break;
                 case nameof(PhotoPositionRow.DotParamsNeedle1):
                 case nameof(PhotoPositionRow.DotParamsNeedle2):
@@ -205,12 +264,31 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 按 EffectiveTrajectoryType 同步 IsDotMode/IsArcMode（Dot→点胶面板，其余→路径面板）
+        /// 轨迹类型变更后的统一副作用：同步 Dot/路径面板可见性并刷新当前工艺参数绑定。
+        /// </summary>
+        private void ApplyTrajectoryTypeSideEffects()
+        {
+            RaisePropertyChanged(nameof(EffectiveTrajectoryType));
+            RaisePropertyChanged(nameof(SelectedTrajectoryType));
+            SyncDotArcModeFromEffectiveType();
+            RaisePropertyChanged(nameof(CurrentDotParams));
+            RaisePropertyChanged(nameof(CurrentArcParams));
+        }
+
+        /// <summary>
+        /// 按 EffectiveTrajectoryType 同步 IsDotMode/IsArcMode：
+        /// Dot→单点工艺参数；Arc/Line/Polyline→路径(连续插补)工艺参数。
         /// </summary>
         private void SyncDotArcModeFromEffectiveType()
         {
-            IsDotMode = EffectiveTrajectoryType == TrajectoryType.Dot;
-            IsArcMode = !IsDotMode;
+            var isDot = EffectiveTrajectoryType == TrajectoryType.Dot;
+            var isArc = !isDot;
+            // 强制通知 UI（嵌套绑定变更时 IsDotMode/IsArcMode 可能未触发 PropertyChanged）
+            _isDotMode = isDot;
+            _isArcMode = isArc;
+            RaisePropertyChanged(nameof(IsDotMode));
+            RaisePropertyChanged(nameof(IsArcMode));
+            RaisePropertyChanged(nameof(DispenseTypeTabIndex));
         }
 
         /// <summary>
@@ -484,7 +562,16 @@ namespace Module.ViewModels
         public double PhotoDy { get => _photoDy; set => SetProperty(ref _photoDy, value); }
 
         private double _photoDz1;
+        /// <summary>选中行 Photo Position 的 Dz₁（0=未获取）</summary>
         public double PhotoDz1 { get => _photoDz1; set => SetProperty(ref _photoDz1, value); }
+
+        private double _photoDz2;
+        /// <summary>选中行 Photo Position 的 Dz₂（0=未获取）</summary>
+        public double PhotoDz2 { get => _photoDz2; set => SetProperty(ref _photoDz2, value); }
+
+        private double _photoDz3;
+        /// <summary>选中行 Photo Position 的 Dz₃/相机Z（0=未获取）</summary>
+        public double PhotoDz3 { get => _photoDz3; set => SetProperty(ref _photoDz3, value); }
 
         private double _targetDeltaX;
         public double TargetDeltaX { get => _targetDeltaX; set => SetProperty(ref _targetDeltaX, value); }
@@ -710,6 +797,22 @@ namespace Module.ViewModels
             {
                 var ov = SelectedRow?.TrajectoryOverride ?? TrajectoryType.Dot;
                 return ov == TrajectoryType.Auto ? TrajectoryType.Dot : ov;
+            }
+        }
+
+        /// <summary>
+        /// 当前选中行轨迹类型（Process Params ComboBox 双向绑定入口，避免嵌套路径未触发 VM 刷新）。
+        /// </summary>
+        public TrajectoryType SelectedTrajectoryType
+        {
+            get => EffectiveTrajectoryType;
+            set
+            {
+                if (SelectedRow == null) return;
+                var normalized = value == TrajectoryType.Auto ? TrajectoryType.Dot : value;
+                if (SelectedRow.TrajectoryOverride != normalized)
+                    SelectedRow.TrajectoryOverride = normalized;
+                ApplyTrajectoryTypeSideEffects();
             }
         }
 
@@ -1158,6 +1261,7 @@ namespace Module.ViewModels
 
         public DelegateCommand<PhotoPositionRow> ExecuteCaptureCommand { get; }
         public DelegateCommand<PhotoPositionRow> MoveToTeachPositionCommand { get; }
+        public DelegateCommand<PhotoPositionRow> StopRowMotionCommand { get; }
         public DelegateCommand ExecuteDispenseCommand { get; }
         public DelegateCommand PreviewMachinePointsCommand { get; }
         public DelegateCommand SaveTransformParamsCommand { get; }
@@ -1258,6 +1362,10 @@ namespace Module.ViewModels
                 async row => await MoveToTeachPositionAsync(row),
                 row => row != null && !row.IsPositionInvalid && !row.IsExecuting && !IsExecuting
             );
+            StopRowMotionCommand = new DelegateCommand<PhotoPositionRow>(
+                row => StopRowMotion(row),
+                row => row != null && row.IsExecuting
+            );
             ExecuteDispenseCommand = new DelegateCommand(
                 async () => await ExecuteDispenseAsync(),
                 () => SelectedRow != null && !SelectedRow.IsPositionInvalid && CapturedTargetPoints.Count > 0 && !IsExecuting
@@ -1336,7 +1444,6 @@ namespace Module.ViewModels
 
             _ = InitializeAsync();
             LoadConnections();
-            InitializeAxisPositionDisplay();
 
             _eventAggregator.GetEvent<SaveParametersCompletedEvent>().Subscribe(OnPositionsUpdated, ThreadOption.UIThread);
             _eventAggregator.GetEvent<RecipeChangedEvent>().Subscribe(OnRecipeChanged, ThreadOption.UIThread);
@@ -1610,6 +1717,7 @@ namespace Module.ViewModels
             foreach (var row in cached)
             {
                 row.AvailablePositions = new ObservableCollection<string>(positionNames);
+                MigrateLegacyRowOffsetExpressions(row);
                 PhotoPositionRows.Add(row);
                 SiteFeatureNames.Add(row.PositionName);
             }
@@ -1748,6 +1856,10 @@ namespace Module.ViewModels
         {
             if (e.PropertyName == nameof(PhotoPositionRow.PositionName) && sender is PhotoPositionRow row)
             {
+                // 用户输入或旧配置带工站前缀时，统一规范为短名称
+                var normalized = NormalizePhotoPositionName(row.PositionName);
+                if (!string.Equals(normalized, row.PositionName, StringComparison.Ordinal))
+                    row.PositionName = normalized;
                 RefreshRowParsedCoordinates(row);
                 if (row == SelectedRow)
                     RefreshPhotoPosition(row);
@@ -1762,7 +1874,16 @@ namespace Module.ViewModels
                 // 位置有效性变化时刷新运动/点胶命令可用性
                 ExecuteCaptureCommand?.RaiseCanExecuteChanged();
                 MoveToTeachPositionCommand?.RaiseCanExecuteChanged();
+                StopRowMotionCommand?.RaiseCanExecuteChanged();
                 ExecuteDispenseCommand?.RaiseCanExecuteChanged();
+            }
+            else if ((e.PropertyName == nameof(PhotoPositionRow.TrajectoryOverride)
+                      || e.PropertyName == nameof(PhotoPositionRow.DispenseType))
+                     && sender is PhotoPositionRow trajectoryRow
+                     && trajectoryRow == SelectedRow)
+            {
+                // 集合行订阅兜底：嵌套绑定写 TrajectoryOverride 时确保工艺参数面板切换
+                ApplyTrajectoryTypeSideEffects();
             }
         }
 
@@ -1775,108 +1896,25 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 初始化 Motion Params 轴显示列表，并启动定时器从 MotionService 缓存刷新实时位置
-        /// </summary>
-        private void InitializeAxisPositionDisplay()
-        {
-            RebuildAxisPositionItems();
-            _axisRealtimeTimer = new DispatcherTimer(DispatcherPriority.Background, Application.Current.Dispatcher)
-            {
-                Interval = TimeSpan.FromMilliseconds(200)
-            };
-            _axisRealtimeTimer.Tick += (s, e) => RefreshAxisRealtimePositions();
-            _axisRealtimeTimer.Start();
-        }
-
-        /// <summary>
-        /// 按 ResolveAxisIdMap 重建轴显示项，并填充安全位置示教值
-        /// </summary>
-        private void RebuildAxisPositionItems()
-        {
-            var axisIdMap = ResolveAxisIdMap();
-            // 显示顺序：点胶相关轴 + 平台轴（存在于轴配置中的才显示）
-            string[] displayAxes = { "Dx", "Dy", "Dz₁", "Dz₂", "Dz₃", "Y", "Rx", "Rz" };
-            AxisPositionItems.Clear();
-            foreach (var axisName in displayAxes)
-            {
-                if (!axisIdMap.TryGetValue(axisName, out var axisId))
-                    continue;
-                var item = new AxisPositionDisplayItem
-                {
-                    AxisName = axisName,
-                    AxisId = axisId
-                };
-                // 初始实时位置从缓存读取
-                try
-                {
-                    var state = _motionService.GetAxisState(axisId);
-                    if (state != null)
-                        item.RealtimePosition = state.ActualPosition;
-                }
-                catch { /* 硬件未就绪时忽略 */ }
-                ApplySafePositionToItem(item);
-                AxisPositionItems.Add(item);
-            }
-        }
-
-        /// <summary>从位置编辑器 SafePosition 填充单轴安全位置值</summary>
-        private void ApplySafePositionToItem(AxisPositionDisplayItem item)
-        {
-            if (item == null || _allPositions == null || string.IsNullOrEmpty(SafePositionName)) return;
-            var key = ResolvePositionKey(SafePositionName, item.AxisName);
-            if (key != null && _allPositions.TryGetValue(key, out var val))
-            {
-                item.SafePosition = val;
-                item.HasSafePosition = true;
-            }
-            else
-            {
-                item.HasSafePosition = false;
-            }
-        }
-
-        /// <summary>定时刷新各轴实时位置（仅读 MotionService 缓存，不直接读硬件）</summary>
-        private void RefreshAxisRealtimePositions()
-        {
-            foreach (var item in AxisPositionItems)
-            {
-                if (item.AxisId < 0) continue;
-                try
-                {
-                    var state = _motionService.GetAxisState(item.AxisId);
-                    if (state != null)
-                        item.RealtimePosition = state.ActualPosition;
-                }
-                catch { /* 忽略瞬时读失败 */ }
-            }
-        }
-
-        /// <summary>
-        /// 刷新拍照位置坐标显示，从位置数据中读取 Dx/Dy/Dz₁
+        /// 刷新拍照位置坐标显示，从位置数据中读取 Dx/Dy/Dz₁/Dz₂/Dz₃；值为 0 视为未获取。
         /// </summary>
         private void RefreshPhotoPosition(PhotoPositionRow row)
         {
             if (row == null || _allPositions == null)
             {
-                PhotoDx = 0; PhotoDy = 0; PhotoDz1 = 0;
+                PhotoDx = 0; PhotoDy = 0; PhotoDz1 = 0; PhotoDz2 = 0; PhotoDz3 = 0;
                 return;
             }
-            double dx = 0, dy = 0, dz1 = 0;
-            var dxKey = ResolvePositionKey(row.PositionName, "Dx");
-            var dyKey = ResolvePositionKey(row.PositionName, "Dy");
-            var dz1Key = ResolvePositionKey(row.PositionName, "Dz₁");
-            if (dxKey != null) _allPositions.TryGetValue(dxKey, out dx);
-            if (dyKey != null) _allPositions.TryGetValue(dyKey, out dy);
-            if (dz1Key != null) _allPositions.TryGetValue(dz1Key, out dz1);
-            PhotoDx = dx;
-            PhotoDy = dy;
-            PhotoDz1 = dz1;
+            PhotoDx = TryGetTaughtPosition(row.PositionName, "Dx") ?? 0;
+            PhotoDy = TryGetTaughtPosition(row.PositionName, "Dy") ?? 0;
+            PhotoDz1 = TryGetTaughtPosition(row.PositionName, "Dz₁") ?? 0;
+            PhotoDz2 = TryGetTaughtPosition(row.PositionName, "Dz₂") ?? 0;
+            PhotoDz3 = TryGetTaughtPosition(row.PositionName, "Dz₃") ?? 0;
         }
 
         /// <summary>
-        /// 按 row.PositionName 从位置编辑器解析 Dx/Dy/Dz₁/Y/Rx/Rz 坐标，更新到 row。
-        /// 解析失败的字段保持原值（不置 0，避免误用导致碰撞）。
-        /// 同时设置 row.IsPositionInvalid：位置名不存在于位置编辑器时为 true，UI 显示警告并阻止运动。
+        /// 按 row.PositionName 从位置编辑器解析 Dx/Dy/Dz₁/Dz₂/Dz₃/Y/Rx/Rz。
+        /// 轴值缺失或为 0 视为未获取；拍照运动必需轴 Dx/Dy/Dz₃ 任一未获取则标记 IsPositionInvalid。
         /// </summary>
         private void RefreshRowParsedCoordinates(PhotoPositionRow row)
         {
@@ -1888,67 +1926,147 @@ namespace Module.ViewModels
                 return;
             }
 
-            double? dx = null, dy = null, dz1 = null, y = null, rx = null, rz = null;
-            var dxKey = ResolvePositionKey(row.PositionName, "Dx");
-            var dyKey = ResolvePositionKey(row.PositionName, "Dy");
-            var dz1Key = ResolvePositionKey(row.PositionName, "Dz₁");
-            var yKey = ResolvePositionKey(row.PositionName, "Y");
-            var rxKey = ResolvePositionKey(row.PositionName, "Rx");
-            var rzKey = ResolvePositionKey(row.PositionName, "Rz");
-            if (dxKey != null && _allPositions.TryGetValue(dxKey, out var dxVal)) dx = dxVal;
-            if (dyKey != null && _allPositions.TryGetValue(dyKey, out var dyVal)) dy = dyVal;
-            if (dz1Key != null && _allPositions.TryGetValue(dz1Key, out var dz1Val)) dz1 = dz1Val;
-            if (yKey != null && _allPositions.TryGetValue(yKey, out var yVal)) y = yVal;
-            if (rxKey != null && _allPositions.TryGetValue(rxKey, out var rxVal)) rx = rxVal;
-            if (rzKey != null && _allPositions.TryGetValue(rzKey, out var rzVal)) rz = rzVal;
+            var dx = TryGetTaughtPosition(row.PositionName, "Dx");
+            var dy = TryGetTaughtPosition(row.PositionName, "Dy");
+            var dz1 = TryGetTaughtPosition(row.PositionName, "Dz₁");
+            var dz2 = TryGetTaughtPosition(row.PositionName, "Dz₂");
+            var dz3 = TryGetTaughtPosition(row.PositionName, "Dz₃");
+            var y = TryGetTaughtPosition(row.PositionName, "Y");
+            var rx = TryGetTaughtPosition(row.PositionName, "Rx");
+            var rz = TryGetTaughtPosition(row.PositionName, "Rz");
 
-            // 验证：位置名是否在位置编辑器中存在（至少有一个轴坐标可解析）
-            bool anyResolved = dx.HasValue || dy.HasValue || dz1.HasValue || y.HasValue || rx.HasValue || rz.HasValue;
-            row.IsPositionInvalid = !anyResolved;
+            // 运动必需：Dx/Dy/Dz₃（相机 Z）；其余轴缺失仅影响显示与姿态轴运动
+            bool requiredOk = dx.HasValue && dy.HasValue && dz3.HasValue;
+            row.IsPositionInvalid = !requiredOk;
 
             if (row.IsPositionInvalid)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_PositionNotFound"), row.PositionName);
                 _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_PositionNotFound",
-                    "[VisionCapture] 位置名 '{0}' 在位置编辑器中不存在，Dx/Dy/Dz₁ 将保持 0，运动有碰撞风险"), row.PositionName));
+                    "[VisionCapture] 位置名 '{0}' 缺少有效 Dx/Dy/Dz₃（0 视为未获取），运动有碰撞风险"), row.PositionName));
             }
 
-            row.UpdateParsedCoordinates(dx, dy, dz1, y, rx, rz);
+            row.UpdateParsedCoordinates(dx, dy, dz1, dz2, dz3, y, rx, rz);
+            SyncSafeHeightFromEditorIfDefault(row);
+        }
+
+        /// <summary>安全抬升高度出厂默认值（DotProcessParams/DispenseSegment 构造默认），视为"未手动修改"的标记值</summary>
+        private const double DefaultSafeHeightSentinel = -20.0;
+
+        /// <summary>
+        /// 若工艺参数的安全高度仍为出厂默认值（未手动修改过），自动用位置编辑器 SafePosition 的 Dz₁ 高度回填，
+        /// 避免用户凭手感填错安全高度造成撞机；一旦用户手动修改过（值不再等于默认值）则不再自动覆盖。
+        /// </summary>
+        private void SyncSafeHeightFromEditorIfDefault(PhotoPositionRow row)
+        {
+            if (row == null) return;
+            var dz1Safe = TryGetEditorSafePositionAxis("Dz₁");
+            if (!dz1Safe.HasValue) return;
+
+            if (row.DotParamsNeedle1 != null && row.DotParamsNeedle1.SafeHeight == DefaultSafeHeightSentinel)
+                row.DotParamsNeedle1.SafeHeight = dz1Safe.Value;
+            if (row.DotParamsNeedle2 != null && row.DotParamsNeedle2.SafeHeight == DefaultSafeHeightSentinel)
+                row.DotParamsNeedle2.SafeHeight = dz1Safe.Value;
+            if (row.ArcParamsNeedle1 != null && row.ArcParamsNeedle1.SafeHeight == DefaultSafeHeightSentinel)
+                row.ArcParamsNeedle1.SafeHeight = dz1Safe.Value;
+            if (row.ArcParamsNeedle2 != null && row.ArcParamsNeedle2.SafeHeight == DefaultSafeHeightSentinel)
+                row.ArcParamsNeedle2.SafeHeight = dz1Safe.Value;
         }
 
         private void RefreshSafePositionDisplay()
         {
             if (_allPositions == null) return;
             if (string.IsNullOrEmpty(SafePositionName)) return;
-            var dxKey = ResolvePositionKey(SafePositionName, "Dx");
-            var dyKey = ResolvePositionKey(SafePositionName, "Dy");
-            var dz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
-            double dx = 0, dy = 0, dz1 = 0;
-            bool dxFound = dxKey != null && _allPositions.TryGetValue(dxKey, out dx);
-            bool dyFound = dyKey != null && _allPositions.TryGetValue(dyKey, out dy);
-            bool dz1Found = dz1Key != null && _allPositions.TryGetValue(dz1Key, out dz1);
-            SafePositionDx = dx;
-            SafePositionDy = dy;
-            SafePositionDz1 = dz1;
+            var dx = TryGetPositionRaw(SafePositionName, "Dx");
+            var dy = TryGetPositionRaw(SafePositionName, "Dy");
+            var dz1 = TryGetPositionRaw(SafePositionName, "Dz₁");
+            SafePositionDx = dx ?? 0;
+            SafePositionDy = dy ?? 0;
+            SafePositionDz1 = dz1 ?? 0;
 
-            // 同步更新 Motion Params 各轴安全位置显示
-            if (AxisPositionItems.Count == 0)
-                RebuildAxisPositionItems();
-            else
-            {
-                foreach (var item in AxisPositionItems)
-                    ApplySafePositionToItem(item);
-            }
-
-            if (!dxFound || !dyFound || !dz1Found)
+            if (!dx.HasValue || !dy.HasValue || !dz1.HasValue)
             {
                 var missingAxes = new List<string>();
-                if (!dxFound) missingAxes.Add("Dx");
-                if (!dyFound) missingAxes.Add("Dy");
-                if (!dz1Found) missingAxes.Add("Dz₁");
+                if (!dx.HasValue) missingAxes.Add("Dx");
+                if (!dy.HasValue) missingAxes.Add("Dy");
+                if (!dz1.HasValue) missingAxes.Add("Dz₁");
                 StatusMessage = string.Format(L("VisionCapture_Status_SafePosMissingAxis"), SafePositionName, string.Join(", ", missingAxes));
                 _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SafePosMissingAxis", "[VisionCapture] 安全位 '{0}' 缺少轴: {1}，请选择包含Dx/Dy/Dz₁轴工站的位置"), SafePositionName, string.Join(", ", missingAxes)));
             }
+        }
+
+        /// <summary>
+        /// 读取示教位置轴坐标；键不存在或值为 0 时返回 null（按未获取处理，避免把默认 0 当有效目标）。
+        /// 仅用于当前拍照位轴校验；SafePosition/Standby 请用 TryGetPositionRaw。
+        /// </summary>
+        private double? TryGetTaughtPosition(string positionName, string axisName)
+        {
+            if (_allPositions == null || string.IsNullOrEmpty(positionName) || string.IsNullOrEmpty(axisName))
+                return null;
+            var key = ResolvePositionKey(positionName, axisName);
+            if (key == null || !_allPositions.TryGetValue(key, out var value))
+                return null;
+            // 工业约定：示教值为 0 表示该轴未配置/未获取，禁止当作目标位置下发
+            if (value == 0.0)
+                return null;
+            return value;
+        }
+
+        /// <summary>
+        /// 读取位置轴坐标（允许 0）；仅键不存在时返回 null。用于 SafePosition/Standby 等安全位，不做非 0 校验。
+        /// </summary>
+        private double? TryGetPositionRaw(string positionName, string axisName)
+        {
+            if (_allPositions == null || string.IsNullOrEmpty(positionName) || string.IsNullOrEmpty(axisName))
+                return null;
+            var key = ResolvePositionKey(positionName, axisName);
+            if (key == null || !_allPositions.TryGetValue(key, out var value))
+                return null;
+            return value;
+        }
+
+        /// <summary>位置编辑器固定安全位名称；抬 Z 时只读此位置，不使用可配置 SafePositionName（避免误匹配 NewPosition3 等）。</summary>
+        private const string EditorSafePositionName = "SafePosition";
+        /// <summary>位置编辑器固定待机位名称；回安全时 Dx/Dy 只读此位置。</summary>
+        private const string EditorStandbyPositionName = "StandbyPosition";
+
+        /// <summary>
+        /// 从位置编辑器读取固定 SafePosition 的轴坐标；仅匹配位置名段恰好为 SafePosition 的键。
+        /// </summary>
+        private double? TryGetEditorSafePositionAxis(string axisName)
+        {
+            return TryGetEditorNamedPositionAxis(EditorSafePositionName, axisName);
+        }
+
+        /// <summary>
+        /// 从位置编辑器读取固定 StandbyPosition 的轴坐标；仅匹配位置名段恰好为 StandbyPosition 的键。
+        /// </summary>
+        private double? TryGetEditorStandbyPositionAxis(string axisName)
+        {
+            return TryGetEditorNamedPositionAxis(EditorStandbyPositionName, axisName);
+        }
+
+        /// <summary>从位置编辑器读取固定位置名的轴坐标（精确匹配位置名段，避免后缀误匹配）。</summary>
+        private double? TryGetEditorNamedPositionAxis(string editorPositionName, string axisName)
+        {
+            if (_allPositions == null || string.IsNullOrEmpty(editorPositionName) || string.IsNullOrEmpty(axisName))
+                return null;
+
+            var plainKey = $"{editorPositionName}.{axisName}";
+            if (_allPositions.TryGetValue(plainKey, out var plainVal))
+                return plainVal;
+
+            foreach (var kvp in _allPositions)
+            {
+                var parts = kvp.Key.Split('.');
+                if (parts.Length >= 3
+                    && string.Equals(parts[^2], editorPositionName, StringComparison.Ordinal)
+                    && string.Equals(parts[^1], axisName, StringComparison.Ordinal))
+                {
+                    return kvp.Value;
+                }
+            }
+            return null;
         }
 
         private string ResolvePositionKey(string positionName, string axisName)
@@ -1983,6 +2101,60 @@ namespace Module.ViewModels
                     return $"{keyParts[0]}.{oldName}";
             }
             return oldName;
+        }
+
+        /// <summary>
+        /// 拍照位名称规范化：界面与持久化只保留位置名段（如 NewPosition1），不带工站前缀。
+        /// 解析坐标时由 ResolvePositionKey 后缀匹配 {Station}.NewPosition1。
+        /// </summary>
+        private static string NormalizePhotoPositionName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return name;
+            var trimmed = name.Trim();
+            var parts = trimmed.Split('.');
+            return parts.Length >= 2 ? parts[^1] : trimmed;
+        }
+
+        /// <summary>开始行级运动前创建/重置取消令牌</summary>
+        private CancellationToken BeginRowMotion()
+        {
+            _rowMotionCts?.Cancel();
+            _rowMotionCts?.Dispose();
+            _rowMotionCts = new CancellationTokenSource();
+            StopRowMotionCommand?.RaiseCanExecuteChanged();
+            return _rowMotionCts.Token;
+        }
+
+        /// <summary>停止当前行级运动：取消令牌并下发各轴 Stop</summary>
+        private void StopRowMotion(PhotoPositionRow row)
+        {
+            _rowMotionCts?.Cancel();
+            try
+            {
+                var axisIdMap = ResolveAxisIdMap();
+                string[] axes = { "Dz₁", "Dz₂", "Dz₃", "Dx", "Dy", "Y", "Rx", "Rz" };
+                foreach (var axisName in axes)
+                {
+                    if (axisIdMap.TryGetValue(axisName, out var axisId))
+                        _motionService.StopAxis(axisId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_StopRowMotionFailed",
+                    "[VisionCapture] 停止行运动失败: {0}"), ex.Message));
+            }
+            StatusMessage = L("VisionCapture_Status_MotionStopped");
+            _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_RowMotionStopped",
+                "[VisionCapture] 用户停止行运动: {0}"), row?.PositionName ?? "-"));
+        }
+
+        private void EndRowMotion(PhotoPositionRow row)
+        {
+            if (row != null) row.IsExecuting = false;
+            IsExecuting = false;
+            StopRowMotionCommand?.RaiseCanExecuteChanged();
+            RaiseCanExecuteChanged();
         }
 
         private async Task<Dictionary<string, double>> MergeAllPositionsAsync()
@@ -2035,23 +2207,68 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 拍照/移动前优先抬起 Dz₁/Dz₂/Dz₃ 到安全高度，防止碰撞（工业安全要求）。
-        /// 安全高度取自位置编辑器 "SafePosition" 的 Dz₁ 坐标。
+        /// 拍照/移动前优先抬起 Z 轴到位置编辑器固定 SafePosition 各自高度（多轴同步）。
+        /// 非 0 校验只针对当前拍照位；安全高度只从 SafePosition 读取，不使用 SafePositionName 配置。
         /// </summary>
-        private async Task RaiseZAxesToSafeAsync(Dictionary<string, int> axisIdMap, double speed, CancellationToken token)
+        /// <returns>true=抬升成功，调用方可继续；false=无轴可抬或运动失败，调用方应中止</returns>
+        /// <param name="photoPositionName">当前拍照位名称；为空时抬升所有已配置 Z 轴</param>
+        private async Task<bool> RaiseZAxesToSafeAsync(
+            Dictionary<string, int> axisIdMap,
+            double speed,
+            CancellationToken token,
+            string photoPositionName = null)
         {
-            if (axisIdMap == null) return;
-            var safeDz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
-            double safeZ = 0;
-            if (safeDz1Key != null && _allPositions != null)
-                _allPositions.TryGetValue(safeDz1Key, out safeZ);
-            // 依次抬起 Dz₁/Dz₂/Dz₃，确保所有 Z 轴离开工件面后再进行 XY 运动
-            if (axisIdMap.TryGetValue("Dz₁", out var dz1Id))
-                await _motionService.MoveAbsAsync(dz1Id, safeZ, speed, token);
-            if (axisIdMap.TryGetValue("Dz₂", out var dz2Id))
-                await _motionService.MoveAbsAsync(dz2Id, safeZ, speed, token);
-            if (axisIdMap.TryGetValue("Dz₃", out var dz3Id))
-                await _motionService.MoveAbsAsync(dz3Id, safeZ, speed, token);
+            if (axisIdMap == null) return false;
+
+            var moves = new List<(int axisId, double position, double velocity)>();
+            string[] zAxes = { "Dz₁", "Dz₂", "Dz₃" };
+            foreach (var axisName in zAxes)
+            {
+                if (!axisIdMap.TryGetValue(axisName, out var axisId))
+                    continue;
+
+                // 非0检查仅针对当前拍照位：该轴在拍照位未示教(0/缺失)则不抬该轴
+                if (!string.IsNullOrEmpty(photoPositionName)
+                    && !TryGetTaughtPosition(photoPositionName, axisName).HasValue)
+                {
+                    _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SkipRaiseZAxis",
+                        "[VisionCapture] 拍照位 '{0}' 的 {1} 未示教(0)，跳过抬升"), photoPositionName, axisName));
+                    continue;
+                }
+
+                // 只从位置编辑器固定 SafePosition 读取安全高度（允许 0）
+                var safeZ = TryGetEditorSafePositionAxis(axisName);
+                if (!safeZ.HasValue)
+                {
+                    _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_SafeZKeyMissing",
+                        "[VisionCapture] 位置编辑器 SafePosition 缺少 {0} 键，无法抬升"), axisName));
+                    return false;
+                }
+                moves.Add((axisId, safeZ.Value, speed));
+            }
+
+            if (moves.Count == 0)
+            {
+                _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_NoZAxisToRaise",
+                    "[VisionCapture] 无需要抬升的 Z 轴（拍照位未示教或轴未配置）"));
+                return false;
+            }
+
+            try
+            {
+                await _motionService.MoveAbsMultiAxisAsync(moves, token);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_RaiseZAxesFailed",
+                    "[VisionCapture] SafePosition Z 轴抬升失败: {0}"), ex.Message));
+                return false;
+            }
         }
 
         private int ResolveCoordId()
@@ -2316,7 +2533,7 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 对 CapturedTargetPoints 计算 Mech/MachinePoints，进入 Step2 预览。
+        /// 对 CapturedTargetPoints 计算 Mech/MachinePoints，生成预览几何；不自动切换步骤，由用户手动点击下一步。
         /// 公式：Mech = PhotoDx/Dy + targetX/Y + 相机针头间距 + 校针补偿 + OFFSET
         /// </summary>
         private async Task ComputeMachinePointsFromCameraAsync(PhotoPositionRow row)
@@ -2330,12 +2547,8 @@ namespace Module.ViewModels
                 double photoDy = row?.Dy ?? 0;
                 if (row != null && !string.IsNullOrEmpty(row.PositionName))
                 {
-                    var dxKey = ResolvePositionKey(row.PositionName, "Dx");
-                    var dyKey = ResolvePositionKey(row.PositionName, "Dy");
-                    if (dxKey != null && _allPositions.TryGetValue(dxKey, out var resolvedDx))
-                        photoDx = resolvedDx;
-                    if (dyKey != null && _allPositions.TryGetValue(dyKey, out var resolvedDy))
-                        photoDy = resolvedDy;
+                    photoDx = TryGetTaughtPosition(row.PositionName, "Dx") ?? 0;
+                    photoDy = TryGetTaughtPosition(row.PositionName, "Dy") ?? 0;
                 }
                 PhotoDx = photoDx;
                 PhotoDy = photoDy;
@@ -2350,13 +2563,17 @@ namespace Module.ViewModels
                 var targetOffsets = CapturedTargetPoints
                     .Select(p => ResolveTargetOffset(p.PointX, p.PointY))
                     .ToList();
-                var mech = BezierArcDispenseService.ApplyVisionCaptureTransform(
+                var mechEndpoints = BezierArcDispenseService.ApplyVisionCaptureTransform(
                     (photoDx, photoDy), targetOffsets, camDist, needleCalib, rowOffset);
+                // Arc/Line 按贝塞尔/直线离散，预览曲线与点胶路径一致
+                var mech = BuildTrajectoryMachinePoints(row, mechEndpoints);
+                // 标注点按实际执行顺序取首/中/尾，确保预览方向与点胶方向一致。
+                var keyPoints = BuildTrajectoryKeyPoints(mech);
 
-                for (int i = 0; i < CapturedTargetPoints.Count && i < mech.Count; i++)
+                for (int i = 0; i < CapturedTargetPoints.Count && i < mechEndpoints.Count; i++)
                 {
-                    CapturedTargetPoints[i].MechX = mech[i].X;
-                    CapturedTargetPoints[i].MechY = mech[i].Y;
+                    CapturedTargetPoints[i].MechX = mechEndpoints[i].X;
+                    CapturedTargetPoints[i].MechY = mechEndpoints[i].Y;
                 }
 
                 if (targetOffsets.Count > 0)
@@ -2370,40 +2587,18 @@ namespace Module.ViewModels
                     MachinePoints.Add(new MachinePointItem { Index = i + 1, X = mech[i].X, Y = mech[i].Y });
                 RaisePropertyChanged(nameof(HasMachinePoints));
 
-                if (mech.Count >= 1)
+                if (mechEndpoints.Count >= 1)
                 {
-                    P1MechX = mech[0].X; P1MechY = mech[0].Y;
+                    P1MechX = mechEndpoints[0].X; P1MechY = mechEndpoints[0].Y;
                     FinalX = mech[0].X; FinalY = mech[0].Y;
                 }
-                if (mech.Count >= 2) { P2MechX = mech[1].X; P2MechY = mech[1].Y; }
-                if (mech.Count >= 3) { P3MechX = mech[2].X; P3MechY = mech[2].Y; }
+                if (mechEndpoints.Count >= 2) { P2MechX = mechEndpoints[1].X; P2MechY = mechEndpoints[1].Y; }
+                if (mechEndpoints.Count >= 3) { P3MechX = mechEndpoints[2].X; P3MechY = mechEndpoints[2].Y; }
                 BezierPointCount = mech.Count;
 
-                var details = new List<CoordinateTransformDetail>(mech.Count);
-                for (int i = 0; i < mech.Count && i < targetOffsets.Count; i++)
-                {
-                    details.Add(new CoordinateTransformDetail
-                    {
-                        PhotoDx = photoDx,
-                        PhotoDy = photoDy,
-                        DeltaToCenterX = targetOffsets[i].X,
-                        DeltaToCenterY = targetOffsets[i].Y,
-                        TargetOffsetX = targetOffsets[i].X,
-                        TargetOffsetY = targetOffsets[i].Y,
-                        CameraNeedleDistanceX = camDist.X,
-                        CameraNeedleDistanceY = camDist.Y,
-                        NeedleOffsetX = needleCalib.X,
-                        NeedleOffsetY = needleCalib.Y,
-                        NeedleCompensationX = rowOffset.X,
-                        NeedleCompensationY = rowOffset.Y,
-                        FinalX = mech[i].X,
-                        FinalY = mech[i].Y
-                    });
-                }
-                GenerateArcPathGeometry(details);
+                GenerateArcPathGeometry(mech, keyPoints);
 
-                CurrentStep = WorkflowStep.Step2_PreviewDispense;
-                StatusMessage = string.Format(L("VisionCapture_Status_PreviewArcComplete"), mech.Count);
+                StatusMessage = string.Format(L("VisionCapture_Status_VisionDataReady"), mech.Count);
                 _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ArcMachineCoordComplete",
                     "[VisionCapture] 目标点机械坐标完成: 点数={0} Type={1} 首点({2:F3},{3:F3})"),
                     mech.Count, EffectiveTrajectoryType, FinalX, FinalY));
@@ -2483,11 +2678,11 @@ namespace Module.ViewModels
             StatusMessage = L("VisionCapture_Status_PhotoExecuting");
             RaiseCanExecuteChanged();
 
-            var cts = new CancellationTokenSource();
+            var cts = BeginRowMotion();
             try
             {
                 var result = await _visionCaptureService.ExecuteCaptureAsync(
-                    row.ConnectionName, row.TriggerCommand, row.Timeout, cts.Token);
+                    row.ConnectionName, row.TriggerCommand, row.Timeout, cts);
 
                 RawResponse = result.RawResponse ?? L("VisionCapture_DataReceivedSuccess");
                 var pd = result.ParsedData;
@@ -2504,19 +2699,11 @@ namespace Module.ViewModels
 
                 if (parsed)
                 {
-                    if (row.ReturnToSafeAfterCapture)
-                    {
-                        _allPositions = await MergeAllPositionsAsync();
-                        var axisIdMap = ResolveAxisIdMap();
-                        var coordId = ResolveCoordId();
-                        StatusMessage = L("VisionCapture_Status_ReturningToSafe");
-                        await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts.Token);
-                    }
                     await ComputeMachinePointsFromCameraAsync(row);
                 }
                 else
                 {
-                    // 解析失败：仍尝试把 offset 写入行（兼容极旧链路），再预览
+                    // 解析失败：仍尝试把 offset 写入行（兼容旧链路），再预览
                     if (pd.TryGetValue("offsetX", out var ox)) row.NeedleOffsetX = ox;
                     else if (pd.TryGetValue("X", out var px)) row.NeedleOffsetX = px;
                     if (pd.TryGetValue("offsetY", out var oy)) row.NeedleOffsetY = oy;
@@ -2537,15 +2724,6 @@ namespace Module.ViewModels
 
                     NotifyTargetOffsetChanged();
 
-                    if (row.ReturnToSafeAfterCapture)
-                    {
-                        _allPositions = await MergeAllPositionsAsync();
-                        var axisIdMap = ResolveAxisIdMap();
-                        var coordId = ResolveCoordId();
-                        StatusMessage = L("VisionCapture_Status_ReturningToSafe");
-                        await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts.Token);
-                    }
-
                     await PreviewMachinePointsAsync();
                 }
             }
@@ -2555,11 +2733,8 @@ namespace Module.ViewModels
                 {
                     _allPositions = await MergeAllPositionsAsync();
                     var axisIdMap = ResolveAxisIdMap();
-                    var dz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
-                    if (dz1Key != null && _allPositions.TryGetValue(dz1Key, out var dz1Safe) && axisIdMap.TryGetValue("Dz₁", out var dz1AxisId))
-                    {
-                        await _motionService.MoveAbsAsync(dz1AxisId, dz1Safe, row.Speed, CancellationToken.None);
-                    }
+                    // 取消后按当前拍照位已示教的 Z 轴抬回安全高度
+                    await RaiseZAxesToSafeAsync(axisIdMap, row.Speed, CancellationToken.None, row.PositionName);
                 }
                 catch { }
                 StatusMessage = L("VisionCapture_PhotoCancelled");
@@ -2575,38 +2750,41 @@ namespace Module.ViewModels
             }
             finally
             {
-                row.IsExecuting = false;
-                IsExecuting = false;
-                RaiseCanExecuteChanged();
+                EndRowMotion(row);
             }
         }
 
         /// <summary>
         /// 返回待机位（统一动作序列）：
-        /// 1. Dz₁/Dz₂/Dz₃ 抬起到安全高度（SafePosition.Dz₁）
+        /// 1. 按当前拍照位已示教的 Dz₁/Dz₂/Dz₃ 抬起到 SafePosition（非 0 仅校验拍照位）
         /// 2. Dx、Dy 插补移至待机位（StandbyPosition），Y 轴不动
         /// </summary>
-        private async Task ReturnToSafePositionAsync(Dictionary<string, int> axisIdMap, int coordId, double speed, CancellationToken token)
+        /// <param name="photoPositionName">当前拍照位；用于决定抬升哪些 Z 轴</param>
+        private async Task ReturnToSafePositionAsync(
+            Dictionary<string, int> axisIdMap,
+            int coordId,
+            double speed,
+            CancellationToken token,
+            string photoPositionName = null)
         {
             if (axisIdMap == null) return;
 
-            var dz1Key = ResolvePositionKey(SafePositionName, "Dz₁");
-            var standbyDxKey = ResolvePositionKey(StandbyPositionName, "Dx");
-            var standbyDyKey = ResolvePositionKey(StandbyPositionName, "Dy");
+            // Safe/Standby 从位置编辑器固定位置读取（允许 0，仅要求键存在）
+            var dz1Safe = TryGetEditorSafePositionAxis("Dz₁");
+            var standbyX = TryGetEditorStandbyPositionAxis("Dx");
+            var standbyY = TryGetEditorStandbyPositionAxis("Dy");
 
-            if (dz1Key == null || !_allPositions.TryGetValue(dz1Key, out _))
+            if (!dz1Safe.HasValue)
             {
                 _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToSafeDz1Missing",
-                    "[VisionCapture] 返回待机位失败: 安全位 '{0}' 缺少 Dz₁ 轴配置"), SafePositionName));
+                    "[VisionCapture] 返回待机位失败: 位置编辑器 SafePosition 缺少 Dz₁ 轴配置")));
                 return;
             }
 
-            if (standbyDxKey == null || standbyDyKey == null
-                || !_allPositions.TryGetValue(standbyDxKey, out var standbyX)
-                || !_allPositions.TryGetValue(standbyDyKey, out var standbyY))
+            if (!standbyX.HasValue || !standbyY.HasValue)
             {
-                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToStandbyPosDataIncomplete",
-                    "[VisionCapture] 返回待机位失败: 待机位 '{0}' 缺少 Dx/Dy 配置"), StandbyPositionName));
+                _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToStandbyPosDataIncomplete",
+                    "[VisionCapture] 返回待机位失败: 位置编辑器 StandbyPosition 缺少 Dx/Dy 配置"));
                 return;
             }
 
@@ -2617,13 +2795,14 @@ namespace Module.ViewModels
                 return;
             }
 
-            // 步骤1：Dz₁/Dz₂/Dz₃ 抬起到安全高度
-            await RaiseZAxesToSafeAsync(axisIdMap, speed, token);
+            // 步骤1：按拍照位已示教 Z 轴抬升到位置编辑器 SafePosition
+            if (!await RaiseZAxesToSafeAsync(axisIdMap, speed, token, photoPositionName))
+                return;
 
             // 步骤2：Dx/Dy 插补到待机位（Y 轴不动）
             await _motionService.MoveLineAbsAsync(coordId,
                 new[] { dxId, dyId },
-                new[] { standbyX, standbyY }, speed, token);
+                new[] { standbyX.Value, standbyY.Value }, speed, token);
 
             _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnedToStandbyPos",
                 "[VisionCapture] 已返回待机位（Z 抬升 + Dx/Dy 待机，Y 不动）"));
@@ -2641,14 +2820,14 @@ namespace Module.ViewModels
             StatusMessage = L("VisionCapture_Status_ReturningToSafe");
             RaiseCanExecuteChanged();
 
-            var cts = new CancellationTokenSource();
+            var cts = BeginRowMotion();
             try
             {
                 _allPositions = await MergeAllPositionsAsync();
                 var axisIdMap = ResolveAxisIdMap();
                 var coordId = ResolveCoordId();
 
-                await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts.Token);
+                await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts, row.PositionName);
 
                 StatusMessage = L("VisionCapture_Status_ReturnedToSafe");
             }
@@ -2663,9 +2842,7 @@ namespace Module.ViewModels
             }
             finally
             {
-                row.IsExecuting = false;
-                IsExecuting = false;
-                RaiseCanExecuteChanged();
+                EndRowMotion(row);
             }
         }
 
@@ -2673,7 +2850,7 @@ namespace Module.ViewModels
         {
             if (row == null || row.IsExecuting || IsExecuting) return;
 
-            // 安全拦截：位置名不存在于位置编辑器时禁止运动（坐标为 0 有碰撞风险）
+            // 安全拦截：必需轴 Dx/Dy/Dz₃ 未获取（含值为 0）时禁止运动
             if (row.IsPositionInvalid)
             {
                 StatusMessage = string.Format(L("VisionCapture_Status_MoveBlockedInvalidPos"), row.PositionName);
@@ -2690,32 +2867,74 @@ namespace Module.ViewModels
             StatusMessage = L("VisionCapture_Status_MovingToTeach");
             RaiseCanExecuteChanged();
 
-            var cts = new CancellationTokenSource();
+            var cts = BeginRowMotion();
             try
             {
                 _allPositions = await MergeAllPositionsAsync();
                 var axisIdMap = ResolveAxisIdMap();
                 var coordId = ResolveCoordId();
 
-                double photoZ = 0;
-                var photoDz1Key = ResolvePositionKey(row.PositionName, "Dz₁");
-                if (photoDz1Key != null) _allPositions.TryGetValue(photoDz1Key, out photoZ);
+                // 重新读取示教值：0 / 缺失一律按未获取，禁止下发
+                var targetX = TryGetTaughtPosition(row.PositionName, "Dx");
+                var targetY = TryGetTaughtPosition(row.PositionName, "Dy");
+                var photoDz3 = TryGetTaughtPosition(row.PositionName, "Dz₃");
+                if (!targetX.HasValue || !targetY.HasValue || !photoDz3.HasValue)
+                {
+                    StatusMessage = string.Format(L("VisionCapture_Status_MoveBlockedInvalidPos"), row.PositionName);
+                    _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_TeachPosIncomplete",
+                        "[VisionCapture] 移动被阻止: '{0}' 缺少有效 Dx/Dy/Dz₃"), row.PositionName));
+                    return;
+                }
 
-                double targetX = 0, targetY = 0;
-                var dxKey = ResolvePositionKey(row.PositionName, "Dx");
-                var dyKey = ResolvePositionKey(row.PositionName, "Dy");
-                if (dxKey != null) _allPositions.TryGetValue(dxKey, out targetX);
-                if (dyKey != null) _allPositions.TryGetValue(dyKey, out targetY);
+                if (!axisIdMap.TryGetValue("Dx", out var dxId)
+                    || !axisIdMap.TryGetValue("Dy", out var dyId)
+                    || !axisIdMap.TryGetValue("Dz₃", out var dz3Id))
+                {
+                    StatusMessage = L("VisionCapture_Status_AxisConfigMissing");
+                    _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_TeachAxisMissing",
+                        "[VisionCapture] 移动失败: 未找到 Dx/Dy/Dz₃ 轴配置"));
+                    return;
+                }
 
-                // 拍照运动前优先抬起 Dz₁/Dz₂/Dz₃ 到安全高度
-                await RaiseZAxesToSafeAsync(axisIdMap, row.Speed, cts.Token);
+                // 1. 仅抬升当前拍照位已示教(非0)的 Dz₁/Dz₂/Dz₃ 到位置编辑器 SafePosition
+                if (!await RaiseZAxesToSafeAsync(axisIdMap, row.Speed, cts, row.PositionName))
+                {
+                    StatusMessage = L("VisionCapture_Status_RaiseZFailed");
+                    return;
+                }
+
+                // 2. Rz / Rx / Y 同时非插补移动到拍照位示教值（已配置轴必须有有效示教）
+                var postureMoves = new List<(int axisId, double position, double velocity)>();
+                string[] postureAxes = { "Rz", "Rx", "Y" };
+                foreach (var axisName in postureAxes)
+                {
+                    if (!axisIdMap.TryGetValue(axisName, out var axisId))
+                        continue;
+                    var taught = TryGetTaughtPosition(row.PositionName, axisName);
+                    if (!taught.HasValue)
+                    {
+                        StatusMessage = string.Format(L("VisionCapture_Status_AxisTeachMissing"), axisName, row.PositionName);
+                        _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_PostureAxisMissing",
+                            "[VisionCapture] 移动被阻止: '{0}' 的 {1} 未获取到有效位置"), row.PositionName, axisName));
+                        return;
+                    }
+                    postureMoves.Add((axisId, taught.Value, row.Speed));
+                }
+                if (postureMoves.Count > 0)
+                    await _motionService.MoveAbsMultiAxisAsync(postureMoves, cts);
+
+                // 3. Dx/Dy 插补移动到拍照位
                 await _motionService.MoveLineAbsAsync(coordId,
-                    new[] { axisIdMap["Dx"], axisIdMap["Dy"] },
-                    new[] { targetX, targetY }, row.Speed, cts.Token);
-                await _motionService.MoveAbsAsync(axisIdMap["Dz₁"], photoZ, row.Speed, cts.Token);
+                    new[] { dxId, dyId },
+                    new[] { targetX.Value, targetY.Value }, row.Speed, cts);
 
-                StatusMessage = string.Format(L("VisionCapture_Status_MoveComplete"), targetX, targetY);
-                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_MoveComplete", "[VisionCapture] 移动完成 [{0}]: ({1:F3}, {2:F3})"), row.SiteFeatureName, targetX, targetY));
+                // 4. Dz₃（相机 Z）下降到拍照高度
+                await _motionService.MoveAbsAsync(dz3Id, photoDz3.Value, row.Speed, cts);
+
+                StatusMessage = string.Format(L("VisionCapture_Status_MoveComplete"), targetX.Value, targetY.Value);
+                _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_MoveComplete",
+                    "[VisionCapture] 移动完成 [{0}]: Dx={1:F3}, Dy={2:F3}, Dz₃={3:F3}"),
+                    row.SiteFeatureName, targetX.Value, targetY.Value, photoDz3.Value));
             }
             catch (OperationCanceledException)
             {
@@ -2728,9 +2947,7 @@ namespace Module.ViewModels
             }
             finally
             {
-                row.IsExecuting = false;
-                IsExecuting = false;
-                RaiseCanExecuteChanged();
+                EndRowMotion(row);
             }
         }
 
@@ -2770,6 +2987,17 @@ namespace Module.ViewModels
                 _allPositions = await MergeAllPositionsAsync();
                 RefreshRowParsedCoordinates(SelectedRow);
 
+                // 安全前置：点胶运动前必须先将 Dz₁/Dz₂/Dz₃ 全部抬升至位置编辑器 SafePosition。
+                // 不依赖手动填写的安全高度（人为输错会撞机），统一从位置编辑器读取的真实安全位抬升。
+                var dispenseAxisIdMap = ResolveAxisIdMap();
+                if (!await RaiseZAxesToSafeAsync(dispenseAxisIdMap, SelectedRow.Speed, token))
+                {
+                    StatusMessage = L("VisionCapture_Status_RaiseZFailed");
+                    _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_DispenseRaiseZFailed",
+                        "[VisionCapture] 点胶前 Z 轴抬升安全位失败，点胶已中止"));
+                    return;
+                }
+
                 // 按 EffectiveTrajectoryType 分发：Dot→DotDispenseService；Line/Arc/Polyline→路径服务
                 if (EffectiveTrajectoryType == TrajectoryType.Dot)
                 {
@@ -2802,7 +3030,8 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// Dot 单点：PhotoDx/Dy + target + 偏移 → 构建 DotPoint → DotDispenseService。
+        /// Dot 多点：对 CapturedTargetPoints 逐点做坐标变换，构建 DotPoint 列表后交给 DotDispenseService 顺序执行。
+        /// 与预览/路径模式一致，不再只取第一个目标点。
         /// </summary>
         private async Task ExecuteDotFlowAsync(bool dryRun, int needleIndex, CancellationToken token)
         {
@@ -2811,46 +3040,68 @@ namespace Module.ViewModels
             var (camDist, needleCalib) = GetVisionCaptureNeedleOffsets();
             var rowOffset = (X: row.CalculatedOffsetX, Y: row.CalculatedOffsetY);
 
-            double finalX, finalY;
+            double teachHeight = dotParams.TeachHeight;
+            double heightComp = dotParams.HeightCompensation;
+            string basePointId = row.PositionName ?? "VisionDot";
+
+            var points = new List<DotPoint>();
             if (CapturedTargetPoints.Count > 0)
             {
-                var pt = CapturedTargetPoints[0];
-                var target = ResolveTargetOffset(pt.PointX, pt.PointY);
-                (finalX, finalY) = BezierArcDispenseService.ComputeMachineForVisionCapture(
-                    (PhotoDx, PhotoDy), target, camDist, needleCalib, rowOffset);
+                // 与路径模式相同：对每个 Target Point 做拍照位→机械坐标变换
+                for (int i = 0; i < CapturedTargetPoints.Count; i++)
+                {
+                    var pt = CapturedTargetPoints[i];
+                    var target = ResolveTargetOffset(pt.PointX, pt.PointY);
+                    var (x, y) = BezierArcDispenseService.ComputeMachineForVisionCapture(
+                        (PhotoDx, PhotoDy), target, camDist, needleCalib, rowOffset);
+
+                    points.Add(new DotPoint
+                    {
+                        Group = "VisionCapture",
+                        PointId = $"{basePointId}_{i + 1}",
+                        Dx = x,
+                        Dy = y,
+                        Y = row.Y,
+                        Rx = row.Rx,
+                        Rz = row.Rz,
+                        Dz2 = teachHeight,
+                        Dz3 = teachHeight,
+                        Dz2Compensation = heightComp,
+                        Dz3Compensation = heightComp,
+                        IsSelected = true,
+                        IsEnabled = true
+                    });
+                }
             }
             else
             {
-                finalX = FinalX;
-                finalY = FinalY;
+                // 无视觉目标点时回退到界面上的 FinalX/FinalY（兼容旧单点流程）
+                points.Add(new DotPoint
+                {
+                    Group = "VisionCapture",
+                    PointId = basePointId,
+                    Dx = FinalX,
+                    Dy = FinalY,
+                    Y = row.Y,
+                    Rx = row.Rx,
+                    Rz = row.Rz,
+                    Dz2 = teachHeight,
+                    Dz3 = teachHeight,
+                    Dz2Compensation = heightComp,
+                    Dz3Compensation = heightComp,
+                    IsSelected = true,
+                    IsEnabled = true
+                });
             }
-            FinalX = finalX;
-            FinalY = finalY;
 
-            double teachHeight = dotParams.TeachHeight;
-            double heightComp = dotParams.HeightCompensation;
-            var dotPoint = new DotPoint
-            {
-                Group = "VisionCapture",
-                PointId = row.PositionName ?? "VisionDot",
-                Dx = finalX,
-                Dy = finalY,
-                Y = row.Y,
-                Rx = row.Rx,
-                Rz = row.Rz,
-                Dz2 = teachHeight,
-                Dz3 = teachHeight,
-                Dz2Compensation = heightComp,
-                Dz3Compensation = heightComp,
-                IsSelected = true,
-                IsEnabled = true
-            };
+            // 界面显示用：更新为首点与末点（末点便于确认全部变换完成）
+            FinalX = points[^1].Dx;
+            FinalY = points[^1].Dy;
 
             _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_DotDispenseStart",
-                "[VisionCapture] Dot点胶启动: 最终坐标({0:F3},{1:F3}) 针头{2} 干跑={3}"),
-                finalX, finalY, needleIndex + 1, dryRun));
+                "[VisionCapture] Dot点胶启动: 共{0}点 首点({1:F3},{2:F3}) 末点({3:F3},{4:F3}) 针头{5} 干跑={6}"),
+                points.Count, points[0].Dx, points[0].Dy, FinalX, FinalY, needleIndex + 1, dryRun));
 
-            var points = new[] { dotPoint };
             if (dryRun)
                 await _dotDispenseService.DryRunAsync(points, dotParams, needleIndex, token);
             else
@@ -2877,8 +3128,9 @@ namespace Module.ViewModels
             var targetOffsets = CapturedTargetPoints
                 .Select(p => ResolveTargetOffset(p.PointX, p.PointY))
                 .ToList();
-            var machinePoints = BezierArcDispenseService.ApplyVisionCaptureTransform(
+            var machineEndpoints = BezierArcDispenseService.ApplyVisionCaptureTransform(
                 (PhotoDx, PhotoDy), targetOffsets, camDist, needleCalib, rowOffset);
+            var machinePoints = BuildTrajectoryMachinePoints(row, machineEndpoints);
 
             if (machinePoints == null || machinePoints.Count == 0)
             {
@@ -2924,8 +3176,11 @@ namespace Module.ViewModels
 
             string site = row.PositionName ?? "VisionCapture";
             _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ArcDispenseStart",
-                "[VisionCapture] 路径点胶启动: Type={0} 点数={1} 针头{2} 干跑={3} 工位={4}"),
-                EffectiveTrajectoryType, machinePoints.Count, needleIndex + 1, dryRun, site));
+                "[VisionCapture] 路径点胶启动: Type={0} 点数={1} 首点({2:F3},{3:F3}) 末点({4:F3},{5:F3}) 针头{6} 干跑={7} 工位={8}"),
+                EffectiveTrajectoryType, machinePoints.Count,
+                machinePoints[0].X, machinePoints[0].Y,
+                machinePoints[^1].X, machinePoints[^1].Y,
+                needleIndex + 1, dryRun, site));
 
             var segments = new[] { segment };
             if (dryRun)
@@ -2951,19 +3206,105 @@ namespace Module.ViewModels
             StatusMessage = L("VisionCapture_NeedPhotoFirst");
         }
 
-        private void GenerateArcPathGeometry(List<CoordinateTransformDetail> points)
+        /// <summary>
+        /// 按轨迹类型生成预览/点胶路径。
+        /// Arc 使用视觉返回的全部采样点，避免仅以 P1/P2/P3 拟合造成真实产品曲线截断。
+        /// 相机坐标系的中间点法向与设备坐标系相反，需镜像至首尾弦线另一侧；
+        /// 预览坐标轴反向仅影响显示，不能反转视觉采样点顺序。
+        /// </summary>
+        private List<(double X, double Y)> BuildTrajectoryMachinePoints(
+            PhotoPositionRow row,
+            IReadOnlyList<(double X, double Y)> mechEndpoints)
+        {
+            if (mechEndpoints == null || mechEndpoints.Count == 0)
+                return new List<(double X, double Y)>();
+
+            int segments = Math.Max(20, row?.ArcSegments ?? 20);
+            var type = EffectiveTrajectoryType;
+
+            if (type == TrajectoryType.Arc)
+            {
+                // 相机已输出整条实际曲线的采样点。保留全部点及点序，
+                // 仅将中间点镜像到产品曲线所在的弦线另一侧。
+                return MirrorArcIntermediatePoints(mechEndpoints);
+            }
+
+            if (type == TrajectoryType.Line && mechEndpoints.Count >= 2)
+            {
+                var end = mechEndpoints.Count >= 3 ? mechEndpoints[2] : mechEndpoints[1];
+                return BezierArcDispenseService.DiscretizeLine(mechEndpoints[0], end, segments);
+            }
+
+            return mechEndpoints.ToList();
+        }
+
+        /// <summary>
+        /// 将 Arc 中间采样点关于起点/终点组成的弦线镜像。
+        /// 首尾点保持不变，修正相机与设备坐标系法向相反导致的曲线凸向错误。
+        /// </summary>
+        private static List<(double X, double Y)> MirrorArcIntermediatePoints(
+            IReadOnlyList<(double X, double Y)> points)
+        {
+            var mirroredPoints = points?.ToList() ?? new List<(double X, double Y)>();
+            if (mirroredPoints.Count < 3)
+                return mirroredPoints;
+
+            var start = mirroredPoints[0];
+            var end = mirroredPoints[mirroredPoints.Count - 1];
+            var chordX = end.X - start.X;
+            var chordY = end.Y - start.Y;
+            var chordLengthSquared = chordX * chordX + chordY * chordY;
+            if (chordLengthSquared < 1e-9)
+                return mirroredPoints;
+
+            for (int i = 1; i < mirroredPoints.Count - 1; i++)
+            {
+                var point = mirroredPoints[i];
+                var projectionRatio = ((point.X - start.X) * chordX + (point.Y - start.Y) * chordY)
+                    / chordLengthSquared;
+                var projectionX = start.X + projectionRatio * chordX;
+                var projectionY = start.Y + projectionRatio * chordY;
+
+                // 点关于直线的镜像：P' = 2 × 投影点 - 原点。
+                mirroredPoints[i] = (2 * projectionX - point.X, 2 * projectionY - point.Y);
+            }
+
+            return mirroredPoints;
+        }
+
+        /// <summary>
+        /// 提取实际执行顺序的全部轨迹点，用于 Arc Preview 坐标范围及首/中/尾标注。
+        /// 坐标范围必须包含全部点，避免第 4 点及之后的点落在画布外。
+        /// </summary>
+        private static List<(double X, double Y)> BuildTrajectoryKeyPoints(
+            IReadOnlyList<(double X, double Y)> mechEndpoints)
+        {
+            if (mechEndpoints == null || mechEndpoints.Count == 0)
+                return null;
+            return mechEndpoints.ToList();
+        }
+
+        private void GenerateArcPathGeometry(
+            IReadOnlyList<(double X, double Y)> curvePoints,
+            IReadOnlyList<(double X, double Y)> keyPoints = null)
         {
             ArcPathGeometry.Clear();
-            if (points == null || points.Count < 2) return;
+            if (curvePoints == null || curvePoints.Count < 2) return;
 
             double canvasWidth = 380;
-            double canvasHeight = 200;
+            double canvasHeight = 220;
             double padding = 25;
 
-            double minX = points.Min(p => p.FinalX);
-            double maxX = points.Max(p => p.FinalX);
-            double minY = points.Min(p => p.FinalY);
-            double maxY = points.Max(p => p.FinalY);
+            // 轨迹离散点与相机返回的全部关键点共同决定坐标轴范围。
+            // Arc 仅用前三点生成贝塞尔曲线时，后续视觉点仍应处于预览坐标范围内。
+            var allDisplayPoints = keyPoints == null || keyPoints.Count == 0
+                ? curvePoints
+                : curvePoints.Concat(keyPoints).ToList();
+
+            double minX = allDisplayPoints.Min(p => p.X);
+            double maxX = allDisplayPoints.Max(p => p.X);
+            double minY = allDisplayPoints.Min(p => p.Y);
+            double maxY = allDisplayPoints.Max(p => p.Y);
 
             double rangeX = maxX - minX;
             double rangeY = maxY - minY;
@@ -2977,27 +3318,31 @@ namespace Module.ViewModels
             double offsetX = padding + (canvasWidth - 2 * padding - rangeX * scale) / 2;
             double offsetY = padding + (canvasHeight - 2 * padding - rangeY * scale) / 2;
 
-            Func<double, double> toCanvasX = x => offsetX + (x - minX) * scale;
-            Func<double, double> toCanvasY = y => canvasHeight - offsetY - (y - minY) * scale;
+            // X 轴自左向右从大到小：maxX 在画布左侧，minX 在右侧。
+            Func<double, double> toCanvasX = x => offsetX + (maxX - x) * scale;
+            // Y 轴自上而下从大到小：maxY 在画布上方，minY 在下方
+            Func<double, double> toCanvasY = y => offsetY + (maxY - y) * scale;
 
             // 绘制机器坐标网格和刻度，便于调试时对照关键点坐标。
             for (int i = 0; i <= 5; i++)
             {
-                double gx = minX + rangeX * i / 5.0;
+                // 刻度自左向右：maxX → minX
+                double gx = maxX - rangeX * i / 5.0;
                 double cx = toCanvasX(gx);
                 ArcPathGeometry.Add(new Line { X1 = cx, Y1 = padding, X2 = cx, Y2 = canvasHeight - padding, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
                 AddCanvasText(gx.ToString("F2"), cx - 16, canvasHeight - padding + 2, 9, Brushes.Gray);
             }
             for (int i = 0; i <= 5; i++)
             {
-                double gy = minY + rangeY * i / 5.0;
+                // 刻度自上而下：maxY → minY
+                double gy = maxY - rangeY * i / 5.0;
                 double cy = toCanvasY(gy);
                 ArcPathGeometry.Add(new Line { X1 = padding, Y1 = cy, X2 = canvasWidth - padding, Y2 = cy, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
                 AddCanvasText(gy.ToString("F2"), 2, cy - 7, 9, Brushes.Gray);
             }
 
             ArcPathGeometry.Add(new Line { X1 = padding, Y1 = canvasHeight - padding, X2 = canvasWidth - padding + 8, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
-            ArcPathGeometry.Add(new Line { X1 = padding, Y1 = canvasHeight - padding, X2 = padding, Y2 = padding - 8, Stroke = Brushes.DimGray, StrokeThickness = 1 });
+            ArcPathGeometry.Add(new Line { X1 = padding, Y1 = padding - 8, X2 = padding, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
             AddCanvasText("X", canvasWidth - padding + 10, canvasHeight - padding - 8, 10, Brushes.DimGray);
             AddCanvasText("Y", padding + 4, padding - 20, 10, Brushes.DimGray);
 
@@ -3007,14 +3352,18 @@ namespace Module.ViewModels
                 StrokeThickness = 2,
                 Points = new PointCollection()
             };
-            foreach (var pt in points)
+            foreach (var pt in curvePoints)
             {
-                polyline.Points.Add(new Point(toCanvasX(pt.FinalX), toCanvasY(pt.FinalY)));
+                polyline.Points.Add(new Point(toCanvasX(pt.X), toCanvasY(pt.Y)));
             }
             ArcPathGeometry.Add(polyline);
 
-            if (points.Count >= 3)
+            // P1/P2/P3 标注使用实际点胶路径的首点/中点/末点。
+            var markers = keyPoints ?? curvePoints;
+            if (markers.Count >= 3)
             {
+                int middleMarkerIndex = markers.Count / 2;
+                int endMarkerIndex = markers.Count - 1;
                 var startEllipse = new Ellipse
                 {
                     Width = 10, Height = 10,
@@ -3022,12 +3371,11 @@ namespace Module.ViewModels
                     Stroke = Brushes.White,
                     StrokeThickness = 1.5
                 };
-                Canvas.SetLeft(startEllipse, toCanvasX(points[0].FinalX) - 5);
-                Canvas.SetTop(startEllipse, toCanvasY(points[0].FinalY) - 5);
+                Canvas.SetLeft(startEllipse, toCanvasX(markers[0].X) - 5);
+                Canvas.SetTop(startEllipse, toCanvasY(markers[0].Y) - 5);
                 ArcPathGeometry.Add(startEllipse);
-                AddPointLabel("P1", points[0], toCanvasX, toCanvasY, 8, -22, Brushes.DarkGreen);
+                AddPointLabel("P1", markers[0].X, markers[0].Y, toCanvasX, toCanvasY, 8, -22, Brushes.DarkGreen);
 
-                int midIdx = points.Count / 2;
                 var midEllipse = new Ellipse
                 {
                     Width = 10, Height = 10,
@@ -3035,10 +3383,10 @@ namespace Module.ViewModels
                     Stroke = Brushes.White,
                     StrokeThickness = 1.5
                 };
-                Canvas.SetLeft(midEllipse, toCanvasX(points[midIdx].FinalX) - 5);
-                Canvas.SetTop(midEllipse, toCanvasY(points[midIdx].FinalY) - 5);
+                Canvas.SetLeft(midEllipse, toCanvasX(markers[middleMarkerIndex].X) - 5);
+                Canvas.SetTop(midEllipse, toCanvasY(markers[middleMarkerIndex].Y) - 5);
                 ArcPathGeometry.Add(midEllipse);
-                AddPointLabel("P2", points[midIdx], toCanvasX, toCanvasY, 8, 8, Brushes.DarkOrange);
+                AddPointLabel("P2", markers[middleMarkerIndex].X, markers[middleMarkerIndex].Y, toCanvasX, toCanvasY, 8, 8, Brushes.DarkOrange);
 
                 var endEllipse = new Ellipse
                 {
@@ -3047,30 +3395,35 @@ namespace Module.ViewModels
                     Stroke = Brushes.White,
                     StrokeThickness = 1.5
                 };
-                Canvas.SetLeft(endEllipse, toCanvasX(points[points.Count - 1].FinalX) - 5);
-                Canvas.SetTop(endEllipse, toCanvasY(points[points.Count - 1].FinalY) - 5);
+                Canvas.SetLeft(endEllipse, toCanvasX(markers[endMarkerIndex].X) - 5);
+                Canvas.SetTop(endEllipse, toCanvasY(markers[endMarkerIndex].Y) - 5);
                 ArcPathGeometry.Add(endEllipse);
-                AddPointLabel("P3", points[points.Count - 1], toCanvasX, toCanvasY, 8, -22, Brushes.DarkRed);
+                AddPointLabel("P3", markers[endMarkerIndex].X, markers[endMarkerIndex].Y, toCanvasX, toCanvasY, 8, -22, Brushes.DarkRed);
             }
 
-            for (int i = 0; i < points.Count; i += Math.Max(1, points.Count / 15))
+            for (int i = 0; i < curvePoints.Count; i += Math.Max(1, curvePoints.Count / 15))
             {
                 var dot = new Ellipse
                 {
                     Width = 4, Height = 4,
                     Fill = new SolidColorBrush(Color.FromRgb(0x90, 0xA4, 0xAE))
                 };
-                Canvas.SetLeft(dot, toCanvasX(points[i].FinalX) - 2);
-                Canvas.SetTop(dot, toCanvasY(points[i].FinalY) - 2);
+                Canvas.SetLeft(dot, toCanvasX(curvePoints[i].X) - 2);
+                Canvas.SetTop(dot, toCanvasY(curvePoints[i].Y) - 2);
                 ArcPathGeometry.Add(dot);
             }
 
             RaisePropertyChanged(nameof(HasArcPathGeometry));
         }
 
+        private void AddPointLabel(string name, double x, double y, Func<double, double> toCanvasX, Func<double, double> toCanvasY, double offsetX, double offsetY, Brush foreground)
+        {
+            AddCanvasText($"{name} ({x:F2}, {y:F2})", toCanvasX(x) + offsetX, toCanvasY(y) + offsetY, 10, foreground);
+        }
+
         private void AddPointLabel(string name, CoordinateTransformDetail point, Func<double, double> toCanvasX, Func<double, double> toCanvasY, double offsetX, double offsetY, Brush foreground)
         {
-            AddCanvasText($"{name} ({point.FinalX:F2}, {point.FinalY:F2})", toCanvasX(point.FinalX) + offsetX, toCanvasY(point.FinalY) + offsetY, 10, foreground);
+            AddPointLabel(name, point.FinalX, point.FinalY, toCanvasX, toCanvasY, offsetX, offsetY, foreground);
         }
 
         private void AddCanvasText(string text, double left, double top, double fontSize, Brush foreground)
@@ -3328,6 +3681,9 @@ namespace Module.ViewModels
         private void RaiseCanExecuteChanged()
         {
             ExecuteCaptureCommand.RaiseCanExecuteChanged();
+            MoveToTeachPositionCommand?.RaiseCanExecuteChanged();
+            StopRowMotionCommand?.RaiseCanExecuteChanged();
+            ReturnToSafeCommand?.RaiseCanExecuteChanged();
             ExecuteDispenseCommand.RaiseCanExecuteChanged();
             PreviewMachinePointsCommand.RaiseCanExecuteChanged();
             StopCommand?.RaiseCanExecuteChanged();
@@ -3566,7 +3922,7 @@ namespace Module.ViewModels
         {
             return new PhotoPositionRowConfig
             {
-                PositionName = r.PositionName,
+                PositionName = NormalizePhotoPositionName(r.PositionName),
                 SiteFeatureName = r.SiteFeatureName,
                 Speed = r.Speed,
                 TriggerCommand = r.TriggerCommand,
@@ -3577,9 +3933,10 @@ namespace Module.ViewModels
                 ArcSegments = r.ArcSegments,
                 ArcHeight = r.ArcHeight,
                 ArcDirection = r.ArcDirection,
-                ReturnToSafeAfterCapture = r.ReturnToSafeAfterCapture,
                 NeedleOffsetX = r.NeedleOffsetX,
                 NeedleOffsetY = r.NeedleOffsetY,
+                NeedleOffsetXExpression = r.NeedleOffsetXExpression,
+                NeedleOffsetYExpression = r.NeedleOffsetYExpression,
                 OffsetXExpression = r.OffsetXExpression,
                 OffsetYExpression = r.OffsetYExpression,
                 NeedleCompensationX = r.NeedleCompensationX,
@@ -3594,10 +3951,41 @@ namespace Module.ViewModels
             };
         }
 
+        /// <summary>
+        /// 将旧版 OffsetX/YExpression 中的数学表达式迁移到 NeedleOffsetX/YExpression，避免隐藏项参与合计。
+        /// </summary>
+        private static void MigrateLegacyRowOffsetExpressions(PhotoPositionRow row)
+        {
+            if (row == null) return;
+            if (string.IsNullOrWhiteSpace(row.NeedleOffsetXExpression)
+                && IsLegacyMathOffsetExpression(row.OffsetXExpression))
+            {
+                row.NeedleOffsetXExpression = row.OffsetXExpression.Trim();
+                row.OffsetXExpression = null;
+            }
+            if (string.IsNullOrWhiteSpace(row.NeedleOffsetYExpression)
+                && IsLegacyMathOffsetExpression(row.OffsetYExpression))
+            {
+                row.NeedleOffsetYExpression = row.OffsetYExpression.Trim();
+                row.OffsetYExpression = null;
+            }
+        }
+
+        /// <summary>判断旧 OffsetExpression 是否为数学表达式（非全局变量链接名）</summary>
+        private static bool IsLegacyMathOffsetExpression(string expression)
+        {
+            if (string.IsNullOrWhiteSpace(expression)) return false;
+            var trimmed = expression.Trim();
+            // 含运算符或小数点，视为数学表达式
+            if (trimmed.IndexOfAny(new[] { '+', '-', '*', '/', '(', ')' }) >= 0) return true;
+            return double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out _);
+        }
+
         /// <summary>从持久化配置创建 PhotoPositionRow；缺失 TrajectoryOverride 时按旧 DispenseType/ArcTrackType 迁移</summary>
         private PhotoPositionRow CreateRowFromConfig(PhotoPositionRowConfig rowConfig)
         {
-            var name = MigratePositionName(rowConfig.PositionName ?? rowConfig.SiteFeatureName ?? "PhotoPos1");
+            var name = NormalizePhotoPositionName(rowConfig.PositionName ?? rowConfig.SiteFeatureName ?? "PhotoPos1");
             var row = new PhotoPositionRow(name)
             {
                 Speed = rowConfig.Speed,
@@ -3608,9 +3996,10 @@ namespace Module.ViewModels
                 ArcSegments = rowConfig.ArcSegments,
                 ArcHeight = rowConfig.ArcHeight,
                 ArcDirection = rowConfig.ArcDirection,
-                ReturnToSafeAfterCapture = rowConfig.ReturnToSafeAfterCapture,
                 NeedleOffsetX = rowConfig.NeedleOffsetX,
                 NeedleOffsetY = rowConfig.NeedleOffsetY,
+                NeedleOffsetXExpression = rowConfig.NeedleOffsetXExpression,
+                NeedleOffsetYExpression = rowConfig.NeedleOffsetYExpression,
                 OffsetXExpression = rowConfig.OffsetXExpression,
                 OffsetYExpression = rowConfig.OffsetYExpression,
                 NeedleCompensationX = rowConfig.NeedleCompensationX,
@@ -3639,6 +4028,9 @@ namespace Module.ViewModels
             // 旧 Auto（跟随相机）已取消自动检测，迁移为 Dot
             if (row.TrajectoryOverride == TrajectoryType.Auto)
                 row.TrajectoryOverride = TrajectoryType.Dot;
+
+            // 旧配置 OffsetXExpression 可能存有隐藏数学表达式（如 0.5），迁移到可见字段后清空
+            MigrateLegacyRowOffsetExpressions(row);
 
             // 双针头工艺参数：旧配置 DotParams/ArcParams → Needle1；新配置直接加载两针头
             if (rowConfig.DotParamsNeedle1 != null) row.DotParamsNeedle1 = rowConfig.DotParamsNeedle1;
@@ -3872,6 +4264,10 @@ public class PhotoPositionRowConfig
     public bool ReturnToSafeAfterCapture { get; set; } = true;
     public double NeedleOffsetX { get; set; }
     public double NeedleOffsetY { get; set; }
+    /// <summary>针头X偏移表达式，如 0.5 或 0.1+0.2</summary>
+    public string NeedleOffsetXExpression { get; set; }
+    /// <summary>针头Y偏移表达式</summary>
+    public string NeedleOffsetYExpression { get; set; }
     public string OffsetXExpression { get; set; }
     public string OffsetYExpression { get; set; }
     public double NeedleCompensationX { get; set; }

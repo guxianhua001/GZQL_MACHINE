@@ -1,6 +1,6 @@
 using System.Windows.Controls;
 
-namespace Module.Views
+namespace MotionControl.Views
 {
     public partial class SafetyZoneConfigView : UserControl
     {

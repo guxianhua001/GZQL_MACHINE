@@ -19,6 +19,9 @@ namespace Core.Models
             set => SetProperty(ref _moveSpeed, Math.Clamp(value, 0.1, 50.0));
         }
 
+        /// <summary>安全高度未设置时的安全兜底默认值 mm，与出厂默认值保持一致</summary>
+        public const double DefaultSafeHeightFallback = -20.0;
+
         private double _safeHeight = -20.0;
         /// <summary>安全抬升高度 mm（范围 0~200，跨点跳转时使用）</summary>
         public double SafeHeight
@@ -26,6 +29,13 @@ namespace Core.Models
             get => _safeHeight;
             set => SetProperty(ref _safeHeight, Math.Clamp(value, -50.0, 50.0));
         }
+
+        /// <summary>
+        /// 安全兜底：若点从未配置过安全高度（历史数据/导入路径遗留为 0），0 通常意味着针头处于工件表面附近，
+        /// 直接用于抬升存在撞针风险，运动执行时统一改用该计算值而不是原始 SafeHeight（不修改持久化字段本身）。
+        /// </summary>
+        [JsonIgnore]
+        public double EffectiveSafeHeight => SafeHeight == 0 ? DefaultSafeHeightFallback : SafeHeight;
 
         private double _approachHeight = -3.0;
         /// <summary>逼近高度 mm（范围 0~50，快速下降到此高度后转为慢速逼近）</summary>
@@ -52,7 +62,7 @@ namespace Core.Models
         public double DispenseTime
         {
             get => _dispenseTime;
-            set => SetProperty(ref _dispenseTime, Math.Clamp(value, 10.0, 5000.0));
+            set => SetProperty(ref _dispenseTime, Math.Clamp(value, 10.0, 30000.0));
         }
 
         private double _preDispenseDelay = 50.0;
@@ -103,7 +113,7 @@ namespace Core.Models
 
         #region 高度参数
 
-        private double _teachHeight = 0.0;
+        private double _teachHeight = -20.0;
         /// <summary>示教高度 mm（范围 -200~200，示教时自动记录当前Z轴位置）</summary>
         public double TeachHeight
         {

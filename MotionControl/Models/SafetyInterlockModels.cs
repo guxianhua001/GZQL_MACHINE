@@ -30,6 +30,13 @@ namespace MotionControl.Models
         /// true = Z越往下值越大，安全=高位=小值，判断 pos &gt; SafeHeight 为不安全
         /// </summary>
         public bool InvertedDirection { get; set; } = false;
+
+        /// <summary>
+        /// 该高度轴是否参与互锁判断。默认 true（参与）。
+        /// 关闭后此轴永远不会导致平面轴被锁定，也不计入"未达安全高度"列表，
+        /// 用于只需监控部分高度轴（如仅 Dz₁）即可保证安全的场景。
+        /// </summary>
+        public bool Enabled { get; set; } = true;
     }
 
     /// <summary>

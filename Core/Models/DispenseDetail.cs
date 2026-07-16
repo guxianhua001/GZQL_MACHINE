@@ -318,6 +318,9 @@ namespace Core.Models
             set { SetProperty(ref _defaultMoveSpeed, value); }
         }
 
+        /// <summary>安全高度未设置时的安全兜底默认值 mm，与出厂默认值保持一致</summary>
+        public const double DefaultSafeHeightFallback = -20.0;
+
         private double _defaultSafeHeight = -20.0;
         /// <summary>默认安全抬升高度 mm</summary>
         public double DefaultSafeHeight
@@ -325,6 +328,13 @@ namespace Core.Models
             get => _defaultSafeHeight;
             set { SetProperty(ref _defaultSafeHeight, value); }
         }
+
+        /// <summary>
+        /// 安全兜底：若从未配置过默认安全高度（历史数据遗留为 0），0 通常意味着针头处于工件表面附近，
+        /// 直接用于抬升存在撞针风险，运动执行时统一改用该计算值而不是原始 DefaultSafeHeight。
+        /// </summary>
+        [JsonIgnore]
+        public double EffectiveDefaultSafeHeight => DefaultSafeHeight == 0 ? DefaultSafeHeightFallback : DefaultSafeHeight;
 
         private double _defaultApproachHeight = -3.0;
         /// <summary>默认逼近高度 mm</summary>

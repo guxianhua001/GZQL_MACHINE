@@ -683,7 +683,9 @@
     <sys:String x:Key="VisionCapture_Header_Site">Site</sys:String>
     <sys:String x:Key="VisionCapture_Header_Dx">Dx</sys:String>
     <sys:String x:Key="VisionCapture_Header_Dy">Dy</sys:String>
-    <sys:String x:Key="VisionCapture_Header_Dz1">Dz1</sys:String>
+    <sys:String x:Key="VisionCapture_Header_Dz1">Dz₁</sys:String>
+    <sys:String x:Key="VisionCapture_Header_Dz2">Dz₂</sys:String>
+    <sys:String x:Key="VisionCapture_Header_Dz3">Dz₃</sys:String>
     <sys:String x:Key="VisionCapture_Header_Y">Y</sys:String>
     <sys:String x:Key="VisionCapture_Header_Spd">Speed</sys:String>
     <sys:String x:Key="VisionCapture_ColumnMove">Move</sys:String>
@@ -693,6 +695,9 @@
     <sys:String x:Key="VisionCapture_ColumnType">Type</sys:String>
     <sys:String x:Key="VisionCapture_ColumnCapture">Capture</sys:String>
     <sys:String x:Key="VisionCapture_ReturnToSafe">Return Safe</sys:String>
+    <sys:String x:Key="VisionCapture_ReturnToSafeTooltip">Raise Z to SafePosition, then move Dx/Dy to standby</sys:String>
+    <sys:String x:Key="VisionCapture_StopRowMotionTooltip">Stop current row move/capture/return-safe motion</sys:String>
+    <sys:String x:Key="VisionCapture_Status_MotionStopped">Motion stopped</sys:String>
     <sys:String x:Key="VisionCapture_ColumnSafe">Safe</sys:String>
     <sys:String x:Key="VisionCapture_Header_PhotoName">Photo Position</sys:String>
     <sys:String x:Key="VisionCapture_Header_Rx">Rx</sys:String>
@@ -729,13 +734,21 @@
     <sys:String x:Key="VisionCapture_Param_ArcDirection">Direction</sys:String>
     <sys:String x:Key="VisionCapture_Status_ReturnedToSafe">Returned to safe position</sys:String>
     <sys:String x:Key="VisionCapture_ReturnCancelled">Return cancelled</sys:String>
-    <sys:String x:Key="VisionCapture_Status_PositionNotFound">Position '{0}' does not exist in the position editor; Dx/Dy/Dz₁ will remain 0</sys:String>
-    <sys:String x:Key="VisionCapture_Warn_InvalidPosition">This photo position does not exist in the position editor. Motion/capture/dispense are disabled. Please teach it in the position editor first, or correct the name.</sys:String>
-    <sys:String x:Key="VisionCapture_PositionInvalidTip">Position name does not exist in the position editor; movement is blocked to prevent collision</sys:String>
-    <sys:String x:Key="VisionCapture_Status_MoveBlockedInvalidPos">Position '{0}' is invalid; movement blocked (please teach it in the position editor first)</sys:String>
+    <sys:String x:Key="VisionCapture_Status_PositionNotFound">Position '{0}' missing valid Dx/Dy/Dz₃ (axis value 0 treated as not taught)</sys:String>
+    <sys:String x:Key="VisionCapture_Warn_InvalidPosition">This photo position is missing valid Dx/Dy/Dz₃ (0 treated as not taught). Motion/capture/dispense are disabled. Please teach it in the position editor first, or correct the name.</sys:String>
+    <sys:String x:Key="VisionCapture_PositionInvalidTip">Position missing valid Dx/Dy/Dz₃ (0 treated as not taught); movement is blocked to prevent collision</sys:String>
+    <sys:String x:Key="VisionCapture_Status_MoveBlockedInvalidPos">Position '{0}' is invalid; movement blocked (teach Dx/Dy/Dz₃ first; 0 is invalid)</sys:String>
+    <sys:String x:Key="VisionCapture_Status_AxisConfigMissing">Dx/Dy/Dz₃ axis configuration missing; cannot move to photo position</sys:String>
+    <sys:String x:Key="VisionCapture_Status_AxisTeachMissing">Axis {0} at position '{1}' has no valid taught value (0 treated as invalid)</sys:String>
+    <sys:String x:Key="VisionCapture_Status_RaiseZFailed">SafePosition Z-axis raise failed; motion aborted</sys:String>
     <sys:String x:Key="VisionCapture_Tip_XyOffset">Dispense XY compensation (mm), added to target mechanical coords: Mech = CameraCoord + CamNeedleDist + NeedleCalib + XY Offset</sys:String>
     <sys:String x:Key="VisionCapture_Status_CaptureNGBlocked">Vision returned NG; dispense blocked (please re-capture or check vision result)</sys:String>
-    <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] Position name '{0}' does not exist in the position editor; Dx/Dy/Dz₁ will remain 0, movement risks collision</sys:String>
+    <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] Position name '{0}' missing valid Dx/Dy/Dz₃ (0 treated as not taught), movement risks collision</sys:String>
+    <sys:String x:Key="VisCap_Log_SkipRaiseZAxis">[VisionCapture] Photo position '{0}' axis {1} not taught (0), skip raise</sys:String>
+    <sys:String x:Key="VisCap_Log_SafeZKeyMissing">[VisionCapture] Position editor SafePosition missing {0} key, cannot raise</sys:String>
+    <sys:String x:Key="VisCap_Log_NoZAxisToRaise">[VisionCapture] No Z axes to raise (photo position not taught or axis not configured)</sys:String>
+    <sys:String x:Key="VisCap_Log_RowMotionStopped">[VisionCapture] User stopped row motion: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_StopRowMotionFailed">[VisionCapture] Failed to stop row motion: {0}</sys:String>
     <sys:String x:Key="VisionCapture_VisionData">Vision Data</sys:String>
     <sys:String x:Key="VisionCapture_ProcessParams">Dispense Process Params</sys:String>
     <sys:String x:Key="VisionCapture_NeedleSelect">Needle Select</sys:String>
@@ -756,6 +769,10 @@
     <sys:String x:Key="VisionCapture_LinkGlobalVariable">Link Global Variable</sys:String>
     <sys:String x:Key="VisionCapture_UnlinkGlobalVariable">Unlink Global Variable</sys:String>
     <sys:String x:Key="VisionCapture_ExpressionHint">Expression</sys:String>
+    <sys:String x:Key="VisionCapture_NeedleOffsetExpressionTooltip">Row offset expression, e.g. 0.5 or 0.1+0.2; total = base + expression</sys:String>
+    <sys:String x:Key="VisionCapture_RowOffsetBase">Base</sys:String>
+    <sys:String x:Key="VisionCapture_RowOffsetBaseTooltip">Row-level needle offset base (from capture or manual), included in total on the right</sys:String>
+    <sys:String x:Key="VisionCapture_GlobalNeedleCalib">Global Calib Offset</sys:String>
     <sys:String x:Key="VisionCapture_CoordTransformDetail">Coord Transform Detail</sys:String>
     <sys:String x:Key="VisionCapture_PhotoPosition">Photo Position</sys:String>
     <sys:String x:Key="VisionCapture_TargetOffset">Target Offset</sys:String>
@@ -814,6 +831,7 @@
     <sys:String x:Key="VisionCapture_Status_DispenseError">Dispense error</sys:String>
     <sys:String x:Key="VisionCapture_Status_PreviewDotComplete">Dot preview complete</sys:String>
     <sys:String x:Key="VisionCapture_Status_PreviewArcComplete">Arc preview complete</sys:String>
+    <sys:String x:Key="VisionCapture_Status_VisionDataReady">Vision coordinates ready ({0} points). Click Next Step to preview.</sys:String>
     <sys:String x:Key="VisionCapture_Status_PreviewFail">Preview failed</sys:String>
     <sys:String x:Key="VisionCapture_Status_ConfigLoaded">Config loaded</sys:String>
     <sys:String x:Key="VisionCapture_Status_ConfigSaved">Config saved</sys:String>
@@ -2807,6 +2825,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_Status_SimPaused">Simulation paused (click Resume to continue)</sys:String>
     <sys:String x:Key="CadPoint_Status_SimResumed">Simulation resumed</sys:String>
     <sys:String x:Key="CadPoint_Status_DispenseUnavailable">Dispense service unavailable, cannot execute real motion</sys:String>
+    <sys:String x:Key="CadPoint_Status_RaiseZFailed">Failed to raise Z axes to safe position, motion aborted: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_MotionUnavailable">Motion service unavailable, cannot read Z position</sys:String>
     <sys:String x:Key="CadPoint_Status_TeachHeightSuccess">Taught {0} height: {1:F3} mm</sys:String>
     <sys:String x:Key="CadPoint_Status_TeachHeightFailed">Teach height failed: {0}</sys:String>
@@ -4184,29 +4203,39 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="SafetyZone_Parameters">Parameters</sys:String>
     <sys:String x:Key="SafetyZone_Visualization">Visualization</sys:String>
     <sys:String x:Key="SafetyZone_EnableInterlock">Enable Interlock</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ Safe Height (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ Safe Height (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ Safe Height (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_ZAxisInverted">Z-axis Direction Inverted</sys:String>
-    <sys:String x:Key="SafetyZone_ZAxisInvertedTip">Check if Z value increases downward (inverts safe height logic); uncheck if Z value increases upward (default)</sys:String>
     <sys:String x:Key="SafetyRule_HeightLockPlane">Height axis [{1}] not safe; {0} move blocked</sys:String>
+    <sys:String x:Key="SafetyRule_HeightLockPlanePath">Height axis [{1}] not safe; the {0} motion path or target enters the danger zone</sys:String>
     <sys:String x:Key="SafetyRule_MissingAxis">Unknown axis; safety interlock denied</sys:String>
     <sys:String x:Key="SafetyRule_InvalidInterpolation">Invalid interpolation parameters</sys:String>
-    <sys:String x:Key="SafetyZone_DangerXMin">X Danger Min (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_DangerXMax">X Danger Max (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_DangerYMin">Y Danger Min (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_DangerYMax">Y Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyRule_DangerZoneLockedAlarm">Axis {0} entered danger zone (position: {1:F1}mm); plane movement locked by safety interlock</sys:String>
     <sys:String x:Key="SafetyZone_CanvasRange">Canvas Travel Range</sys:String>
-    <sys:String x:Key="SafetyZone_XRangeMin">X Range Min (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_XRangeMax">X Range Max (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_YRangeMin">Y Range Min (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_YRangeMax">Y Range Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_XRangeMin">Horizontal Range Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_XRangeMax">Horizontal Range Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_YRangeMin">Vertical Range Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_YRangeMax">Vertical Range Max (mm)</sys:String>
     <sys:String x:Key="SafetyZone_Save">Save Config</sys:String>
     <sys:String x:Key="SafetyZone_Safe">Safe</sys:String>
     <sys:String x:Key="SafetyZone_Danger">Danger</sys:String>
     <sys:String x:Key="SafetyZone_DismissAlarm">Dismiss</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccess">Saved Successfully</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccessMessage">Safety zone configuration saved and applied successfully</sys:String>
+    <!-- Dynamic height/plane axis lists (generic safety interlock framework; axis count/names vary per machine) -->
+    <sys:String x:Key="SafetyZone_HeightAxesSection">Height Axes (Z)</sys:String>
+    <sys:String x:Key="SafetyZone_HeightAxesTip">When any enabled height axis is below its safe height, the plane-locked axes below are blocked from moving</sys:String>
+    <sys:String x:Key="SafetyZone_PlaneAxesSection">Plane-Locked Axes</sys:String>
+    <sys:String x:Key="SafetyZone_PlaneAxesTip">Movement is blocked when the height interlock is active and this axis is within its danger zone</sys:String>
+    <sys:String x:Key="SafetyZone_AxisNameHeader">Axis</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightHeader">Safe Height (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_InvertedHeader">Inverted</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInverted">Z-axis Direction Inverted</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInvertedTip">Check if Z value increases downward (inverts safe height logic); uncheck if Z value increases upward (default)</sys:String>
+    <sys:String x:Key="SafetyZone_EnabledHeader">Enabled</sys:String>
+    <sys:String x:Key="SafetyZone_DangerMinHeader">Danger Min (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerMaxHeader">Danger Max (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_AddHeightAxis">Add Height Axis</sys:String>
+    <sys:String x:Key="SafetyZone_AddPlaneAxis">Add Plane Axis</sys:String>
+    <sys:String x:Key="SafetyZone_RemoveAxisTooltip">Remove this axis</sys:String>
+    <sys:String x:Key="SafetyZone_AxisEnabledTooltip">Whether this axis participates in the interlock check; when off, it never causes plane axes to be locked</sys:String>
 
     <!-- DispenseExecuteService -->
     <sys:String x:Key="DispenseExec_DryRun">Dry Run</sys:String>
@@ -4220,6 +4249,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DispenseExec_MissingMachineCoord">Segment [{0}] {1}missing machine coordinates (alignment not performed), execution aborted to prevent collision</sys:String>
     <sys:String x:Key="DispenseExec_PointLabel">Point{0}</sys:String>
     <sys:String x:Key="DispenseExec_StartPoint">Start</sys:String>
+    <sys:String x:Key="DispenseExec_SegmentMotionPlan">Segment [{0}] trajectory plan: points={1}, start target(Dx={2:F3}, Dy={3:F3}), end target(Dx={4:F3}, Dy={5:F3}), Dz target={6:F3}, safe height={7:F3}mm, interpolation={8:F1}mm/s, Dz axis={9}</sys:String>
+    <sys:String x:Key="DispenseExec_InterpolationStartActual">Segment [{0}] interpolation start actual position: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
+    <sys:String x:Key="DispenseExec_InterpolationCompletedActual">Segment [{0}] interpolation completed actual position: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
     <sys:String x:Key="DispenseExec_TriggerGlueOn">Segment [{0}] position trigger glue on, triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_PointTriggerGlueOn">Seg[{0}]Pt{1} position trigger glue on, triggerZ={2:F3}, targetZ={3:F3}, offset={4:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_ZNotReached">Segment [{0}] Z not in position: current={1:F3}, target={2:F3}, re-descending</sys:String>
@@ -5339,6 +5371,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DotDisp_Log_DispenseException">[DotDispense] 点胶异常</sys:String>
     <sys:String x:Key="DotDisp_Log_DispensePoint">[DotDispense] 点胶点 [{0}]</sys:String>
     <sys:String x:Key="DotDisp_Log_DispenseStart">[DotDispense] 开始点胶，针头{0}/Dz{1}(轴{2})，共 {3} 点，全选={4}</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointMotionPlan">[DotDispense] Point [{0}] ({1}/{2}) motion target: Dx={3:F3}, Dy={4:F3}, Y={5:F3}, Dz={6:F3}, safe height={7:F3}mm</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointGlueOnPosition">[DotDispense] Point [{0}] glue-on confirmed: triggerZ={1:F3}, targetZ={2:F3}, actual(Dx={3:F3}, Dy={4:F3}, Y={5:F3}, Dz={6:F3})</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointGlueOffPosition">[DotDispense] Point [{0}] glue-off confirmed: actual(Dx={1:F3}, Dy={2:F3}, Y={3:F3}, Dz={4:F3})</sys:String>
     <sys:String x:Key="DotDisp_Log_DryRunCanceled">[DotDispense] 空跑已取消</sys:String>
     <sys:String x:Key="DotDisp_Log_DryRunCompleted">[DotDispense] 空跑完成</sys:String>
     <sys:String x:Key="DotDisp_Log_DryRunException">[DotDispense] 空跑异常</sys:String>
@@ -5349,6 +5384,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="DotDisp_Log_SafeStop">[DotDispense] 执行安全停止</sys:String>
     <sys:String x:Key="DotDisp_Log_TeachPoint">[DotDispense] 示教点位 [{0}] 针头{1}/Dz{2} → ({3:F3}, {4:F3}, Dz2={5:F3}, Dz3={6:F3}, 主Z={7:F3}, {8:F3}, {9:F3}, {10:F3})</sys:String>
     <sys:String x:Key="DotDisp_Log_WriteIoFailed">[DotDispense] 写出胶IO失败 port={0} value={1}</sys:String>
+    <sys:String x:Key="VisCap_Log_DotDispenseStart">[VisionCapture] Dot dispense start: {0} points, first({1:F3},{2:F3}), last({3:F3},{4:F3}), needle {5}, dry run={6}</sys:String>
+    <sys:String x:Key="VisCap_Log_ArcDispenseStart">[VisionCapture] Path dispense start: type={0}, points={1}, first({2:F3},{3:F3}), last({4:F3},{5:F3}), needle {6}, dry run={7}, station={8}</sys:String>
     <sys:String x:Key="DualGantryCalib_CalibrationRequired">请先完成双龙门标定</sys:String>
     <sys:String x:Key="DualGantryCalib_CapturingReference">采集公共基准点...</sys:String>
     <sys:String x:Key="DualGantryCalib_MinReferenceRequired">跨龙门对齐至少需要2个公共基准点</sys:String>

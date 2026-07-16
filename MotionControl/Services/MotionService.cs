@@ -862,8 +862,9 @@ namespace MotionControl.Services
         }
 
         /// <summary>
-        /// 面板关闭时的低频全轴状态轮询：仅更新 IsEnabled/IsHomeOk 等关键状态，
-        /// 不更新位置和 IO 细节，保证位置编辑器 GOTO 前的轴状态检查可用。
+        /// 面板关闭时的低频全轴状态轮询。
+        /// 以约 1 秒的低频读取所有轴的位置与伺服状态，保证安全配置页等非轴操作页
+        /// 可读取最新的 ActualPosition；不读取完整 I/O / 回零状态，避免占用运动卡通信带宽。
         /// </summary>
         private void PollAllAxesStatusSlow()
         {
@@ -875,10 +876,14 @@ namespace MotionControl.Services
 
                 try
                 {
+                    // 低频更新位置缓存，安全互锁状态页仅读取缓存，不能因未打开轴操作页而停留在旧坐标。
+                    double position = card.GetPosition(pid);
+
                     int etherCatSts = 0;
                     card.GetEtherCatSts(pid, ref etherCatSts);
                     bool isServoOn = etherCatSts == Leisai_Define.AXIS_SM_OPERATION_ENABLED;
 
+                    kv.Value.ActualPosition = position;
                     kv.Value.IsEnabled = isServoOn;
                 }
                 catch

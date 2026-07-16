@@ -257,6 +257,9 @@ namespace Core.Models
         [JsonIgnore]
         public double EffectiveZHeight => TeachHeight + HeightCompensation;
 
+        /// <summary>安全高度未设置时的安全兜底默认值 mm，与出厂默认值保持一致</summary>
+        public const double DefaultSafeHeightFallback = -20.0;
+
         private double _safeHeight = -20.0;
         /// <summary>安全抬升高度 mm（范围 0~200，跨段跳转时使用）</summary>
         public double SafeHeight
@@ -264,6 +267,13 @@ namespace Core.Models
             get => _safeHeight;
             set => SetProperty(ref _safeHeight, Math.Clamp(value, -50.0, 50.0));
         }
+
+        /// <summary>
+        /// 安全兜底：若段从未配置过安全高度（历史数据/导入路径遗留为 0），0 通常意味着针头处于工件表面附近，
+        /// 直接用于抬升存在撞针风险，运动执行时统一改用该计算值而不是原始 SafeHeight（不修改持久化字段本身）。
+        /// </summary>
+        [JsonIgnore]
+        public double EffectiveSafeHeight => SafeHeight == 0 ? DefaultSafeHeightFallback : SafeHeight;
 
         private double _glueTriggerOffsetMm = -0.5;
         /// <summary>开胶触发距离 mm（范围 0.05~5.0，Z轴下降过程中距目标高度此距离时触发开胶）</summary>

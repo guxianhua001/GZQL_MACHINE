@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>VisionTools.NativeTiffProbe</AssemblyName>
+    <RootNamespace>VisionTools.NativeTiffProbe</RootNamespace>
+    <!-- 临时诊断程序：严禁由主控进程直接引用或启动。 -->
+    <HalconDllPath>..\MainApp\bin\Debug\net9.0-windows7.0\halcondotnet.dll</HalconDllPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="halcondotnet">
+      <HintPath>$(HalconDllPath)</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <ProjectReference Include="..\VisionTools\VisionTools.csproj" />
+  </ItemGroup>
+
+  <Target Name="ValidateHalconReference" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(HalconDllPath)')"
+           Text="未找到 HALCON .NET 程序集：$(HalconDllPath)。请先生成 MainApp Debug x64 输出。" />
+  </Target>
+</Project>

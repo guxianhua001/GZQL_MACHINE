@@ -351,7 +351,10 @@ namespace VisionTools.Tools.ZMap
         private static long ReadFirstValue(
             byte[] bytes, int type, long count, long valueField, bool bigTiff, bool bigEndian)
         {
-            ulong[] values = ReadValues(bytes, type, Math.Min(count, 1), valueField, bigTiff, bigEndian);
+            // 必须保留标签原始元素数量，才能正确判断值是内联存放还是值域偏移。
+            // 例如四通道的BitsPerSample/SampleFormat均由四个SHORT组成，截断为一个
+            // 会误将偏移地址当作数值，导致LMI TIFF格式识别失败。
+            ulong[] values = ReadValues(bytes, type, count, valueField, bigTiff, bigEndian);
             return values != null && values.Length > 0 ? (long)values[0] : 0;
         }
 

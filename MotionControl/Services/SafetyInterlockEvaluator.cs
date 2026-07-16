@@ -14,24 +14,27 @@ namespace MotionControl.Services
         /// <summary>
         /// 评估单轴移动是否允许
         /// </summary>
+        /// <param name="isAxisKnown">轴名是否存在于当前机型硬件配置；未配置的高度轴不参与 FailClosed 误判</param>
         public static (bool allowed, string reasonKey, object[] reasonArgs, string ruleId) EvaluateMove(
             SafetyZoneConfig config,
-            string movingAxisName,
+            IReadOnlyCollection<string> movingAxisNames,
             Func<string, double?> getPositionByName,
+            IReadOnlyDictionary<string, double> targetPositionsByName,
+            Func<string, bool> isAxisKnown,
             ILocalizationService localization)
         {
             if (config == null || !config.Enabled)
                 return (true, null, null, null);
 
-            if (string.IsNullOrEmpty(movingAxisName))
+            if (movingAxisNames == null || movingAxisNames.Count == 0 || movingAxisNames.Any(string.IsNullOrWhiteSpace))
                 return DenyMissingAxis(config, localization);
 
             foreach (var rule in config.Rules.Where(r => r.Enabled))
             {
-                var deny = EvaluateRule(rule, movingAxisName, getPositionByName, config.FailClosedOnMissingAxis, config.DangerZones);
+                var deny = EvaluateRule(rule, movingAxisNames, getPositionByName, targetPositionsByName, isAxisKnown,
+                    config.FailClosedOnMissingAxis, config.DangerZones);
                 if (deny != null)
                 {
-                    var reason = FormatReason(localization, deny.Value.messageKey, deny.Value.args);
                     return (false, deny.Value.messageKey, deny.Value.args, rule.Id);
                 }
             }
@@ -79,7 +82,8 @@ namespace MotionControl.Services
         /// </summary>
         public static List<string> GetLowHeightAxisNames(
             SafetyZoneConfig config,
-            Func<string, double?> getPositionByName)
+            Func<string, double?> getPositionByName,
+            Func<string, bool> isAxisKnown = null)
         {
             var result = new List<string>();
             if (config == null || !config.Enabled)
@@ -89,15 +93,10 @@ namespace MotionControl.Services
             {
                 foreach (var ha in rule.HeightAxes)
                 {
-                    if (string.IsNullOrWhiteSpace(ha.AxisName))
+                    if (!IsHeightAxisUnsafe(ha, getPositionByName, isAxisKnown, config.FailClosedOnMissingAxis))
                         continue;
 
-                    var pos = getPositionByName(ha.AxisName);
-                    bool isLow = pos == null
-                        ? config.FailClosedOnMissingAxis
-                        : IsBelowSafeHeight(pos.Value, ha);
-
-                    if (isLow && !result.Any(x => string.Equals(x, ha.AxisName, StringComparison.Ordinal)))
+                    if (!result.Any(x => string.Equals(x, ha.AxisName, StringComparison.Ordinal)))
                         result.Add(ha.AxisName);
                 }
             }
@@ -110,7 +109,8 @@ namespace MotionControl.Services
         /// </summary>
         public static List<string> GetActiveRuleIds(
             SafetyZoneConfig config,
-            Func<string, double?> getPositionByName)
+            Func<string, double?> getPositionByName,
+            Func<string, bool> isAxisKnown = null)
         {
             var active = new List<string>();
             if (config == null || !config.Enabled)
@@ -118,7 +118,7 @@ namespace MotionControl.Services
 
             foreach (var rule in config.Rules.Where(r => r.Enabled))
             {
-                if (IsRuleActive(rule, getPositionByName, config.FailClosedOnMissingAxis))
+                if (IsRuleActive(rule, getPositionByName, isAxisKnown, config.FailClosedOnMissingAxis))
                     active.Add(rule.Id);
             }
 
@@ -130,9 +130,49 @@ namespace MotionControl.Services
         /// </summary>
         public static bool IsPlaneMovementLocked(
             SafetyZoneConfig config,
-            Func<string, double?> getPositionByName)
+            Func<string, double?> getPositionByName,
+            Func<string, bool> isAxisKnown = null)
         {
-            return GetLowHeightAxisNames(config, getPositionByName).Count > 0;
+            if (config == null || !config.Enabled)
+                return false;
+
+            return config.Rules
+                .Where(r => r.Enabled && r.Type == SafetyInterlockRuleType.HeightLockPlane)
+                .Any(r => IsRuleActive(r, getPositionByName, isAxisKnown, config.FailClosedOnMissingAxis)
+                    && DoesPathIntersectDangerZone(r, getPositionByName, null, isAxisKnown,
+                        config.FailClosedOnMissingAxis, config.DangerZones));
+        }
+
+        /// <summary>
+        /// 获取当前"真正被互锁锁定"的平面轴名称集合。
+        /// 判定条件与 EvaluateHeightLockPlane 完全一致：规则激活（高度轴未达安全高度）
+        /// 且所有参与互锁的平面轴同时处于危险矩形内。
+        /// </summary>
+        public static HashSet<string> GetLockedPlaneAxisNames(
+            SafetyZoneConfig config,
+            Func<string, double?> getPositionByName,
+            Func<string, bool> isAxisKnown = null)
+        {
+            var locked = new HashSet<string>(StringComparer.Ordinal);
+            if (config == null || !config.Enabled)
+                return locked;
+
+            foreach (var rule in config.Rules.Where(r => r.Enabled && r.Type == SafetyInterlockRuleType.HeightLockPlane))
+            {
+                if (!IsRuleActive(rule, getPositionByName, isAxisKnown, config.FailClosedOnMissingAxis))
+                    continue;
+
+                if (!DoesPathIntersectDangerZone(rule, getPositionByName, null, isAxisKnown,
+                        config.FailClosedOnMissingAxis, config.DangerZones))
+                    continue;
+
+                foreach (var axisName in rule.LockedAxes ?? Enumerable.Empty<string>())
+                    if (!string.IsNullOrWhiteSpace(axisName)
+                        && (isAxisKnown == null || isAxisKnown(axisName)))
+                        locked.Add(axisName);
+            }
+
+            return locked;
         }
 
         private static (bool allowed, string reasonKey, object[] reasonArgs, string ruleId) DenyMissingAxis(
@@ -148,77 +188,164 @@ namespace MotionControl.Services
 
         private static (string messageKey, object[] args)? EvaluateRule(
             SafetyInterlockRuleConfig rule,
-            string movingAxisName,
+            IReadOnlyCollection<string> movingAxisNames,
             Func<string, double?> getPositionByName,
+            IReadOnlyDictionary<string, double> targetPositionsByName,
+            Func<string, bool> isAxisKnown,
             bool failClosed,
             List<AxisDangerZoneConfig> dangerZones)
         {
             return rule.Type switch
             {
                 SafetyInterlockRuleType.HeightLockPlane => EvaluateHeightLockPlane(
-                    rule, movingAxisName, getPositionByName, failClosed, dangerZones),
+                    rule, movingAxisNames, getPositionByName, targetPositionsByName, isAxisKnown, failClosed, dangerZones),
                 _ => null
             };
         }
 
         /// <summary>
-        /// 高度锁平面：Z轴未达安全高度 且 平面轴在危险区域内时，禁止平面轴移动
-        /// 逻辑：Z低 + XY在危险区 → 锁定；Z低 + XY在安全区 → 允许（已在安全位置，无需锁定）
+        /// 高度锁平面：Z轴未达安全高度时，若平面运动路径进入危险矩形则禁止运动。
+        /// 仅 Dx、Dy 等全部锁定轴同时落在各自危险范围内才视为进入危险区域。
+        /// 对单轴移动，未移动的平面轴以当前位置参与计算；对插补，按线性轨迹完整检查。
         /// </summary>
         private static (string messageKey, object[] args)? EvaluateHeightLockPlane(
             SafetyInterlockRuleConfig rule,
-            string movingAxisName,
+            IReadOnlyCollection<string> movingAxisNames,
             Func<string, double?> getPositionByName,
+            IReadOnlyDictionary<string, double> targetPositionsByName,
+            Func<string, bool> isAxisKnown,
             bool failClosed,
             List<AxisDangerZoneConfig> dangerZones)
         {
-            // 移动轴不在锁定列表中，不拦截
-            if (rule.LockedAxes == null || !rule.LockedAxes.Any(a =>
-                    string.Equals(a, movingAxisName, StringComparison.Ordinal)))
+            // 运动指令未涉及受互锁保护的平面轴，不拦截
+            if (rule.LockedAxes == null || !movingAxisNames.Any(movingAxisName =>
+                    rule.LockedAxes.Any(a => string.Equals(a, movingAxisName, StringComparison.Ordinal))))
                 return null;
 
             // 检查是否有高度轴未达安全高度
-            if (!IsRuleActive(rule, getPositionByName, failClosed))
+            if (!IsRuleActive(rule, getPositionByName, isAxisKnown, failClosed))
                 return null;
 
-            // 关键：移动轴当前是否在危险区域内
-            // 不在危险区 → 允许移动（已在安全位置，无需锁定）
-            var movingAxisPos = getPositionByName(movingAxisName);
-            if (movingAxisPos != null && !IsInDangerZone(dangerZones, movingAxisName, movingAxisPos.Value))
+            // 起点、目标点及两点间插补线均不进入危险矩形时允许运动
+            if (!DoesPathIntersectDangerZone(rule, getPositionByName, targetPositionsByName, isAxisKnown,
+                    failClosed, dangerZones))
                 return null;
 
             // 收集未达安全高度的高度轴名称，用于提示信息
             var lowAxes = new List<string>();
             foreach (var ha in rule.HeightAxes)
             {
-                if (string.IsNullOrWhiteSpace(ha.AxisName))
-                    continue;
-
-                var pos = getPositionByName(ha.AxisName);
-                bool isLow = pos == null ? failClosed : IsBelowSafeHeight(pos.Value, ha);
-                if (isLow)
+                if (IsHeightAxisUnsafe(ha, getPositionByName, isAxisKnown, failClosed))
                     lowAxes.Add(ha.AxisName);
             }
 
-            return (rule.MessageKey, new object[] { movingAxisName, string.Join(", ", lowAxes) });
+            return ("SafetyRule_HeightLockPlanePath",
+                new object[] { string.Join("/", movingAxisNames), string.Join(", ", lowAxes) });
+        }
+
+        /// <summary>
+        /// 判断平面运动线段是否穿过危险超矩形。
+        /// 每个锁定轴对应一个区间；仅所有轴在同一时刻同时位于各自区间内时返回 true。
+        /// 使用参数 t∈[0,1] 的线段裁剪，避免按采样点判断而漏掉高速插补穿越。
+        /// </summary>
+        private static bool DoesPathIntersectDangerZone(
+            SafetyInterlockRuleConfig rule,
+            Func<string, double?> getPositionByName,
+            IReadOnlyDictionary<string, double> targetPositionsByName,
+            Func<string, bool> isAxisKnown,
+            bool failClosed,
+            List<AxisDangerZoneConfig> dangerZones)
+        {
+            double enterT = 0.0;
+            double exitT = 1.0;
+            bool hasParticipatingAxis = false;
+
+            foreach (var axisName in rule.LockedAxes ?? Enumerable.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(axisName)
+                    || (isAxisKnown != null && !isAxisKnown(axisName)))
+                    continue;
+
+                hasParticipatingAxis = true;
+                var start = getPositionByName(axisName);
+                var zone = dangerZones?.FirstOrDefault(z =>
+                    string.Equals(z.AxisName, axisName, StringComparison.Ordinal));
+                if (start == null || zone == null)
+                    return failClosed;
+
+                double target = targetPositionsByName != null
+                    && targetPositionsByName.TryGetValue(axisName, out var configuredTarget)
+                    ? configuredTarget
+                    : start.Value;
+
+                if (!TryClipLineToRange(start.Value, target, zone.Min, zone.Max, ref enterT, ref exitT))
+                    return false;
+            }
+
+            return hasParticipatingAxis && enterT <= exitT;
+        }
+
+        /// <summary>将一维运动线段裁剪至闭区间，并累计其位于区间内的时间参数范围。</summary>
+        private static bool TryClipLineToRange(
+            double start, double target, double min, double max, ref double enterT, ref double exitT)
+        {
+            if (min > max)
+                (min, max) = (max, min);
+
+            double delta = target - start;
+            if (Math.Abs(delta) < double.Epsilon)
+            {
+                if (start < min || start > max)
+                    return false;
+                return true;
+            }
+
+            double axisEnter = (min - start) / delta;
+            double axisExit = (max - start) / delta;
+            if (axisEnter > axisExit)
+                (axisEnter, axisExit) = (axisExit, axisEnter);
+
+            enterT = Math.Max(enterT, axisEnter);
+            exitT = Math.Min(exitT, axisExit);
+            return enterT <= exitT && exitT >= 0.0 && enterT <= 1.0;
         }
 
         private static bool IsRuleActive(
             SafetyInterlockRuleConfig rule,
             Func<string, double?> getPositionByName,
+            Func<string, bool> isAxisKnown,
             bool failClosed)
         {
             return rule.Type switch
             {
                 SafetyInterlockRuleType.HeightLockPlane => rule.HeightAxes.Any(ha =>
-                {
-                    if (string.IsNullOrWhiteSpace(ha.AxisName))
-                        return false;
-                    var pos = getPositionByName(ha.AxisName);
-                    return pos == null ? failClosed : IsBelowSafeHeight(pos.Value, ha);
-                }),
+                    IsHeightAxisUnsafe(ha, getPositionByName, isAxisKnown, failClosed)),
                 _ => false
             };
+        }
+
+        /// <summary>
+        /// 判断单个高度轴是否处于不安全状态（未达安全高度）。
+        /// 硬件配置中不存在的轴视为未安装，不参与互锁，避免 Dz₂/Dz₃ 缺轴时 FailClosed 永久锁死平面轴。
+        /// </summary>
+        private static bool IsHeightAxisUnsafe(
+            HeightAxisSafeConfig ha,
+            Func<string, double?> getPositionByName,
+            Func<string, bool> isAxisKnown,
+            bool failClosed)
+        {
+            if (ha == null || string.IsNullOrWhiteSpace(ha.AxisName) || !ha.Enabled)
+                return false;
+
+            // 硬件中无此轴：跳过，不按 FailClosed 视为不安全
+            if (isAxisKnown != null && !isAxisKnown(ha.AxisName))
+                return false;
+
+            var pos = getPositionByName(ha.AxisName);
+            if (pos == null)
+                return failClosed;
+
+            return IsBelowSafeHeight(pos.Value, ha);
         }
 
         public static string FormatReason(ILocalizationService localization, string key, object[] args)

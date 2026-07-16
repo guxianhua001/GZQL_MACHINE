@@ -267,11 +267,27 @@ namespace Module.ViewModels
         }
 
         private double _dz1;
-        /// <summary>Dz₁ 轴坐标（只读解析）</summary>
+        /// <summary>Dz₁ 轴坐标（只读解析；0 表示未获取到）</summary>
         public double Dz1
         {
             get => _dz1;
             private set => SetProperty(ref _dz1, value);
+        }
+
+        private double _dz2;
+        /// <summary>Dz₂ 轴坐标（只读解析；0 表示未获取到）</summary>
+        public double Dz2
+        {
+            get => _dz2;
+            private set => SetProperty(ref _dz2, value);
+        }
+
+        private double _dz3;
+        /// <summary>Dz₃ 轴坐标（只读解析，相机 Z；0 表示未获取到）</summary>
+        public double Dz3
+        {
+            get => _dz3;
+            private set => SetProperty(ref _dz3, value);
         }
 
         private double _y;
@@ -300,16 +316,20 @@ namespace Module.ViewModels
 
         /// <summary>
         /// 由 ViewModel 调用：按当前 PositionName 从位置编辑器解析的坐标值批量更新。
-        /// 解析失败的字段保持原值（不置 0，避免误用导致碰撞）。
+        /// 未获取到的轴传入 null，显示为 0（与运动层“0=未获取”约定一致，避免沿用上一位置名的陈旧坐标）。
         /// </summary>
-        public void UpdateParsedCoordinates(double? dx, double? dy, double? dz1, double? y, double? rx, double? rz)
+        public void UpdateParsedCoordinates(
+            double? dx, double? dy, double? dz1, double? dz2, double? dz3,
+            double? y, double? rx, double? rz)
         {
-            if (dx.HasValue) Dx = dx.Value;
-            if (dy.HasValue) Dy = dy.Value;
-            if (dz1.HasValue) Dz1 = dz1.Value;
-            if (y.HasValue) Y = y.Value;
-            if (rx.HasValue) Rx = rx.Value;
-            if (rz.HasValue) Rz = rz.Value;
+            Dx = dx ?? 0;
+            Dy = dy ?? 0;
+            Dz1 = dz1 ?? 0;
+            Dz2 = dz2 ?? 0;
+            Dz3 = dz3 ?? 0;
+            Y = y ?? 0;
+            Rx = rx ?? 0;
+            Rz = rz ?? 0;
         }
 
         #endregion
@@ -474,10 +494,9 @@ namespace Module.ViewModels
             set => SetProperty(ref _isExecuting, value);
         }
 
-        private bool _returnToSafeAfterCapture = true;
-        /// <summary>
-        /// 拍照完成后是否返回安全位
-        /// </summary>
+        private bool _returnToSafeAfterCapture;
+        /// <summary>已废弃：拍照后自动回安全位改由 Return Safe 按钮手动触发</summary>
+        [Obsolete("已改为 Return Safe 按钮手动回安全位")]
         public bool ReturnToSafeAfterCapture
         {
             get => _returnToSafeAfterCapture;
@@ -512,9 +531,37 @@ namespace Module.ViewModels
             }
         }
 
+        private string _needleOffsetXExpression;
+        /// <summary>
+        /// 针头X偏移表达式，如 "0.5" 或 "0.1+0.2+0.3"
+        /// </summary>
+        public string NeedleOffsetXExpression
+        {
+            get => _needleOffsetXExpression;
+            set
+            {
+                if (SetProperty(ref _needleOffsetXExpression, value))
+                    RaisePropertyChanged(nameof(CalculatedOffsetX));
+            }
+        }
+
+        private string _needleOffsetYExpression;
+        /// <summary>
+        /// 针头Y偏移表达式
+        /// </summary>
+        public string NeedleOffsetYExpression
+        {
+            get => _needleOffsetYExpression;
+            set
+            {
+                if (SetProperty(ref _needleOffsetYExpression, value))
+                    RaisePropertyChanged(nameof(CalculatedOffsetY));
+            }
+        }
+
         private string _offsetXExpression;
         /// <summary>
-        /// OffsetX计算表达式，如 "0.1+0.2+0.3"，最终值 = NeedleOffsetX + 表达式结果
+        /// 附加 OffsetX 表达式（兼容旧配置/全局变量链接名）；最终值含 NeedleOffsetX + 针头表达式 + 本表达式
         /// </summary>
         public string OffsetXExpression
         {
@@ -541,14 +588,16 @@ namespace Module.ViewModels
         }
 
         /// <summary>
-        /// 计算后的OffsetX = NeedleOffsetX + 表达式结果
+        /// 计算后的OffsetX = 行基础值 + 针头偏移表达式（仅使用界面可见字段）
         /// </summary>
-        public double CalculatedOffsetX => NeedleOffsetX + EvaluateExpression(OffsetXExpression);
+        public double CalculatedOffsetX =>
+            NeedleOffsetX + EvaluateExpression(NeedleOffsetXExpression);
 
         /// <summary>
-        /// 计算后的OffsetY = NeedleOffsetY + 表达式结果
+        /// 计算后的OffsetY = 行基础值 + 针头偏移表达式（仅使用界面可见字段）
         /// </summary>
-        public double CalculatedOffsetY => NeedleOffsetY + EvaluateExpression(OffsetYExpression);
+        public double CalculatedOffsetY =>
+            NeedleOffsetY + EvaluateExpression(NeedleOffsetYExpression);
 
         private double _needleCompensationX;
         /// <summary>

@@ -677,7 +677,9 @@
     <sys:String x:Key="VisionCapture_Header_Site">站点</sys:String>
     <sys:String x:Key="VisionCapture_Header_Dx">Dx</sys:String>
     <sys:String x:Key="VisionCapture_Header_Dy">Dy</sys:String>
-    <sys:String x:Key="VisionCapture_Header_Dz1">Dz1</sys:String>
+    <sys:String x:Key="VisionCapture_Header_Dz1">Dz₁</sys:String>
+    <sys:String x:Key="VisionCapture_Header_Dz2">Dz₂</sys:String>
+    <sys:String x:Key="VisionCapture_Header_Dz3">Dz₃</sys:String>
     <sys:String x:Key="VisionCapture_Header_Y">Y</sys:String>
     <sys:String x:Key="VisionCapture_Header_Spd">速度</sys:String>
     <sys:String x:Key="VisionCapture_ColumnMove">移动</sys:String>
@@ -687,6 +689,9 @@
     <sys:String x:Key="VisionCapture_ColumnType">类型</sys:String>
     <sys:String x:Key="VisionCapture_ColumnCapture">拍照</sys:String>
     <sys:String x:Key="VisionCapture_ReturnToSafe">回安全位</sys:String>
+    <sys:String x:Key="VisionCapture_ReturnToSafeTooltip">抬升 Z 轴到 SafePosition，再将 Dx/Dy 移至待机位</sys:String>
+    <sys:String x:Key="VisionCapture_StopRowMotionTooltip">停止当前行移动/拍照/回安全运动</sys:String>
+    <sys:String x:Key="VisionCapture_Status_MotionStopped">运动已停止</sys:String>
     <sys:String x:Key="VisionCapture_ColumnSafe">安全</sys:String>
     <sys:String x:Key="VisionCapture_Header_PhotoName">拍照位名称</sys:String>
     <sys:String x:Key="VisionCapture_Header_Rx">Rx</sys:String>
@@ -723,13 +728,21 @@
     <sys:String x:Key="VisionCapture_Param_ArcDirection">方向</sys:String>
     <sys:String x:Key="VisionCapture_Status_ReturnedToSafe">已返回安全位</sys:String>
     <sys:String x:Key="VisionCapture_ReturnCancelled">返回已取消</sys:String>
-    <sys:String x:Key="VisionCapture_Status_PositionNotFound">位置 '{0}' 在位置编辑器中不存在，Dx/Dy/Dz₁ 将保持 0</sys:String>
-    <sys:String x:Key="VisionCapture_Warn_InvalidPosition">该拍照位在位置编辑器中不存在，运动/拍照/点胶已禁用。请先在位置编辑器中示教该位置，或更正名称。</sys:String>
-    <sys:String x:Key="VisionCapture_PositionInvalidTip">位置名在位置编辑器中不存在，运动将被阻止以防碰撞</sys:String>
-    <sys:String x:Key="VisionCapture_Status_MoveBlockedInvalidPos">位置 '{0}' 无效，运动已阻止（请先在位置编辑器中示教该位置）</sys:String>
+    <sys:String x:Key="VisionCapture_Status_PositionNotFound">位置 '{0}' 缺少有效 Dx/Dy/Dz₃（轴值为 0 视为未获取）</sys:String>
+    <sys:String x:Key="VisionCapture_Warn_InvalidPosition">该拍照位缺少有效 Dx/Dy/Dz₃（0 视为未获取），运动/拍照/点胶已禁用。请先在位置编辑器中示教，或更正名称。</sys:String>
+    <sys:String x:Key="VisionCapture_PositionInvalidTip">位置缺少有效 Dx/Dy/Dz₃（0 视为未获取），运动将被阻止以防碰撞</sys:String>
+    <sys:String x:Key="VisionCapture_Status_MoveBlockedInvalidPos">位置 '{0}' 无效，运动已阻止（请先示教 Dx/Dy/Dz₃，且不可为 0）</sys:String>
+    <sys:String x:Key="VisionCapture_Status_AxisConfigMissing">缺少 Dx/Dy/Dz₃ 轴配置，无法移动到拍照位</sys:String>
+    <sys:String x:Key="VisionCapture_Status_AxisTeachMissing">轴 {0} 在位置 '{1}' 未获取到有效示教值（0 视为无效）</sys:String>
+    <sys:String x:Key="VisionCapture_Status_RaiseZFailed">SafePosition Z 轴抬升失败，运动已中止</sys:String>
     <sys:String x:Key="VisionCapture_Tip_XyOffset">点胶 XY 补偿(mm)，叠加到目标机械坐标：Mech = 相机坐标 + 相机针头距离 + 校针偏差 + XY补偿</sys:String>
     <sys:String x:Key="VisionCapture_Status_CaptureNGBlocked">视觉返回 NG，点胶已阻止（请重新拍照或检查视觉结果）</sys:String>
-    <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] 位置名 '{0}' 在位置编辑器中不存在，Dx/Dy/Dz₁ 将保持 0，运动有碰撞风险</sys:String>
+    <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] 位置名 '{0}' 缺少有效 Dx/Dy/Dz₃（0 视为未获取），运动有碰撞风险</sys:String>
+    <sys:String x:Key="VisCap_Log_SkipRaiseZAxis">[VisionCapture] 拍照位 '{0}' 的 {1} 未示教(0)，跳过抬升</sys:String>
+    <sys:String x:Key="VisCap_Log_SafeZKeyMissing">[VisionCapture] 位置编辑器 SafePosition 缺少 {0} 键，无法抬升</sys:String>
+    <sys:String x:Key="VisCap_Log_NoZAxisToRaise">[VisionCapture] 无需要抬升的 Z 轴（拍照位未示教或轴未配置）</sys:String>
+    <sys:String x:Key="VisCap_Log_RowMotionStopped">[VisionCapture] 用户停止行运动: {0}</sys:String>
+    <sys:String x:Key="VisCap_Log_StopRowMotionFailed">[VisionCapture] 停止行运动失败: {0}</sys:String>
     <sys:String x:Key="VisionCapture_VisionData">视觉数据</sys:String>
     <sys:String x:Key="VisionCapture_ProcessParams">点胶工艺参数</sys:String>
     <sys:String x:Key="VisionCapture_NeedleSelect">针头选择</sys:String>
@@ -750,6 +763,10 @@
     <sys:String x:Key="VisionCapture_LinkGlobalVariable">链接全局变量</sys:String>
     <sys:String x:Key="VisionCapture_UnlinkGlobalVariable">取消链接全局变量</sys:String>
     <sys:String x:Key="VisionCapture_ExpressionHint">表达式</sys:String>
+    <sys:String x:Key="VisionCapture_NeedleOffsetExpressionTooltip">行偏移表达式，如 0.5 或 0.1+0.2；合计 = 基础值 + 表达式</sys:String>
+    <sys:String x:Key="VisionCapture_RowOffsetBase">基础值</sys:String>
+    <sys:String x:Key="VisionCapture_RowOffsetBaseTooltip">行级针头偏移基础值（拍照解析或手动输入），参与右侧合计</sys:String>
+    <sys:String x:Key="VisionCapture_GlobalNeedleCalib">全局标定偏移</sys:String>
     <sys:String x:Key="VisionCapture_CoordTransformDetail">坐标变换详情</sys:String>
     <sys:String x:Key="VisionCapture_PhotoPosition">拍照位置</sys:String>
     <sys:String x:Key="VisionCapture_TargetOffset">目标偏移</sys:String>
@@ -808,6 +825,7 @@
     <sys:String x:Key="VisionCapture_Status_DispenseError">点胶错误</sys:String>
     <sys:String x:Key="VisionCapture_Status_PreviewDotComplete">点预览完成</sys:String>
     <sys:String x:Key="VisionCapture_Status_PreviewArcComplete">弧预览完成</sys:String>
+    <sys:String x:Key="VisionCapture_Status_VisionDataReady">视觉坐标计算完成（{0}点），请点击下一步进入预览</sys:String>
     <sys:String x:Key="VisionCapture_Status_PreviewFail">预览失败</sys:String>
     <sys:String x:Key="VisionCapture_Status_ConfigLoaded">配置已加载</sys:String>
     <sys:String x:Key="VisionCapture_Status_ConfigSaved">配置已保存</sys:String>
@@ -2807,6 +2825,7 @@
     <sys:String x:Key="CadPoint_Status_SimPaused">仿真已暂停（点击「继续」恢复）</sys:String>
     <sys:String x:Key="CadPoint_Status_SimResumed">仿真已继续</sys:String>
     <sys:String x:Key="CadPoint_Status_DispenseUnavailable">点胶执行服务不可用，无法执行真实运动</sys:String>
+    <sys:String x:Key="CadPoint_Status_RaiseZFailed">Z 轴抬升安全位失败，运动已中止: {0}</sys:String>
     <sys:String x:Key="CadPoint_Status_MotionUnavailable">运动服务不可用，无法读取Z轴位置</sys:String>
     <sys:String x:Key="CadPoint_Status_TeachHeightSuccess">已示教 {0} 高度: {1:F3} mm</sys:String>
     <sys:String x:Key="CadPoint_Status_TeachHeightFailed">示教高度失败: {0}</sys:String>
@@ -4184,29 +4203,39 @@
     <sys:String x:Key="SafetyZone_Parameters">参数设置</sys:String>
     <sys:String x:Key="SafetyZone_Visualization">区域可视化</sys:String>
     <sys:String x:Key="SafetyZone_EnableInterlock">启用安全互锁</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ1">Dz₁ 安全高度 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ2">Dz₂ 安全高度 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_SafeHeightZ3">Dz₃ 安全高度 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_ZAxisInverted">Z轴方向反转</sys:String>
-    <sys:String x:Key="SafetyZone_ZAxisInvertedTip">勾选表示Z越往下值越大（安全高度逻辑取反）；不勾选表示Z越往上值越大（默认）</sys:String>
     <sys:String x:Key="SafetyRule_HeightLockPlane">垂直轴 [{1}] 未达安全高度，禁止 {0} 移动</sys:String>
+    <sys:String x:Key="SafetyRule_HeightLockPlanePath">垂直轴 [{1}] 未达安全高度，{0} 的运动路径或目标位置进入危险区域</sys:String>
     <sys:String x:Key="SafetyRule_MissingAxis">无法识别运动轴，安全互锁拒绝运动</sys:String>
     <sys:String x:Key="SafetyRule_InvalidInterpolation">插补参数无效</sys:String>
-    <sys:String x:Key="SafetyZone_DangerXMin">X 危险区下限 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_DangerXMax">X 危险区上限 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_DangerYMin">Y 危险区下限 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_DangerYMax">Y 危险区上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyRule_DangerZoneLockedAlarm">轴 {0} 进入危险区域 (位置: {1:F1}mm)，平面移动已被安全互锁锁定</sys:String>
     <sys:String x:Key="SafetyZone_CanvasRange">画布行程范围</sys:String>
-    <sys:String x:Key="SafetyZone_XRangeMin">X 行程下限 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_XRangeMax">X 行程上限 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_YRangeMin">Y 行程下限 (mm)</sys:String>
-    <sys:String x:Key="SafetyZone_YRangeMax">Y 行程上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_XRangeMin">水平行程下限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_XRangeMax">水平行程上限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_YRangeMin">垂直行程下限 (mm)</sys:String>
+    <sys:String x:Key="SafetyZone_YRangeMax">垂直行程上限 (mm)</sys:String>
     <sys:String x:Key="SafetyZone_Save">保存配置</sys:String>
     <sys:String x:Key="SafetyZone_Safe">安全</sys:String>
     <sys:String x:Key="SafetyZone_Danger">危险</sys:String>
     <sys:String x:Key="SafetyZone_DismissAlarm">关闭</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccess">保存成功</sys:String>
     <sys:String x:Key="SafetyZone_SaveSuccessMessage">安全区域配置已成功保存并生效</sys:String>
+    <!-- 动态高度轴/平面轴列表（通用安全互锁框架，不同设备可配置不同数量/名称的轴） -->
+    <sys:String x:Key="SafetyZone_HeightAxesSection">高度轴 (Z)</sys:String>
+    <sys:String x:Key="SafetyZone_HeightAxesTip">任一已启用的高度轴未达安全高度时，将禁止下方平面锁定轴移动</sys:String>
+    <sys:String x:Key="SafetyZone_PlaneAxesSection">平面锁定轴</sys:String>
+    <sys:String x:Key="SafetyZone_PlaneAxesTip">高度互锁激活且该轴处于危险区时，禁止该轴移动</sys:String>
+    <sys:String x:Key="SafetyZone_AxisNameHeader">轴</sys:String>
+    <sys:String x:Key="SafetyZone_SafeHeightHeader">安全高度(mm)</sys:String>
+    <sys:String x:Key="SafetyZone_InvertedHeader">反向</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInverted">Z轴方向反转</sys:String>
+    <sys:String x:Key="SafetyZone_ZAxisInvertedTip">勾选表示Z越往下值越大（安全高度逻辑取反）；不勾选表示Z越往上值越大（默认）</sys:String>
+    <sys:String x:Key="SafetyZone_EnabledHeader">启用</sys:String>
+    <sys:String x:Key="SafetyZone_DangerMinHeader">危险区下限(mm)</sys:String>
+    <sys:String x:Key="SafetyZone_DangerMaxHeader">危险区上限(mm)</sys:String>
+    <sys:String x:Key="SafetyZone_AddHeightAxis">添加高度轴</sys:String>
+    <sys:String x:Key="SafetyZone_AddPlaneAxis">添加平面轴</sys:String>
+    <sys:String x:Key="SafetyZone_RemoveAxisTooltip">删除该轴</sys:String>
+    <sys:String x:Key="SafetyZone_AxisEnabledTooltip">是否参与互锁判断；关闭后该轴不会导致平面轴被锁定</sys:String>
 
     <!-- DispenseExecuteService 点胶执行服务 -->
     <sys:String x:Key="DispenseExec_DryRun">空跑</sys:String>
@@ -4220,6 +4249,9 @@
     <sys:String x:Key="DispenseExec_MissingMachineCoord">段 [{0}] {1}缺少机械坐标（未执行坐标对齐），拒绝执行以防撞机</sys:String>
     <sys:String x:Key="DispenseExec_PointLabel">点{0}</sys:String>
     <sys:String x:Key="DispenseExec_StartPoint">起点</sys:String>
+    <sys:String x:Key="DispenseExec_SegmentMotionPlan">段 [{0}] 轨迹计划: 点数={1}, 起点目标(Dx={2:F3}, Dy={3:F3}), 终点目标(Dx={4:F3}, Dy={5:F3}), Dz目标={6:F3}, 安全高度={7:F3}mm, 插补={8:F1}mm/s, Dz轴={9}</sys:String>
+    <sys:String x:Key="DispenseExec_InterpolationStartActual">段 [{0}] 插补启动实际位置: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
+    <sys:String x:Key="DispenseExec_InterpolationCompletedActual">段 [{0}] 插补完成实际位置: Dx={1:F3}, Dy={2:F3}, Dz={3:F3}</sys:String>
     <sys:String x:Key="DispenseExec_TriggerGlueOn">段 [{0}] 位置触发开胶，triggerZ={1:F3}, targetZ={2:F3}, offset={3:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_PointTriggerGlueOn">段[{0}]点{1} 位置触发开胶，triggerZ={2:F3}, targetZ={3:F3}, offset={4:F3}mm</sys:String>
     <sys:String x:Key="DispenseExec_ZNotReached">段 [{0}] Z轴未到位: 当前={1:F3}, 目标={2:F3}，重新下降</sys:String>
@@ -5339,6 +5371,9 @@
     <sys:String x:Key="DotDisp_Log_DispenseException">[DotDispense] 点胶异常</sys:String>
     <sys:String x:Key="DotDisp_Log_DispensePoint">[DotDispense] 点胶点 [{0}]</sys:String>
     <sys:String x:Key="DotDisp_Log_DispenseStart">[DotDispense] 开始点胶，针头{0}/Dz{1}(轴{2})，共 {3} 点，全选={4}</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointMotionPlan">[DotDispense] 点 [{0}] ({1}/{2}) 运动目标: Dx={3:F3}, Dy={4:F3}, Y={5:F3}, Dz={6:F3}, 安全高度={7:F3}mm</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointGlueOnPosition">[DotDispense] 点 [{0}] 开胶确认: triggerZ={1:F3}, targetZ={2:F3}, 实际(Dx={3:F3}, Dy={4:F3}, Y={5:F3}, Dz={6:F3})</sys:String>
+    <sys:String x:Key="DotDisp_Log_PointGlueOffPosition">[DotDispense] 点 [{0}] 关胶确认: 实际(Dx={1:F3}, Dy={2:F3}, Y={3:F3}, Dz={4:F3})</sys:String>
     <sys:String x:Key="DotDisp_Log_DryRunCanceled">[DotDispense] 空跑已取消</sys:String>
     <sys:String x:Key="DotDisp_Log_DryRunCompleted">[DotDispense] 空跑完成</sys:String>
     <sys:String x:Key="DotDisp_Log_DryRunException">[DotDispense] 空跑异常</sys:String>
@@ -5349,6 +5384,8 @@
     <sys:String x:Key="DotDisp_Log_SafeStop">[DotDispense] 执行安全停止</sys:String>
     <sys:String x:Key="DotDisp_Log_TeachPoint">[DotDispense] 示教点位 [{0}] 针头{1}/Dz{2} → ({3:F3}, {4:F3}, Dz2={5:F3}, Dz3={6:F3}, 主Z={7:F3}, {8:F3}, {9:F3}, {10:F3})</sys:String>
     <sys:String x:Key="DotDisp_Log_WriteIoFailed">[DotDispense] 写出胶IO失败 port={0} value={1}</sys:String>
+    <sys:String x:Key="VisCap_Log_DotDispenseStart">[VisionCapture] Dot点胶启动: 共{0}点 首点({1:F3},{2:F3}) 末点({3:F3},{4:F3}) 针头{5} 干跑={6}</sys:String>
+    <sys:String x:Key="VisCap_Log_ArcDispenseStart">[VisionCapture] 路径点胶启动: Type={0} 点数={1} 首点({2:F3},{3:F3}) 末点({4:F3},{5:F3}) 针头{6} 干跑={7} 工位={8}</sys:String>
     <sys:String x:Key="DualGantryCalib_CalibrationRequired">请先完成双龙门标定</sys:String>
     <sys:String x:Key="DualGantryCalib_CapturingReference">采集公共基准点...</sys:String>
     <sys:String x:Key="DualGantryCalib_MinReferenceRequired">跨龙门对齐至少需要2个公共基准点</sys:String>

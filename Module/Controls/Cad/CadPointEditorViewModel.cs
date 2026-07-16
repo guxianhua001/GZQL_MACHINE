@@ -80,6 +80,9 @@ namespace Module.ViewModels
         // 运动控制服务（读取轴位置、示教高度）
         private readonly IMotionService _motionService;
 
+        // 位置提供者（读取位置编辑器 SafePosition 等固定安全位坐标，用于点胶前 Z 轴安全抬升）
+        private readonly IPositionProvider _positionProvider;
+
         // 针头相机标定提供者（读取 NeedleCameraAlignment CalibrationDelta）
         private readonly INeedleCameraCalibrationProvider _needleCameraCalibProvider;
 
@@ -412,7 +415,15 @@ namespace Module.ViewModels
                 if (SetProperty(ref _selectedSegment, value))
                 {
                     if (_selectedSegment != null)
+                    {
+                        // 安全兜底：段从未配置过安全高度时留在 0（越往下数值越大，0 已接近工件表面）。
+                        // 选中时直接回填出厂默认值到模型本身，UI 与运动执行读到的都是同一个安全值，
+                        // 减少每个分段都要人工填一次 SafeHeight 的步骤；用户仍可在此基础上手动修改。
+                        if (_selectedSegment.SafeHeight == 0)
+                            _selectedSegment.SafeHeight = DispenseSegment.DefaultSafeHeightFallback;
+
                         _selectedSegment.PropertyChanged += OnSelectedSegmentParamChanged;
+                    }
 
                     RaisePropertyChanged(nameof(HasSelectedSegment));
                     RaisePropertyChanged(nameof(ShowContinuousInterpolationParams));
@@ -2082,6 +2093,7 @@ namespace Module.ViewModels
                 ?? ContainerLocator.Container?.Resolve<IZMapHeightExtractionService>();
             _zMapConfigService = zMapConfigService
                 ?? ContainerLocator.Container?.Resolve<IZMapConfigService>();
+            _positionProvider = ContainerLocator.Container?.Resolve<IPositionProvider>();
 
             // 订阅语言变更事件以刷新所有本地化文本
             if (_localizationService != null)
@@ -3764,6 +3776,15 @@ namespace Module.ViewModels
             {
                 _dispenseExecuteService.ProgressChanged += OnExecuteProgressChanged;
 
+                // 安全前置：点胶/空跑运动前必须先将 Dz₁/Dz₂/Dz₃ 全部抬升至位置编辑器 SafePosition。
+                // 不依赖 Step3 分段手动填写的安全高度（人为填错会撞机），统一从位置编辑器读取真实安全位抬升。
+                double raiseSpeed = enabledSegments.Select(s => s.MoveSpeed).FirstOrDefault(v => v > 0);
+                if (!await RaiseAllZAxesToSafeAsync(raiseSpeed, _simCts.Token))
+                {
+                    // RaiseAllZAxesToSafeAsync 失败时已写入具体 GlobalStatus，此处直接中止
+                    return;
+                }
+
                 // Step5：真实空跑（运动不出胶）
                 if (!realDispenseOnly && IsRealDryRunMode)
                 {
@@ -3824,6 +3845,122 @@ namespace Module.ViewModels
             {
                 _dispenseExecuteService.ProgressChanged -= OnExecuteProgressChanged;
                 CleanupSimTaskState();
+            }
+        }
+
+        /// <summary>位置编辑器固定安全位名称，与 VisionCaptureViewModel 保持一致</summary>
+        private const string EditorSafePositionName = "SafePosition";
+
+        /// <summary>
+        /// 合并所有已注册工站的位置数据（键加工站前缀），与 VisionCaptureViewModel.MergeAllPositionsAsync 一致，
+        /// 避免假设 SafePosition 固定归属某一个工站标识符。
+        /// </summary>
+        private async Task<Dictionary<string, double>> MergeAllPositionsAsync()
+        {
+            var merged = new Dictionary<string, double>();
+            var stationRegistry = ContainerLocator.Container?.Resolve<IStationRegistry>();
+            var stations = stationRegistry?.GetAllStations();
+            if (stations == null || _positionProvider == null) return merged;
+
+            foreach (var station in stations)
+            {
+                try
+                {
+                    var positions = await _positionProvider.GetPositionsAsync(station.StationIdentifier);
+                    if (positions == null) continue;
+                    foreach (var kvp in positions)
+                    {
+                        var prefixedKey = $"{station.StationIdentifier}.{kvp.Key}";
+                        if (!merged.ContainsKey(prefixedKey))
+                            merged[prefixedKey] = kvp.Value;
+                    }
+                }
+                catch { }
+            }
+            return merged;
+        }
+
+        /// <summary>
+        /// 从合并后的位置数据中按位置名段精确匹配读取轴坐标（不依赖具体工站前缀）。
+        /// </summary>
+        private static double? TryGetNamedPositionAxis(
+            Dictionary<string, double> allPositions, string positionName, string axisName)
+        {
+            if (allPositions == null || string.IsNullOrEmpty(positionName) || string.IsNullOrEmpty(axisName))
+                return null;
+
+            var plainKey = $"{positionName}.{axisName}";
+            if (allPositions.TryGetValue(plainKey, out var plainVal))
+                return plainVal;
+
+            foreach (var kvp in allPositions)
+            {
+                var parts = kvp.Key.Split('.');
+                if (parts.Length >= 3
+                    && string.Equals(parts[^2], positionName, StringComparison.Ordinal)
+                    && string.Equals(parts[^1], axisName, StringComparison.Ordinal))
+                {
+                    return kvp.Value;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 点胶/空跑运动前的安全前置：将 Dz₁(相机/扫描轴,LogicalId=2)、Dz₂(针头1,LogicalId=3)、
+        /// Dz₃(针头2,LogicalId=4) 全部抬升至位置编辑器 SafePosition 记录的真实安全高度，
+        /// 不依赖 Step3 分段手动填写的 SafeHeight（人为填错会撞机），三轴同步抬升。
+        /// 位置数据不可用时不阻断（保持向后兼容）；已取得安全位但抬升运动失败时返回 false 由调用方中止。
+        /// </summary>
+        private async Task<bool> RaiseAllZAxesToSafeAsync(double speed, CancellationToken token)
+        {
+            if (_motionService == null || _positionProvider == null)
+                return true;
+
+            const int AxisDz1 = 2;
+            const int AxisDzNeedle1 = 3;
+            const int AxisDzNeedle2 = 4;
+
+            Dictionary<string, double> allPositions;
+            try
+            {
+                allPositions = await MergeAllPositionsAsync();
+            }
+            catch
+            {
+                return true;
+            }
+            if (allPositions == null || allPositions.Count == 0)
+                return true;
+
+            double moveSpeed = speed > 0 ? speed : 10.0;
+            var moves = new List<(int axisId, double position, double velocity)>();
+            void AddMove(int axisId, string axisName)
+            {
+                var safeZ = TryGetNamedPositionAxis(allPositions, EditorSafePositionName, axisName);
+                if (safeZ.HasValue)
+                    moves.Add((axisId, safeZ.Value, moveSpeed));
+            }
+            AddMove(AxisDz1, "Dz₁");
+            AddMove(AxisDzNeedle1, "Dz₂");
+            AddMove(AxisDzNeedle2, "Dz₃");
+
+            if (moves.Count == 0)
+                return true;
+
+            try
+            {
+                await _motionService.MoveAbsMultiAxisAsync(moves, token);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                GlobalStatus = string.Format(L("CadPoint_Status_RaiseZFailed"), ex.Message);
+                return false;
             }
         }
 

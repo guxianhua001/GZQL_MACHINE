@@ -561,6 +561,9 @@ namespace Recipe
                 await _recipeStorage.SaveRecipePoolAsync(pool).ConfigureAwait(false);
                 // 保存完成后通知依赖全局变量的页面刷新链接值，如 VisionCaptureView。
                 _eventAggregator.GetEvent<GlobalVariablesChangedEvent>().Publish(pool.Name);
+                // 与 CommitStagedParametersAsync 对齐：通知位置缓存及 VisionCapture Photo Position 等依赖方从磁盘重载，
+                // 避免 Save Pool 内联提交位置后界面仍显示旧坐标。
+                _eventAggregator.GetEvent<SaveParametersCompletedEvent>().Publish(pool.CurrentRecipeName ?? "Default");
             }
             finally
             {

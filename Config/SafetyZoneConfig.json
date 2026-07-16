@@ -10,9 +10,9 @@
       "Enabled": true,
       "MessageKey": "SafetyRule_HeightLockPlane",
       "HeightAxes": [
-        { "AxisName": "Dz₁", "SafeHeight": 50.0 },
-        { "AxisName": "Dz₂", "SafeHeight": 50.0 },
-        { "AxisName": "Dz₃", "SafeHeight": 50.0 }
+        { "AxisName": "Dz₁", "SafeHeight": 50.0, "Enabled": true },
+        { "AxisName": "Dz₂", "SafeHeight": 50.0, "Enabled": false },
+        { "AxisName": "Dz₃", "SafeHeight": 50.0, "Enabled": false }
       ],
       "LockedAxes": [ "Dx", "Dy" ]
     }

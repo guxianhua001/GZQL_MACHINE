@@ -8,6 +8,8 @@ using Module.Services;
 using Module.UserControls.Grippers;
 using Module.ViewModels;
 using Module.Views;
+using MotionControl.Views;
+using MotionControl.ViewModels;
 using Prism.Ioc;
 using Prism.Modularity;
 using Prism.Mvvm;

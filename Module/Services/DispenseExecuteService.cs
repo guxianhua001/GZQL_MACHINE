@@ -125,9 +125,9 @@ namespace Module.Services
                     PublishProgress(ResourceHelper.GetString("DispenseExec_SegmentProgress", modeLabel, seg.SegmentId, seg.EntityType), index + 1, total);
                     _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispExec_Log_SegmentStart", modeLabel, seg.SegmentId)}");
 
-                    // 1. Z 抬升到安全高度（使用 Step3 段参数 MoveSpeed）
+                    // 1. Z 抬升到安全高度（使用 Step3 段参数 MoveSpeed）；SafeHeight=0 视为未配置，安全兜底为 -20
                     double moveSpeed = seg.MoveSpeed;
-                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, moveSpeed, token);
+                    await _motionService.MoveAbsAsync(axisDz, seg.EffectiveSafeHeight, moveSpeed, token);
 
                     // 2. XY 移动到段起点上方（必须使用对齐后的机械坐标，CAD坐标不可用于运动）
                     var startPt = seg.Points.First();
@@ -140,7 +140,20 @@ namespace Module.Services
                         new[] { startX, startY }, moveSpeed, token);
 
                     // 3. Z 下降到工作高度（根据 descendToWorkHeight 标志决定是否下降）
-                    double targetZ = descendToWorkHeight ? seg.EffectiveZHeight : seg.SafeHeight;
+                    double targetZ = descendToWorkHeight ? seg.EffectiveZHeight : seg.EffectiveSafeHeight;
+                    var endPt = seg.Points.Last();
+                    if (!endPt.MachineX.HasValue || !endPt.MachineY.HasValue)
+                        throw new InvalidOperationException(
+                            ResourceHelper.GetString("DispenseExec_MissingMachineCoord", seg.SegmentId,
+                                ResourceHelper.GetString("DispenseExec_PointLabel", seg.Points.Count)));
+                    double endX = endPt.MachineX.Value;
+                    double endY = endPt.MachineY.Value;
+
+                    // 记录轨迹计划坐标；仅在段开始写一次，避免高频轨迹采样影响运动响应。
+                    _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString(
+                        "DispenseExec_SegmentMotionPlan", seg.SegmentId, seg.Points.Count,
+                        startX, startY, endX, endY, targetZ, seg.EffectiveSafeHeight,
+                        seg.InterpSpeed, axisDz)}");
 
                     if (descendToWorkHeight)
                     {
@@ -169,7 +182,7 @@ namespace Module.Services
                         }
                         else
                         {
-                            // 空跑：直接慢速移到目标位
+                            // 空跑：直接慢速移到目标位 
                             await _motionService.MoveAbsAsync(axisDz, targetZ, slowVel, token);
                         }
                     }
@@ -194,6 +207,9 @@ namespace Module.Services
                     Action<bool>? glueWriter = dispenseGlue ? on => WriteGlueIo(on, needleIndex) : null;
                     int earlyCloseMs = dispenseGlue ? (int)seg.EarlyCloseGlueDelayMs : 0;
                     int postDelayMs = dispenseGlue ? (int)seg.PostDelay : 0;
+
+                    // 插补启动前读取编码器位置，作为实际起点审计基准。
+                    LogInterpolationActualPosition("DispenseExec_InterpolationStartActual", seg.SegmentId, axisDz);
 
                     if (zCorrectionEnabled && descendToWorkHeight)
                     {
@@ -255,11 +271,14 @@ namespace Module.Services
                             TimeSpan.FromMinutes(5));
                     }
 
+                    // 连续插补完成并经过 PostDelay 后读取终点实际位置，便于定位跟随误差。
+                    LogInterpolationActualPosition("DispenseExec_InterpolationCompletedActual", seg.SegmentId, axisDz);
+
                     if (dispenseGlue)
                         _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_GlueOff", seg.SegmentId)}");
 
-                    // 5. Z 抬升到安全高度
-                    await _motionService.MoveAbsAsync(axisDz, seg.SafeHeight, moveSpeed, token);
+                    // 5. Z 抬升到安全高度；SafeHeight=0 视为未配置，安全兜底为 -20
+                    await _motionService.MoveAbsAsync(axisDz, seg.EffectiveSafeHeight, moveSpeed, token);
                 }
 
                 PublishStatus("Completed");
@@ -365,7 +384,8 @@ namespace Module.Services
             double moveSpeed = processParams.MoveSpeed;
             int dispenseTimeMs = (int)processParams.DispenseTime;
             int postDelayMs = (int)processParams.PostDelay;
-            double safeHeight = processParams.SafeHeight;
+            // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+            double safeHeight = processParams.EffectiveSafeHeight;
 
             try
             {
@@ -446,7 +466,8 @@ namespace Module.Services
                 _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString("DispenseExec_StartLog", modeLabel, total, NeedleText(needleIndex))}");
 
                 double moveSpeed = processParams.MoveSpeed;
-                double safeHeight = processParams.SafeHeight;
+                // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+                double safeHeight = processParams.EffectiveSafeHeight;
                 double approachOffset = processParams.ApproachHeight;
                 double slowVel = moveSpeed * processParams.CornerDecel;
                 double glueTriggerOffset = processParams.DotGlueTriggerOffsetMm;
@@ -558,6 +579,18 @@ namespace Module.Services
         {
             try { _motionService.WriteDo(GetGlueIoPort(needleIndex), false); }
             catch { }
+        }
+
+        /// <summary>
+        /// 记录连续插补阶段的实际编码器坐标。
+        /// 仅在起点和完成点读取，不以高频采样方式访问运动卡，保证运动控制响应。
+        /// </summary>
+        private void LogInterpolationActualPosition(string resourceKey, string segmentId, int axisDz)
+        {
+            var dx = _motionService.GetAxisPosition(AxisDx);
+            var dy = _motionService.GetAxisPosition(AxisDy);
+            var dz = _motionService.GetAxisPosition(axisDz);
+            _logger?.Info($"[DispenseExecute] {ResourceHelper.GetString(resourceKey, segmentId, dx, dy, dz)}");
         }
 
         private void SetRunning(bool running) => Interlocked.Exchange(ref _isRunning, running ? 1 : 0);

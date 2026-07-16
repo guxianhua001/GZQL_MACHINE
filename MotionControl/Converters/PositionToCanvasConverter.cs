@@ -2,11 +2,11 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace Module.Converters
+namespace MotionControl.Converters
 {
     /// <summary>
     /// 将物理坐标映射到Canvas画布像素坐标
-    /// 支持动态坐标范围，根据XY行程自动缩放
+    /// 支持动态坐标范围，根据行程自动缩放
     /// 绑定参数：[0]Position, [1]RangeMin, [2]RangeMax, [3]CanvasSize
     /// </summary>
     public class PositionToCanvasConverter : IMultiValueConverter
@@ -42,22 +42,6 @@ namespace Module.Converters
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    /// <summary>
-    /// 旧版单值转换器（兼容保留）
-    /// </summary>
-    public class PositionToCanvasSingleConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return 0.0;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }

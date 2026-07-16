@@ -27,12 +27,9 @@ namespace MotionControl.Services
         private SafetyZoneConfig _config = SafetyZoneConfig.CreateDefaultForCurrentMachine();
         private readonly object _configLock = new();
 
-        /// <summary>记录已报警的轴，避免重复触发</summary>
-        private readonly HashSet<string> _alarmedAxes = new();
-
         private IMotionService Motion => _motionLazy.Value;
 
-        /// <summary>当前是否启用互锁（线程安全读取快照）</summary>
+        /// <summary>当前互锁总开关是否启用（线程安全读取快照）</summary>
         public bool IsInterlockEnabled
         {
             get
@@ -81,9 +78,14 @@ namespace MotionControl.Services
 
             var axisName = TryGetAxisName(axisId);
             var getPos = BuildPositionResolver();
+            var isKnown = BuildAxisKnownPredicate();
+            var targetPositions = axisName == null
+                ? null
+                : new Dictionary<string, double>(StringComparer.Ordinal) { [axisName] = targetPosition };
 
             var (allowed, reasonKey, reasonArgs, ruleId) = SafetyInterlockEvaluator.EvaluateMove(
-                configSnapshot, axisName, getPos, _localization);
+                configSnapshot, axisName == null ? Array.Empty<string>() : new[] { axisName },
+                getPos, targetPositions, isKnown, _localization);
 
             if (!allowed)
             {
@@ -104,11 +106,40 @@ namespace MotionControl.Services
             if (axisIds == null || targetPositions == null || axisIds.Length != targetPositions.Length)
                 return (false, SafetyInterlockEvaluator.FormatReason(_localization, "SafetyRule_InvalidInterpolation", null));
 
+            SafetyZoneConfig configSnapshot;
+            lock (_configLock)
+                configSnapshot = _config;
+
+            if (configSnapshot == null || !configSnapshot.Enabled)
+                return (true, null);
+
+            var movingAxisNames = new List<string>(axisIds.Length);
+            var targetsByName = new Dictionary<string, double>(StringComparer.Ordinal);
             for (int i = 0; i < axisIds.Length; i++)
             {
-                var (allowed, reason) = CheckMoveAllowed(axisIds[i], targetPositions[i]);
-                if (!allowed)
-                    return (false, reason);
+                var axisName = TryGetAxisName(axisIds[i]);
+                if (string.IsNullOrWhiteSpace(axisName))
+                    return (false, SafetyInterlockEvaluator.FormatReason(_localization, "SafetyRule_MissingAxis", null));
+
+                movingAxisNames.Add(axisName);
+                targetsByName[axisName] = targetPositions[i];
+            }
+
+            var getPos = BuildPositionResolver();
+            var isKnown = BuildAxisKnownPredicate();
+            var (allowed, reasonKey, reasonArgs, ruleId) = SafetyInterlockEvaluator.EvaluateMove(
+                configSnapshot, movingAxisNames, getPos, targetsByName, isKnown, _localization);
+            if (!allowed)
+            {
+                string reason = SafetyInterlockEvaluator.FormatReason(_localization, reasonKey, reasonArgs);
+                int violationIndex = Array.FindIndex(axisIds, axisId =>
+                    string.Equals(TryGetAxisName(axisId), movingAxisNames.FirstOrDefault(), StringComparison.Ordinal));
+                int violationAxisId = violationIndex >= 0 ? axisIds[violationIndex] : axisIds[0];
+                var state = Motion.GetAxisState(violationAxisId);
+                PublishViolation(violationAxisId, TryGetAxisName(violationAxisId) ?? violationAxisId.ToString(),
+                    targetPositions[violationIndex >= 0 ? violationIndex : 0], state?.ActualPosition ?? 0,
+                    reason, ruleId ?? "Unknown");
+                return (false, reason);
             }
 
             return (true, null);
@@ -139,6 +170,7 @@ namespace MotionControl.Services
                 configSnapshot = _config;
 
             var getPos = BuildPositionResolver();
+            var isKnown = BuildAxisKnownPredicate();
 
             foreach (var axis in Motion.GetAxisConfigurations())
             {
@@ -149,54 +181,15 @@ namespace MotionControl.Services
                 status.DangerZoneFlags[axis.Name] = SafetyInterlockEvaluator.IsInDangerZone(configSnapshot, axis.Name, pos);
             }
 
-            status.LowHeightAxisNames = SafetyInterlockEvaluator.GetLowHeightAxisNames(configSnapshot, getPos);
-            status.IsPlaneMovementLocked = SafetyInterlockEvaluator.IsPlaneMovementLocked(configSnapshot, getPos);
+            status.LowHeightAxisNames = SafetyInterlockEvaluator.GetLowHeightAxisNames(configSnapshot, getPos, isKnown);
+            status.IsPlaneMovementLocked = SafetyInterlockEvaluator.IsPlaneMovementLocked(configSnapshot, getPos, isKnown);
             status.IsZ1BelowSafeHeight = status.LowHeightAxisNames.Contains("Dz₁");
-            status.ActiveRules = SafetyInterlockEvaluator.GetActiveRuleIds(configSnapshot, getPos);
+            status.ActiveRules = SafetyInterlockEvaluator.GetActiveRuleIds(configSnapshot, getPos, isKnown);
 
-            // 检测危险区状态并触发报警
-            CheckDangerZoneAlarms(status);
+            // 注意：GetSafetyStatus 是只读状态查询（Setting 页 500ms 轮询），绝不能在此触发报警。
+            // 报警仅在 CheckMoveAllowed 实际拒绝运动时由 PublishViolation 触发。
 
             return status;
-        }
-
-        /// <summary>
-        /// 检测平面轴是否进入危险区，触发/消除报警
-        /// 进入危险区：触发 General 级报警（左下角 Toast 弹窗）
-        /// 离开危险区：消除对应报警
-        /// </summary>
-        private void CheckDangerZoneAlarms(SafetyStatus status)
-        {
-            if (_alarmService == null) return;
-
-            // 检查平面轴（Dx/Dy）是否在危险区内
-            var dangerAxes = new List<string>();
-            foreach (var kvp in status.DangerZoneFlags)
-            {
-                if (kvp.Value && !_alarmedAxes.Contains(kvp.Key))
-                {
-                    dangerAxes.Add(kvp.Key);
-                    _alarmedAxes.Add(kvp.Key);
-                }
-                else if (!kvp.Value && _alarmedAxes.Contains(kvp.Key))
-                {
-                    // 离开危险区，从已报警集合移除
-                    _alarmedAxes.Remove(kvp.Key);
-                }
-            }
-
-            // 触发报警
-            foreach (var axisName in dangerAxes)
-            {
-                status.CurrentPositions.TryGetValue(axisName, out var pos);
-                _ = _alarmService.TriggerAlarmAsync(
-                    $"SAFETY_DANGER_ZONE_{axisName}",
-                    AlarmModule.Models.AlarmLevel.General,
-                    $"轴 {axisName} 进入危险区域 (位置: {pos:F1}mm)，平面移动已被安全互锁锁定",
-                    source: axisName,
-                    type: AlarmModule.Models.AlarmType.ParameterOutOfLimit,
-                    triggerValue: pos);
-            }
         }
 
         /// <inheritdoc/>
@@ -228,10 +221,25 @@ namespace MotionControl.Services
         }
 
         /// <summary>
+        /// 判断轴名是否存在于当前机型硬件配置（hwcfg）
+        /// </summary>
+        private Func<string, bool> BuildAxisKnownPredicate()
+        {
+            return axisName =>
+            {
+                if (string.IsNullOrWhiteSpace(axisName))
+                    return false;
+                return Motion.GetAxisConfigurations()
+                    .Any(a => string.Equals(a.Name, axisName, StringComparison.Ordinal));
+            };
+        }
+
+        /// <summary>
         /// 构建轴名→位置的解析器；缺失轴在 FailClosed 时返回 null 触发互锁
-        /// 关键：使用轮询线程推送的缓存位置（AxisState.ActualPosition），
+        /// 注意：使用轮询线程推送的缓存位置（AxisState.ActualPosition），
         /// 绝不在 UI 线程调用 GetAxisPosition（硬件读卡），避免与轮询线程争锁导致 Jog 卡顿。
         /// 缓存不可用时返回 null，FailClosed 模式下将触发互锁拒绝（安全优先）。
+        /// 硬件配置中根本不存在的轴：同样返回 null，但求值器通过 isAxisKnown 跳过，避免误锁。
         /// </summary>
         private Func<string, double?> BuildPositionResolver()
         {
@@ -247,7 +255,7 @@ namespace MotionControl.Services
                     lock (_configLock)
                     {
                         if (_config.FailClosedOnMissingAxis)
-                            _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZM_Log_AxisNotFoundInHwConfig", "[安全互锁] 配置引用的轴 '{0}' 未在硬件配置中找到"), axisName));
+                            _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZM_Log_AxisNotFoundInHwConfig", "[安全互锁] 配置引用的轴 '{0}' 未在硬件配置中找到（已跳过，不参与高度互锁）"), axisName));
                     }
                     return null;
                 }
@@ -258,6 +266,9 @@ namespace MotionControl.Services
             };
         }
 
+        /// <summary>
+        /// 发布安全违规事件，并触发左下角报警（仅在真实运动被拒绝时调用）
+        /// </summary>
         private void PublishViolation(int axisId, string axisName, double targetPosition, double currentPosition, string reason, string ruleName)
         {
             _eventAggregator.GetEvent<SafetyViolationEvent>().Publish(new SafetyViolationEvent
@@ -270,6 +281,18 @@ namespace MotionControl.Services
                 RuleName = ruleName
             });
             _logger.Warn(string.Format(_localization.GetResourceOrDefault("SZM_Log_Violation", "[安全互锁] 违规 | 规则:{0} | 轴:{1}(#{2}) | {3}"), ruleName, axisName, axisId, reason));
+
+            // 仅在真实拦截运动时触发报警；Setting 页轮询 GetSafetyStatus 不会走到这里
+            if (_alarmService != null)
+            {
+                _ = _alarmService.TriggerAlarmAsync(
+                    $"SAFETY_INTERLOCK_{axisName}",
+                    AlarmModule.Models.AlarmLevel.General,
+                    reason,
+                    source: axisName,
+                    type: AlarmModule.Models.AlarmType.ParameterOutOfLimit,
+                    triggerValue: currentPosition);
+            }
         }
 
         #endregion

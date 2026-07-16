@@ -306,7 +306,8 @@ namespace StationTasks.Actions
                 var seg = CreateSegmentWithParams(source, segRef, detail);
                 lastSeg = seg;
                 double moveSpeed = seg.MoveSpeed;
-                double safeHeight = seg.SafeHeight;
+                // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+                double safeHeight = seg.EffectiveSafeHeight;
 
                 await RunPausableAsync(task, stopToken, 0, "空跑Z抬升", t =>
                     _motionService.MoveAbsAsync(dzAxisId, safeHeight, moveSpeed, t));
@@ -333,10 +334,10 @@ namespace StationTasks.Actions
 
             if (lastSeg != null)
                 await RunPausableAsync(task, stopToken, 0, "空跑结束Z抬升", t =>
-                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, t));
+                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.EffectiveSafeHeight, lastSeg.MoveSpeed, t));
             else
                 await RunPausableAsync(task, stopToken, 0, "空跑结束Z抬升", t =>
-                    _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
+                    _motionService.MoveAbsAsync(dzAxisId, detail.EffectiveDefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
             _logger.Info(_localization.GetResourceOrDefault("Disp_Log_DryRunCompleted", "DISPENSE 空跑完成"));
         }
@@ -384,7 +385,8 @@ namespace StationTasks.Actions
                 lastSeg = seg;
 
                 double moveSpeed = seg.MoveSpeed;
-                double safeHeight = seg.SafeHeight;
+                // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+                double safeHeight = seg.EffectiveSafeHeight;
                 double targetZ = seg.EffectiveZHeight;
                 double approachOffset = seg.ApproachHeight;
                 double slowVel = seg.MoveSpeed * seg.CornerDecel;
@@ -474,10 +476,10 @@ namespace StationTasks.Actions
 
             if (lastSeg != null)
                 await RunPausableAsync(task, stopToken, needleIndex, "单点结束Z抬升", t =>
-                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, t));
+                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.EffectiveSafeHeight, lastSeg.MoveSpeed, t));
             else
                 await RunPausableAsync(task, stopToken, needleIndex, "单点结束Z抬升", t =>
-                    _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
+                    _motionService.MoveAbsAsync(dzAxisId, detail.EffectiveDefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
             _logger.Info(string.Format(
                 _localization.GetResourceOrDefault("Disp_Log_DotModeCompleted", "DISPENSE 步骤 [{0}] 单点模式完成"),
@@ -547,7 +549,8 @@ namespace StationTasks.Actions
                 lastSeg = seg;
 
                 double moveSpeed = seg.MoveSpeed;
-                double safeHeight = seg.SafeHeight;
+                // SafeHeight=0 视为未配置，安全兜底为 -20，避免直接抬升到 0 造成撞针
+                double safeHeight = seg.EffectiveSafeHeight;
                 double targetZ = seg.EffectiveZHeight;
                 double approachOffset = seg.ApproachHeight;
                 double slowVel = seg.MoveSpeed * seg.CornerDecel;
@@ -654,10 +657,10 @@ namespace StationTasks.Actions
 
             if (lastSeg != null)
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线结束Z抬升", t =>
-                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.SafeHeight, lastSeg.MoveSpeed, t));
+                    _motionService.MoveAbsAsync(dzAxisId, lastSeg.EffectiveSafeHeight, lastSeg.MoveSpeed, t));
             else
                 await RunPausableAsync(task, stopToken, needleIndex, "弧线结束Z抬升", t =>
-                    _motionService.MoveAbsAsync(dzAxisId, detail.DefaultSafeHeight, detail.DefaultMoveSpeed, t));
+                    _motionService.MoveAbsAsync(dzAxisId, detail.EffectiveDefaultSafeHeight, detail.DefaultMoveSpeed, t));
 
             detail.ClearExecutionCheckpoint();
             _logger.Info(_localization.GetResourceOrDefault("Disp_Log_ArcModeCompleted", "DISPENSE 弧线模式完成"));

@@ -74,9 +74,10 @@ namespace MotionControl.Models
                         MessageKey = "SafetyRule_HeightLockPlane",
                         HeightAxes = new List<HeightAxisSafeConfig>
                         {
-                            new() { AxisName = "Dz₁", SafeHeight = 50.0 },
-                            new() { AxisName = "Dz₂", SafeHeight = 50.0 },
-                            new() { AxisName = "Dz₃", SafeHeight = 50.0 }
+                            // 默认仅启用 Dz₁：一般只需防住主高度轴即可；Dz₂/Dz₃ 可在 UI 中按需启用
+                            new() { AxisName = "Dz₁", SafeHeight = 50.0, Enabled = true },
+                            new() { AxisName = "Dz₂", SafeHeight = 50.0, Enabled = false },
+                            new() { AxisName = "Dz₃", SafeHeight = 50.0, Enabled = false }
                         },
                         LockedAxes = new List<string> { "Dx", "Dy" }
                     }
@@ -154,6 +155,64 @@ namespace MotionControl.Models
             return entry?.InvertedDirection ?? defaultValue;
         }
 
+        /// <summary>
+        /// 新增一个高度轴（参与"未达安全高度则锁平面轴"判断），用于设备差异化配置界面
+        /// 动态增删高度轴，而非固定 Dz₁/Dz₂/Dz₃ 三个
+        /// </summary>
+        public HeightAxisSafeConfig AddHeightAxis(string axisName, double safeHeight = 50.0)
+        {
+            var rule = GetOrCreateHeightLockPlaneRule();
+            var entry = new HeightAxisSafeConfig { AxisName = axisName, SafeHeight = safeHeight, Enabled = true };
+            rule.HeightAxes.Add(entry);
+            return entry;
+        }
+
+        /// <summary>移除指定高度轴</summary>
+        public void RemoveHeightAxis(HeightAxisSafeConfig entry)
+        {
+            var rule = Rules.FirstOrDefault(r => r.Type == SafetyInterlockRuleType.HeightLockPlane);
+            rule?.HeightAxes?.Remove(entry);
+        }
+
+        /// <summary>
+        /// 新增一个平面锁定轴（高度未达安全高度时会被禁止移动的轴，如 Dx/Dy）
+        /// 同时创建对应的危险区边界条目，二者以 AxisName 关联
+        /// </summary>
+        public AxisDangerZoneConfig AddLockedPlaneAxis(string axisName, double dangerMin = 0, double dangerMax = 200)
+        {
+            var rule = GetOrCreateHeightLockPlaneRule();
+            if (!rule.LockedAxes.Any(a => string.Equals(a, axisName, System.StringComparison.Ordinal)))
+                rule.LockedAxes.Add(axisName);
+
+            var zone = DangerZones.FirstOrDefault(z => string.Equals(z.AxisName, axisName, System.StringComparison.Ordinal));
+            if (zone == null)
+            {
+                zone = new AxisDangerZoneConfig { AxisName = axisName, Min = dangerMin, Max = dangerMax };
+                DangerZones.Add(zone);
+            }
+            return zone;
+        }
+
+        /// <summary>移除指定平面锁定轴（同时移除其危险区边界条目）</summary>
+        public void RemoveLockedPlaneAxis(string axisName)
+        {
+            var rule = Rules.FirstOrDefault(r => r.Type == SafetyInterlockRuleType.HeightLockPlane);
+            rule?.LockedAxes?.RemoveAll(a => string.Equals(a, axisName, System.StringComparison.Ordinal));
+            DangerZones.RemoveAll(z => string.Equals(z.AxisName, axisName, System.StringComparison.Ordinal));
+        }
+
+        /// <summary>平面锁定轴改名时，同步更新 LockedAxes 列表中的引用</summary>
+        public void RenameLockedPlaneAxis(string oldName, string newName)
+        {
+            var rule = Rules.FirstOrDefault(r => r.Type == SafetyInterlockRuleType.HeightLockPlane);
+            if (rule?.LockedAxes == null) return;
+            for (int i = 0; i < rule.LockedAxes.Count; i++)
+            {
+                if (string.Equals(rule.LockedAxes[i], oldName, System.StringComparison.Ordinal))
+                    rule.LockedAxes[i] = newName;
+            }
+        }
+
         public SafetyZoneConfig Clone()
         {
             return new SafetyZoneConfig
@@ -194,7 +253,8 @@ namespace MotionControl.Models
             {
                 AxisName = h.AxisName,
                 SafeHeight = h.SafeHeight,
-                InvertedDirection = h.InvertedDirection
+                InvertedDirection = h.InvertedDirection,
+                Enabled = h.Enabled
             }).ToList() ?? new List<HeightAxisSafeConfig>(),
             LockedAxes = r.LockedAxes?.ToList() ?? new List<string>()
         };
