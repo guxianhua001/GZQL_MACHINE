@@ -69,9 +69,27 @@
       <VersionInfoLines Include="构建版本: $(Version)" />
       <VersionInfoLines Include="构建时间: $([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss'))" />
       <VersionInfoLines Include="构建配置: $(Configuration)" />
+      <VersionChangeLines Include="=========================================" />
+      <VersionChangeLines Include="  GZQL_MACHINE 版本修改记录" />
+      <VersionChangeLines Include="=========================================" />
+      <VersionChangeLines Include="构建版本: $(Version)" />
+      <VersionChangeLines Include="构建时间: $([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss'))" />
+      <VersionChangeLines Include="本次功能: ZMapExtractZWindow 图像窗口右键菜单支持多语言" />
+      <VersionChangeLines Include="架构优化: HalconWrapper 由宿主传入菜单文本，不依赖具体本地化服务" />
+      <VersionChangeLines Include="多语言支持: 右键菜单支持中文和英文，并可随语言切换即时刷新" />
+      <VersionChangeLines Include="VisionCapture: 保存最近一次视觉原始返回与目标点，非Dot轨迹启动时自动重算预览" />
+      <VersionChangeLines Include="VisionCapture: 记录拍照位最近一次成功返回安全位时间" />
+      <VersionChangeLines Include="VisionCapture: 连续轨迹按设置采样点数等弧长重采样，ZMAP窗口调整点数同步预览与执行路径" />
+      <VersionChangeLines Include="HalconWrapper: 移除未使用的设计器ImageList资源依赖，修复VMHWindowControl资源缺失异常" />
+      <VersionChangeLines Include="VisionCapture: 配方持久化ZMAP逐点高度，重开软件后正确恢复目标点Z列显示" />
+      <VersionChangeLines Include="VisionCapture: Arc凸向镜像改为可配置，视觉数据已正确时可关闭强制镜像" />
+      <VersionChangeLines Include="VisionCapture: 修复镜像开关预览无变化（固定弦线两侧坐标范围并强化绑定刷新）" />
+      <VersionChangeLines Include="VisionCapture: 镜像开关对Arc/Polyline同步生效，预览集合整表替换并同步重算" />
+      <VersionChangeLines Include="VisionCapture: 修复预览ItemsControl对UIElement误用ContentPresenter样式导致崩溃" />
     </ItemGroup>
     <MakeDir Directories="$(OutputPath)" Condition="!Exists('$(OutputPath)')" />
     <WriteLinesToFile File="$(OutputPath)VersionInfo.txt" Lines="@(VersionInfoLines)" Overwrite="true" />
+    <WriteLinesToFile File="$(OutputPath)版本修改记录.txt" Lines="@(VersionChangeLines)" Overwrite="true" />
     <Message Importance="high" Text="已生成版本记录: $(OutputPath)VersionInfo.txt" />
   </Target>
   <ItemGroup>

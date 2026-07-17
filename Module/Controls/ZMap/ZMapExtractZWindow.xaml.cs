@@ -1,4 +1,6 @@
+using Core.Abstraction;
 using Core.Models;
+using Prism.Ioc;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -130,6 +132,7 @@ namespace Module.Controls.ZMap
         private readonly List<ZMapPixelPoint> _cadPointProjectionPixels = new List<ZMapPixelPoint>();
         // 预览表当前选中行对应的采样点，-1表示未选择。
         private int _selectedProjectionIndex = -1;
+        private readonly ILocalizationService _localizationService;
 
 #if HAS_HALCON
         // 进程内Halcon显示控件（承载高度图与交互ROI）
@@ -157,18 +160,69 @@ namespace Module.Controls.ZMap
         {
             InitializeComponent();
             Vertices.CollectionChanged += Vertices_CollectionChanged;
+            _localizationService = ContainerLocator.Container?.Resolve<ILocalizationService>();
+            if (_localizationService != null)
+                _localizationService.LanguageChanged += OnLanguageChanged;
 #if HAS_HALCON
             // 设计时不加载Halcon原生库，避免设计器崩溃
             if (!System.ComponentModel.DesignerProperties.GetIsInDesignMode(this))
             {
                 _win = new VMHWindowControl();
                 winFormHost.Child = _win;
+                ApplyHalconContextMenuTexts();
                 // 显示底部状态栏：鼠标悬停时以"Gray"直读像素高度值，便于示教Z基准点
                 _win.showStatusBar();
                 _win.hControl.MouseDown += OnHMouseDown;
                 _win.hControl.MouseUp += OnHMouseUp;
             }
-            Closed += (s, e) => { try { _win?.Dispose(); } catch { } };
+#endif
+            Closed += OnWindowClosed;
+        }
+
+        /// <summary>
+        /// 应用语言变更后同步更新 WinForms 图像窗口的右键菜单文本。
+        /// </summary>
+        private void OnLanguageChanged(object sender, LanguageChangedEventArgs e)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(ApplyHalconContextMenuTexts));
+                return;
+            }
+
+            ApplyHalconContextMenuTexts();
+        }
+
+        /// <summary>
+        /// 将 WPF 资源字典中的本地化文本传递给 HalconWrapper，保持基础组件不依赖业务层。
+        /// </summary>
+        private void ApplyHalconContextMenuTexts()
+        {
+#if HAS_HALCON
+            _win?.ApplyContextMenuTexts(new HWindowContextMenuTexts
+            {
+                FitWindow = L("Halcon_Menu_FitWindow"),
+                MoveWindow = L("Halcon_Menu_MoveWindow"),
+                FitImage = L("Halcon_Menu_FitImage"),
+                ToggleImageInfo = L("Halcon_Menu_ToggleImageInfo"),
+                ToggleCross = L("Halcon_Menu_ToggleCross"),
+                SaveImage = L("Halcon_Menu_SaveImage"),
+                SaveWindow = L("Halcon_Menu_SaveWindow"),
+                OpenImage = L("Halcon_Menu_OpenImage")
+            });
+#endif
+        }
+
+        /// <summary>
+        /// 解除语言事件订阅并释放 Halcon 原生资源，防止悬浮窗口关闭后残留引用。
+        /// </summary>
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            if (_localizationService != null)
+                _localizationService.LanguageChanged -= OnLanguageChanged;
+
+#if HAS_HALCON
+            try { _win?.Dispose(); } catch { }
 #endif
         }
 

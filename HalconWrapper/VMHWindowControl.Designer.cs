@@ -30,20 +30,10 @@ namespace HalconWrapper
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VMHWindowControl));
-            m_CtrlImageList = new System.Windows.Forms.ImageList(components);
             mCtrl_HWindow = new HalconDotNet.HWindowControl();
             m_CtrlHStatusLabelCtrl = new System.Windows.Forms.Label();
             lblMouseMessage = new System.Windows.Forms.Label();
             SuspendLayout();
-            // 
-            // m_CtrlImageList
-            // 
-            m_CtrlImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit;
-            m_CtrlImageList.ImageStream = (System.Windows.Forms.ImageListStreamer)resources.GetObject("m_CtrlImageList.ImageStream");
-            m_CtrlImageList.TransparentColor = System.Drawing.Color.Transparent;
-            m_CtrlImageList.Images.SetKeyName(0, "TableIcon.png");
-            m_CtrlImageList.Images.SetKeyName(1, "PicturesIcon.png");
             // 
             // mCtrl_HWindow
             // 
@@ -105,7 +95,6 @@ namespace HalconWrapper
         }
 
         #endregion
-        private System.Windows.Forms.ImageList m_CtrlImageList;
         private System.Windows.Forms.Label m_CtrlHStatusLabelCtrl;
         public HalconDotNet.HWindowControl mCtrl_HWindow;
         private System.Windows.Forms.Label lblMouseMessage;

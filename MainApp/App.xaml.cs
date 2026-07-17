@@ -25,6 +25,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -40,6 +41,9 @@ namespace MainApp
         private ILoggerService _logger;
         private ILocalizationService _localization;
         private static readonly Logger _nlogLogger = LogManager.GetCurrentClassLogger();
+        private const string SingleInstanceMutexName = @"Global\GZQL_MACHINE.MainApp.SingleInstance";
+        private Mutex _singleInstanceMutex;
+        private bool _ownsSingleInstanceMutex;
 
         public App()
         {
@@ -84,14 +88,103 @@ namespace MainApp
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // 在 Prism 初始化运动、通信等硬件模块前抢占互斥锁，避免重复实例同时访问设备。
+            if (!TryAcquireSingleInstanceMutex())
+            {
+                MessageBox.Show(
+                    GetStartupLocalizedString(
+                        "App_SingleInstance_Message",
+                        "应用程序已在运行，请切换到现有窗口。"),
+                    GetStartupLocalizedString(
+                        "App_SingleInstance_Title",
+                        "应用程序已启动"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                Shutdown();
+                return;
+            }
+
             base.OnStartup(e);
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
-            _appSettingService?.Save();
-            Task.Delay(500).Wait();
-            base.OnExit(e);
+            try
+            {
+                _appSettingService?.Save();
+                Task.Delay(500).Wait();
+                base.OnExit(e);
+            }
+            finally
+            {
+                ReleaseSingleInstanceMutex();
+            }
+        }
+
+        /// <summary>
+        /// 尝试获取全局单实例互斥锁，确保不同桌面会话不会重复启动设备控制软件。
+        /// </summary>
+        private bool TryAcquireSingleInstanceMutex()
+        {
+            _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out var createdNew);
+            _ownsSingleInstanceMutex = createdNew;
+
+            if (!createdNew)
+            {
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+            }
+
+            return createdNew;
+        }
+
+        /// <summary>
+        /// 释放当前实例持有的互斥锁，使软件完全退出后可以再次安全启动。
+        /// </summary>
+        private void ReleaseSingleInstanceMutex()
+        {
+            if (_singleInstanceMutex == null)
+                return;
+
+            try
+            {
+                if (_ownsSingleInstanceMutex)
+                    _singleInstanceMutex.ReleaseMutex();
+            }
+            finally
+            {
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+                _ownsSingleInstanceMutex = false;
+            }
+        }
+
+        /// <summary>
+        /// 在依赖注入容器就绪前按系统界面语言获取启动提示，保证重复启动提示支持多语言。
+        /// </summary>
+        private static string GetStartupLocalizedString(string resourceKey, string chineseFallback)
+        {
+            var cultureCode = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en"
+                ? "en-US"
+                : "zh-CN";
+
+            try
+            {
+                // 启动阶段容器尚未初始化，直接加载对应资源字典以保持提示文本可本地化。
+                var dictionary = new ResourceDictionary
+                {
+                    Source = new Uri(
+                        $"/MainApp;component/Languages/Strings.{cultureCode}.xaml",
+                        UriKind.Relative)
+                };
+
+                return dictionary[resourceKey]?.ToString() ?? chineseFallback;
+            }
+            catch
+            {
+                return chineseFallback;
+            }
         }
 
         private void BuildConfiguration()

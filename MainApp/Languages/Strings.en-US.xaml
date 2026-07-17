@@ -696,6 +696,7 @@
     <sys:String x:Key="VisionCapture_ColumnCapture">Capture</sys:String>
     <sys:String x:Key="VisionCapture_ReturnToSafe">Return Safe</sys:String>
     <sys:String x:Key="VisionCapture_ReturnToSafeTooltip">Raise Z to SafePosition, then move Dx/Dy to standby</sys:String>
+    <sys:String x:Key="VisionCapture_Header_LastReturnTime">Last Return Time</sys:String>
     <sys:String x:Key="VisionCapture_StopRowMotionTooltip">Stop current row move/capture/return-safe motion</sys:String>
     <sys:String x:Key="VisionCapture_Status_MotionStopped">Motion stopped</sys:String>
     <sys:String x:Key="VisionCapture_ColumnSafe">Safe</sys:String>
@@ -730,8 +731,12 @@
     <sys:String x:Key="VisionCapture_ArcTrack_Arc">Arc</sys:String>
     <sys:String x:Key="VisionCapture_ArcTrack_Line">Line</sys:String>
     <sys:String x:Key="VisionCapture_Param_ArcSegments">Segments</sys:String>
+    <sys:String x:Key="VisionCapture_Unit_Points">pts</sys:String>
     <sys:String x:Key="VisionCapture_Param_ArcHeight">Arc Height</sys:String>
     <sys:String x:Key="VisionCapture_Param_ArcDirection">Direction</sys:String>
+    <sys:String x:Key="VisionCapture_MirrorArcBulge">Mirror Arc Bulge</sys:String>
+    <sys:String x:Key="VisionCapture_MirrorArcBulgeTip">Checked: mirror midpoints about the start-end chord (when camera normal is opposite to machine); Unchecked: use vision bulge as-is</sys:String>
+    <sys:String x:Key="VisionCapture_MirrorArcBulgeHint">If the arc bulge is opposite to the real product, uncheck and preview again</sys:String>
     <sys:String x:Key="VisionCapture_Status_ReturnedToSafe">Returned to safe position</sys:String>
     <sys:String x:Key="VisionCapture_ReturnCancelled">Return cancelled</sys:String>
     <sys:String x:Key="VisionCapture_Status_PositionNotFound">Position '{0}' missing valid Dx/Dy/Dz₃ (axis value 0 treated as not taught)</sys:String>
@@ -743,6 +748,13 @@
     <sys:String x:Key="VisionCapture_Status_RaiseZFailed">SafePosition Z-axis raise failed; motion aborted</sys:String>
     <sys:String x:Key="VisionCapture_Tip_XyOffset">Dispense XY compensation (mm), added to target mechanical coords: Mech = CameraCoord + CamNeedleDist + NeedleCalib + XY Offset</sys:String>
     <sys:String x:Key="VisionCapture_Status_CaptureNGBlocked">Vision returned NG; dispense blocked (please re-capture or check vision result)</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Title">ZMAP Height and Surface Following</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Extract">Extract Point Z</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_ExtractTip">Extract a Z coordinate for every point of the current vision continuous path from the ZMAP height map</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_NotExtracted">ZMAP height has not been extracted for the current path</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Status">Valid ZMAP heights {0} / {1}</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Applied">ZMAP point Z heights were applied to the current vision path</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Invalid">Z Correction is enabled, but the current vision path has incomplete or invalid ZMAP height data. Motion was blocked to prevent a needle collision.</sys:String>
     <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] Position name '{0}' missing valid Dx/Dy/Dz₃ (0 treated as not taught), movement risks collision</sys:String>
     <sys:String x:Key="VisCap_Log_SkipRaiseZAxis">[VisionCapture] Photo position '{0}' axis {1} not taught (0), skip raise</sys:String>
     <sys:String x:Key="VisCap_Log_SafeZKeyMissing">[VisionCapture] Position editor SafePosition missing {0} key, cannot raise</sys:String>
@@ -755,6 +767,7 @@
     <sys:String x:Key="VisionCapture_Needle1">Needle1 / Dz₂</sys:String>
     <sys:String x:Key="VisionCapture_Needle2">Needle2 / Dz₃</sys:String>
     <sys:String x:Key="VisionCapture_RawResponse">Raw Response</sys:String>
+    <sys:String x:Key="VisionCapture_Label_VisionReceivedTime">Received:</sys:String>
     <sys:String x:Key="VisionCapture_ParsedData">Parsed Data</sys:String>
     <sys:String x:Key="VisionCapture_OffsetCompensation">Offset Compensation</sys:String>
     <sys:String x:Key="VisionCapture_ParsedArcData">Parsed Arc Data</sys:String>
@@ -789,6 +802,7 @@
     <sys:String x:Key="VisionCapture_Header_PointY">PointY</sys:String>
     <sys:String x:Key="VisionCapture_Header_MechX">MechX</sys:String>
     <sys:String x:Key="VisionCapture_Header_MechY">MechY</sys:String>
+    <sys:String x:Key="VisionCapture_Header_ZMapZ">ZMAP Z</sys:String>
     <sys:String x:Key="VisionCapture_FinalDispensePos">Final Dispense Position</sys:String>
     <sys:String x:Key="VisionCapture_VisionCoord">Vision Coord</sys:String>
     <sys:String x:Key="VisionCapture_CenterOffset">Center Offset</sys:String>
@@ -3013,6 +3027,14 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="ZMap_RoiType_Polyline">Polyline</sys:String>
     <sys:String x:Key="ZMap_RoiType_SinglePoint">Single-point teach</sys:String>
     <sys:String x:Key="ZMap_Btn_ClearRoi">Reset ROI</sys:String>
+    <sys:String x:Key="Halcon_Menu_FitWindow">Fit Window</sys:String>
+    <sys:String x:Key="Halcon_Menu_MoveWindow">Enable Window Panning</sys:String>
+    <sys:String x:Key="Halcon_Menu_FitImage">Fit Image</sys:String>
+    <sys:String x:Key="Halcon_Menu_ToggleImageInfo">Show/Hide Image Information</sys:String>
+    <sys:String x:Key="Halcon_Menu_ToggleCross">Show/Hide Crosshair</sys:String>
+    <sys:String x:Key="Halcon_Menu_SaveImage">Save Original Image</sys:String>
+    <sys:String x:Key="Halcon_Menu_SaveWindow">Save Window Snapshot</sys:String>
+    <sys:String x:Key="Halcon_Menu_OpenImage">Open Image</sys:String>
     <sys:String x:Key="ZMap_Tip_RoiSampling">Line/Arc: drag handles; sampled evenly along the path to the selected segment's point count. Polyline: click the image to append vertices, drag vertices, connecting lines shown; resampled evenly by arc length. Single-point teach: click the image to append points, each point is one sample.</sys:String>
     <sys:String x:Key="ZMap_Chk_TeachMode">Click image to add point</sys:String>
     <sys:String x:Key="ZMap_Label_TeachDir">Direction:</sys:String>
@@ -4818,6 +4840,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="App_Log_ConfigServiceRegistered">Configuration service registered</sys:String>
     <sys:String x:Key="App_Log_ConfigServiceRegisterFailed">Failed to register configuration service: {0}</sys:String>
     <sys:String x:Key="App_Log_CurrentMemoryUsage">Current memory usage: {0:F2} MB</sys:String>
+    <sys:String x:Key="App_SingleInstance_Message">The application is already running. Please switch to the existing window.</sys:String>
+    <sys:String x:Key="App_SingleInstance_Title">Application already running</sys:String>
     <sys:String x:Key="App_Log_DumpGenerationError">Error generating crash dump file</sys:String>
     <sys:String x:Key="App_Log_DumpGenerationFailed">Failed to generate dump file, error code: {0}</sys:String>
     <sys:String x:Key="App_Log_ErrorMessage">Error message: {0}</sys:String>

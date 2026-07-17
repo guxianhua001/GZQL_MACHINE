@@ -690,6 +690,7 @@
     <sys:String x:Key="VisionCapture_ColumnCapture">拍照</sys:String>
     <sys:String x:Key="VisionCapture_ReturnToSafe">回安全位</sys:String>
     <sys:String x:Key="VisionCapture_ReturnToSafeTooltip">抬升 Z 轴到 SafePosition，再将 Dx/Dy 移至待机位</sys:String>
+    <sys:String x:Key="VisionCapture_Header_LastReturnTime">最近返回时间</sys:String>
     <sys:String x:Key="VisionCapture_StopRowMotionTooltip">停止当前行移动/拍照/回安全运动</sys:String>
     <sys:String x:Key="VisionCapture_Status_MotionStopped">运动已停止</sys:String>
     <sys:String x:Key="VisionCapture_ColumnSafe">安全</sys:String>
@@ -724,8 +725,12 @@
     <sys:String x:Key="VisionCapture_ArcTrack_Arc">弧线</sys:String>
     <sys:String x:Key="VisionCapture_ArcTrack_Line">直线</sys:String>
     <sys:String x:Key="VisionCapture_Param_ArcSegments">采样点数</sys:String>
+    <sys:String x:Key="VisionCapture_Unit_Points">点</sys:String>
     <sys:String x:Key="VisionCapture_Param_ArcHeight">弧高</sys:String>
     <sys:String x:Key="VisionCapture_Param_ArcDirection">方向</sys:String>
+    <sys:String x:Key="VisionCapture_MirrorArcBulge">镜像弧线凸向</sys:String>
+    <sys:String x:Key="VisionCapture_MirrorArcBulgeTip">勾选：将中间点关于首尾弦线镜像（相机法向与设备相反时）；取消：直接使用视觉返回凸向</sys:String>
+    <sys:String x:Key="VisionCapture_MirrorArcBulgeHint">若弧线中间凸起与真实产品相反，请取消勾选后重新预览核对</sys:String>
     <sys:String x:Key="VisionCapture_Status_ReturnedToSafe">已返回安全位</sys:String>
     <sys:String x:Key="VisionCapture_ReturnCancelled">返回已取消</sys:String>
     <sys:String x:Key="VisionCapture_Status_PositionNotFound">位置 '{0}' 缺少有效 Dx/Dy/Dz₃（轴值为 0 视为未获取）</sys:String>
@@ -737,6 +742,13 @@
     <sys:String x:Key="VisionCapture_Status_RaiseZFailed">SafePosition Z 轴抬升失败，运动已中止</sys:String>
     <sys:String x:Key="VisionCapture_Tip_XyOffset">点胶 XY 补偿(mm)，叠加到目标机械坐标：Mech = 相机坐标 + 相机针头距离 + 校针偏差 + XY补偿</sys:String>
     <sys:String x:Key="VisionCapture_Status_CaptureNGBlocked">视觉返回 NG，点胶已阻止（请重新拍照或检查视觉结果）</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Title">ZMAP 高度与表面跟随</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Extract">提取逐点 Z</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_ExtractTip">按当前视觉连续轨迹在 ZMAP 高度图中逐点提取 Z 坐标</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_NotExtracted">尚未提取当前轨迹的 ZMAP 高度</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Status">ZMAP 有效高度 {0} / {1} 点</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Applied">ZMAP 逐点 Z 高度已应用到当前视觉轨迹</sys:String>
+    <sys:String x:Key="VisionCapture_ZMap_Invalid">Z Correction 已启用，但当前视觉轨迹没有完整有效的 ZMAP 高度数据；为防止撞针，运动已阻止。</sys:String>
     <sys:String x:Key="VisCap_Log_PositionNotFound">[VisionCapture] 位置名 '{0}' 缺少有效 Dx/Dy/Dz₃（0 视为未获取），运动有碰撞风险</sys:String>
     <sys:String x:Key="VisCap_Log_SkipRaiseZAxis">[VisionCapture] 拍照位 '{0}' 的 {1} 未示教(0)，跳过抬升</sys:String>
     <sys:String x:Key="VisCap_Log_SafeZKeyMissing">[VisionCapture] 位置编辑器 SafePosition 缺少 {0} 键，无法抬升</sys:String>
@@ -749,6 +761,7 @@
     <sys:String x:Key="VisionCapture_Needle1">针头1 / Dz₂</sys:String>
     <sys:String x:Key="VisionCapture_Needle2">针头2 / Dz₃</sys:String>
     <sys:String x:Key="VisionCapture_RawResponse">原始响应</sys:String>
+    <sys:String x:Key="VisionCapture_Label_VisionReceivedTime">接收时间：</sys:String>
     <sys:String x:Key="VisionCapture_ParsedData">解析数据</sys:String>
     <sys:String x:Key="VisionCapture_OffsetCompensation">偏移补偿</sys:String>
     <sys:String x:Key="VisionCapture_ParsedArcData">弧线解析数据</sys:String>
@@ -783,6 +796,7 @@
     <sys:String x:Key="VisionCapture_Header_PointY">PointY</sys:String>
     <sys:String x:Key="VisionCapture_Header_MechX">MechX</sys:String>
     <sys:String x:Key="VisionCapture_Header_MechY">MechY</sys:String>
+    <sys:String x:Key="VisionCapture_Header_ZMapZ">ZMAP Z</sys:String>
     <sys:String x:Key="VisionCapture_FinalDispensePos">最终点胶位置</sys:String>
     <sys:String x:Key="VisionCapture_VisionCoord">视觉坐标</sys:String>
     <sys:String x:Key="VisionCapture_CenterOffset">中心偏移</sys:String>
@@ -3013,6 +3027,14 @@
     <sys:String x:Key="ZMap_RoiType_Polyline">折线</sys:String>
     <sys:String x:Key="ZMap_RoiType_SinglePoint">单点示教</sys:String>
     <sys:String x:Key="ZMap_Btn_ClearRoi">重置ROI</sys:String>
+    <sys:String x:Key="Halcon_Menu_FitWindow">适应窗口</sys:String>
+    <sys:String x:Key="Halcon_Menu_MoveWindow">允许移动窗口</sys:String>
+    <sys:String x:Key="Halcon_Menu_FitImage">适应图片</sys:String>
+    <sys:String x:Key="Halcon_Menu_ToggleImageInfo">显示/隐藏图像信息</sys:String>
+    <sys:String x:Key="Halcon_Menu_ToggleCross">显示/隐藏十字</sys:String>
+    <sys:String x:Key="Halcon_Menu_SaveImage">保存原始图像</sys:String>
+    <sys:String x:Key="Halcon_Menu_SaveWindow">保存缩略图像</sys:String>
+    <sys:String x:Key="Halcon_Menu_OpenImage">打开图片</sys:String>
     <sys:String x:Key="ZMap_Tip_RoiSampling">直线/圆弧：拖动手柄调整，按选中段点数沿轨迹等距采样；折线：点击图像追加顶点、拖拽顶点、显示连线，按弧长等距重采样；单点示教：点击图像逐点追加，每点即一个采样点。</sys:String>
     <sys:String x:Key="ZMap_Chk_TeachMode">点击图像追加点</sys:String>
     <sys:String x:Key="ZMap_Label_TeachDir">方向：</sys:String>
@@ -4818,6 +4840,8 @@
     <sys:String x:Key="App_Log_ConfigServiceRegistered">配置服务注册完成</sys:String>
     <sys:String x:Key="App_Log_ConfigServiceRegisterFailed">配置服务注册失败: {0}</sys:String>
     <sys:String x:Key="App_Log_CurrentMemoryUsage">当前内存使用量: {0:F2} MB</sys:String>
+    <sys:String x:Key="App_SingleInstance_Message">应用程序已在运行，请切换到现有窗口。</sys:String>
+    <sys:String x:Key="App_SingleInstance_Title">应用程序已启动</sys:String>
     <sys:String x:Key="App_Log_DumpGenerationError">生成崩溃转储文件时出错</sys:String>
     <sys:String x:Key="App_Log_DumpGenerationFailed">生成转储文件失败，错误代码: {0}</sys:String>
     <sys:String x:Key="App_Log_ErrorMessage">错误消息: {0}</sys:String>

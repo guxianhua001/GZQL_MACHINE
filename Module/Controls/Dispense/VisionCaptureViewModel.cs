@@ -47,6 +47,8 @@ namespace Module.ViewModels
         private readonly BezierArcDispenseService _bezierArcDispenseService;
         private readonly IDotDispenseService _dotDispenseService;
         private readonly IDispenseExecuteService _dispenseExecuteService;
+        private readonly IZMapHeightExtractionService _zMapHeightService;
+        private readonly IZMapConfigService _zMapConfigService;
         private readonly IAxisParameterService _axisParameterService;
         private readonly ILoggerService _logger;
         private readonly ILocalizationService _localizationService;
@@ -118,6 +120,11 @@ namespace Module.ViewModels
                 RaisePropertyChanged(nameof(HasSelectedRow));
                 RaisePropertyChanged(nameof(CurrentDotParams));
                 RaisePropertyChanged(nameof(CurrentArcParams));
+                RaisePropertyChanged(nameof(ZCorrectionEnabled));
+                RaisePropertyChanged(nameof(ZMapHeightStatus));
+                RaisePropertyChanged(nameof(MirrorArcBulge));
+                RaisePropertyChanged(nameof(IsMirrorArcBulgeVisible));
+                OpenZMapExtractToolCommand?.RaiseCanExecuteChanged();
 
                 if (value != null)
                 {
@@ -144,6 +151,34 @@ namespace Module.ViewModels
                 }
 
                 NotifyTargetOffsetChanged();
+            }
+        }
+
+        /// <summary>
+        /// Arc/Polyline 中间点是否关于首尾弦线镜像（VM 级双向绑定，避免嵌套路径不刷新）。
+        /// </summary>
+        public bool MirrorArcBulge
+        {
+            get => SelectedRow?.MirrorArcBulge ?? true;
+            set
+            {
+                if (SelectedRow == null || SelectedRow.MirrorArcBulge == value) return;
+                SelectedRow.MirrorArcBulge = value;
+                RaisePropertyChanged();
+                // 勾选变化时同步重算，避免异步合并位置未完成导致预览看似无变化。
+                RebuildTrajectoryPreviewImmediate();
+            }
+        }
+
+        /// <summary>
+        /// 是否显示凸向镜像开关（仅 Arc/Polyline 有效；Line 无中间凸向）。
+        /// </summary>
+        public bool IsMirrorArcBulgeVisible
+        {
+            get
+            {
+                var t = EffectiveTrajectoryType;
+                return t == TrajectoryType.Arc || t == TrajectoryType.Polyline;
             }
         }
 
@@ -252,6 +287,14 @@ namespace Module.ViewModels
                     // 轨迹类型变更：Dot 与 Arc/Line/Polyline 切换工艺参数面板
                     ApplyTrajectoryTypeSideEffects();
                     break;
+                case nameof(PhotoPositionRow.ArcSegments):
+                    // 点数变更同步重算，保证预览与执行点数立即一致。
+                    RebuildTrajectoryPreviewImmediate();
+                    break;
+                case nameof(PhotoPositionRow.MirrorArcBulge):
+                    // 凸向镜像开关：VM 属性已同步重算；此处仅刷新绑定，避免重复异步重入。
+                    RaisePropertyChanged(nameof(MirrorArcBulge));
+                    break;
                 case nameof(PhotoPositionRow.DotParamsNeedle1):
                 case nameof(PhotoPositionRow.DotParamsNeedle2):
                     RaisePropertyChanged(nameof(CurrentDotParams));
@@ -270,6 +313,7 @@ namespace Module.ViewModels
         {
             RaisePropertyChanged(nameof(EffectiveTrajectoryType));
             RaisePropertyChanged(nameof(SelectedTrajectoryType));
+            RaisePropertyChanged(nameof(IsMirrorArcBulgeVisible));
             SyncDotArcModeFromEffectiveType();
             RaisePropertyChanged(nameof(CurrentDotParams));
             RaisePropertyChanged(nameof(CurrentArcParams));
@@ -446,6 +490,30 @@ namespace Module.ViewModels
         {
             get => _rawResponse;
             set => SetProperty(ref _rawResponse, value);
+        }
+
+        private string _lastVisionRawResponse;
+        /// <summary>最近一次成功解析的视觉原始返回；保存到配方后用于页面重开追溯。</summary>
+        public string LastVisionRawResponse
+        {
+            get => _lastVisionRawResponse;
+            set => SetProperty(ref _lastVisionRawResponse, value);
+        }
+
+        private DateTime? _lastVisionReceivedTime;
+        /// <summary>最近一次成功接收并解析视觉数据的本地时间，用于数据追溯。</summary>
+        public DateTime? LastVisionReceivedTime
+        {
+            get => _lastVisionReceivedTime;
+            set => SetProperty(ref _lastVisionReceivedTime, value);
+        }
+
+        private List<VisionTargetPointConfig> _lastVisionTargetPoints = new();
+        /// <summary>最近一次成功解析的视觉目标点，仅保存相机坐标；机械坐标在恢复时重新计算。</summary>
+        public List<VisionTargetPointConfig> LastVisionTargetPoints
+        {
+            get => _lastVisionTargetPoints;
+            set => SetProperty(ref _lastVisionTargetPoints, value ?? new List<VisionTargetPointConfig>());
         }
 
         private ObservableCollection<KeyValuePair<string, double>> _parsedData = new ObservableCollection<KeyValuePair<string, double>>();
@@ -739,6 +807,73 @@ namespace Module.ViewModels
         /// <summary>当前针头的路径模式工艺参数（按 CurrentNeedleIndex 从 SelectedRow 取）</summary>
         public DispenseSegment CurrentArcParams =>
             _currentNeedleIndex == 0 ? SelectedRow?.ArcParamsNeedle1 : SelectedRow?.ArcParamsNeedle2;
+
+        /// <summary>当前拍照位的 Z 向纠偏开关；仅路径连续插补有效，默认关闭防止旧配方误触发表面跟随。</summary>
+        public bool ZCorrectionEnabled
+        {
+            get => SelectedRow?.ZCorrectionEnabled ?? false;
+            set
+            {
+                if (SelectedRow == null || SelectedRow.ZCorrectionEnabled == value) return;
+                SelectedRow.ZCorrectionEnabled = value;
+                if (!value)
+                    ClearVisionZMapHeights();
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(ZMapHeightStatus));
+                // Z Correction 切换后立即重算“提取 Point Z”按钮状态，避免命令保持旧的禁用状态。
+                OpenZMapExtractToolCommand?.RaiseCanExecuteChanged();
+            }
+        }
+
+        /// <summary>
+        /// 关闭 Z 向纠正时清零当前视觉轨迹的全部 Z 值与界面投影值。
+        /// 保留 ROI/标定配置以便下次重新提取，但清除提取质量摘要，禁止旧高度被再次启用。
+        /// </summary>
+        private void ClearVisionZMapHeights()
+        {
+            if (SelectedRow == null) return;
+
+            foreach (var point in SelectedRow.ZMapPathPoints ?? Enumerable.Empty<CadPoint>())
+            {
+                point.Z = 0;
+                point.IsZMapHeightValid = false;
+            }
+
+            foreach (var target in CapturedTargetPoints)
+            {
+                target.ZMapZ = 0;
+                target.IsZMapHeightValid = false;
+            }
+
+            // 同步清零已缓存的视觉目标点 Z，避免保存后重开仍显示旧高度。
+            foreach (var target in LastVisionTargetPoints ?? Enumerable.Empty<VisionTargetPointConfig>())
+            {
+                target.ZMapZ = 0;
+                target.IsZMapHeightValid = false;
+            }
+
+            var profile = SelectedRow.ZMapProfile;
+            if (profile != null)
+            {
+                profile.LastExtractValidCount = 0;
+                profile.LastExtractTotalCount = 0;
+                profile.LastInvalidZIndices?.Clear();
+                profile.LastExtractSummary = string.Empty;
+                profile.LastUpdatedTime = DateTime.Now;
+            }
+        }
+
+        /// <summary>当前轨迹的 ZMAP 高度提取状态，供操作员确认三轴插补前的高度数据。</summary>
+        public string ZMapHeightStatus
+        {
+            get
+            {
+                var points = SelectedRow?.ZMapPathPoints;
+                if (points == null || points.Count == 0) return L("VisionCapture_ZMap_NotExtracted");
+                int valid = points.Count(p => p.IsZMapHeightValid == true && double.IsFinite(p.Z));
+                return string.Format(L("VisionCapture_ZMap_Status"), valid, points.Count);
+            }
+        }
 
         // 双针头偏移数据备份（相机针头距离 + 校针偏差 + 链接变量名，每针头独立）
         private readonly double[] _camDistXByNeedle = new double[2];
@@ -1264,6 +1399,7 @@ namespace Module.ViewModels
         public DelegateCommand<PhotoPositionRow> StopRowMotionCommand { get; }
         public DelegateCommand ExecuteDispenseCommand { get; }
         public DelegateCommand PreviewMachinePointsCommand { get; }
+        public DelegateCommand OpenZMapExtractToolCommand { get; }
         public DelegateCommand SaveTransformParamsCommand { get; }
         public DelegateCommand StopCommand { get; }
         public DelegateCommand PauseCommand { get; }
@@ -1327,6 +1463,8 @@ namespace Module.ViewModels
             BezierArcDispenseService bezierArcDispenseService,
             IDotDispenseService dotDispenseService,
             IDispenseExecuteService dispenseExecuteService,
+            IZMapHeightExtractionService zMapHeightService,
+            IZMapConfigService zMapConfigService,
             ILoggerService logger,
             ILocalizationService localizationService,
             IEventAggregator eventAggregator,
@@ -1344,6 +1482,8 @@ namespace Module.ViewModels
             _bezierArcDispenseService = bezierArcDispenseService;
             _dotDispenseService = dotDispenseService;
             _dispenseExecuteService = dispenseExecuteService;
+            _zMapHeightService = zMapHeightService;
+            _zMapConfigService = zMapConfigService;
             _axisParameterService = axisParameterService;
             _logger = logger;
             _localizationService = localizationService;
@@ -1373,6 +1513,10 @@ namespace Module.ViewModels
             PreviewMachinePointsCommand = new DelegateCommand(
                 async () => await PreviewMachinePointsAsync()
             );
+            OpenZMapExtractToolCommand = new DelegateCommand(
+                ExecuteOpenZMapExtractTool,
+                // 视觉目标点已存在即可打开；窗口会按实际轨迹生成点数，不能要求用户先额外点击预览。
+                () => SelectedRow != null && IsArcMode && CapturedTargetPoints.Count >= 2 && !IsExecuting);
             SaveTransformParamsCommand = new DelegateCommand(
                 async () => await SaveTransformParamsAsync()
             );
@@ -1589,6 +1733,114 @@ namespace Module.ViewModels
             if (SelectedRow == null || CapturedTargetPoints.Count == 0)
                 return;
             _ = ComputeMachinePointsFromCameraAsync(SelectedRow);
+        }
+
+        /// <summary>
+        /// 基于当前已缓存的拍照位坐标与视觉目标点，同步重建轨迹预览与 MachinePoints。
+        /// 不依赖异步读位置，保证勾选「镜像弧线凸向」后界面立即翻转。
+        /// </summary>
+        private void RebuildTrajectoryPreviewImmediate()
+        {
+            var row = SelectedRow;
+            if (row == null || CapturedTargetPoints.Count == 0)
+                return;
+
+            try
+            {
+                double photoDx = PhotoDx;
+                double photoDy = PhotoDy;
+                if (!string.IsNullOrEmpty(row.PositionName))
+                {
+                    photoDx = TryGetTaughtPosition(row.PositionName, "Dx") ?? row.Dx;
+                    photoDy = TryGetTaughtPosition(row.PositionName, "Dy") ?? row.Dy;
+                }
+                else
+                {
+                    photoDx = row.Dx;
+                    photoDy = row.Dy;
+                }
+
+                PhotoDx = photoDx;
+                PhotoDy = photoDy;
+                ArcNeedleOffsetX = NeedleOffsetX;
+                ArcNeedleOffsetY = NeedleOffsetY;
+
+                var (camDist, needleCalib) = GetVisionCaptureNeedleOffsets();
+                var rowOffset = (X: row.CalculatedOffsetX, Y: row.CalculatedOffsetY);
+                var targetOffsets = CapturedTargetPoints
+                    .Select(p => ResolveTargetOffset(p.PointX, p.PointY))
+                    .ToList();
+                var mechEndpoints = BezierArcDispenseService.ApplyVisionCaptureTransform(
+                    (photoDx, photoDy), targetOffsets, camDist, needleCalib, rowOffset);
+                var mech = BuildTrajectoryMachinePoints(row, mechEndpoints);
+                ApplyTrajectoryPreviewResult(row, mech, mechEndpoints);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_AutoCalcArcCoordFailed",
+                    "[VisionCapture] 自动计算机械坐标失败: {0}"), ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// 将轨迹计算结果写回 MachinePoints / 标注坐标 / 预览几何（UI 线程）。
+        /// </summary>
+        private void ApplyTrajectoryPreviewResult(
+            PhotoPositionRow row,
+            List<(double X, double Y)> mech,
+            IReadOnlyList<(double X, double Y)> mechEndpoints)
+        {
+            if (mech == null || mech.Count == 0)
+                return;
+
+            void ApplyOnUi()
+            {
+                var keyPoints = BuildTrajectoryKeyPoints(mech);
+                var type = EffectiveTrajectoryType;
+                var previewBounds = (type == TrajectoryType.Arc || type == TrajectoryType.Polyline)
+                    ? BuildArcPreviewBounds(mechEndpoints)
+                    : null;
+
+                for (int i = 0; i < CapturedTargetPoints.Count && i < mechEndpoints.Count; i++)
+                {
+                    CapturedTargetPoints[i].MechX = mechEndpoints[i].X;
+                    CapturedTargetPoints[i].MechY = mechEndpoints[i].Y;
+                }
+
+                MachinePoints.Clear();
+                RemapOrClearZMapHeights(row, mech);
+                for (int i = 0; i < mech.Count; i++)
+                    MachinePoints.Add(new MachinePointItem { Index = i + 1, X = mech[i].X, Y = mech[i].Y });
+                RaisePropertyChanged(nameof(HasMachinePoints));
+
+                FinalX = mech[0].X;
+                FinalY = mech[0].Y;
+                if (mechEndpoints.Count >= 1)
+                {
+                    P1MechX = mechEndpoints[0].X;
+                    P1MechY = mechEndpoints[0].Y;
+                }
+                // P2 使用实际执行路径中点（含镜像后），便于勾选后从数值确认凸向已翻转。
+                int midIndex = mech.Count / 2;
+                P2MechX = mech[midIndex].X;
+                P2MechY = mech[midIndex].Y;
+                if (mech.Count >= 2)
+                {
+                    P3MechX = mech[^1].X;
+                    P3MechY = mech[^1].Y;
+                }
+                BezierPointCount = mech.Count;
+
+                GenerateArcPathGeometry(mech, keyPoints, previewBounds);
+                OpenZMapExtractToolCommand?.RaiseCanExecuteChanged();
+                StatusMessage = string.Format(L("VisionCapture_Status_VisionDataReady"), mech.Count)
+                    + $" | Mirror={(row?.MirrorArcBulge == true)} P2=({P2MechX:F2},{P2MechY:F2})";
+            }
+
+            if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+                Application.Current.Dispatcher.Invoke(ApplyOnUi);
+            else
+                ApplyOnUi();
         }
 
         /// <summary>
@@ -2567,14 +2819,6 @@ namespace Module.ViewModels
                     (photoDx, photoDy), targetOffsets, camDist, needleCalib, rowOffset);
                 // Arc/Line 按贝塞尔/直线离散，预览曲线与点胶路径一致
                 var mech = BuildTrajectoryMachinePoints(row, mechEndpoints);
-                // 标注点按实际执行顺序取首/中/尾，确保预览方向与点胶方向一致。
-                var keyPoints = BuildTrajectoryKeyPoints(mech);
-
-                for (int i = 0; i < CapturedTargetPoints.Count && i < mechEndpoints.Count; i++)
-                {
-                    CapturedTargetPoints[i].MechX = mechEndpoints[i].X;
-                    CapturedTargetPoints[i].MechY = mechEndpoints[i].Y;
-                }
 
                 if (targetOffsets.Count > 0)
                 {
@@ -2582,26 +2826,10 @@ namespace Module.ViewModels
                     TargetDeltaY = targetOffsets[0].Y;
                 }
 
-                MachinePoints.Clear();
-                for (int i = 0; i < mech.Count; i++)
-                    MachinePoints.Add(new MachinePointItem { Index = i + 1, X = mech[i].X, Y = mech[i].Y });
-                RaisePropertyChanged(nameof(HasMachinePoints));
-
-                if (mechEndpoints.Count >= 1)
-                {
-                    P1MechX = mechEndpoints[0].X; P1MechY = mechEndpoints[0].Y;
-                    FinalX = mech[0].X; FinalY = mech[0].Y;
-                }
-                if (mechEndpoints.Count >= 2) { P2MechX = mechEndpoints[1].X; P2MechY = mechEndpoints[1].Y; }
-                if (mechEndpoints.Count >= 3) { P3MechX = mechEndpoints[2].X; P3MechY = mechEndpoints[2].Y; }
-                BezierPointCount = mech.Count;
-
-                GenerateArcPathGeometry(mech, keyPoints);
-
-                StatusMessage = string.Format(L("VisionCapture_Status_VisionDataReady"), mech.Count);
+                ApplyTrajectoryPreviewResult(row, mech, mechEndpoints);
                 _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ArcMachineCoordComplete",
-                    "[VisionCapture] 目标点机械坐标完成: 点数={0} Type={1} 首点({2:F3},{3:F3})"),
-                    mech.Count, EffectiveTrajectoryType, FinalX, FinalY));
+                    "[VisionCapture] 目标点机械坐标完成: 点数={0} Type={1} Mirror={2} 中点({3:F3},{4:F3})"),
+                    mech.Count, EffectiveTrajectoryType, row?.MirrorArcBulge, P2MechX, P2MechY));
             }
             catch (Exception ex)
             {
@@ -2632,6 +2860,7 @@ namespace Module.ViewModels
                 row.Speed = SelectedRow.Speed;
                 row.DispenseType = SelectedRow.DispenseType;
                 row.TrajectoryOverride = SelectedRow.TrajectoryOverride;
+                row.MirrorArcBulge = SelectedRow.MirrorArcBulge;
             }
             PhotoPositionRows.Add(row);
             SelectedRow = row;
@@ -2699,7 +2928,13 @@ namespace Module.ViewModels
 
                 if (parsed)
                 {
+                    // 新视觉返回时，连续轨迹默认按目标点数量同步；用户随后仍可在工艺参数中手动改为任意≥2点。
+                    SyncTrajectoryPointCountWithTargets(row);
                     await ComputeMachinePointsFromCameraAsync(row);
+                    // 保存最近一次成功解析的视觉返回及目标点，页面重开后可恢复预览。
+                    LastVisionRawResponse = RawResponse;
+                    LastVisionReceivedTime = DateTime.Now;
+                    CacheLastVisionTargetPoints();
                 }
                 else
                 {
@@ -2755,19 +2990,29 @@ namespace Module.ViewModels
         }
 
         /// <summary>
+        /// 将连续轨迹默认点数同步到本次视觉目标点数量。
+        /// 该方法只在收到新的视觉数据时调用，手动修改后的点数不会被普通预览/执行重算覆盖。
+        /// </summary>
+        private void SyncTrajectoryPointCountWithTargets(PhotoPositionRow row)
+        {
+            if (row == null || CapturedTargetPoints.Count < 2) return;
+            row.ArcSegments = CapturedTargetPoints.Count;
+        }
+
+        /// <summary>
         /// 返回待机位（统一动作序列）：
         /// 1. 按当前拍照位已示教的 Dz₁/Dz₂/Dz₃ 抬起到 SafePosition（非 0 仅校验拍照位）
         /// 2. Dx、Dy 插补移至待机位（StandbyPosition），Y 轴不动
         /// </summary>
         /// <param name="photoPositionName">当前拍照位；用于决定抬升哪些 Z 轴</param>
-        private async Task ReturnToSafePositionAsync(
+        private async Task<bool> ReturnToSafePositionAsync(
             Dictionary<string, int> axisIdMap,
             int coordId,
             double speed,
             CancellationToken token,
             string photoPositionName = null)
         {
-            if (axisIdMap == null) return;
+            if (axisIdMap == null) return false;
 
             // Safe/Standby 从位置编辑器固定位置读取（允许 0，仅要求键存在）
             var dz1Safe = TryGetEditorSafePositionAxis("Dz₁");
@@ -2778,26 +3023,26 @@ namespace Module.ViewModels
             {
                 _logger.Warn(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToSafeDz1Missing",
                     "[VisionCapture] 返回待机位失败: 位置编辑器 SafePosition 缺少 Dz₁ 轴配置")));
-                return;
+                return false;
             }
 
             if (!standbyX.HasValue || !standbyY.HasValue)
             {
                 _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToStandbyPosDataIncomplete",
                     "[VisionCapture] 返回待机位失败: 位置编辑器 StandbyPosition 缺少 Dx/Dy 配置"));
-                return;
+                return false;
             }
 
             if (!axisIdMap.TryGetValue("Dx", out var dxId) || !axisIdMap.TryGetValue("Dy", out var dyId))
             {
                 _logger.Warn(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnToStandbyAxisMissing",
                     "[VisionCapture] 返回待机位失败: 未找到 Dx/Dy 轴配置"));
-                return;
+                return false;
             }
 
             // 步骤1：按拍照位已示教 Z 轴抬升到位置编辑器 SafePosition
             if (!await RaiseZAxesToSafeAsync(axisIdMap, speed, token, photoPositionName))
-                return;
+                return false;
 
             // 步骤2：Dx/Dy 插补到待机位（Y 轴不动）
             await _motionService.MoveLineAbsAsync(coordId,
@@ -2806,6 +3051,7 @@ namespace Module.ViewModels
 
             _logger.Info(_localizationService.GetResourceOrDefault("VisCap_Log_ReturnedToStandbyPos",
                 "[VisionCapture] 已返回待机位（Z 抬升 + Dx/Dy 待机，Y 不动）"));
+            return true;
         }
 
         /// <summary>
@@ -2827,8 +3073,14 @@ namespace Module.ViewModels
                 var axisIdMap = ResolveAxisIdMap();
                 var coordId = ResolveCoordId();
 
-                await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts, row.PositionName);
+                if (!await ReturnToSafePositionAsync(axisIdMap, coordId, row.Speed, cts, row.PositionName))
+                {
+                    StatusMessage = L("VisionCapture_Status_RaiseZFailed");
+                    return;
+                }
 
+                // 仅在完整返回安全位动作成功后记录时间，取消/失败不覆盖上一次有效审计记录。
+                row.LastReturnTime = DateTime.Now;
                 StatusMessage = L("VisionCapture_Status_ReturnedToSafe");
             }
             catch (OperationCanceledException)
@@ -3148,7 +3400,52 @@ namespace Module.ViewModels
             // 按当前针头取路径工艺参数
             var arcParams = needleIndex == 0 ? row.ArcParamsNeedle1 : row.ArcParamsNeedle2;
             if (arcParams == null) arcParams = new DispenseSegment();
-            var segment = new DispenseSegment
+            var segment = CreateVisionPathSegment(row, arcParams, entityType, machinePoints);
+
+            // Z Correction 会让针头跟随表面，必须在运动前完成与 Step6 同规则的防撞预检。
+            bool useZCorrection = ZCorrectionEnabled && (!dryRun || NeedleDescend);
+            if (useZCorrection && !ConfirmVisionZCorrectionSafety(segment))
+                return;
+
+            string site = row.PositionName ?? "VisionCapture";
+            _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ArcDispenseStart",
+                "[VisionCapture] 路径点胶启动: Type={0} 点数={1} 首点({2:F3},{3:F3}) 末点({4:F3},{5:F3}) 针头{6} 干跑={7} 工位={8}"),
+                EffectiveTrajectoryType, machinePoints.Count,
+                machinePoints[0].X, machinePoints[0].Y,
+                machinePoints[^1].X, machinePoints[^1].Y,
+                needleIndex + 1, dryRun, site));
+
+            var segments = new[] { segment };
+            if (dryRun)
+                await _dispenseExecuteService.DryRunAsync(segments, descendToWorkHeight: NeedleDescend,
+                    needleIndex: needleIndex, token: token, pauseEvent: _pauseEvent, zCorrectionEnabled: useZCorrection);
+            else
+                await _dispenseExecuteService.ExecutePathAsync(segments, site, needleIndex: needleIndex, token: token,
+                    pauseEvent: _pauseEvent, zCorrectionEnabled: useZCorrection);
+        }
+
+        /// <summary>构造视觉路径执行段，并在点数一致时注入本次 ZMAP 提取的逐点高度。</summary>
+        private DispenseSegment CreateVisionPathSegment(
+            PhotoPositionRow row, DispenseSegment arcParams, CadEntityType entityType,
+            IReadOnlyList<(double X, double Y)> machinePoints)
+        {
+            var zMapPoints = row.ZMapPathPoints;
+            bool useZMap = zMapPoints != null && zMapPoints.Count == machinePoints.Count;
+            var points = new List<CadPoint>(machinePoints.Count);
+            for (int i = 0; i < machinePoints.Count; i++)
+            {
+                var zPoint = useZMap ? zMapPoints[i] : null;
+                points.Add(new CadPoint
+                {
+                    // XY 补偿必须进入实际插补点，确保高度采样与执行轨迹使用同一顺序/点数。
+                    MachineX = machinePoints[i].X + arcParams.XyCompensationX,
+                    MachineY = machinePoints[i].Y + arcParams.XyCompensationY,
+                    Z = zPoint?.Z ?? double.NaN,
+                    IsZMapHeightValid = zPoint?.IsZMapHeightValid
+                });
+            }
+
+            return new DispenseSegment
             {
                 SegmentId = row.PositionName ?? "VisionPath",
                 EntityType = entityType,
@@ -3171,22 +3468,204 @@ namespace Module.ViewModels
                 ApproachHeight = arcParams.ApproachHeight,
                 DispensingPressure = arcParams.DispensingPressure,
                 SuckBackTime = arcParams.SuckBackTime,
-                Points = machinePoints.Select(p => new CadPoint { MachineX = p.X, MachineY = p.Y }).ToList()
+                ZMapProfile = row.ZMapProfile ?? new ZMapSegmentProfile(),
+                Points = points
             };
+        }
 
-            string site = row.PositionName ?? "VisionCapture";
-            _logger.Info(string.Format(_localizationService.GetResourceOrDefault("VisCap_Log_ArcDispenseStart",
-                "[VisionCapture] 路径点胶启动: Type={0} 点数={1} 首点({2:F3},{3:F3}) 末点({4:F3},{5:F3}) 针头{6} 干跑={7} 工位={8}"),
-                EffectiveTrajectoryType, machinePoints.Count,
-                machinePoints[0].X, machinePoints[0].Y,
-                machinePoints[^1].X, machinePoints[^1].Y,
-                needleIndex + 1, dryRun, site));
+        /// <summary>打开 ZMAP 高度提取窗口，将当前视觉离散轨迹的每点 Z 写入运行时缓存。</summary>
+        private void ExecuteOpenZMapExtractTool()
+        {
+            if (SelectedRow == null || _zMapHeightService == null || MachinePoints.Count < 2) return;
+            var arcParams = CurrentArcParams ?? new DispenseSegment();
+            var trajectory = MachinePoints.Select(p => (p.X, p.Y)).ToList();
+            var segment = CreateVisionPathSegment(SelectedRow, arcParams, CadEntityType.Line, trajectory);
+            segment.ZMapProfile = SelectedRow.ZMapProfile ?? new ZMapSegmentProfile();
 
-            var segments = new[] { segment };
-            if (dryRun)
-                await _dispenseExecuteService.DryRunAsync(segments, needleIndex: needleIndex, token: token, pauseEvent: _pauseEvent);
-            else
-                await _dispenseExecuteService.ExecutePathAsync(segments, site, needleIndex: needleIndex, token: token, pauseEvent: _pauseEvent);
+            var view = new Module.Controls.ZMap.ZMapExtractZWindow { Owner = Application.Current?.MainWindow };
+            var vm = new Module.Controls.ZMap.ZMapExtractZViewModel(
+                _zMapHeightService, _zMapConfigService, segment, _motionService,
+                pointCount => ResampleVisionSegmentForZMap(segment, pointCount), view);
+            view.DataContext = vm;
+            if (view.ShowDialog() == true)
+            {
+                // 仅缓存当前视觉轨迹的提取结果；下一次视觉轨迹更新将显式失效。
+                SelectedRow.ZMapPathPoints = CloneCadPoints(segment.Points);
+                SelectedRow.ZMapProfile = segment.ZMapProfile;
+                SyncTargetPointZMapHeights(SelectedRow.ZMapPathPoints);
+                CacheLastVisionTargetPoints();
+                RaisePropertyChanged(nameof(ZMapHeightStatus));
+                StatusMessage = L("VisionCapture_ZMap_Applied");
+            }
+        }
+
+        /// <summary>
+        /// 将连续轨迹的提取高度投影到视觉目标点表格。
+        /// 当轨迹经重采样后点数多于相机目标点时，按首尾比例取对应轨迹点，供操作员快速核对高度趋势。
+        /// </summary>
+        private void SyncTargetPointZMapHeights(IReadOnlyList<CadPoint> trajectoryPoints)
+        {
+            if (trajectoryPoints == null || trajectoryPoints.Count == 0 || CapturedTargetPoints.Count == 0)
+                return;
+
+            for (int i = 0; i < CapturedTargetPoints.Count; i++)
+            {
+                int trajectoryIndex = CapturedTargetPoints.Count == 1
+                    ? 0
+                    : (int)Math.Round(i * (trajectoryPoints.Count - 1d) / (CapturedTargetPoints.Count - 1d));
+                var heightPoint = trajectoryPoints[trajectoryIndex];
+                bool valid = heightPoint.IsZMapHeightValid == true && double.IsFinite(heightPoint.Z);
+                CapturedTargetPoints[i].ZMapZ = valid ? heightPoint.Z : null;
+                CapturedTargetPoints[i].IsZMapHeightValid = heightPoint.IsZMapHeightValid;
+            }
+        }
+
+        /// <summary>
+        /// 轨迹重算后：点数一致则把原 Z 映射到新 XY；点数变化则清空，防止旧高度用于错误路径。
+        /// </summary>
+        private void RemapOrClearZMapHeights(PhotoPositionRow row, IReadOnlyList<(double X, double Y)> mech)
+        {
+            if (row == null)
+                return;
+
+            var previous = row.ZMapPathPoints;
+            if (previous != null && previous.Count > 0 && mech != null && previous.Count == mech.Count)
+            {
+                row.ZMapPathPoints = mech.Select((p, i) => new CadPoint
+                {
+                    MachineX = p.X,
+                    MachineY = p.Y,
+                    Z = previous[i].Z,
+                    IsZMapHeightValid = previous[i].IsZMapHeightValid
+                }).ToList();
+                SyncTargetPointZMapHeights(row.ZMapPathPoints);
+                RaisePropertyChanged(nameof(ZMapHeightStatus));
+                return;
+            }
+
+            for (int i = 0; i < CapturedTargetPoints.Count; i++)
+            {
+                CapturedTargetPoints[i].ZMapZ = null;
+                CapturedTargetPoints[i].IsZMapHeightValid = null;
+            }
+
+            if (previous?.Count > 0)
+                previous.Clear();
+            RaisePropertyChanged(nameof(ZMapHeightStatus));
+        }
+
+        /// <summary>缓存当前目标点（含 ZMAP Z）供配方保存与重开恢复。</summary>
+        private void CacheLastVisionTargetPoints()
+        {
+            LastVisionTargetPoints = CapturedTargetPoints
+                .Select(p => new VisionTargetPointConfig
+                {
+                    Index = p.Index,
+                    PointX = p.PointX,
+                    PointY = p.PointY,
+                    ZMapZ = p.ZMapZ,
+                    IsZMapHeightValid = p.IsZMapHeightValid
+                }).ToList();
+        }
+
+        private static List<CadPoint> CloneCadPoints(IEnumerable<CadPoint> source)
+        {
+            return (source ?? Enumerable.Empty<CadPoint>())
+                .Select(p => new CadPoint
+                {
+                    MachineX = p.MachineX,
+                    MachineY = p.MachineY,
+                    Z = p.Z,
+                    IsZMapHeightValid = p.IsZMapHeightValid
+                }).ToList();
+        }
+
+        private static List<VisionZMapPathPointConfig> ToZMapPathPointConfigs(IEnumerable<CadPoint> source)
+        {
+            return (source ?? Enumerable.Empty<CadPoint>())
+                .Select(p => new VisionZMapPathPointConfig
+                {
+                    MachineX = p.MachineX,
+                    MachineY = p.MachineY,
+                    Z = p.Z,
+                    IsZMapHeightValid = p.IsZMapHeightValid
+                }).ToList();
+        }
+
+        private static List<CadPoint> FromZMapPathPointConfigs(IEnumerable<VisionZMapPathPointConfig> source)
+        {
+            return (source ?? Enumerable.Empty<VisionZMapPathPointConfig>())
+                .Select(p => new CadPoint
+                {
+                    MachineX = p.MachineX,
+                    MachineY = p.MachineY,
+                    Z = p.Z,
+                    IsZMapHeightValid = p.IsZMapHeightValid
+                }).ToList();
+        }
+
+        /// <summary>
+        /// 响应 ZMAP 窗口的点数设置：重建当前临时段、主界面预览和后续执行点数。
+        /// 不能留空回调，否则窗口虽然显示新点数，实际插补仍沿用旧的三个视觉点。
+        /// </summary>
+        private void ResampleVisionSegmentForZMap(DispenseSegment segment, int pointCount)
+        {
+            if (segment?.Points == null || segment.Points.Count == 0 || SelectedRow == null) return;
+            pointCount = Math.Max(2, pointCount);
+            var source = segment.Points
+                .Where(p => p.MachineX.HasValue && p.MachineY.HasValue)
+                .Select(p => (p.MachineX!.Value, p.MachineY!.Value))
+                .ToList();
+            var sampled = ResamplePathByArcLength(source, pointCount);
+            segment.Points = sampled.Select(p => new CadPoint { MachineX = p.X, MachineY = p.Y }).ToList();
+            segment.SamplePointCount = pointCount;
+            SelectedRow.ArcSegments = pointCount;
+
+            MachinePoints.Clear();
+            for (int i = 0; i < sampled.Count; i++)
+                MachinePoints.Add(new MachinePointItem { Index = i + 1, X = sampled[i].X, Y = sampled[i].Y });
+            BezierPointCount = sampled.Count;
+            GenerateArcPathGeometry(sampled, sampled);
+            RaisePropertyChanged(nameof(HasMachinePoints));
+            RaisePropertyChanged(nameof(PointsDisplay));
+        }
+
+        /// <summary>视觉路径 Z 向纠偏预检，规则与 Step6/执行服务一致，阻止无效高度进入运动控制。</summary>
+        private bool ConfirmVisionZCorrectionSafety(DispenseSegment segment)
+        {
+            var points = segment?.Points;
+            if (points == null || points.Count == 0 || segment.ZMapProfile?.HasUnresolvedInvalidZ == true)
+            {
+                StatusMessage = L("VisionCapture_ZMap_Invalid");
+                MessageBox.Show(StatusMessage, L("Step6_ZCorrection_SafetyTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            double firstZ = points[0].Z;
+            if (!double.IsFinite(firstZ) || points.Any(p => p.IsZMapHeightValid == false || !double.IsFinite(p.Z)))
+            {
+                StatusMessage = L("VisionCapture_ZMap_Invalid");
+                MessageBox.Show(StatusMessage, L("Step6_ZCorrection_SafetyTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            const double maxDelta = 10.0;
+            double minDelta = 0, maxSeenDelta = 0;
+            foreach (var point in points)
+            {
+                double delta = firstZ - point.Z;
+                if (!double.IsFinite(delta) || Math.Abs(delta) > maxDelta)
+                {
+                    StatusMessage = string.Format(L("DispenseExec_ZCorrectionDeltaExceeded"), segment.SegmentId, delta, maxDelta);
+                    MessageBox.Show(StatusMessage, L("Step6_ZCorrection_SafetyTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
+                    return false;
+                }
+                minDelta = Math.Min(minDelta, delta);
+                maxSeenDelta = Math.Max(maxSeenDelta, delta);
+            }
+
+            return MessageBox.Show(string.Format(L("Step6_ZCorrection_SafetyConfirm"), minDelta, maxSeenDelta, maxDelta),
+                L("Step6_ZCorrection_SafetyTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
         }
 
         private async Task PreviewMachinePointsAsync()
@@ -3209,7 +3688,7 @@ namespace Module.ViewModels
         /// <summary>
         /// 按轨迹类型生成预览/点胶路径。
         /// Arc 使用视觉返回的全部采样点，避免仅以 P1/P2/P3 拟合造成真实产品曲线截断。
-        /// 相机坐标系的中间点法向与设备坐标系相反，需镜像至首尾弦线另一侧；
+        /// 凸向是否弦线镜像由 MirrorArcBulge 决定：视觉数据已与产品一致时应关闭，避免二次反向。
         /// 预览坐标轴反向仅影响显示，不能反转视觉采样点顺序。
         /// </summary>
         private List<(double X, double Y)> BuildTrajectoryMachinePoints(
@@ -3219,28 +3698,77 @@ namespace Module.ViewModels
             if (mechEndpoints == null || mechEndpoints.Count == 0)
                 return new List<(double X, double Y)>();
 
-            int segments = Math.Max(20, row?.ArcSegments ?? 20);
+            int pointCount = Math.Max(2, row?.ArcSegments ?? 20);
             var type = EffectiveTrajectoryType;
-
-            if (type == TrajectoryType.Arc)
-            {
-                // 相机已输出整条实际曲线的采样点。保留全部点及点序，
-                // 仅将中间点镜像到产品曲线所在的弦线另一侧。
-                return MirrorArcIntermediatePoints(mechEndpoints);
-            }
+            List<(double X, double Y)> sourcePath;
 
             if (type == TrajectoryType.Line && mechEndpoints.Count >= 2)
             {
                 var end = mechEndpoints.Count >= 3 ? mechEndpoints[2] : mechEndpoints[1];
-                return BezierArcDispenseService.DiscretizeLine(mechEndpoints[0], end, segments);
+                sourcePath = new List<(double X, double Y)> { mechEndpoints[0], end };
+            }
+            else if (type == TrajectoryType.Arc || type == TrajectoryType.Polyline)
+            {
+                // Arc/Polyline 均使用视觉采样点；IsArcMode 含这两种类型，镜像开关必须同时生效。
+                // 勾选：中间点关于首尾弦线镜像；取消：直接使用视觉凸向。
+                sourcePath = (row?.MirrorArcBulge ?? true)
+                    ? MirrorArcIntermediatePoints(mechEndpoints)
+                    : mechEndpoints.ToList();
+            }
+            else
+            {
+                sourcePath = mechEndpoints.ToList();
             }
 
-            return mechEndpoints.ToList();
+            return ResamplePathByArcLength(sourcePath, pointCount);
+        }
+
+        /// <summary>
+        /// 以累计弧长等距重采样连续路径。保证返回数量严格等于要求点数，
+        /// 让预览、ZMAP采样和最终插补使用同一批轨迹点。
+        /// </summary>
+        private static List<(double X, double Y)> ResamplePathByArcLength(
+            IReadOnlyList<(double X, double Y)> source, int pointCount)
+        {
+            pointCount = Math.Max(2, pointCount);
+            if (source == null || source.Count == 0)
+                return new List<(double X, double Y)>();
+            if (source.Count == 1)
+                return Enumerable.Repeat(source[0], pointCount).ToList();
+
+            var cumulative = new double[source.Count];
+            for (int i = 1; i < source.Count; i++)
+            {
+                double dx = source[i].X - source[i - 1].X;
+                double dy = source[i].Y - source[i - 1].Y;
+                cumulative[i] = cumulative[i - 1] + Math.Sqrt(dx * dx + dy * dy);
+            }
+
+            double totalLength = cumulative[^1];
+            if (totalLength < 1e-9)
+                return Enumerable.Repeat(source[0], pointCount).ToList();
+
+            var result = new List<(double X, double Y)>(pointCount);
+            for (int i = 0; i < pointCount; i++)
+            {
+                double target = totalLength * i / (pointCount - 1d);
+                int segmentIndex = 1;
+                while (segmentIndex < cumulative.Length - 1 && cumulative[segmentIndex] < target)
+                    segmentIndex++;
+
+                double startLength = cumulative[segmentIndex - 1];
+                double segmentLength = cumulative[segmentIndex] - startLength;
+                double ratio = segmentLength < 1e-9 ? 0 : (target - startLength) / segmentLength;
+                var start = source[segmentIndex - 1];
+                var end = source[segmentIndex];
+                result.Add((start.X + (end.X - start.X) * ratio, start.Y + (end.Y - start.Y) * ratio));
+            }
+            return result;
         }
 
         /// <summary>
         /// 将 Arc 中间采样点关于起点/终点组成的弦线镜像。
-        /// 首尾点保持不变，修正相机与设备坐标系法向相反导致的曲线凸向错误。
+        /// 首尾点保持不变；仅在 MirrorArcBulge=true 时调用，用于相机与设备法向相反的场景。
         /// </summary>
         private static List<(double X, double Y)> MirrorArcIntermediatePoints(
             IReadOnlyList<(double X, double Y)> points)
@@ -3284,22 +3812,48 @@ namespace Module.ViewModels
             return mechEndpoints.ToList();
         }
 
+        /// <summary>
+        /// Arc 预览固定坐标范围：同时包含视觉原凸向与弦线镜像后的点，
+        /// 勾选切换时画布尺度不变，曲线会明显翻到弦线另一侧。
+        /// </summary>
+        private static List<(double X, double Y)> BuildArcPreviewBounds(
+            IReadOnlyList<(double X, double Y)> mechEndpoints)
+        {
+            var bounds = new List<(double X, double Y)>();
+            if (mechEndpoints == null || mechEndpoints.Count == 0)
+                return bounds;
+
+            bounds.AddRange(mechEndpoints);
+            if (mechEndpoints.Count >= 3)
+                bounds.AddRange(MirrorArcIntermediatePoints(mechEndpoints));
+            return bounds;
+        }
+
         private void GenerateArcPathGeometry(
             IReadOnlyList<(double X, double Y)> curvePoints,
-            IReadOnlyList<(double X, double Y)> keyPoints = null)
+            IReadOnlyList<(double X, double Y)> keyPoints = null,
+            IReadOnlyList<(double X, double Y)> boundsPoints = null)
         {
-            ArcPathGeometry.Clear();
-            if (curvePoints == null || curvePoints.Count < 2) return;
+            // 每次替换整个集合，强制 ItemsControl 重建视觉树（Clear+Add 在 UIElement 项上可能不刷新）。
+            var elements = new ObservableCollection<UIElement>();
+            if (curvePoints == null || curvePoints.Count < 2)
+            {
+                ArcPathGeometry = elements;
+                return;
+            }
 
             double canvasWidth = 380;
             double canvasHeight = 220;
             double padding = 25;
 
-            // 轨迹离散点与相机返回的全部关键点共同决定坐标轴范围。
-            // Arc 仅用前三点生成贝塞尔曲线时，后续视觉点仍应处于预览坐标范围内。
-            var allDisplayPoints = keyPoints == null || keyPoints.Count == 0
-                ? curvePoints
-                : curvePoints.Concat(keyPoints).ToList();
+            // 优先使用外部固定范围（镜像切换）；否则用曲线+标注点自适应。
+            IReadOnlyList<(double X, double Y)> allDisplayPoints;
+            if (boundsPoints != null && boundsPoints.Count > 0)
+                allDisplayPoints = boundsPoints;
+            else if (keyPoints == null || keyPoints.Count == 0)
+                allDisplayPoints = curvePoints;
+            else
+                allDisplayPoints = curvePoints.Concat(keyPoints).ToList();
 
             double minX = allDisplayPoints.Min(p => p.X);
             double maxX = allDisplayPoints.Max(p => p.X);
@@ -3323,28 +3877,40 @@ namespace Module.ViewModels
             // Y 轴自上而下从大到小：maxY 在画布上方，minY 在下方
             Func<double, double> toCanvasY = y => offsetY + (maxY - y) * scale;
 
-            // 绘制机器坐标网格和刻度，便于调试时对照关键点坐标。
             for (int i = 0; i <= 5; i++)
             {
-                // 刻度自左向右：maxX → minX
                 double gx = maxX - rangeX * i / 5.0;
                 double cx = toCanvasX(gx);
-                ArcPathGeometry.Add(new Line { X1 = cx, Y1 = padding, X2 = cx, Y2 = canvasHeight - padding, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
-                AddCanvasText(gx.ToString("F2"), cx - 16, canvasHeight - padding + 2, 9, Brushes.Gray);
+                elements.Add(new Line { X1 = cx, Y1 = padding, X2 = cx, Y2 = canvasHeight - padding, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
+                AddCanvasText(elements, gx.ToString("F2"), cx - 16, canvasHeight - padding + 2, 9, Brushes.Gray);
             }
             for (int i = 0; i <= 5; i++)
             {
-                // 刻度自上而下：maxY → minY
                 double gy = maxY - rangeY * i / 5.0;
                 double cy = toCanvasY(gy);
-                ArcPathGeometry.Add(new Line { X1 = padding, Y1 = cy, X2 = canvasWidth - padding, Y2 = cy, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
-                AddCanvasText(gy.ToString("F2"), 2, cy - 7, 9, Brushes.Gray);
+                elements.Add(new Line { X1 = padding, Y1 = cy, X2 = canvasWidth - padding, Y2 = cy, Stroke = Brushes.LightGray, StrokeThickness = 0.5 });
+                AddCanvasText(elements, gy.ToString("F2"), 2, cy - 7, 9, Brushes.Gray);
             }
 
-            ArcPathGeometry.Add(new Line { X1 = padding, Y1 = canvasHeight - padding, X2 = canvasWidth - padding + 8, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
-            ArcPathGeometry.Add(new Line { X1 = padding, Y1 = padding - 8, X2 = padding, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
-            AddCanvasText("X", canvasWidth - padding + 10, canvasHeight - padding - 8, 10, Brushes.DimGray);
-            AddCanvasText("Y", padding + 4, padding - 20, 10, Brushes.DimGray);
+            elements.Add(new Line { X1 = padding, Y1 = canvasHeight - padding, X2 = canvasWidth - padding + 8, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
+            elements.Add(new Line { X1 = padding, Y1 = padding - 8, X2 = padding, Y2 = canvasHeight - padding, Stroke = Brushes.DimGray, StrokeThickness = 1 });
+            AddCanvasText(elements, "X", canvasWidth - padding + 10, canvasHeight - padding - 8, 10, Brushes.DimGray);
+            AddCanvasText(elements, "Y", padding + 4, padding - 20, 10, Brushes.DimGray);
+
+            // 首尾弦线参考：凸向相对弦线翻转时更易肉眼核对。
+            if (curvePoints.Count >= 2)
+            {
+                elements.Add(new Line
+                {
+                    X1 = toCanvasX(curvePoints[0].X),
+                    Y1 = toCanvasY(curvePoints[0].Y),
+                    X2 = toCanvasX(curvePoints[curvePoints.Count - 1].X),
+                    Y2 = toCanvasY(curvePoints[curvePoints.Count - 1].Y),
+                    Stroke = new SolidColorBrush(Color.FromRgb(0x90, 0xA4, 0xAE)),
+                    StrokeThickness = 1,
+                    StrokeDashArray = new DoubleCollection { 4, 3 }
+                });
+            }
 
             var polyline = new Polyline
             {
@@ -3353,81 +3919,63 @@ namespace Module.ViewModels
                 Points = new PointCollection()
             };
             foreach (var pt in curvePoints)
-            {
                 polyline.Points.Add(new Point(toCanvasX(pt.X), toCanvasY(pt.Y)));
-            }
-            ArcPathGeometry.Add(polyline);
+            elements.Add(polyline);
 
-            // P1/P2/P3 标注使用实际点胶路径的首点/中点/末点。
             var markers = keyPoints ?? curvePoints;
             if (markers.Count >= 3)
             {
                 int middleMarkerIndex = markers.Count / 2;
                 int endMarkerIndex = markers.Count - 1;
-                var startEllipse = new Ellipse
-                {
-                    Width = 10, Height = 10,
-                    Fill = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 1.5
-                };
-                Canvas.SetLeft(startEllipse, toCanvasX(markers[0].X) - 5);
-                Canvas.SetTop(startEllipse, toCanvasY(markers[0].Y) - 5);
-                ArcPathGeometry.Add(startEllipse);
-                AddPointLabel("P1", markers[0].X, markers[0].Y, toCanvasX, toCanvasY, 8, -22, Brushes.DarkGreen);
+                AddCanvasMarker(elements, toCanvasX(markers[0].X), toCanvasY(markers[0].Y), 10,
+                    Color.FromRgb(0x2E, 0x7D, 0x32));
+                AddPointLabel(elements, "P1", markers[0].X, markers[0].Y, toCanvasX, toCanvasY, 8, -22, Brushes.DarkGreen);
 
-                var midEllipse = new Ellipse
-                {
-                    Width = 10, Height = 10,
-                    Fill = new SolidColorBrush(Color.FromRgb(0xF5, 0x7C, 0x00)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 1.5
-                };
-                Canvas.SetLeft(midEllipse, toCanvasX(markers[middleMarkerIndex].X) - 5);
-                Canvas.SetTop(midEllipse, toCanvasY(markers[middleMarkerIndex].Y) - 5);
-                ArcPathGeometry.Add(midEllipse);
-                AddPointLabel("P2", markers[middleMarkerIndex].X, markers[middleMarkerIndex].Y, toCanvasX, toCanvasY, 8, 8, Brushes.DarkOrange);
+                AddCanvasMarker(elements, toCanvasX(markers[middleMarkerIndex].X), toCanvasY(markers[middleMarkerIndex].Y), 10,
+                    Color.FromRgb(0xF5, 0x7C, 0x00));
+                AddPointLabel(elements, "P2", markers[middleMarkerIndex].X, markers[middleMarkerIndex].Y, toCanvasX, toCanvasY, 8, 8, Brushes.DarkOrange);
 
-                var endEllipse = new Ellipse
-                {
-                    Width = 10, Height = 10,
-                    Fill = new SolidColorBrush(Color.FromRgb(0xD3, 0x2F, 0x2F)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 1.5
-                };
-                Canvas.SetLeft(endEllipse, toCanvasX(markers[endMarkerIndex].X) - 5);
-                Canvas.SetTop(endEllipse, toCanvasY(markers[endMarkerIndex].Y) - 5);
-                ArcPathGeometry.Add(endEllipse);
-                AddPointLabel("P3", markers[endMarkerIndex].X, markers[endMarkerIndex].Y, toCanvasX, toCanvasY, 8, -22, Brushes.DarkRed);
+                AddCanvasMarker(elements, toCanvasX(markers[endMarkerIndex].X), toCanvasY(markers[endMarkerIndex].Y), 10,
+                    Color.FromRgb(0xD3, 0x2F, 0x2F));
+                AddPointLabel(elements, "P3", markers[endMarkerIndex].X, markers[endMarkerIndex].Y, toCanvasX, toCanvasY, 8, -22, Brushes.DarkRed);
             }
 
             for (int i = 0; i < curvePoints.Count; i += Math.Max(1, curvePoints.Count / 15))
-            {
-                var dot = new Ellipse
-                {
-                    Width = 4, Height = 4,
-                    Fill = new SolidColorBrush(Color.FromRgb(0x90, 0xA4, 0xAE))
-                };
-                Canvas.SetLeft(dot, toCanvasX(curvePoints[i].X) - 2);
-                Canvas.SetTop(dot, toCanvasY(curvePoints[i].Y) - 2);
-                ArcPathGeometry.Add(dot);
-            }
+                AddCanvasMarker(elements, toCanvasX(curvePoints[i].X), toCanvasY(curvePoints[i].Y), 4,
+                    Color.FromRgb(0x90, 0xA4, 0xAE));
 
-            RaisePropertyChanged(nameof(HasArcPathGeometry));
+            ArcPathGeometry = elements;
         }
 
-        private void AddPointLabel(string name, double x, double y, Func<double, double> toCanvasX, Func<double, double> toCanvasY, double offsetX, double offsetY, Brush foreground)
+        /// <summary>
+        /// 用绝对坐标 Path 画圆点，避免 ItemsControl/ContentPresenter 下 Canvas.SetLeft 失效。
+        /// </summary>
+        private static void AddCanvasMarker(ICollection<UIElement> elements, double cx, double cy, double size, Color fill)
         {
-            AddCanvasText($"{name} ({x:F2}, {y:F2})", toCanvasX(x) + offsetX, toCanvasY(y) + offsetY, 10, foreground);
+            double r = size / 2;
+            elements.Add(new System.Windows.Shapes.Path
+            {
+                Fill = new SolidColorBrush(fill),
+                Stroke = Brushes.White,
+                StrokeThickness = size >= 8 ? 1.5 : 0,
+                Data = new EllipseGeometry(new Point(cx, cy), r, r)
+            });
+        }
+
+        private void AddPointLabel(ICollection<UIElement> elements, string name, double x, double y, Func<double, double> toCanvasX, Func<double, double> toCanvasY, double offsetX, double offsetY, Brush foreground)
+        {
+            AddCanvasText(elements, $"{name} ({x:F2}, {y:F2})", toCanvasX(x) + offsetX, toCanvasY(y) + offsetY, 10, foreground);
         }
 
         private void AddPointLabel(string name, CoordinateTransformDetail point, Func<double, double> toCanvasX, Func<double, double> toCanvasY, double offsetX, double offsetY, Brush foreground)
         {
-            AddPointLabel(name, point.FinalX, point.FinalY, toCanvasX, toCanvasY, offsetX, offsetY, foreground);
+            // 兼容旧调用：写入当前 ArcPathGeometry 集合。
+            AddPointLabel(ArcPathGeometry, name, point.FinalX, point.FinalY, toCanvasX, toCanvasY, offsetX, offsetY, foreground);
         }
 
-        private void AddCanvasText(string text, double left, double top, double fontSize, Brush foreground)
+        private static void AddCanvasText(ICollection<UIElement> elements, string text, double left, double top, double fontSize, Brush foreground)
         {
+            // UIElement 项直接作为 Canvas 子节点，可用 Canvas.SetLeft/Top 定位。
             var label = new TextBlock
             {
                 Text = text,
@@ -3438,7 +3986,7 @@ namespace Module.ViewModels
             };
             Canvas.SetLeft(label, left);
             Canvas.SetTop(label, top);
-            ArcPathGeometry.Add(label);
+            elements.Add(label);
         }
 
         private async Task SaveTransformParamsAsync()
@@ -3910,6 +4458,25 @@ namespace Module.ViewModels
                 NeedleOffsetYLinkedVarNeedle2 = _needleOffsetYLinkedVarByNeedle[1],
                 SelectedGroup = SelectedGroup,
                 CurrentRunMode = CurrentRunMode,
+                LastVisionRawResponse = LastVisionRawResponse,
+                LastVisionReceivedTime = LastVisionReceivedTime,
+                LastVisionTargetPoints = CapturedTargetPoints.Count > 0
+                    ? CapturedTargetPoints.Select(p => new VisionTargetPointConfig
+                    {
+                        Index = p.Index,
+                        PointX = p.PointX,
+                        PointY = p.PointY,
+                        ZMapZ = p.ZMapZ,
+                        IsZMapHeightValid = p.IsZMapHeightValid
+                    }).ToList()
+                    : LastVisionTargetPoints?.Select(p => new VisionTargetPointConfig
+                    {
+                        Index = p.Index,
+                        PointX = p.PointX,
+                        PointY = p.PointY,
+                        ZMapZ = p.ZMapZ,
+                        IsZMapHeightValid = p.IsZMapHeightValid
+                    }).ToList() ?? new List<VisionTargetPointConfig>(),
                 Groups = groupConfigs,
                 // 兼容旧字段：当前组行仍写入 Rows
                 Rows = PhotoPositionRows.Select(ToRowConfig).ToList()
@@ -3933,6 +4500,7 @@ namespace Module.ViewModels
                 ArcSegments = r.ArcSegments,
                 ArcHeight = r.ArcHeight,
                 ArcDirection = r.ArcDirection,
+                MirrorArcBulge = r.MirrorArcBulge,
                 NeedleOffsetX = r.NeedleOffsetX,
                 NeedleOffsetY = r.NeedleOffsetY,
                 NeedleOffsetXExpression = r.NeedleOffsetXExpression,
@@ -3947,6 +4515,10 @@ namespace Module.ViewModels
                 DotParamsNeedle2 = r.DotParamsNeedle2,
                 ArcParamsNeedle1 = r.ArcParamsNeedle1,
                 ArcParamsNeedle2 = r.ArcParamsNeedle2,
+                ZCorrectionEnabled = r.ZCorrectionEnabled,
+                ZMapProfile = r.ZMapProfile,
+                ZMapPathPoints = ToZMapPathPointConfigs(r.ZMapPathPoints),
+                LastReturnTime = r.LastReturnTime,
                 ArcTrackType = r.ArcTrackType
             };
         }
@@ -3996,6 +4568,8 @@ namespace Module.ViewModels
                 ArcSegments = rowConfig.ArcSegments,
                 ArcHeight = rowConfig.ArcHeight,
                 ArcDirection = rowConfig.ArcDirection,
+                // 旧配置缺失该字段时保持默认 true，兼容既有强制镜像路径。
+                MirrorArcBulge = rowConfig.MirrorArcBulge,
                 NeedleOffsetX = rowConfig.NeedleOffsetX,
                 NeedleOffsetY = rowConfig.NeedleOffsetY,
                 NeedleOffsetXExpression = rowConfig.NeedleOffsetXExpression,
@@ -4006,6 +4580,10 @@ namespace Module.ViewModels
                 NeedleCompensationY = rowConfig.NeedleCompensationY,
                 CompensationXExpression = rowConfig.CompensationXExpression,
                 CompensationYExpression = rowConfig.CompensationYExpression,
+                ZCorrectionEnabled = rowConfig.ZCorrectionEnabled,
+                ZMapProfile = rowConfig.ZMapProfile ?? new ZMapSegmentProfile(),
+                ZMapPathPoints = FromZMapPathPointConfigs(rowConfig.ZMapPathPoints),
+                LastReturnTime = rowConfig.LastReturnTime,
                 ArcTrackType = rowConfig.ArcTrackType
             };
 
@@ -4067,6 +4645,34 @@ namespace Module.ViewModels
         }
 
         /// <summary>
+        /// 恢复上次成功解析的视觉返回与目标点；只恢复相机坐标，机械坐标必须按当前偏移重新计算。
+        /// </summary>
+        private void RestoreLastVisionData(VisionCaptureConfig config)
+        {
+            LastVisionRawResponse = config.LastVisionRawResponse ?? string.Empty;
+            LastVisionReceivedTime = config.LastVisionReceivedTime;
+            LastVisionTargetPoints = config.LastVisionTargetPoints ?? new List<VisionTargetPointConfig>();
+            RawResponse = LastVisionRawResponse;
+            CapturedTargetPoints.Clear();
+            foreach (var point in LastVisionTargetPoints.OrderBy(p => p.Index))
+            {
+                CapturedTargetPoints.Add(new TargetPointItem
+                {
+                    Index = point.Index,
+                    PointX = point.PointX,
+                    PointY = point.PointY,
+                    // 先恢复表格高度；后续预览若点数一致会用行级 ZMapPathPoints 再同步一次。
+                    ZMapZ = point.ZMapZ,
+                    IsZMapHeightValid = point.IsZMapHeightValid
+                });
+            }
+
+            ParsedData = new ObservableCollection<KeyValuePair<string, double>>(
+                ExtractNumericPairsFromRaw(LastVisionRawResponse));
+            RaisePropertyChanged(nameof(HasParsedArcData));
+        }
+
+        /// <summary>
         /// 将配置对象应用到当前ViewModel（组列表独立于 WorkOrder）
         /// </summary>
         private async Task ApplyConfig(VisionCaptureConfig config)
@@ -4106,6 +4712,7 @@ namespace Module.ViewModels
             _needleOffsetYLinkedVarByNeedle[1] = NormalizeLinkedVarName(config.NeedleOffsetYLinkedVarNeedle2);
 
             CurrentRunMode = config.CurrentRunMode;
+            RestoreLastVisionData(config);
             // 应用保存的针头选择（触发 SwitchNeedleOffsetData 加载对应针头偏移）
             CurrentNeedleIndex = config.CurrentNeedleIndex;
 
@@ -4180,6 +4787,13 @@ namespace Module.ViewModels
             RefreshAvailablePositions();
             RefreshSafePositionDisplay();
             DeleteGroupCommand?.RaiseCanExecuteChanged();
+
+            // 仅路径模式恢复预览：不下发任何运动，仅按保存的视觉目标点重算机械轨迹与界面几何。
+            // RemapOrClearZMapHeights 会在点数一致时保留配方中的 ZMAP 高度并刷新目标点 Z 列。
+            if (SelectedRow != null && EffectiveTrajectoryType != TrajectoryType.Dot && CapturedTargetPoints.Count > 0)
+                await ComputeMachinePointsFromCameraAsync(SelectedRow);
+            else if (SelectedRow?.ZMapPathPoints?.Count > 0)
+                SyncTargetPointZMapHeights(SelectedRow.ZMapPathPoints);
         }
     }
 }
@@ -4222,6 +4836,12 @@ public class VisionCaptureConfig
     public string NeedleOffsetYLinkedVarNeedle2 { get; set; }
     public string SelectedGroup { get; set; }
     public RunMode CurrentRunMode { get; set; }
+    /// <summary>最近一次成功解析的视觉原始返回，供页面重开后追溯。</summary>
+    public string LastVisionRawResponse { get; set; }
+    /// <summary>最近一次成功接收视觉数据的本地时间。</summary>
+    public DateTime? LastVisionReceivedTime { get; set; }
+    /// <summary>最近一次成功解析的相机目标点；恢复后按当前工艺补偿重新计算机械路径。</summary>
+    public List<VisionTargetPointConfig> LastVisionTargetPoints { get; set; } = new();
     /// <summary>各组配置（独立于 WorkOrder，含组名与拍照位行）</summary>
     public List<VisionCaptureGroupConfig> Groups { get; set; } = new();
     /// <summary>当前组拍照位行（兼容旧配置；新保存时与 Groups 中当前组同步）</summary>
@@ -4261,7 +4881,11 @@ public class PhotoPositionRowConfig
     public int ArcSegments { get; set; } = 20;
     public double ArcHeight { get; set; }
     public double ArcDirection { get; set; }
+    /// <summary>是否镜像 Arc 中间点凸向；旧配置缺失时反序列化为 true。</summary>
+    public bool MirrorArcBulge { get; set; } = true;
     public bool ReturnToSafeAfterCapture { get; set; } = true;
+    /// <summary>最近一次成功返回安全位的本地时间。</summary>
+    public DateTime? LastReturnTime { get; set; }
     public double NeedleOffsetX { get; set; }
     public double NeedleOffsetY { get; set; }
     /// <summary>针头X偏移表达式，如 0.5 或 0.1+0.2</summary>
@@ -4283,6 +4907,12 @@ public class PhotoPositionRowConfig
     public DispenseSegment ArcParamsNeedle1 { get; set; } = new DispenseSegment();
     /// <summary>针头2(Dz₃) 路径模式工艺参数</summary>
     public DispenseSegment ArcParamsNeedle2 { get; set; } = new DispenseSegment();
+    /// <summary>是否对本拍照位路径启用 ZMAP 三轴表面跟随；旧配置缺失时默认 false。</summary>
+    public bool ZCorrectionEnabled { get; set; }
+    /// <summary>按拍照位保存的 ZMAP ROI/标定和提取质量。</summary>
+    public ZMapSegmentProfile ZMapProfile { get; set; } = new ZMapSegmentProfile();
+    /// <summary>按拍照位保存的连续轨迹逐点 ZMAP 高度，供重开软件后恢复显示与执行。</summary>
+    public List<VisionZMapPathPointConfig> ZMapPathPoints { get; set; } = new();
 
     /// <summary>Dot(单点)模式工艺参数（旧兼容，等价于 DotParamsNeedle1）</summary>
     public DotProcessParams DotParams { get => DotParamsNeedle1; set => DotParamsNeedle1 = value; }
@@ -4292,6 +4922,27 @@ public class PhotoPositionRowConfig
     public ArcTrackType ArcTrackType { get; set; } = ArcTrackType.Arc;
     /// <summary>轨迹类型覆盖；null 表示旧配置缺失，加载时按 DispenseType/ArcTrackType 迁移</summary>
     public TrajectoryType? TrajectoryOverride { get; set; }
+}
+
+/// <summary>视觉返回目标点的轻量持久化模型；机械坐标重开后重算，ZMAP Z 一并保存以恢复表格显示。</summary>
+public class VisionTargetPointConfig
+{
+    public int Index { get; set; }
+    public double PointX { get; set; }
+    public double PointY { get; set; }
+    /// <summary>对应投影的 ZMAP 高度；未提取时为 null。</summary>
+    public double? ZMapZ { get; set; }
+    /// <summary>对应 ZMAP 高度是否有效。</summary>
+    public bool? IsZMapHeightValid { get; set; }
+}
+
+/// <summary>连续轨迹逐点 ZMAP 高度持久化模型。</summary>
+public class VisionZMapPathPointConfig
+{
+    public double? MachineX { get; set; }
+    public double? MachineY { get; set; }
+    public double Z { get; set; }
+    public bool? IsZMapHeightValid { get; set; }
 }
 
 /// <summary>

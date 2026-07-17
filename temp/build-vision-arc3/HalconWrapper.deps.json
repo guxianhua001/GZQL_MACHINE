@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "HalconWrapper/1.0.197": {
+        "dependencies": {
+          "halcondotnet": "21.11.0.0"
+        },
+        "runtime": {
+          "HalconWrapper.dll": {}
+        }
+      },
+      "halcondotnet/21.11.0.0": {
+        "runtime": {
+          "halcondotnet.dll": {
+            "assemblyVersion": "21.11.0.0",
+            "fileVersion": "21.11.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "HalconWrapper/1.0.197": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "halcondotnet/21.11.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

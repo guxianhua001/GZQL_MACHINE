@@ -377,6 +377,9 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="{lang:Lang VisionCapture_Header_LastReturnTime}"
+                                                        Binding="{Binding LastReturnTime, StringFormat=yyyy-MM-dd HH:mm:ss, Mode=OneWay}"
+                                                        Width="145" FontSize="11" IsReadOnly="True" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>
@@ -395,6 +398,12 @@
                                 </StackPanel>
                             </Border>
                             <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="{lang:Lang VisionCapture_Label_VisionReceivedTime}" FontSize="11"
+                                               FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" />
+                                    <TextBlock Text="{Binding LastVisionReceivedTime, StringFormat=yyyy-MM-dd HH:mm:ss}"
+                                               FontSize="11" Foreground="{StaticResource TextPrimary}" Margin="6,0,0,0" />
+                                </StackPanel>
                                 <TextBlock Text="{lang:Lang VisionCapture_RawResponse}" FontWeight="SemiBold" FontSize="11"
                                            Foreground="{StaticResource TextSecondary}" Margin="0,0,0,4" />
                                 <TextBox Text="{Binding RawResponse, Mode=OneWay}"
@@ -460,6 +469,7 @@
                                             <DataGridTextColumn Header="{lang:Lang VisionCapture_Header_PointY}" Binding="{Binding PointY, StringFormat=F3}" Width="*" IsReadOnly="True" />
                                             <DataGridTextColumn Header="{lang:Lang VisionCapture_Header_MechX}" Binding="{Binding MechX, StringFormat=F3}" Width="*" IsReadOnly="True" />
                                             <DataGridTextColumn Header="{lang:Lang VisionCapture_Header_MechY}" Binding="{Binding MechY, StringFormat=F3}" Width="*" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="{lang:Lang VisionCapture_Header_ZMapZ}" Binding="{Binding ZMapZ, StringFormat=F3}" Width="*" IsReadOnly="True" />
                                         </DataGrid.Columns>
                                     </DataGrid>
 
@@ -650,29 +660,17 @@
                                                    VerticalAlignment="Center" Foreground="{StaticResource TextPrimary}" />
                                     </StackPanel>
                                 </Border>
-                                <Canvas x:Name="ArcPreviewCanvas"
-                                        Height="220"
-                                        Background="#FFF8F9FA"
-                                        ClipToBounds="True">
-                                    <Canvas.Resources>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="StrokeThickness" Value="1" />
-                                        </Style>
-                                    </Canvas.Resources>
-
-                                    <ItemsControl ItemsSource="{Binding ArcPathGeometry}">
+                                <!-- UIElement 项自身即为容器，不能对 ContentPresenter 设 ItemContainerStyle -->
+                                <Border Width="380" Height="220" Background="#FFF8F9FA" ClipToBounds="True">
+                                    <ItemsControl ItemsSource="{Binding ArcPathGeometry}"
+                                                  Width="380" Height="220">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <Canvas IsItemsHost="True" />
+                                                <Canvas IsItemsHost="True" Width="380" Height="220" />
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <ContentControl Content="{Binding}" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                </Canvas>
+                                </Border>
                             </StackPanel>
                         </materialDesign:Card>
                     </StackPanel>
@@ -794,6 +792,16 @@
                                               ItemsSource="{Binding AvailableTrajectoryTypes}"
                                               SelectedItem="{Binding SelectedTrajectoryType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
+                                <!-- Arc/Polyline 凸向镜像：Line 无中间凸向，不显示 -->
+                                <StackPanel Orientation="Vertical" Margin="0,0,0,8"
+                                            Visibility="{Binding IsMirrorArcBulgeVisible, Converter={StaticResource BoolToVis}}">
+                                    <CheckBox Content="{lang:Lang VisionCapture_MirrorArcBulge}"
+                                              IsChecked="{Binding MirrorArcBulge, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              FontSize="12"
+                                              ToolTip="{lang:Lang VisionCapture_MirrorArcBulgeTip}" />
+                                    <TextBlock Text="{lang:Lang VisionCapture_MirrorArcBulgeHint}" FontSize="10"
+                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="24,2,0,0" />
+                                </StackPanel>
 
                                 <!-- 双针头选择器（与 Step3EditParamsPanel 对齐） -->
                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
@@ -876,7 +884,7 @@
                                                    Text="{lang:Lang Step3_Group_HeightParams}"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" MinWidth="64"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_TeachHeight}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                                      Text="{Binding CurrentDotParams.TeachHeight, StringFormat=F3, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11" MinHeight="24"/>
@@ -918,7 +926,7 @@
                                                    Text="{lang:Lang Step3_Group_MotionParams}"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{lang:Lang Step3_Label_MoveSpeed}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
                                             <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                                      Text="{Binding CurrentArcParams.MoveSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
@@ -938,6 +946,10 @@
                                             <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                                      Text="{Binding CurrentArcParams.InterpSpeed, StringFormat=F1, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
                                             <TextBlock Grid.Row="4" Grid.Column="2" Text="mm/s" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="{lang:Lang VisionCapture_Param_ArcSegments}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center" Margin="0,2,8,0"/>
+                                            <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     Text="{Binding SelectedRow.ArcSegments, UpdateSourceTrigger=LostFocus}" Padding="4,2" FontSize="11"/>
+                                            <TextBlock Grid.Row="5" Grid.Column="2" Text="{lang:Lang VisionCapture_Unit_Points}" FontSize="11" Foreground="#FF607D8B" VerticalAlignment="Center"/>
                                         </Grid>
                                     </StackPanel>
 
@@ -1002,6 +1014,40 @@
                                         </Grid>
                                     </StackPanel>
                                 </Grid>
+                                <!-- ZMAP逐点高度与三轴表面跟随：仅路径连续插补可用。 -->
+                                <Border Background="#FFF3F9FA" BorderBrush="#FF80CBC4" BorderThickness="1"
+                                        CornerRadius="4" Padding="8" Margin="0,10,0,0"
+                                        Visibility="{Binding IsArcMode, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Terrain" Width="16" Height="16"
+                                                                     Foreground="#00838F" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{lang:Lang VisionCapture_ZMap_Title}" FontWeight="SemiBold"
+                                                       Foreground="#00838F" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding ZMapHeightStatus}" FontSize="10"
+                                                       Foreground="{StaticResource TextSecondary}" Margin="12,0,0,0"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <WrapPanel Margin="0,6,0,0">
+                                            <Button Command="{Binding OpenZMapExtractToolCommand}"
+                                                    Style="{StaticResource CompactOutlinedButton}" Margin="0,0,8,4"
+                                                    ToolTip="{lang:Lang VisionCapture_ZMap_ExtractTip}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Terrain" Width="14" Height="14"
+                                                                             VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{lang:Lang VisionCapture_ZMap_Extract}"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <CheckBox Content="{lang:Lang Step6_CheckBox_ZCorrection}"
+                                                      IsChecked="{Binding ZCorrectionEnabled}"
+                                                      VerticalAlignment="Center" Margin="0,0,8,4"/>
+                                        </WrapPanel>
+                                        <TextBlock Text="{lang:Lang Step6_Desc_ZCorrection}" FontSize="10"
+                                                   Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{lang:Lang Step6_ZCorrection_SafetyHint}" FontSize="10"
+                                                   Foreground="#C62828" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </materialDesign:Card>
                     </StackPanel>

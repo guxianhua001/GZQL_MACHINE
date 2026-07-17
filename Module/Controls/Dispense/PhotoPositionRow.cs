@@ -95,6 +95,22 @@ namespace Module.ViewModels
             get => _mechY;
             set => SetProperty(ref _mechY, value);
         }
+
+        private double? _zMapZ;
+        /// <summary>当前轨迹中与该视觉目标点对应的 ZMAP 高度；尚未提取时为空，避免将0误显示为有效高度。</summary>
+        public double? ZMapZ
+        {
+            get => _zMapZ;
+            set => SetProperty(ref _zMapZ, value);
+        }
+
+        private bool? _isZMapHeightValid;
+        /// <summary>对应 ZMAP 高度是否有效；null 表示尚未提取。</summary>
+        public bool? IsZMapHeightValid
+        {
+            get => _isZMapHeightValid;
+            set => SetProperty(ref _isZMapHeightValid, value);
+        }
     }
 
     /// <summary>
@@ -384,6 +400,22 @@ namespace Module.ViewModels
             set => SetProperty(ref _arcParamsNeedle1, value);
         }
 
+        private bool _zCorrectionEnabled;
+        /// <summary>是否启用 ZMAP 表面跟随；仅连续插补路径使用，默认关闭确保旧配方安全。</summary>
+        public bool ZCorrectionEnabled
+        {
+            get => _zCorrectionEnabled;
+            set => SetProperty(ref _zCorrectionEnabled, value);
+        }
+
+        /// <summary>本拍照位的 ZMAP ROI/标定及最近一次提取质量，用于下次打开高度图工具恢复。</summary>
+        public ZMapSegmentProfile ZMapProfile { get; set; } = new ZMapSegmentProfile();
+
+        /// <summary>
+        /// 当前视觉轨迹的 ZMAP 逐点高度。点数变化时失效；点数不变时随路径重算保留 Z，并写入配方以便重开恢复显示。
+        /// </summary>
+        public List<CadPoint> ZMapPathPoints { get; set; } = new List<CadPoint>();
+
         private ArcTrackType _arcTrackType = ArcTrackType.Arc;
         /// <summary>旧 Arc 轨迹子类型，保留兼容；新逻辑使用 TrajectoryOverride</summary>
         [Obsolete("使用 TrajectoryOverride 替代")]
@@ -454,10 +486,13 @@ namespace Module.ViewModels
         }
 
         private int _arcSegments = 20;
+        /// <summary>
+        /// 连续轨迹实际采样点数。最小为2，确保直线、弧线和折线均可生成首尾完整的插补路径。
+        /// </summary>
         public int ArcSegments
         {
             get => _arcSegments;
-            set => SetProperty(ref _arcSegments, value);
+            set => SetProperty(ref _arcSegments, Math.Max(2, value));
         }
 
         private double _arcHeight;
@@ -478,6 +513,18 @@ namespace Module.ViewModels
         {
             get => _arcDirection;
             set => SetProperty(ref _arcDirection, value);
+        }
+
+        private bool _mirrorArcBulge = true;
+        /// <summary>
+        /// 是否将 Arc 中间点关于首尾弦线镜像。
+        /// true：修正相机与设备坐标系法向相反；false：直接使用视觉返回的凸向（视觉数据已与产品一致时关闭）。
+        /// 默认 true，兼容既有强制镜像行为；凸向反了时可关闭后重算预览核对。
+        /// </summary>
+        public bool MirrorArcBulge
+        {
+            get => _mirrorArcBulge;
+            set => SetProperty(ref _mirrorArcBulge, value);
         }
 
         private bool _isSelected;
@@ -501,6 +548,14 @@ namespace Module.ViewModels
         {
             get => _returnToSafeAfterCapture;
             set => SetProperty(ref _returnToSafeAfterCapture, value);
+        }
+
+        private DateTime? _lastReturnTime;
+        /// <summary>最近一次成功返回安全位的本地时间，用于操作追溯与界面显示。</summary>
+        public DateTime? LastReturnTime
+        {
+            get => _lastReturnTime;
+            set => SetProperty(ref _lastReturnTime, value);
         }
 
         private double _needleOffsetX;

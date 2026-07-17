@@ -15,6 +15,22 @@ using System.IO;
 namespace HalconWrapper
 {
     /// <summary>
+    /// Halcon 图像窗口右键菜单的显示文本。
+    /// 由宿主应用传入本地化字符串，HalconWrapper 不依赖具体的本地化实现。
+    /// </summary>
+    public sealed class HWindowContextMenuTexts
+    {
+        public string FitWindow { get; init; }
+        public string MoveWindow { get; init; }
+        public string FitImage { get; init; }
+        public string ToggleImageInfo { get; init; }
+        public string ToggleCross { get; init; }
+        public string SaveImage { get; init; }
+        public string SaveWindow { get; init; }
+        public string OpenImage { get; init; }
+    }
+
+    /// <summary>
     /// halcon鼠标缩放控件
     ///
     /// 描述:
@@ -145,6 +161,35 @@ namespace HalconWrapper
             mCtrl_HWindow.ContextMenuStrip = hv_MenuStrip;
             mCtrl_HWindow.SizeChanged += new EventHandler((s, e) => DispImageFitImage());
         }
+
+        /// <summary>
+        /// 更新图像窗口右键菜单文本，使嵌入 WinForms 的菜单跟随宿主应用语言切换。
+        /// </summary>
+        /// <param name="texts">由宿主提供的本地化文本；空值保留当前显示文本。</param>
+        public void ApplyContextMenuTexts(HWindowContextMenuTexts texts)
+        {
+            if (texts == null)
+                return;
+
+            SetMenuItemText(fitWindow_strip, texts.FitWindow);
+            SetMenuItemText(MoveWindowEnable_strip, texts.MoveWindow);
+            SetMenuItemText(fitImage_strip, texts.FitImage);
+            SetMenuItemText(barVisible_strip, texts.ToggleImageInfo);
+            SetMenuItemText(crossVisible_strip, texts.ToggleCross);
+            SetMenuItemText(saveImg_strip, texts.SaveImage);
+            SetMenuItemText(saveWindow_strip, texts.SaveWindow);
+            SetMenuItemText(openImage_strip, texts.OpenImage);
+        }
+
+        /// <summary>
+        /// 安全更新单个菜单项文本，避免设计器或未完成初始化时出现空引用。
+        /// </summary>
+        private static void SetMenuItemText(ToolStripMenuItem menuItem, string text)
+        {
+            if (menuItem != null && !string.IsNullOrWhiteSpace(text))
+                menuItem.Text = text;
+        }
+
         private void HWndCtrl_ShowMessageEvent(object sender, ShowMessageEventArgs e)
         {
             switch (e.MessageType)
