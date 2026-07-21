@@ -12,10 +12,19 @@
         <materialDesign:Card Padding="10" Margin="0,0,0,8">
             <StackPanel>
                 <TextBlock Text="{lang:Lang Step6_Section_TargetSelection}" FontWeight="Bold" FontSize="12" Margin="0,0,0,6"/>
+                <RadioButton Content="{lang:Lang Step6_Radio_AllEnabledSegments}"
+                             IsChecked="{Binding IsExecuteAllEnabledSegments}"
+                             GroupName="Step6TargetMode" Margin="0,2"/>
+                <TextBlock Text="{lang:Lang Step6_Desc_AllEnabledSegments}"
+                           FontSize="10" Foreground="#9E9E9E" TextWrapping="Wrap" Margin="24,2,0,4"/>
+                <RadioButton Content="{lang:Lang Step6_Radio_SingleSegment}"
+                             IsChecked="{Binding IsExecuteSingleSegment}"
+                             GroupName="Step6TargetMode" Margin="0,4,0,0"/>
                 <ComboBox ItemsSource="{Binding SegmentIds}"
                           SelectedItem="{Binding SelectedSegmentId}"
                           materialDesign:HintAssist.Hint="{lang:Lang Step6_Hint_SelectSegment}"
-                          MinHeight="32"/>
+                          IsEnabled="{Binding IsExecuteSingleSegment}"
+                          MinHeight="32" Margin="24,4,0,0"/>
             </StackPanel>
         </materialDesign:Card>
 

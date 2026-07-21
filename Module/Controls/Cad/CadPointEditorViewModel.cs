@@ -271,6 +271,7 @@ namespace Module.ViewModels
                         _ => null
                     };
                     RaisePropertyChanged(nameof(CurrentStepTitle));
+                    RaisePropertyChanged(nameof(CanExecute));
                 }
             }
         }
@@ -1147,7 +1148,7 @@ namespace Module.ViewModels
         public ObservableCollection<string> SegmentIds { get; } = new();
 
         private string _selectedSegmentId;
-        /// <summary>当前选中的线段ID（选中时画布高亮对应线段）</summary>
+        /// <summary>当前选中的线段ID（单条执行模式下用于目标段；选中时画布高亮对应线段）</summary>
         public string SelectedSegmentId
         {
             get => _selectedSegmentId;
@@ -1157,6 +1158,41 @@ namespace Module.ViewModels
                 var seg = Segments.FirstOrDefault(s => s.SegmentId == value);
                 if (seg != null && seg != _selectedSegment)
                     SelectedSegment = seg;
+                RaisePropertyChanged(nameof(CanExecute));
+            }
+        }
+
+        private bool _isExecuteAllEnabledSegments = true;
+        /// <summary>Step6 执行全部已启用线段（与 Step5 实机空跑一致）</summary>
+        public bool IsExecuteAllEnabledSegments
+        {
+            get => _isExecuteAllEnabledSegments;
+            set
+            {
+                if (!SetProperty(ref _isExecuteAllEnabledSegments, value)) return;
+                if (value && _isExecuteSingleSegment)
+                {
+                    _isExecuteSingleSegment = false;
+                    RaisePropertyChanged(nameof(IsExecuteSingleSegment));
+                }
+                RaisePropertyChanged(nameof(CanExecute));
+            }
+        }
+
+        private bool _isExecuteSingleSegment;
+        /// <summary>Step6 仅执行 ComboBox 选中的单条线段</summary>
+        public bool IsExecuteSingleSegment
+        {
+            get => _isExecuteSingleSegment;
+            set
+            {
+                if (!SetProperty(ref _isExecuteSingleSegment, value)) return;
+                if (value && _isExecuteAllEnabledSegments)
+                {
+                    _isExecuteAllEnabledSegments = false;
+                    RaisePropertyChanged(nameof(IsExecuteAllEnabledSegments));
+                }
+                RaisePropertyChanged(nameof(CanExecute));
             }
         }
 
@@ -1200,8 +1236,36 @@ namespace Module.ViewModels
             set { if (value) LineDispenseMode = LineDispenseMode.ContinuousInterpolation; }
         }
 
-        /// <summary>是否允许执行（有轨迹段且非仿真中）</summary>
-        public bool CanExecute => Segments.Any(s => s.IsEnabled) && !_isSimulating;
+        /// <summary>是否允许执行（有轨迹段且非仿真中；Step6 单条模式需有效选中段）</summary>
+        public bool CanExecute => HasExecutableTargets() && !_isSimulating;
+
+        /// <summary>解析 Step6 实际执行目标段列表</summary>
+        private List<DispenseSegment> ResolveStep6ExecutionTargets()
+        {
+            if (IsExecuteAllEnabledSegments)
+                return Segments.Where(s => s.IsEnabled).ToList();
+
+            if (string.IsNullOrEmpty(SelectedSegmentId))
+                return new List<DispenseSegment>();
+
+            var seg = Segments.FirstOrDefault(s => s.IsEnabled && s.SegmentId == SelectedSegmentId);
+            return seg != null ? new List<DispenseSegment> { seg } : new List<DispenseSegment>();
+        }
+
+        /// <summary>Step5/Step6 执行前校验是否存在可执行目标段</summary>
+        private bool HasExecutableTargets()
+        {
+            if (!Segments.Any(s => s.IsEnabled))
+                return false;
+
+            if (CurrentStep == 6 && IsExecuteSingleSegment)
+            {
+                return !string.IsNullOrEmpty(SelectedSegmentId)
+                    && Segments.Any(s => s.IsEnabled && s.SegmentId == SelectedSegmentId);
+            }
+
+            return true;
+        }
 
         private DotProcessParams _singlePointProcessParams = new DotProcessParams();
         /// <summary>防止从段同步到 SinglePointProcessParams 时触发反向传播的标志</summary>
@@ -1361,6 +1425,8 @@ namespace Module.ViewModels
             nameof(IsRealDryRunMode),
             nameof(DescendInDryRun),
             nameof(SelectedSegmentId),
+            nameof(IsExecuteAllEnabledSegments),
+            nameof(IsExecuteSingleSegment),
             nameof(LineDispenseMode),
             nameof(ZCorrectionEnabled),
             nameof(IsSinglePointMode),
@@ -2715,11 +2781,23 @@ namespace Module.ViewModels
                 if (vm?.BatchParamItems != null)
                 {
                     int changedCount = 0;
+                    bool needRefreshMxMy = false;
                     foreach (var param in vm.BatchParamItems.Where(p => p.IsEnabled))
                     {
                         foreach (var seg in targets)
                             param.ApplyTo(seg);
                         changedCount++;
+                        if (param.RequiresMachineCoordRefresh)
+                            needRefreshMxMy = true;
+                    }
+
+                    // XY 补偿批量写入后需重算 MX/MY，与单段「应用 XY 补偿」行为一致
+                    if (needRefreshMxMy)
+                    {
+                        foreach (var seg in targets)
+                            RefreshSegmentMachineCoordinates(seg, needleIndex: _currentNeedleIndex);
+                        if (_selectedSegment != null)
+                            SelectedSegmentPoints = _selectedSegment.Points?.ToList();
                     }
 
                     // 批量设置后，从第一个目标段刷新 SinglePointProcessParams 面板
@@ -3739,10 +3817,14 @@ namespace Module.ViewModels
         /// <param name="realDispenseOnly">true 时忽略 Step5 模式，仅执行真实点胶（Step6）</param>
         private async void ExecuteRun(bool realDispenseOnly = false)
         {
-            var enabledSegments = Segments.Where(s => s.IsEnabled).ToList();
+            var enabledSegments = realDispenseOnly
+                ? ResolveStep6ExecutionTargets()
+                : Segments.Where(s => s.IsEnabled).ToList();
             if (enabledSegments.Count == 0)
             {
-                GlobalStatus = L("CadPoint_Error_NoExecutableTrajectory");
+                GlobalStatus = realDispenseOnly && IsExecuteSingleSegment
+                    ? L("CadPoint_Error_NoTargetSegmentSelected")
+                    : L("CadPoint_Error_NoExecutableTrajectory");
                 return;
             }
 
@@ -4166,10 +4248,12 @@ namespace Module.ViewModels
         /// </summary>
         private void ExecutePath()
         {
-            var enabledSegments = Segments.Where(s => s.IsEnabled).ToList();
+            var enabledSegments = ResolveStep6ExecutionTargets();
             if (enabledSegments.Count == 0)
             {
-                GlobalStatus = L("CadPoint_Error_NoExecutableTrajectory");
+                GlobalStatus = IsExecuteSingleSegment
+                    ? L("CadPoint_Error_NoTargetSegmentSelected")
+                    : L("CadPoint_Error_NoExecutableTrajectory");
                 return;
             }
 
@@ -4441,6 +4525,7 @@ namespace Module.ViewModels
             IsRealDryRunMode = IsRealDryRunMode,
             DescendInDryRun = DescendInDryRun,
             SelectedSegmentId = SelectedSegmentId ?? string.Empty,
+            IsExecuteAllEnabledSegments = IsExecuteAllEnabledSegments,
             LineDispenseMode = LineDispenseMode,
             ZCorrectionEnabled = ZCorrectionEnabled
         };
@@ -4458,6 +4543,9 @@ namespace Module.ViewModels
                     DescendInDryRun = options.DescendInDryRun;
                     LineDispenseMode = options.LineDispenseMode;
                     ZCorrectionEnabled = options.ZCorrectionEnabled;
+                    IsExecuteAllEnabledSegments = options.IsExecuteAllEnabledSegments;
+                    _isExecuteSingleSegment = !options.IsExecuteAllEnabledSegments;
+                    RaisePropertyChanged(nameof(IsExecuteSingleSegment));
                     _selectedSegmentId = options.SelectedSegmentId;
                     RaisePropertyChanged(nameof(SelectedSegmentId));
                 }
@@ -5117,6 +5205,9 @@ namespace Module.ViewModels
         private double _value;
         public double Value { get => _value; set => SetProperty(ref _value, value); }
 
+        /// <summary>批量设置后是否需要重算段内机械坐标（如 XY 补偿）</summary>
+        public bool RequiresMachineCoordRefresh { get; set; }
+
         public BatchParamItem(string displayName, string unit, double defaultValue)
         {
             DisplayName = displayName;
@@ -5261,6 +5352,11 @@ namespace Module.ViewModels
                 (seg, val) => { seg.TeachHeight = val; seg.ZHeight = val; }));
             BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_HeightCompensation"), "mm", referenceSegment.HeightCompensation,
                 (seg, val) => seg.HeightCompensation = val));
+            // 段级 XY 补偿（批量设置后由 ExecuteBatchSetAll 触发机械坐标重算）
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_XyCompensationX"), "mm", referenceSegment.XyCompensationX,
+                (seg, val) => seg.XyCompensationX = val) { RequiresMachineCoordRefresh = true });
+            BatchParamItems.Add(new TypedBatchParamItem(L("CadPoint_BatchParam_XyCompensationY"), "mm", referenceSegment.XyCompensationY,
+                (seg, val) => seg.XyCompensationY = val) { RequiresMachineCoordRefresh = true });
 
             ConfirmCommand = new DelegateCommand(() =>
             {

@@ -86,6 +86,8 @@
       <VersionChangeLines Include="VisionCapture: 修复镜像开关预览无变化（固定弦线两侧坐标范围并强化绑定刷新）" />
       <VersionChangeLines Include="VisionCapture: 镜像开关对Arc/Polyline同步生效，预览集合整表替换并同步重算" />
       <VersionChangeLines Include="VisionCapture: 修复预览ItemsControl对UIElement误用ContentPresenter样式导致崩溃" />
+      <VersionChangeLines Include="Step3: 批量设置参数对话框新增 XY Offset X/Y，批量应用后自动重算机械坐标" />
+      <VersionChangeLines Include="Step6: 目标线段选择新增「全部已选线段」模式，与实机空跑一致批量执行" />
     </ItemGroup>
     <MakeDir Directories="$(OutputPath)" Condition="!Exists('$(OutputPath)')" />
     <WriteLinesToFile File="$(OutputPath)VersionInfo.txt" Lines="@(VersionInfoLines)" Overwrite="true" />

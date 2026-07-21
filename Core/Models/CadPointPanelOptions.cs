@@ -20,8 +20,11 @@ namespace Core.Models
 
         #region Step6 执行
 
-        /// <summary>目标线段 ID（Step6 下拉框选中项）</summary>
+        /// <summary>目标线段 ID（Step6 单条模式 ComboBox 选中项）</summary>
         public string SelectedSegmentId { get; set; } = string.Empty;
+
+        /// <summary>Step6 是否执行全部已启用线段（默认 true，与实机空跑一致）</summary>
+        public bool IsExecuteAllEnabledSegments { get; set; } = true;
 
         /// <summary>线条点胶模式（单点 / 连续插补）</summary>
         public LineDispenseMode LineDispenseMode { get; set; } = LineDispenseMode.ContinuousInterpolation;

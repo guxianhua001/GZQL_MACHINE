@@ -2790,6 +2790,7 @@
     <sys:String x:Key="CadPoint_Dialog_LoadTrajectory">加载轨迹</sys:String>
     <sys:String x:Key="CadPoint_Error_NoTrajectorySelected">未选择轨迹</sys:String>
     <sys:String x:Key="CadPoint_Error_NoExecutableTrajectory">无可执行轨迹</sys:String>
+    <sys:String x:Key="CadPoint_Error_NoTargetSegmentSelected">请先选择一条已启用的目标线段</sys:String>
     <sys:String x:Key="CadPoint_Error_NoTrajectoryInFile">文件中无轨迹数据</sys:String>
     <sys:String x:Key="Step5_Status_Waiting">等待中</sys:String>
     <sys:String x:Key="Step6_Btn_ExecuteSinglePoint">单点执行</sys:String>
@@ -2866,6 +2867,8 @@
     <sys:String x:Key="CadPoint_BatchParam_DispenseTime">点胶时间</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_TeachHeight">示教高度</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">高度补偿</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_XyCompensationX">XY补偿X</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_XyCompensationY">XY补偿Y</sys:String>
 
     <!-- PrincipleWindow -->
     <sys:String x:Key="Principle_Bar1">回转中心</sys:String>
@@ -3208,6 +3211,9 @@
     <sys:String x:Key="Step6_ZCorrection_SafetyHint">启用后执行前将预检ZMAP无效点、数值无效Z与|deltaZ|并弹窗确认，不合格拒绝运动以防撞针</sys:String>
     <sys:String x:Key="Step6_Description">选择目标线段和执行模式，执行点胶操作。</sys:String>
     <sys:String x:Key="Step6_Hint_SelectSegment">选择目标线段</sys:String>
+    <sys:String x:Key="Step6_Radio_AllEnabledSegments">全部已选线段</sys:String>
+    <sys:String x:Key="Step6_Radio_SingleSegment">单条线段</sys:String>
+    <sys:String x:Key="Step6_Desc_AllEnabledSegments">执行 Step3 中所有已启用线段（与实机空跑一致）</sys:String>
     <sys:String x:Key="Step6_Radio_ContinuousInterpolation">连续插补</sys:String>
     <sys:String x:Key="Step6_Radio_SinglePoint">单点模式</sys:String>
     <sys:String x:Key="Step6_Section_ExecMode">执行模式</sys:String>

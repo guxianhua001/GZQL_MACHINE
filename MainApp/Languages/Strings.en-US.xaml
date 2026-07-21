@@ -2790,6 +2790,7 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_Dialog_LoadTrajectory">Load Trajectory</sys:String>
     <sys:String x:Key="CadPoint_Error_NoTrajectorySelected">No Trajectory Selected</sys:String>
     <sys:String x:Key="CadPoint_Error_NoExecutableTrajectory">No Executable Trajectory</sys:String>
+    <sys:String x:Key="CadPoint_Error_NoTargetSegmentSelected">Please select an enabled target segment first</sys:String>
     <sys:String x:Key="CadPoint_Error_NoTrajectoryInFile">No Trajectory Data in File</sys:String>
     <sys:String x:Key="Step5_Status_Waiting">Waiting</sys:String>
     <sys:String x:Key="Step6_Btn_ExecuteSinglePoint">Single Point Execute</sys:String>
@@ -2866,6 +2867,8 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_DispenseTime">Dispense Time</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_TeachHeight">Teach Height</sys:String>
     <sys:String x:Key="CadPoint_BatchParam_HeightCompensation">Height Compensation</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_XyCompensationX">XY Offset X</sys:String>
+    <sys:String x:Key="CadPoint_BatchParam_XyCompensationY">XY Offset Y</sys:String>
 
     <!-- PrincipleWindow -->
     <sys:String x:Key="Principle_Bar1">Rotation Center</sys:String>
@@ -3208,6 +3211,9 @@ Requirement: All axes (Rx, Rz, Y) return to machine origin</sys:String>
     <sys:String x:Key="Step6_ZCorrection_SafetyHint">Before run: pre-check ZMAP invalid points, non-finite Z and |deltaZ|, require confirm; unqualified motion is blocked to prevent needle crash</sys:String>
     <sys:String x:Key="Step6_Description">Select target segment and execution mode, then execute dispensing.</sys:String>
     <sys:String x:Key="Step6_Hint_SelectSegment">Select target segment</sys:String>
+    <sys:String x:Key="Step6_Radio_AllEnabledSegments">All Enabled Segments</sys:String>
+    <sys:String x:Key="Step6_Radio_SingleSegment">Single Segment</sys:String>
+    <sys:String x:Key="Step6_Desc_AllEnabledSegments">Execute all enabled segments from Step3 (same as Real Dry Run)</sys:String>
     <sys:String x:Key="Step6_Radio_ContinuousInterpolation">Continuous Interpolation</sys:String>
     <sys:String x:Key="Step6_Radio_SinglePoint">Single Point</sys:String>
     <sys:String x:Key="Step6_Section_ExecMode">Execution Mode</sys:String>
